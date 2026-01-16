@@ -1,0 +1,335 @@
+
+services:
+  # PostgreSQL 数据库服务
+  postgres:
+    image: pgvector/pgvector:pg16
+    command: postgres -c "log_statement=none" -c "log_min_messages=error" -c "log_min_error_statement=error"
+    container_name: catwiki-postgres-dev
+    env_file:
+      - ./backend/.env
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      LANG: C
+    ports:
+      # 使用 5433 端口避免与本地 PostgreSQL 冲突
+      # 如果需要使用 5432，请先停止本地 PostgreSQL 服务
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - catwiki-network
+    # 资源限制（可选，防止数据库占用过多资源）
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+  # RustFS 对象存储服务
+  rustfs:
+    image: rustfs/rustfs:latest  # 或指定版本: rustfs/rustfs:1.0.0.alpha.68
+    container_name: catwiki-rustfs-dev
+    env_file:
+      - ./backend/.env
+    environment:
+      # 时区设置
+      - TZ=Asia/Shanghai
+      # RustFS 配置 (从 .env 加载)
+    ports:
+      # RustFS API 端口
+      - "9000:9000"
+      # RustFS Console 端口
+      - "9001:9001"
+    volumes:
+      # RustFS 数据存储（使用命名卷避免权限问题）
+      - rustfs_data:/data
+      # RustFS 日志
+      - rustfs_logs:/logs
+      # 时区配置（Linux only，Windows/Mac 会自动忽略）
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - catwiki-network
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+  # 后端初始化服务（只在首次启动或手动触发时运行）
+  # 负责：
+  # 1. 运行数据库迁移（alembic upgrade head）
+  # 2. 创建初始管理员用户（admin@example.com / admin123）
+  # 3. 创建 Demo 站点（医学科普）和初始化医学知识文档
+  # 4. 初始化 RustFS 对象存储
+  backend-init:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: catwiki-backend-init
+    env_file:
+      - ./backend/.env
+    environment:
+      # 环境配置
+      TZ: Asia/Shanghai
+      
+      # 数据库配置（使用服务名连接）
+      POSTGRES_SERVER: postgres
+      POSTGRES_PORT: 5432
+      
+      # RustFS 对象存储配置 (从 .env 加载，Docker 内部通信使用 RUSTFS_DOCKER_ENDPOINT)
+      RUSTFS_ENDPOINT: ${RUSTFS_DOCKER_ENDPOINT:-rustfs:9000}
+      
+    volumes:
+      # 挂载代码目录以访问脚本
+      - ./backend:/app
+      # 排除不需要同步的目录
+      - /app/.venv
+      - /app/__pycache__
+      - /app/**/__pycache__
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+    networks:
+      - catwiki-network
+    command: >
+      sh -c "
+        echo '==========================================' &&
+        echo '🚀 开始初始化 CatWiki...' &&
+        echo '==========================================' &&
+        echo '' &&
+        echo '📦 运行数据库迁移...' &&
+        uv run alembic upgrade head &&
+        echo '✅ 数据库迁移完成' &&
+        echo '' &&
+        echo ' 初始化 Demo 站点和医学知识文档...' &&
+        uv run python scripts/init_demo_data.py &&
+        echo '✅ Demo 数据初始化完成' &&
+        echo '' &&
+        echo '🗄️  初始化 RustFS 对象存储...' &&
+        uv run python scripts/init_rustfs.py &&
+        echo '✅ RustFS 初始化完成' &&
+        echo '' &&
+        echo '==========================================' &&
+        echo '🎉 CatWiki 初始化完成！' &&
+        echo '==========================================' &&
+        echo '' &&
+        echo '📋 默认管理员账号：' &&
+        echo '   📧 邮箱: admin@example.com' &&
+        echo '   🔑 密码: admin123' &&
+        echo '' &&
+        echo '📚 Demo 站点：' &&
+        echo '   🔗 访问: http://localhost:8002/medical' &&
+        echo '' &&
+        echo '🔧 管理后台：' &&
+        echo '   🔗 访问: http://localhost:8001' &&
+        echo '' &&
+        echo '📖 API 文档：' &&
+        echo '   🔗 访问: http://localhost:3000/docs' &&
+        echo '' &&
+        echo '==========================================' &&
+        echo ''
+      "
+    # 初始化服务只运行一次，成功后不重启
+    restart: "no"
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+
+  # 后端 API 服务（支持热更新）
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: catwiki-backend-dev
+    env_file:
+      - ./backend/.env
+    environment:
+      # 时区配置
+      TZ: Asia/Shanghai
+      
+      # 数据库配置（使用服务名连接）
+      POSTGRES_SERVER: postgres
+      POSTGRES_PORT: 5432
+      
+      # RustFS 对象存储配置 (从 .env 加载，Docker 内部通信使用 RUSTFS_DOCKER_ENDPOINT)
+      RUSTFS_ENDPOINT: ${RUSTFS_DOCKER_ENDPOINT:-rustfs:9000}
+      
+    ports:
+      - "3000:3000"
+    volumes:
+      # 挂载代码目录以支持热更新
+      - ./backend:/app
+      # 排除不需要同步的目录（保留容器内的虚拟环境）
+      - /app/.venv
+      - /app/__pycache__
+      - /app/**/__pycache__
+      - /app/.git
+      - /app/*.pyc
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+      backend-init:
+        condition: service_completed_successfully
+    networks:
+      - catwiki-network
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  # Admin 前端服务（管理后台，支持热更新）
+  admin-frontend:
+    build:
+      context: ./frontend/admin
+      dockerfile: Dockerfile.dev
+    container_name: catwiki-admin-frontend-dev
+    env_file:
+      - ./frontend/admin/.env
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "8001:8001"
+    volumes:
+      # 挂载代码目录以支持热更新
+      - ./frontend/admin:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - catwiki-network
+    # 资源限制（适当提高以加速 Next.js 编译）
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  # Client 前端服务（客户端，支持热更新）
+  client-frontend:
+    build:
+      context: ./frontend/client
+      dockerfile: Dockerfile.dev
+    container_name: catwiki-client-frontend-dev
+    env_file:
+      - ./frontend/client/.env
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "8002:8002"
+    volumes:
+      # 挂载代码目录以支持热更新
+      - ./frontend/client:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - catwiki-network
+    # 资源限制（适当提高以加速 Next.js 编译）
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  rustfs_data:
+    driver: local
+  rustfs_logs:
+    driver: local
+
+networks:
+  catwiki-network:
+    driver: bridge
+
