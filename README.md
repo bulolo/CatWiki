@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🐱 CatWiki / 知几喵
+# <img src="./docs/images/logo.png" width="25" vertical-align="middle"> CatWiki / 知几喵
 
 **企业级知识库管理系统**
 
