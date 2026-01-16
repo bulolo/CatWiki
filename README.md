@@ -375,7 +375,7 @@ deploy/
 
 - 💬 **问题反馈**: 通过 [GitHub Issues](https://github.com/yourusername/catWiki/issues) 提交
 - 📧 **商务合作**: 82607314@qq.com/ bulolo(微信)
-- 🌐 **官方网站**: 暂无
+- 🌐 **官方网站**: http://catwiki.cn
 
 ---
 
