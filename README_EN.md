@@ -1,0 +1,407 @@
+<div align="center">
+
+# <img src="./docs/images/logo.png" width="36" style="vertical-align: middle;"> CatWiki
+
+**Enterprise-grade Knowledge Base Management System**
+
+A feature-rich knowledge base platform providing powerful content management, AI-powered Q&A, and a modern user experience.
+
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-14.0+-000000?logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791?logo=postgresql)](https://www.postgresql.org/)
+
+
+English | [简体中文](./README.md)
+
+<p>
+  <a href="https://github.com/bulolo/CatWiki">
+    <img src="https://img.shields.io/badge/⭐_Star-Project-yellow?style=for-the-badge&logo=github" alt="Star"/>
+  </a>
+</p>
+
+**If this project helps you, please click the ⭐ Star in the top right corner to support us. This is the greatest encouragement for the developers!**
+
+</div>
+
+---
+
+## 🚀 Recent Updates
+### 2026-01-17 ⚡ Multi-language Support
+- 🌐 **Multi-language Support**: Added English documentation [README_EN.md](./README_EN.md) (2026-01-17)
+- 📝 **Documentation Improvements**: Updated project architecture and quick start guide.
+
+---
+
+## 🎯 Highlights
+
+- ✅ **Out-of-the-box**: One-click startup with Docker Compose, automatic database initialization and demo data loading.
+- ✅ **Dual-end Architecture**: Independent Admin Dashboard and Client Side with clear responsibilities.
+- ✅ **Type Safety**: Full use of TypeScript and Pydantic for robust type safety across frontend and backend.
+- ✅ **Modern Tech Stack**: FastAPI + Next.js 14 + SQLAlchemy 2.0, utilizing the latest technologies.
+- ✅ **AI Integration**: Built-in intelligent AI Q&A based on Vercel AI SDK.
+- ✅ **Hot Reload**: Supports hot reloading for both frontend and backend in the development environment.
+- ✅ **Auto-generated SDK**: Backend API changes automatically trigger TypeScript SDK generation.
+- ✅ **Comprehensive Documentation**: Detailed API documentation and usage guides.
+
+---
+
+## 📸 Screenshots
+
+### 🎯 Admin Dashboard
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="./docs/images/screenshots/1.png" alt="Operational Overview">
+      <p align="center"><b>Operational Overview</b><br>Real-time view of site status and key metrics</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/images/screenshots/2.png" alt="Document Management">
+      <p align="center"><b>Document Management</b><br>Hierarchical directory structure with batch operation support</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./docs/images/screenshots/3.png" alt="User Management">
+      <p align="center"><b>User Management</b><br>Full user permission and role management</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/images/screenshots/4.png" alt="System Settings">
+      <p align="center"><b>System Settings</b><br>Flexible AI model configuration</p>
+    </td>
+  </tr>
+</table>
+
+### 💬 Client Side
+
+<div align="center">
+  <img src="./docs/images/screenshots/5.png" alt="AI Intelligent Q&A" width="80%">
+  <p><b>AI Intelligent Q&A</b> - Intelligent conversation assistant based on knowledge base content with context awareness</p>
+</div>
+
+---
+
+## ✨ Core Features
+
+### 🎯 Admin Dashboard
+- **📝 Rich Text Editing**: Markdown-based document editor with real-time preview.
+- **🗂️ Document Management**: Hierarchical directory structure with drag-and-drop sorting.
+- **👥 User Management**: Comprehensive user permissions and role management.
+- **🌐 Multi-site Support**: Manage multiple independent knowledge base sites.
+- **🤖 AI Configuration**: Flexible AI model and bot configurations.
+
+### 💬 Client Side
+- **🔍 Intelligent Search**: Quickly find documents and content.
+- **🤖 AI Q&A**: Intelligent dialogue assistant powered by your knowledge base.
+- **📱 Responsive Design**: Perfectly adapted for both desktop and mobile.
+- **🎨 Modern UI**: Elegant interface built with shadcn/ui.
+
+---
+
+## 🏗️ Technical Architecture
+
+### Backend Stack
+- **Framework**: FastAPI
+- **Database**: PostgreSQL + SQLAlchemy 2.0
+- **Migration**: Alembic
+- **Package Manager**: uv (High-performance Python package manager)
+- **Auth**: JWT + PassLib
+- **Python Version**: >= 3.10
+
+### Frontend Stack
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript 5.3+
+- **Styling**: Tailwind CSS
+- **Component Library**: shadcn/ui (based on Radix UI)
+- **State Management**: React Hooks
+- **Package Manager**: pnpm
+
+### Key Libraries
+- **Drag & Drop**: @dnd-kit/core + @dnd-kit/sortable (Admin)
+- **Markdown Editor**: md-editor-rt (Admin)
+- **AI Integration**: Vercel AI SDK (ai + @ai-sdk/react) (Client)
+- **Markdown Rendering**: streamdown (Client)
+- **Notification**: Sonner (Common)
+
+---
+
+## 📁 Project Structure
+
+```
+catWiki/
+├── backend/                      # 🐍 FastAPI Backend Service
+│   ├── app/
+│   │   ├── api/                 # API Routes
+│   │   │   ├── admin/          # Admin API (Full CRUD + Auth)
+│   │   │   └── client/         # Client API (Read-only + Public)
+│   │   ├── core/                # Core Config, Middleware, Utils
+│   │   ├── crud/                # Database CRUD Operations
+│   │   ├── models/              # SQLAlchemy ORM Models
+│   │   ├── schemas/             # Pydantic Validation Schemas
+│   │   └── main.py              # Application Entry
+│   ├── alembic/                 # Database Migrations
+│   ├── scripts/                 # Utility Scripts (Create users, Gen SDK, Init data)
+│   ├── Dockerfile.dev           # Dev Dockerfile
+│   ├── Dockerfile.prod          # Prod Dockerfile
+│   └── pyproject.toml           # Dependency Management (uv)
+│
+├── frontend/
+│   ├── admin/                   # 🎯 Admin Dashboard (Next.js, Port 3000)
+│   │   └── src/
+│   │       ├── app/            # Page Routes
+│   │       ├── components/     # React Components
+│   │       │   ├── features/  # Business Components (Doc editing, User mgmt)
+│   │       │   ├── layout/    # Layout Components (Sidebar, Logout)
+│   │       │   └── ui/        # shadcn/ui Base Components
+│   │       ├── lib/sdk/       # Auto-generated TypeScript SDK
+│   │       └── hooks/         # Custom React Hooks
+│   │
+│   └── client/                  # 💬 Client Side (Next.js, Port 3001)
+│       └── src/
+│           ├── app/            # Page Routes
+│           ├── components/     # React Components
+│           │   ├── ai/        # AI Components
+│           │   └── features/  # Doc display, Search
+│           ├── lib/sdk/       # Auto-generated TypeScript SDK
+│           └── layout/        # Sidebar, Site switcher
+│
+├── deploy/                      # 🚀 Production Deployment
+│   ├── docker/                 # Docker Compose Deployment
+│   │   ├── docker-compose.prod.yml
+│   │   └── README.md           # Prod Deployment Instructions
+│   └── README.md               # Deployment Overview
+│
+├── docker-compose.dev.yml       # One-click Dev environment
+├── LICENSE                      # AGPL-3.0 License
+└── README.md                    # Project Documentation
+```
+
+### Core Directory Description
+
+| Directory | Description | Tech Stack |
+|------|------|--------|
+| `backend/` | Backend API Service | FastAPI + PostgreSQL + SQLAlchemy |
+| `frontend/admin/` | Admin Dashboard (Internal) | Next.js 14 + shadcn/ui + Markdown Editor |
+| `frontend/client/` | Client Side (Public) | Next.js 14 + AI Q&A + Search |
+| `deploy/` | Production Config | Docker Compose |
+
+---
+
+## ⚡ Quick Start (5 Minutes)
+
+### One-click Start Full Dev Environment
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/catWiki.git
+cd catWiki
+
+# 1. First time startup (Init config + Start environment)
+make setup
+
+# 2. Daily development (Start environment without resetting config)
+make dev
+
+# 3. Modify configuration (Optional)
+# Edit backend/.env and fill in OpenAI API Key for AI features
+# Run `make restart` to apply changes to the backend
+```
+
+> [!WARNING]
+> **About `make setup`**: It will recopy `.env` files from templates, which will overwrite your existing configuration.
+> - **First time**: Use `make setup`.
+> - **Subsequent**: Use `make dev`.
+
+Wait 2-3 minutes for all services to start, then visit:
+- 🎯 **Admin Dashboard**: http://localhost:8001  
+  Log in with `admin@example.com` / `admin123`
+- 💬 **Client Side**: http://localhost:8002/medical  
+  View medical demo with 5 sample documents
+- 📚 **API Docs**: http://localhost:3000/docs  
+  Interactive API documentation
+
+As easy as that! 🎉
+
+---
+
+## 🚀 Installation & Configuration
+
+### Prerequisites
+
+- **Docker** >= 20.10
+- **Docker Compose** >= 2.0
+- **Make** (Pre-installed or via package manager)
+
+---
+
+## 🏗️ Project Management (Makefile)
+
+The root directory provides a `Makefile` to simplify complex Docker maintenance commands.
+
+### Core Commands
+
+#### Development Environment
+
+| Command | Description |
+|------|------|
+| `make setup` | **One-click start**: Runs `init-env` and starts `dev` services |
+| `make init-env` | **Initialize config**: Cleans and recopies `.env.example` files |
+| `make dev` | **Development start**: Builds images and starts in foreground with logs |
+| `make down` | **Graceful stop**: Stops and removes containers, preserves volumes |
+| `make restart` | **Quick restart**: Restarts Only the backend container |
+| `make logs` | **Real-time logs**: View core backend service logs |
+| `make db-migrate m="msg"` | **Generate migration**: Creates new database migration script (needs message `m`) |
+| `make db-psql` | **DB Terminal**: Access interactive PostgreSQL terminal |
+| `make gen-sdk` | **Generate SDK**: Triggers automatic frontend SDK generation from backend API |
+| `make clean` | **Deep reset**: Stops containers and **deletes all volumes** (⚠️ Destructive) |
+
+---
+
+#### Production Environment
+
+| Command | Description |
+|------|------|
+| `make prod-init` | **Prod Init**: Initializes production configuration templates |
+| `make prod-up` | **Prod Start**: Starts all production services in the background |
+| `make prod-down` | **Prod Stop**: Stops and removes production containers |
+| `make prod-restart` | **Prod Restart**: Restarts Only the production backend container |
+| `make prod-logs` | **Prod Logs**: View production container logs |
+| `make prod-clean` | **Deep reset**: Stops containers and **deletes all prod volumes** (⚠️ Destructive) |
+
+---
+
+## 🏗️ Technical Details
+
+### Initialization Mechanism
+The project uses a **Standalone Init Container** (`backend-init`) pattern:
+- **Self-detection**: Automatically checks database version on startup.
+- **Auto-migration**: Automatically executes Alembic scripts.
+- **Pre-set Data**: Automatically creates admin account (`admin@example.com` / `admin123`) and medical demo site.
+
+### Automatic SDK Sync
+After backend API changes, update the frontend SDK with a single command:
+```bash
+make gen-sdk
+```
+
+---
+
+## 📦 Production Deployment
+
+The project provides a standardized deployment process managed via `make prod-xxx` commands.
+
+#### 1. Initialize Configuration
+```bash
+# Generate prod config templates (located in deploy/docker/)
+make prod-init
+```
+
+#### 2. Modify Sensitive Information
+Edit the following files to fill in domain names, database passwords, JWT keys, etc.:
+- `deploy/docker/.env.backend`
+- `deploy/docker/.env.admin`
+- `deploy/docker/.env.client`
+
+#### 3. Start Services
+```bash
+# Start all production containers in background
+make prod-up
+```
+
+> [!IMPORTANT]
+> For detailed security recommendations (SSL, S3, etc.), please refer to:
+> **[👉 Full Production Deployment Guide (deploy/docker/README.md)](./deploy/docker/README.md)**
+
+---
+
+## ❓ FAQ
+
+> [!TIP]
+> Most local environment issues can be resolved with `make clean` followed by `make dev`.
+
+**Q: Why can't I log into the admin dashboard?**
+A: Ensure you've run `make init-env` or `make setup`. If the database is corrupted, try `make clean`.
+
+**Q: How do I change default service ports?**
+A: Modify the `ports` mapping in the root `docker-compose.dev.yml`.
+
+**Q: Client API returns 404?**
+A: Ensure your access path includes the site domain suffix, e.g., `http://localhost:8002/medical`.
+
+---
+
+## 📚 Documentation
+
+### 📂 Directory Structure
+
+```
+docs/                                          # 📁 Documentation Center
+├── ENV_CONFIG.md                              # Full Environment Config Guide
+
+backend/app/
+├── api/README.md                              # API Architecture Document
+└── core/RUSTFS_USAGE.md                       # RustFS S3 Storage Guide
+
+frontend/
+├── admin/src/lib/SDK_USAGE.md                 # Admin SDK Usage Guide
+└── client/src/lib/SDK_USAGE.md                # Client SDK Usage Guide
+
+deploy/
+└── docker/README.md                           # Prod Docker Deployment Guide
+```
+
+### 🚀 Quick Navigation
+
+#### For Beginners
+1. 📖 [Env Config Guide](./docs/ENV_CONFIG.md) - Full config instructions for dev/prod
+2. 🚀 [Prod Deployment Guide](./deploy/docker/README.md) - Docker Compose and K8s deployment
+
+#### Backend Development
+- 🔌 [API Architecture](./backend/app/api/README.md) - Admin vs Client API design principles
+- 📦 [RustFS Usage Guide](./backend/app/core/RUSTFS_USAGE.md) - Upload, download, and Object storage
+- 🐍 [Backend Readme](./backend/README.md) - Backend structure and development guide
+
+#### Frontend Development
+- 🎯 [Admin SDK Guide](./frontend/admin/src/lib/SDK_USAGE.md) - Admin SDK usage and examples
+- 💬 [Client SDK Guide](./frontend/client/src/lib/SDK_USAGE.md) - Client SDK usage and examples
+- 🎨 [Admin Readme](./frontend/admin/README.md) - Admin frontend project details
+- 🌐 [Client Readme](./frontend/client/README.md) - Client frontend project details
+
+---
+
+## 📄 License
+
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+### 📋 License Summary
+
+- ✅ **Free to use**: You can freely use, modify, and distribute this software.
+- ✅ **Copyleft**: You must release your modifications under the same license.
+- ✅ **Network Service**: Source code must be made available to users over a network.
+- ✅ **Commercial use**: Permitted, provided the same copyleft terms are honored.
+
+This means if you:
+- 🔧 **Modify the code**: Must open source the modified code.
+- 🌐 **Provide SaaS**: Must provide the full source code to your users.
+- 💼 **Run commercially**: Yes, but keep it open source.
+
+See [LICENSE](LICENSE) for the full license text.
+
+---
+
+## 📮 Contact
+
+- 💬 **Feedback**: Submit via [GitHub Issues](https://github.com/bulolo/CatWiki/issues)
+- 📧 **Business**: 82607314@qq.com / bulolo (WeChat)
+- 🌐 **Website**: http://catwiki.cn
+
+---
+
+<div align="center">
+
+**⭐ If this project is helpful to you, please give us a Star!**
+
+Made with ❤️ by CatWiki Team
+
+</div>

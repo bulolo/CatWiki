@@ -1,6 +1,6 @@
 <div align="center">
 
-# <img src="./docs/images/logo.png" width="25" vertical-align="middle"> CatWiki / 知几喵
+# <img src="./docs/images/logo.png" width="36" style="vertical-align: middle;"> CatWiki / 知几喵
 
 **企业级知识库管理系统**
 
@@ -11,7 +11,28 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791?logo=postgresql)](https://www.postgresql.org/)
 
+
+[English](./README_EN.md) | 简体中文
+
+<p>
+  <a href="https://github.com/bulolo/CatWiki">
+    <img src="https://img.shields.io/badge/⭐_Star-项目-yellow?style=for-the-badge&logo=github" alt="Star"/>
+  </a>
+</p>
+
+**如果这个项目对你有帮助，请点击右上角 ⭐ Star 支持一下，这是对开发者最大的鼓励！**
+
+
+
+
 </div>
+
+---
+
+## 🚀 最近更新
+### 2025-01-17 ⚡ 多语言支持
+- 🌐 **多语言支持**: 新增英文文档说明 [README_EN.md](./README_EN.md) (2026-01-17)
+- 📝 **文档完善**: 更新了项目架构说明和快速开始指南
 
 ---
 
@@ -384,7 +405,7 @@ deploy/
 
 ## 📮 联系方式
 
-- 💬 **问题反馈**: 通过 [GitHub Issues](https://github.com/yourusername/catWiki/issues) 提交
+- 💬 **问题反馈**: 通过 [GitHub Issues](https://github.com/bulolo/CatWiki/issues) 提交
 - 📧 **商务合作**: 82607314@qq.com/ bulolo(微信)
 - 🌐 **官方网站**: http://catwiki.cn
 
