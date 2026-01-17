@@ -194,7 +194,7 @@ catWiki/
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/catWiki.git
+git clone https://github.com/bulolo/CatWiki.git
 cd catWiki
 
 # 1. First time startup (Init config + Start environment)

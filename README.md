@@ -197,7 +197,7 @@ catWiki/
 
 ```bash
 # 克隆项目
-git clone https://github.com/yourusername/catWiki.git
+git clone https://github.com/bulolo/CatWiki.git
 cd catWiki
 
 # 1. 首次启动 (初始化配置 + 启动环境)
