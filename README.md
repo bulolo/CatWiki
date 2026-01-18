@@ -30,9 +30,10 @@
 ---
 
 ## 🚀 最近更新
-### 2025-01-17 ⚡ 多语言支持
-- 🌐 **多语言支持**: 新增英文文档说明 [README_EN.md](./README_EN.md) (2026-01-17)
-- 📝 **文档完善**: 更新了项目架构说明和快速开始指南
+### 2026-01-18 ⚡ 全新文档站点
+- 🌐 **文档站点上线**: 集成了全新的 [VitePress 文档站点](http://localhost:8003) (2026-01-18)
+- 📝 **多语言对齐**: 重新对齐了中英文 README 说明
+- 🔧 **架构清理**: 优化了项目目录结构和 Docker 配置
 
 ---
 
@@ -135,49 +136,25 @@
 catWiki/
 ├── backend/                      # 🐍 FastAPI 后端服务
 │   ├── app/
-│   │   ├── api/                 # API 路由
-│   │   │   ├── admin/          # 管理后台 API（完整 CRUD + 认证）
-│   │   │   └── client/         # 客户端 API（只读 + 公开）
+│   │   ├── api/                 # API 路由 (Admin/Client)
 │   │   ├── core/                # 核心配置、中间件、工具
 │   │   ├── crud/                # 数据库 CRUD 操作
 │   │   ├── models/              # SQLAlchemy ORM 模型
 │   │   ├── schemas/             # Pydantic 验证模式
 │   │   └── main.py              # 应用入口
-│   ├── alembic/                 # 数据库迁移
-│   ├── scripts/                 # 工具脚本（创建用户、生成 SDK、初始化数据）
+│   ├── scripts/                 # 工具脚本（同步 SDK、初始化数据）
 │   ├── Dockerfile.dev           # 开发环境镜像
-│   ├── Dockerfile.prod          # 生产环境镜像
 │   └── pyproject.toml           # 依赖管理（uv）
 │
 ├── frontend/
-│   ├── admin/                   # 🎯 管理后台（Next.js，端口 3000）
-│   │   └── src/
-│   │       ├── app/            # 页面路由
-│   │       ├── components/     # React 组件
-│   │       │   ├── features/  # 业务组件（文档编辑、用户管理）
-│   │       │   ├── layout/    # 布局组件（侧边栏、登出）
-│   │       │   └── ui/        # shadcn/ui 基础组件
-│   │       ├── lib/sdk/       # 自动生成的 TypeScript SDK
-│   │       └── hooks/         # 自定义 React Hooks
-│   │
-│   └── client/                  # 💬 客户端前端（Next.js，端口 3001）
-│       └── src/
-│           ├── app/            # 页面路由
-│           ├── components/     # React 组件
-│           │   ├── ai/        # AI 对话组件
-│           │   └── features/  # 文档展示、搜索
-│           ├── lib/sdk/       # 自动生成的 TypeScript SDK
-│           └── layout/        # 侧边栏、站点切换
+│   ├── admin/                   # 🎯 管理后台 (Next.js, 8001)
+│   ├── client/                  # 💬 客户端 (Next.js, 8002)
+│   └── docs/                    # 📚 文档站点 (VitePress, 8003)
 │
 ├── deploy/                      # 🚀 生产环境部署
-│   ├── docker/                 # Docker Compose 部署
-│   │   ├── docker-compose.prod.yml
-│   │   └── README.md           # 生产部署说明
-│   └── README.md               # 部署概览文档
-│
 ├── docker-compose.dev.yml       # 开发环境一键启动
-├── LICENSE                      # AGPL-3.0 许可证
-└── README.md                    # 项目文档
+├── Makefile                      # 项目管理脚本
+└── README.md                    # 项目主文档
 ```
 
 ### 核心目录说明
@@ -185,9 +162,9 @@ catWiki/
 | 目录 | 说明 | 技术栈 |
 |------|------|--------|
 | `backend/` | 后端 API 服务 | FastAPI + PostgreSQL + SQLAlchemy |
-| `frontend/admin/` | 管理后台（内部使用） | Next.js 14 + shadcn/ui + Markdown 编辑器 |
+| `frontend/admin/` | 管理后台（内部使用） | Next.js 14 + shadcn/ui + Tailwind |
 | `frontend/client/` | 客户端（对外展示） | Next.js 14 + AI 问答 + 搜索 |
-| `deploy/` | 生产环境部署配置 | Docker Compose |
+| `frontend/docs/` | 文档站点（项目说明） | VitePress + Markdown |
 
 ---
 
@@ -217,12 +194,10 @@ make dev-up
 > - **后续开发**: 请直接使用 `make dev-up`。
 
 等待 2-3 分钟，所有服务启动完成后，访问：
-- 🎯 **管理后台**: http://localhost:8001  
-  使用 `admin@example.com` / `admin123` 登录
-- 💬 **客户端**: http://localhost:8002/medical  
-  查看 Demo 医学科普，包含 5 篇医学文档
-- 📚 **API 文档**: http://localhost:3000/docs  
-  交互式 API 文档
+- 🎯 **管理后台**: http://localhost:8001 (admin@example.com / admin123)
+- 💬 **客户端**: http://localhost:8002/medical
+- 📚 **文档站点**: http://localhost:8003 (离线阅读此 README 及其它详细指南)
+- 🛡️ **API 文档**: http://localhost:3000/docs
 
 就这么简单！🎉
 
@@ -342,40 +317,13 @@ A: 确保你的访问路径包含站点域名后缀，例如：`http://localhost
 
 ## 📚 文档
 
-### 📂 文档目录结构
+#### � 快速导航
 
-```
-docs/                                          # 📁 项目文档中心
-├── ENV_CONFIG.md                              # 环境变量配置完整指南
-
-backend/app/
-├── api/README.md                              # API 架构设计文档
-└── core/RUSTFS_USAGE.md                       # RustFS 对象存储使用指南
-
-frontend/
-├── admin/src/lib/SDK_USAGE.md                 # Admin 管理后台 SDK 使用指南
-└── client/src/lib/SDK_USAGE.md                # Client 客户端 SDK 使用指南
-
-deploy/
-└── docker/README.md                           # 生产环境 Docker 部署指南
-```
-
-### 🚀 快速导航
-
-#### 新手入门
-1. 📖 [环境变量配置指南](./docs/ENV_CONFIG.md) - 开发和生产环境的完整配置说明
-2. 🚀 [生产环境部署指南](./deploy/docker/README.md) - Docker Compose 和 Kubernetes 部署
-
-#### 后端开发
-- 🔌 [API 架构说明](./backend/app/api/README.md) - Admin API 和 Client API 设计原则
-- 📦 [RustFS 使用指南](./backend/app/core/RUSTFS_USAGE.md) - 文件上传、下载、对象存储详解
-- 🐍 [后端模块文档](./backend/README.md) - 后端项目结构和开发指南
-
-#### 前端开发
-- 🎯 [Admin SDK 使用指南](./frontend/admin/src/lib/SDK_USAGE.md) - 管理后台 SDK 使用和示例
-- 💬 [Client SDK 使用指南](./frontend/client/src/lib/SDK_USAGE.md) - 客户端 SDK 使用和示例
-- 🎨 [管理后台文档](./frontend/admin/README.md) - Admin 前端项目说明
-- 🌐 [客户端文档](./frontend/client/README.md) - Client 前端项目说明
+- � [环境配置指南](./frontend/docs/docs/deployment/config/environment.md) - 开发和生产环境的完整配置说明
+- 🚀 [开发快速开始](./frontend/docs/docs/development/start/quick-start.md) - 5 分钟上手开发环境
+- 🔌 [API 架构细节](./frontend/docs/docs/development/api/overview.md) - Admin API 和 Client API 设计原则
+- 📦 [RustFS 使用指南](./frontend/docs/docs/development/tech/rustfs.md) - 文件上传、下载、对象存储详解
+- 🎯 [SDK 使用指南](./frontend/docs/docs/development/tech/sdk-usage.md) - 前端如何调用后端 API
 
 ---
 

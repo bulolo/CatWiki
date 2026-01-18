@@ -26,10 +26,10 @@ English | [简体中文](./README.md)
 
 ---
 
-## 🚀 Recent Updates
-### 2026-01-17 ⚡ Multi-language Support
-- 🌐 **Multi-language Support**: Added English documentation [README_EN.md](./README_EN.md) (2026-01-17)
-- 📝 **Documentation Improvements**: Updated project architecture and quick start guide.
+### 2026-01-18 ⚡ New Documentation Site
+- 🌐 **Documentation Site**: Integrated a brand new [VitePress Documentation Site](http://localhost:8003) (2026-01-18)
+- 📝 **Multi-language Alignment**: Re-aligned Chinese and English README instructions.
+- 🔧 **Architecture Cleanup**: Optimized project directory structure and Docker configurations.
 
 ---
 
@@ -132,49 +132,25 @@ English | [简体中文](./README.md)
 catWiki/
 ├── backend/                      # 🐍 FastAPI Backend Service
 │   ├── app/
-│   │   ├── api/                 # API Routes
-│   │   │   ├── admin/          # Admin API (Full CRUD + Auth)
-│   │   │   └── client/         # Client API (Read-only + Public)
+│   │   ├── api/                 # API Routes (Admin/Client)
 │   │   ├── core/                # Core Config, Middleware, Utils
 │   │   ├── crud/                # Database CRUD Operations
 │   │   ├── models/              # SQLAlchemy ORM Models
 │   │   ├── schemas/             # Pydantic Validation Schemas
 │   │   └── main.py              # Application Entry
-│   ├── alembic/                 # Database Migrations
-│   ├── scripts/                 # Utility Scripts (Create users, Gen SDK, Init data)
+│   ├── scripts/                 # Utility Scripts (Sync SDK, Init data)
 │   ├── Dockerfile.dev           # Dev Dockerfile
-│   ├── Dockerfile.prod          # Prod Dockerfile
 │   └── pyproject.toml           # Dependency Management (uv)
 │
 ├── frontend/
-│   ├── admin/                   # 🎯 Admin Dashboard (Next.js, Port 3000)
-│   │   └── src/
-│   │       ├── app/            # Page Routes
-│   │       ├── components/     # React Components
-│   │       │   ├── features/  # Business Components (Doc editing, User mgmt)
-│   │       │   ├── layout/    # Layout Components (Sidebar, Logout)
-│   │       │   └── ui/        # shadcn/ui Base Components
-│   │       ├── lib/sdk/       # Auto-generated TypeScript SDK
-│   │       └── hooks/         # Custom React Hooks
-│   │
-│   └── client/                  # 💬 Client Side (Next.js, Port 3001)
-│       └── src/
-│           ├── app/            # Page Routes
-│           ├── components/     # React Components
-│           │   ├── ai/        # AI Components
-│           │   └── features/  # Doc display, Search
-│           ├── lib/sdk/       # Auto-generated TypeScript SDK
-│           └── layout/        # Sidebar, Site switcher
+│   ├── admin/                   # 🎯 Admin Dashboard (Next.js, 8001)
+│   ├── client/                  # 💬 Client Side (Next.js, 8002)
+│   └── docs/                    # 📚 Documentation Site (VitePress, 8003)
 │
 ├── deploy/                      # 🚀 Production Deployment
-│   ├── docker/                 # Docker Compose Deployment
-│   │   ├── docker-compose.prod.yml
-│   │   └── README.md           # Prod Deployment Instructions
-│   └── README.md               # Deployment Overview
-│
 ├── docker-compose.dev.yml       # One-click Dev environment
-├── LICENSE                      # AGPL-3.0 License
-└── README.md                    # Project Documentation
+├── Makefile                      # Project Management Script
+└── README.md                    # Project Main Documentation
 ```
 
 ### Core Directory Description
@@ -182,9 +158,9 @@ catWiki/
 | Directory | Description | Tech Stack |
 |------|------|--------|
 | `backend/` | Backend API Service | FastAPI + PostgreSQL + SQLAlchemy |
-| `frontend/admin/` | Admin Dashboard (Internal) | Next.js 14 + shadcn/ui + Markdown Editor |
+| `frontend/admin/` | Admin Dashboard (Internal) | Next.js 14 + shadcn/ui + Tailwind |
 | `frontend/client/` | Client Side (Public) | Next.js 14 + AI Q&A + Search |
-| `deploy/` | Production Config | Docker Compose |
+| `frontend/docs/` | Documentation Site (Internal) | VitePress + Markdown |
 
 ---
 
@@ -218,12 +194,10 @@ make dev-up
 > - **Subsequent**: Use `make dev-up`.
 
 Wait 2-3 minutes for all services to start, then visit:
-- 🎯 **Admin Dashboard**: http://localhost:8001  
-  Log in with `admin@example.com` / `admin123`
-- 💬 **Client Side**: http://localhost:8002/medical  
-  View medical demo with 5 sample documents
-- 📚 **API Docs**: http://localhost:3000/docs  
-  Interactive API documentation
+- 🎯 **Admin Dashboard**: http://localhost:8001 (admin@example.com / admin123)
+- 💬 **Client Side**: http://localhost:8002/medical
+- 📚 **Docs Site**: http://localhost:8003 (Read this README and other guides offline)
+- 🛡️ **API Docs**: http://localhost:3000/docs
 
 As easy as that! 🎉
 
@@ -340,40 +314,13 @@ A: Ensure your access path includes the site domain suffix, e.g., `http://localh
 
 ## 📚 Documentation
 
-### 📂 Directory Structure
+#### 🚀 Quick Navigation
 
-```
-docs/                                          # 📁 Documentation Center
-├── ENV_CONFIG.md                              # Full Environment Config Guide
-
-backend/app/
-├── api/README.md                              # API Architecture Document
-└── core/RUSTFS_USAGE.md                       # RustFS S3 Storage Guide
-
-frontend/
-├── admin/src/lib/SDK_USAGE.md                 # Admin SDK Usage Guide
-└── client/src/lib/SDK_USAGE.md                # Client SDK Usage Guide
-
-deploy/
-└── docker/README.md                           # Prod Docker Deployment Guide
-```
-
-### 🚀 Quick Navigation
-
-#### For Beginners
-1. 📖 [Env Config Guide](./docs/ENV_CONFIG.md) - Full config instructions for dev/prod
-2. 🚀 [Prod Deployment Guide](./deploy/docker/README.md) - Docker Compose and K8s deployment
-
-#### Backend Development
-- 🔌 [API Architecture](./backend/app/api/README.md) - Admin vs Client API design principles
-- 📦 [RustFS Usage Guide](./backend/app/core/RUSTFS_USAGE.md) - Upload, download, and Object storage
-- 🐍 [Backend Readme](./backend/README.md) - Backend structure and development guide
-
-#### Frontend Development
-- 🎯 [Admin SDK Guide](./frontend/admin/src/lib/SDK_USAGE.md) - Admin SDK usage and examples
-- 💬 [Client SDK Guide](./frontend/client/src/lib/SDK_USAGE.md) - Client SDK usage and examples
-- 🎨 [Admin Readme](./frontend/admin/README.md) - Admin frontend project details
-- 🌐 [Client Readme](./frontend/client/README.md) - Client frontend project details
+- 📖 [Env Config Guide](./frontend/docs/docs/deployment/config/environment.md) - Full config instructions for dev/prod
+- 🚀 [Quick Start Guide](./frontend/docs/docs/development/start/quick-start.md) - 5 minutes start guide
+- 🔌 [API Architecture](./frontend/docs/docs/development/api/overview.md) - Admin vs Client API design principles
+- 📦 [RustFS Usage Guide](./frontend/docs/docs/development/tech/rustfs.md) - Upload, download, and Object storage
+- 🎯 [SDK Usage Guide](./frontend/docs/docs/development/tech/sdk-usage.md) - Frontend SDK usage and examples
 
 ---
 
