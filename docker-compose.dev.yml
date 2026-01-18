@@ -162,6 +162,9 @@ services:
         echo '📖 API 文档：' &&
         echo '   🔗 访问: http://localhost:3000/docs' &&
         echo '' &&
+        echo '📚 文档站点：' &&
+        echo '   🔗 访问: http://localhost:8003' &&
+        echo '' &&
         echo '==========================================' &&
         echo ''
       "
@@ -311,6 +314,41 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  # Docs 文档站点服务（VitePress，支持热更新）
+  docs-frontend:
+    build:
+      context: ./frontend/docs
+      dockerfile: Dockerfile.dev
+    container_name: catwiki-docs-frontend-dev
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "8003:8003"
+    volumes:
+      # 挂载代码目录以支持热更新
+      - ./frontend/docs:/app
+      - /app/node_modules
+    networks:
+      - catwiki-network
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     # 日志配置
     logging:
       driver: "json-file"

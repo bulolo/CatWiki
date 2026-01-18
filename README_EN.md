@@ -1,6 +1,6 @@
 <div align="center">
 
-# <img src="./docs/images/logo.png" width="36" style="vertical-align: middle;"> CatWiki
+# <img src="./frontend/docs/docs/public/logo.png" width="36" style="vertical-align: middle;"> CatWiki
 
 **Enterprise-grade Knowledge Base Management System**
 
@@ -53,21 +53,21 @@ English | [简体中文](./README.md)
 <table>
   <tr>
     <td width="50%">
-      <img src="./docs/images/screenshots/1.png" alt="Operational Overview">
+      <img src="./frontend/docs/docs/public/images/screenshots/1.png" alt="Operational Overview">
       <p align="center"><b>Operational Overview</b><br>Real-time view of site status and key metrics</p>
     </td>
     <td width="50%">
-      <img src="./docs/images/screenshots/2.png" alt="Document Management">
+      <img src="./frontend/docs/docs/public/images/screenshots/2.png" alt="Document Management">
       <p align="center"><b>Document Management</b><br>Hierarchical directory structure with batch operation support</p>
     </td>
   </tr>
   <tr>
     <td width="50%">
-      <img src="./docs/images/screenshots/3.png" alt="User Management">
+      <img src="./frontend/docs/docs/public/images/screenshots/3.png" alt="User Management">
       <p align="center"><b>User Management</b><br>Full user permission and role management</p>
     </td>
     <td width="50%">
-      <img src="./docs/images/screenshots/4.png" alt="System Settings">
+      <img src="./frontend/docs/docs/public/images/screenshots/4.png" alt="System Settings">
       <p align="center"><b>System Settings</b><br>Flexible AI model configuration</p>
     </td>
   </tr>
@@ -76,7 +76,7 @@ English | [简体中文](./README.md)
 ### 💬 Client Side
 
 <div align="center">
-  <img src="./docs/images/screenshots/5.png" alt="AI Intelligent Q&A" width="80%">
+  <img src="./frontend/docs/docs/public/images/screenshots/5.png" alt="AI Intelligent Q&A" width="80%">
   <p><b>AI Intelligent Q&A</b> - Intelligent conversation assistant based on knowledge base content with context awareness</p>
 </div>
 
@@ -197,21 +197,25 @@ catWiki/
 git clone https://github.com/bulolo/CatWiki.git
 cd catWiki
 
-# 1. First time startup (Init config + Start environment)
-make setup
+# 1. Initialize configuration
+make dev-init
 
-# 2. Daily development (Start environment without resetting config)
-make dev
+# 2. Configure environment (Important!)
+# Edit backend/.env and fill in OpenAI API Key etc.
+# vim backend/.env
+
+# 3. Start development environment
+make dev-up
 
 # 3. Modify configuration (Optional)
 # Edit backend/.env and fill in OpenAI API Key for AI features
-# Run `make restart` to apply changes to the backend
+# Run `make dev-restart` to apply changes to the backend
 ```
 
 > [!WARNING]
-> **About `make setup`**: It will recopy `.env` files from templates, which will overwrite your existing configuration.
-> - **First time**: Use `make setup`.
-> - **Subsequent**: Use `make dev`.
+> **About `make dev-init`**: It will recopy `.env` files from templates, which will overwrite your existing configuration.
+> - **First time**: Run `make dev-init` first, then edit your config.
+> - **Subsequent**: Use `make dev-up`.
 
 Wait 2-3 minutes for all services to start, then visit:
 - 🎯 **Admin Dashboard**: http://localhost:8001  
@@ -241,20 +245,23 @@ The root directory provides a `Makefile` to simplify complex Docker maintenance 
 
 ### Core Commands
 
-#### Development Environment
-
+#### Common Commands
 | Command | Description |
 |------|------|
-| `make setup` | **One-click start**: Runs `init-env` and starts `dev` services |
-| `make init-env` | **Initialize config**: Cleans and recopies `.env.example` files |
-| `make dev` | **Development start**: Builds images and starts in foreground with logs |
-| `make down` | **Graceful stop**: Stops and removes containers, preserves volumes |
-| `make restart` | **Quick restart**: Restarts Only the backend container |
-| `make logs` | **Real-time logs**: View core backend service logs |
-| `make db-migrate m="msg"` | **Generate migration**: Creates new database migration script (needs message `m`) |
-| `make db-psql` | **DB Terminal**: Access interactive PostgreSQL terminal |
 | `make gen-sdk` | **Generate SDK**: Triggers automatic frontend SDK generation from backend API |
-| `make clean` | **Deep reset**: Stops containers and **deletes all volumes** (⚠️ Destructive) |
+| `make help` | **Show Help**: Display all available commands and their descriptions |
+
+#### Development Environment
+| Command | Description |
+|------|------|
+| `make dev-init` | **Initialize config**: Cleans and recopies `.env.example` files |
+| `make dev-up` | **Development start**: Builds images and starts in foreground with logs |
+| `make dev-down` | **Graceful stop**: Stops and removes containers, preserves volumes |
+| `make dev-restart` | **Quick restart**: Restarts Only the backend container |
+| `make dev-logs` | **Real-time logs**: View core backend service logs |
+| `make dev-db-migrate m="msg"` | **Generate migration**: Creates new database migration script (needs message `m`) |
+| `make dev-db-psql` | **DB Terminal**: Access interactive PostgreSQL terminal |
+| `make dev-clean` | **Deep reset**: Stops containers and **deletes all volumes** (⚠️ Destructive) |
 
 ---
 
@@ -318,10 +325,10 @@ make prod-up
 ## ❓ FAQ
 
 > [!TIP]
-> Most local environment issues can be resolved with `make clean` followed by `make dev`.
+> Most local environment issues can be resolved with `make dev-clean` followed by `make dev-up`.
 
-**Q: Why can't I log into the admin dashboard?**
-A: Ensure you've run `make init-env` or `make setup`. If the database is corrupted, try `make clean`.
+### Q: Why do I get "Database not initialized" error?
+A: Ensure you've run `make dev-init`. If the database is corrupted, try `make dev-clean`.
 
 **Q: How do I change default service ports?**
 A: Modify the `ports` mapping in the root `docker-compose.dev.yml`.

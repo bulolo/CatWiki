@@ -1,8 +1,8 @@
 <div align="center">
 
-# <img src="./docs/images/logo.png" width="36" style="vertical-align: middle;"> CatWiki / 知几喵
+# <img src="./frontend/docs/docs/public/logo.png" width="36" style="vertical-align: middle;"> CatWiki / 知几喵
 
-**企业级知识库管理系统**
+**企业级AI知识库**
 
 一个功能完善的知识库平台，提供强大的内容管理、AI 智能问答和现代化的用户体验
 
@@ -56,21 +56,21 @@
 <table>
   <tr>
     <td width="50%">
-      <img src="./docs/images/screenshots/1.png" alt="运营概览">
+      <img src="./frontend/docs/docs/public/images/screenshots/1.png" alt="运营概览">
       <p align="center"><b>运营概览</b><br>实时查看站点运行状态和关键指标</p>
     </td>
     <td width="50%">
-      <img src="./docs/images/screenshots/2.png" alt="文档管理">
+      <img src="./frontend/docs/docs/public/images/screenshots/2.png" alt="文档管理">
       <p align="center"><b>文档管理</b><br>层级目录结构，支持批量操作</p>
     </td>
   </tr>
   <tr>
     <td width="50%">
-      <img src="./docs/images/screenshots/3.png" alt="用户管理">
+      <img src="./frontend/docs/docs/public/images/screenshots/3.png" alt="用户管理">
       <p align="center"><b>用户管理</b><br>完整的用户权限和角色管理</p>
     </td>
     <td width="50%">
-      <img src="./docs/images/screenshots/4.png" alt="系统设置">
+      <img src="./frontend/docs/docs/public/images/screenshots/4.png" alt="系统设置">
       <p align="center"><b>系统设置</b><br>灵活的 AI 模型配置</p>
     </td>
   </tr>
@@ -79,7 +79,7 @@
 ### 💬 客户端
 
 <div align="center">
-  <img src="./docs/images/screenshots/5.png" alt="AI 智能问答" width="80%">
+  <img src="./frontend/docs/docs/public/images/screenshots/5.png" alt="AI 智能问答" width="80%">
   <p><b>AI 智能问答</b> - 基于知识库内容的智能对话助手，支持上下文理解</p>
 </div>
 
@@ -200,21 +200,21 @@ catWiki/
 git clone https://github.com/bulolo/CatWiki.git
 cd catWiki
 
-# 1. 首次启动 (初始化配置 + 启动环境)
-make setup
+# 1. 初始化配置
+make dev-init
 
-# 2. 日常开发 (仅启动环境，不重置配置)
-make dev
+# 2. 修改配置 (重要!)
+# 编辑 backend/.env 填入 OpenAI API Key 等信息
+# vim backend/.env
 
-# 3. 修改配置 (可选)
-# 如果需要 AI 功能，请编辑 backend/.env 填入 OpenAI API Key
-# 修改变量后运行 `make restart` 重启后端即可生效
+# 3. 启动开发环境
+make dev-up
 ```
 
 > [!WARNING]
-> **关于 `make setup`**: 它会重新从模板复制 `.env` 文件，这会覆盖您已有的配置。
-> - **第一次运行**: 请使用 `make setup`。
-> - **后续开发**: 请直接使用 `make dev`。
+> **关于 `make dev-init`**: 它会重新从模板复制 `.env` 文件，这会覆盖您已有的配置。
+> - **第一次运行**: 请务必先运行 `make dev-init`，然后修改配置文件。
+> - **后续开发**: 请直接使用 `make dev-up`。
 
 等待 2-3 分钟，所有服务启动完成后，访问：
 - 🎯 **管理后台**: http://localhost:8001  
@@ -244,20 +244,23 @@ make dev
 
 ### 核心命令
 
-#### 开发环境
-
+#### 通用命令
 | 命令 | 说明 |
 |------|------|
-| `make setup` | **一键启动开发环境**：执行 `init-env` 并启动 `dev` 服务 |
-| `make init-env` | **初始化环境配置**：清理并重新从 `.env.example` 复制配置文件 |
-| `make dev` | **开发启动**：构建镜像并在前台启动，实时查看所有服务日志 |
-| `make down` | **优雅停止**：停止并移除容器，保留数据库存储卷 |
-| `make restart` | **快捷重启**：仅重启后端应用容器 |
-| `make logs` | **实时日志**：查看后端核心服务的实时运行日志 |
-| `make db-migrate m="msg"` | **生成迁移脚本**：生成新的数据库迁移脚本（需提供备注 `m`） |
-| `make db-psql` | **数据库终端**：进入 PostgreSQL 交互式终端 |
 | `make gen-sdk` | **生成 SDK**：触发后端 API 自动生成前端 SDK |
-| `make clean` | **深度重置**：停止容器并**删除所有数据卷**（清空数据库和存储，⚠️ 危险操作） |
+| `make help` | **预览命令**：显示所有可用指令及其说明 |
+
+#### 开发环境
+| 命令 | 说明 |
+|------|------|
+| `make dev-init` | **初始化环境配置**：清理并重新从 `.env.example` 复制配置文件 |
+| `make dev-up` | **开发启动**：构建镜像并在前台启动，实时查看所有服务日志 |
+| `make dev-down` | **优雅停止**：停止并移除容器，保留数据库存储卷 |
+| `make dev-restart` | **快捷重启**：仅重启后端应用容器 |
+| `make dev-logs` | **实时日志**：查看后端核心服务的实时运行日志 |
+| `make dev-db-migrate m="msg"` | **生成迁移脚本**：生成新的数据库迁移脚本（需提供备注 `m`） |
+| `make dev-db-psql` | **数据库终端**：进入 PostgreSQL 交互式终端 |
+| `make dev-clean` | **深度重置**：停止容器并**删除所有数据卷**（清空数据库和存储，⚠️ 危险操作） |
 
 ---
 
@@ -323,10 +326,10 @@ make prod-up
 ## ❓ 常见问题 (FAQ)
 
 > [!TIP]
-> 遇到问题时，通常 `make clean` + `make dev` 能解决 90% 的本地环境异常。
+> 遇到问题时，通常 `make dev-clean` + `make dev-up` 能解决 90% 的本地环境异常。
 
-**Q: 为什么管理后台登录不上？**
-A: 请确认是否运行了 `make init-env`。如果数据库已损坏，请使用 `make clean` 重置。
+### Q: 为什么启动后报错 "Database not initialized"?
+A: 请确认是否运行了 `make dev-init`。如果数据库已损坏，请使用 `make dev-clean` 重置。
 
 **Q: 如何修改默认服务端口？**
 A: 直接在根目录的 `docker-compose.dev.yml` 中修改对应的 `ports` 映射即可。

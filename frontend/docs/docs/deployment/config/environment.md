@@ -412,7 +412,7 @@ vim .env
 # POSTGRES_PORT=5433
 
 # 2. 运行后端
-make dev
+make dev-up
 ```
 
 ### 场景 4: 本地运行前端
