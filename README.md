@@ -1,10 +1,10 @@
 <div align="center">
 
-# <img src="./frontend/docs/docs/public/logo.png" width="36" style="vertical-align: middle;"> CatWiki / 知几喵
+# <img src="./frontend/docs/docs/public/logo.png" width="36" style="vertical-align: middle;"> CatWiki
 
 **企业级AI知识库**
 
-一个功能完善的知识库平台，提供强大的内容管理、AI 智能问答和现代化的用户体验
+企业级全栈 AI 知识库平台，集成了现代化的内容管理、深度 AI 智能问答与极致的用户交互体验。
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-14.0+-000000?logo=next.js)](https://nextjs.org/)
@@ -31,7 +31,7 @@
 
 ## 🚀 最近更新
 ### 2026-01-18 ⚡ 全新文档站点
-- 🌐 **文档站点上线**: 集成了全新的 [VitePress 文档站点](http://localhost:8003) (2026-01-18)
+- 🌐 **文档站点上线**: 集成了全新的 [VitePress 文档站点](http://docs.catwiki.cn) (2026-01-18)
 - 📝 **多语言对齐**: 重新对齐了中英文 README 说明
 - 🔧 **架构清理**: 优化了项目目录结构和 Docker 配置
 

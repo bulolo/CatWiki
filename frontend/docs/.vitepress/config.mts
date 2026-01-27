@@ -7,6 +7,12 @@ export default defineConfig({
   lang: 'zh-CN',
   srcDir: 'docs',  // 指定源文件目录
 
+  // 忽略 localhost 链接和相对路径的文件引用（这些是合法的外部资源引用）
+  ignoreDeadLinks: [
+    /^http:\/\/localhost/,
+    /^\.\.?\//,  // 相对路径引用
+  ],
+
   themeConfig: {
     logo: '/logo.png',
 
@@ -91,7 +97,7 @@ export default defineConfig({
     ],
 
     footer: {
-      message: 'Released under the <a href="/about/license">AGPL-3.0 License</a>.',
+      message: 'Released under the <a href="/about/team/license">AGPL-3.0 License</a>.',
       copyright: 'Copyright © 2026 <a href="http://catwiki.cn" target="_blank">CatWiki Team</a>'
     },
 

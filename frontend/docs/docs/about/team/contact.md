@@ -16,6 +16,13 @@
 - **邮箱**: 82607314@qq.com
 - **微信**: bulolo
 
+### 👥 交流社群
+
+欢迎加入 CatWiki 官方交流群，与开发者和其他用户互动：
+
+- **微信助手**: 添加微信 `bulolo` (请备注: **CatWiki**)
+- **社群动态**: 获取最新功能预告、技术干货分享及实时答疑协助。
+
 ### 🌐 官方网站
 
 - **官网**: [http://catwiki.cn](http://catwiki.cn)
@@ -59,6 +66,7 @@
 关注我们获取最新动态：
 
 - **GitHub**: [@bulolo](https://github.com/bulolo)
+- **小红书**: [@CatWiki](https://xhslink.com/m/ADlgmNFKuyP) (或搜索: CatWiki)
 
 ---
 

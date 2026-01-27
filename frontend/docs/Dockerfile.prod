@@ -1,0 +1,32 @@
+# Build stage
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# 配置 npm 使用淘宝镜像源
+RUN npm config set registry https://registry.npmmirror.com
+
+# Install dependencies first for better caching
+COPY package.json package-lock.json ./
+RUN npm ci --registry=https://registry.npmmirror.com
+
+# Copy source code and build
+COPY . .
+RUN npm run docs:build
+
+# Production stage
+FROM nginx:alpine
+
+# 配置阿里云 alpine apk 镜像源
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
+# Copy built assets from builder stage
+# VitePress outputs to .vitepress/dist (srcDir is 'docs', not root)
+COPY --from=builder /app/.vitepress/dist /usr/share/nginx/html
+
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

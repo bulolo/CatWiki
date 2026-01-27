@@ -14,7 +14,7 @@ Client API 不需要身份认证，可以直接访问。
 
 - `GET /api/v1/sites` - 获取已发布站点列表
 - `GET /api/v1/sites/{id}` - 获取站点详情
-- `GET /api/v1/sites/by-domain/{domain}` - 通过域名获取站点
+- `GET /api/v1/sites:byDomain/{domain}` - 通过域名获取站点
 
 ### 文档浏览
 
@@ -23,12 +23,13 @@ Client API 不需要身份认证，可以直接访问。
 
 ### 合集浏览
 
-- `GET /api/v1/collections/tree` - 获取合集树（仅已发布内容）
+- `GET /api/v1/collections:tree` - 获取合集树（仅已发布内容）
 
 ### 文件访问
 
-- `GET /api/v1/files/download/{path}` - 下载文件
-- `GET /api/v1/files/presigned-url/{path}` - 获取预签名 URL
+- `GET /api/v1/files/{path}:download` - 下载文件
+- `GET /api/v1/files/{path}:info` - 获取文件信息
+- `GET /api/v1/files/{path}:presignedUrl` - 获取预签名 URL
 
 ---
 
@@ -37,7 +38,7 @@ Client API 不需要身份认证，可以直接访问。
 ### 获取站点信息
 
 ```typescript
-const response = await apiClient.wikiSites.listWikiSites({
+const response = await apiClient.sites.listClientSites({
   page: 1,
   size: 10
 })
@@ -48,7 +49,7 @@ const sites = response.data.list
 ### 获取文档列表
 
 ```typescript
-const response = await apiClient.documents.listDocuments({
+const response = await apiClient.documents.listClientDocuments({
   siteId: 1,
   page: 1,
   size: 20,
@@ -61,11 +62,21 @@ const docs = response.data.list
 ### 获取文档详情
 
 ```typescript
-const response = await apiClient.documents.getDocument({
-  id: 1
+const response = await apiClient.documents.getClientDocument({
+  documentId: 1
 })
 
 const doc = response.data
+```
+
+### 通过域名获取站点
+
+```typescript
+const response = await apiClient.sites.getClientSiteByDomain({
+  domain: "example.com"
+})
+
+const site = response.data
 ```
 
 ---

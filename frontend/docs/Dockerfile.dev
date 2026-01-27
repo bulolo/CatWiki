@@ -4,11 +4,14 @@ FROM node:20-alpine
 # 设置工作目录
 WORKDIR /app
 
+# 配置 npm 使用淘宝镜像源
+RUN npm config set registry https://registry.npmmirror.com
+
 # 复制 package.json
 COPY package.json ./
 
-# 安装依赖 (使用 npm)
-RUN npm install
+# 安装依赖 (使用 npm + 淘宝镜像源)
+RUN npm install --registry=https://registry.npmmirror.com
 
 # 复制所有文件
 COPY . .

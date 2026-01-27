@@ -4,7 +4,7 @@
 
 **Enterprise-grade Knowledge Base Management System**
 
-A feature-rich knowledge base platform providing powerful content management, AI-powered Q&A, and a modern user experience.
+**Enterprise-grade full-stack AI knowledge base platform, integrating modern content management, deep AI-powered Q&A, and an ultimate user interaction experience.**
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-14.0+-000000?logo=next.js)](https://nextjs.org/)
@@ -27,7 +27,7 @@ English | [简体中文](./README.md)
 ---
 
 ### 2026-01-18 ⚡ New Documentation Site
-- 🌐 **Documentation Site**: Integrated a brand new [VitePress Documentation Site](http://localhost:8003) (2026-01-18)
+- 🌐 **Documentation Site**: Integrated a brand new [VitePress Documentation Site](http://docs.catwiki.cn) (2026-01-18)
 - 📝 **Multi-language Alignment**: Re-aligned Chinese and English README instructions.
 - 🔧 **Architecture Cleanup**: Optimized project directory structure and Docker configurations.
 

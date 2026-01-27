@@ -2,9 +2,9 @@
 layout: home
 
 hero:
-  name: "CatWiki · 知几喵"
+  name: "CatWiki"
   # text: "万象在握，知几随行"
-  tagline: 万象在握，知几随行。兆见于未萌，与你共执先机。
+  tagline: 企业级 AI 知识库平台
   image:
     src: /logo.png
     alt: CatWiki
@@ -37,6 +37,29 @@ features:
     title: 现代技术
     details: FastAPI, Next.js 14, SQLAlchemy 2.0 - 全栈类型安全，开发体验极佳。
 ---
+
+<script setup>
+import { ref, onMounted } from 'vue'
+
+const links = ref({
+  admin: 'http://admin.catwiki.cn',
+  client: 'http://demo.catwiki.cn/medical',
+  api: 'http://api.catwiki.cn/docs',
+  docs: 'http://docs.catwiki.cn'
+})
+
+onMounted(() => {
+  // Checks if running on localhost (dev environment)
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    links.value = {
+      admin: 'http://localhost:8001',
+      client: 'http://localhost:8002/medical',
+      api: 'http://localhost:3000/docs',
+      docs: 'http://localhost:8003'
+    }
+  }
+})
+</script>
 
 <div class="home-content">
 
@@ -76,7 +99,7 @@ make prod-up
 </div>
 
 <div class="service-grid">
-  <a href="http://localhost:8001" class="service-item" target="_blank">
+  <a :href="links.admin" class="service-item" target="_blank">
     <div class="icon-box">
       <svg class="service-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>
     </div>
@@ -85,7 +108,7 @@ make prod-up
       <span>:8001</span>
     </div>
   </a>
-  <a href="http://localhost:8002/medical" class="service-item" target="_blank">
+  <a :href="links.client" class="service-item" target="_blank">
     <div class="icon-box">
       <svg class="service-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
     </div>
@@ -94,7 +117,7 @@ make prod-up
       <span>:8002</span>
     </div>
   </a>
-  <a href="http://localhost:3000/docs" class="service-item" target="_blank">
+  <a :href="links.api" class="service-item" target="_blank">
     <div class="icon-box">
       <svg class="service-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"/><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"/></svg>
     </div>
@@ -103,7 +126,7 @@ make prod-up
       <span>:3000/docs</span>
     </div>
   </a>
-  <a href="http://localhost:8003" class="service-item" target="_blank">
+  <a :href="links.docs" class="service-item" target="_blank">
     <div class="icon-box">
       <svg class="service-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
     </div>
@@ -140,6 +163,12 @@ make prod-up
       <img src="/images/screenshots/4.png" alt="系统设置">
     </div>
     <figcaption>系统设置</figcaption>
+  </figure>
+  <figure>
+    <div class="img-wrapper">
+      <img src="/images/screenshots/5.png" alt="AI对话">
+    </div>
+    <figcaption>AI对话</figcaption>
   </figure>
 </div>
 

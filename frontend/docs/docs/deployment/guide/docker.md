@@ -163,4 +163,4 @@ make prod-up
 
 ## 🌐 Nginx 配置示例
 
-详细的 Nginx HTTPS 反向代理配置，请参考 [Nginx 示例配置](/deployment/config/nginx-example)。
+详细的 Nginx HTTPS 反向代理配置，请参考官方文档或项目仓库中的示例配置文件。
