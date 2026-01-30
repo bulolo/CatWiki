@@ -274,29 +274,29 @@ services:
         max-file: "3"
 
   # 官网服务
-  # website:
-  #   build:
-  #     context: ../../frontend/website
-  #     dockerfile: Dockerfile.prod
-  #   container_name: catwiki-website-prod
-  #   restart: unless-stopped
-  #   ports:
-  #     - "127.0.0.1:${WEBSITE_PORT:-8004}:80"
-  #   networks:
-  #     - catwiki-network
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '0.2'
-  #         memory: 128M
-  #       reservations:
-  #         cpus: '0.05'
-  #         memory: 64M
-  #   logging:
-  #     driver: "json-file"
-  #     options:
-  #       max-size: "20m"
-  #       max-file: "3"
+  website:
+    build:
+      context: ../../frontend/website
+      dockerfile: Dockerfile.prod
+    container_name: catwiki-website-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEBSITE_PORT:-8004}:80"
+    networks:
+      - catwiki-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
 
 networks:
   catwiki-network:

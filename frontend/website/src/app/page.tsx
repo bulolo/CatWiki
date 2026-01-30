@@ -95,10 +95,10 @@ export default function Home() {
               专为工程团队设计，完全开源，支持私有化部署。
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button size="lg" variant="premium" className="w-full sm:w-auto h-12 px-8 text-base shadow-lg shadow-sky-200/50 hover:shadow-sky-300/50 transition-all rounded-full" onClick={() => {
-                document.querySelector('#opensource')?.scrollIntoView({ behavior: 'smooth' })
-              }}>
-                立即开始
+              <Button size="lg" variant="premium" className="w-full sm:w-auto h-12 px-8 text-base shadow-lg shadow-sky-200/50 hover:shadow-sky-300/50 transition-all rounded-full" asChild>
+                <Link href="http://docs.catwiki.cn" target="_blank">
+                  立即开始
+                </Link>
               </Button>
               <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-8 text-base bg-white/80 backdrop-blur border-slate-200 hover:bg-white text-slate-700 hover:text-slate-900 rounded-full group" asChild>
                 <Link href="https://github.com/bulolo/CatWiki" target="_blank" className="flex items-center gap-2">
@@ -448,12 +448,14 @@ export default function Home() {
               准备好重塑团队的知识管理了吗？
             </h2>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button size="lg" className="w-full sm:w-auto h-14 px-10 rounded-full text-lg bg-white text-slate-900 hover:bg-sky-50 hover:text-slate-900 border-0 shadow-lg shadow-white/10 font-bold">
-                免费开始使用
+              <Button size="lg" className="w-full sm:w-auto h-14 px-10 rounded-full text-lg bg-white text-slate-900 hover:bg-sky-50 hover:text-slate-900 border-0 shadow-lg shadow-white/10 font-bold" asChild>
+                <Link href="http://docs.catwiki.cn" target="_blank">
+                  免费开始使用
+                </Link>
               </Button>
             </div>
             <p className="mt-8 text-slate-400 text-sm">
-              开源版本永久免费 · 包含所有核心功能 · 无需信用卡
+              开源版本永久免费 · 包含所有核心功能
             </p>
           </div>
         </Container>

@@ -73,16 +73,18 @@ export function Navbar() {
             )} />
 
             {/* CTA Button */}
-            <Button 
-                variant="premium" 
-                size={isScrolled ? "sm" : "default"}
-                className={cn(
-                    "rounded-full shadow-lg shadow-sky-200/50 font-medium transition-all duration-300",
-                    isScrolled ? "h-9 px-5 text-sm" : "h-11 px-7 text-base"
-                )}
-            >
-              立即开始
-            </Button>
+            <Link href="http://docs.catwiki.cn" target="_blank" rel="noreferrer">
+              <Button 
+                  variant="premium" 
+                  size={isScrolled ? "sm" : "default"}
+                  className={cn(
+                      "rounded-full shadow-lg shadow-sky-200/50 font-medium transition-all duration-300",
+                      isScrolled ? "h-9 px-5 text-sm" : "h-11 px-7 text-base"
+                  )}
+              >
+                立即开始
+              </Button>
+            </Link>
           </div>
         </div>
       </Container>
