@@ -184,6 +184,7 @@ services:
       dockerfile: Dockerfile.prod
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api.catwiki.cn}
+        NEXT_PUBLIC_CLIENT_URL: ${NEXT_PUBLIC_CLIENT_URL:-http://catwiki.cn}
     image: catwiki-admin:latest
     container_name: catwiki-admin-prod
     env_file:
