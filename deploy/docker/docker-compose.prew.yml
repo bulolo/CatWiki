@@ -67,6 +67,7 @@ services:
     build:
       context: ../../backend
       dockerfile: Dockerfile.prod
+    image: catwiki-backend-init:latest
     container_name: catwiki-backend-init-prod
     env_file:
       - .env.backend
@@ -128,6 +129,7 @@ services:
     build:
       context: ../../backend
       dockerfile: Dockerfile.prod
+    image: catwiki-backend:latest
     container_name: catwiki-backend-prod
     env_file:
       - .env.backend
@@ -182,6 +184,7 @@ services:
       dockerfile: Dockerfile.prod
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api.catwiki.cn}
+    image: catwiki-admin:latest
     container_name: catwiki-admin-prod
     env_file:
       - .env.admin
@@ -219,6 +222,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api.catwiki.cn}
         NEXT_PUBLIC_DOCS_URL: ${NEXT_PUBLIC_DOCS_URL:-http://docs.catwiki.cn}
+    image: catwiki-client:latest
     container_name: catwiki-client-prod
     env_file:
       - .env.client
@@ -253,6 +257,7 @@ services:
     build:
       context: ../../frontend/docs
       dockerfile: Dockerfile.prod
+    image: catwiki-docs:latest
     container_name: catwiki-docs-prod
     restart: unless-stopped
     ports:
@@ -278,6 +283,7 @@ services:
     build:
       context: ../../frontend/website
       dockerfile: Dockerfile.prod
+    image: catwiki-website:latest
     container_name: catwiki-website-prod
     restart: unless-stopped
     ports:
