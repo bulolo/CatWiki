@@ -1,0 +1,173 @@
+variables:
+  ADMIN_FRONTEND_PROJECT_NAME: wiki-admin-frontend
+  ADMIN_FRONTEND_IMAGE_NAME: '${DOCKER_REGISTRY}/dakewe/${ADMIN_FRONTEND_PROJECT_NAME}'
+  PC_FRONTEND_PROJECT_NAME: wiki-pc-frontend
+  PC_FRONTEND_IMAGE_NAME: '${DOCKER_REGISTRY}/dakewe/${PC_FRONTEND_PROJECT_NAME}'
+  BACKEND_PROJECT_NAME: wiki-backend
+  BACKEND_IMAGE_NAME: '${DOCKER_REGISTRY}/dakewe/${BACKEND_PROJECT_NAME}'
+  # 版本号将在before_script中动态设置：测试环境使用0.0.0，生产环境使用完整tag（如v0.0.1）
+  ADMIN_FRONTEND_VERSION: ""
+  PC_FRONTEND_VERSION: ""
+  BACKEND_VERSION: ""
+  PROJECT_ENV: dev
+  KUBECONFIG: '/home/gitlab-runner/kube-config'
+  KUBERNETES_NAMESPACE: business-center
+  DOCKER_BUILDKIT: 1
+  DOCKER_CLI_EXPERIMENTAL: enabled
+
+before_script:
+  - set -e
+  # 根据tag或commit设置版本号和环境
+  # 测试环境（commit提交）：使用 0.0.0
+  # 生产环境（tag）：使用完整的 tag 版本号（如 v0.0.1）
+  - |
+    if [ -n "$CI_COMMIT_TAG" ]; then
+      PROJECT_ENV=prod
+      VERSION=$CI_COMMIT_TAG
+    else
+      PROJECT_ENV=dev
+      VERSION=0.0.0
+    fi
+    export ADMIN_FRONTEND_VERSION=$VERSION
+    export PC_FRONTEND_VERSION=$VERSION
+    export BACKEND_VERSION=$VERSION
+    export PROJECT_ENV
+  - echo "Environment: $PROJECT_ENV"
+  - echo "Version: $VERSION"
+  - echo "Admin Frontend: $ADMIN_FRONTEND_IMAGE_NAME:$ADMIN_FRONTEND_VERSION"
+  - echo "PC Frontend: $PC_FRONTEND_IMAGE_NAME:$PC_FRONTEND_VERSION"
+  - echo "Backend: $BACKEND_IMAGE_NAME:$BACKEND_VERSION"
+
+stages:
+  - build-backend
+  - build-frontend
+  - deploy-backend
+  - deploy-frontend
+
+# 公共构建模板 - 前端
+.build_frontend_template:
+  tags:
+    - dakewe2
+  script:
+    - docker login -u $DOCKER_REGISTRY_USERNAME -p $DOCKER_REGISTRY_PASSWORD $DOCKER_REGISTRY
+    - |
+      if [ "$PROJECT_ENV" == "prod" ]; then
+        BUILD_ARG="--build-arg VITE_API_URL=https://api.dakewe.cn/wiki"
+      else
+        BUILD_ARG="--build-arg VITE_API_URL=https://api.dev.dakewe.cn/wiki"
+      fi
+    - echo "Build variables: $BUILD_ARG"
+    - echo "Image name: ${IMAGE_NAME}:${VERSION}"
+    - cd ${BUILD_DIR}
+    - docker build --cache-from ${IMAGE_NAME}:latest -f Dockerfile -t ${IMAGE_NAME}:${VERSION} -t ${IMAGE_NAME}:latest ${BUILD_ARG} .
+    - docker push ${IMAGE_NAME}:${VERSION}
+    - docker push ${IMAGE_NAME}:latest || true  # latest标签可能失败，不影响主流程
+
+# 公共部署模板
+.deploy_k8s_template:
+  tags:
+    - dakewe
+  variables:
+    KUBECONFIG: '/home/gitlab-runner/kube-config'
+  script:
+    - kubectl config use-context kubernetes-admin@kubernetes
+    - kubectl get nodes
+    - cd deploy/${DEPLOY_DIR}
+    - |
+      # 批量替换模板变量
+      for file in *.yaml; do
+        sed -i "s#{{PROJECT_NAME}}#${PROJECT_NAME}#g" $file
+        sed -i "s#{{IMAGE_NAME}}#${IMAGE_NAME}#g" $file
+        sed -i "s#{{VERSION}}#${VERSION}#g" $file
+        sed -i "s#{{ENV}}#${PROJECT_ENV}#g" $file
+      done
+    - kubectl apply -f deployment.yaml
+    - kubectl apply -f service.yaml
+    - kubectl apply -f ingress.yaml
+    - kubectl rollout status deployment/${PROJECT_NAME} -n ${KUBERNETES_NAMESPACE} --timeout=300s
+    - |
+      # 部署后健康检查
+      echo "Waiting for deployment to be ready..."
+      kubectl wait --for=condition=available --timeout=60s deployment/${PROJECT_NAME} -n ${KUBERNETES_NAMESPACE} || true
+
+build-admin-frontend:
+  extends: .build_frontend_template
+  only:
+    - ci-fe
+    - ci
+    - tags
+  stage: build-frontend
+  variables:
+    IMAGE_NAME: $ADMIN_FRONTEND_IMAGE_NAME
+    VERSION: $ADMIN_FRONTEND_VERSION
+    BUILD_DIR: frontend/admin
+
+deploy-admin-frontend-k8s:
+  extends: .deploy_k8s_template
+  only:
+    - ci-fe
+    - ci
+  stage: deploy-frontend
+  variables:
+    DEPLOY_DIR: admin-frontend-k8s
+    PROJECT_NAME: $ADMIN_FRONTEND_PROJECT_NAME
+    IMAGE_NAME: $ADMIN_FRONTEND_IMAGE_NAME
+    VERSION: $ADMIN_FRONTEND_VERSION
+  needs:
+    - build-admin-frontend
+
+build-pc-frontend:
+  extends: .build_frontend_template
+  only:
+    - ci-fe
+    - ci
+    - tags
+  stage: build-frontend
+  variables:
+    IMAGE_NAME: $PC_FRONTEND_IMAGE_NAME
+    VERSION: $PC_FRONTEND_VERSION
+    BUILD_DIR: frontend/client
+
+deploy-pc-frontend-k8s:
+  extends: .deploy_k8s_template
+  only:
+    - ci-fe
+    - ci
+  stage: deploy-frontend
+  variables:
+    DEPLOY_DIR: pc-frontend-k8s
+    PROJECT_NAME: $PC_FRONTEND_PROJECT_NAME
+    IMAGE_NAME: $PC_FRONTEND_IMAGE_NAME
+    VERSION: $PC_FRONTEND_VERSION
+  needs:
+    - build-pc-frontend
+
+build-backend-image:
+  tags:
+    - dakewe
+  only:
+    - ci-be
+    - ci
+    - tags
+  stage: build-backend
+  script:
+    - docker login -u $DOCKER_REGISTRY_USERNAME -p $DOCKER_REGISTRY_PASSWORD $DOCKER_REGISTRY
+    - echo "Image name: $BACKEND_IMAGE_NAME:$BACKEND_VERSION"
+    - cd backend
+    - docker build --cache-from $BACKEND_IMAGE_NAME:latest -f Dockerfile -t $BACKEND_IMAGE_NAME:$BACKEND_VERSION -t $BACKEND_IMAGE_NAME:latest .
+    - docker push $BACKEND_IMAGE_NAME:$BACKEND_VERSION
+    - docker push $BACKEND_IMAGE_NAME:latest || true  # latest标签可能失败，不影响主流程
+
+deploy-backend-k8s:
+  extends: .deploy_k8s_template
+  only:
+    - ci-be
+    - ci
+  stage: deploy-backend
+  variables:
+    DEPLOY_DIR: backend-k8s
+    PROJECT_NAME: $BACKEND_PROJECT_NAME
+    IMAGE_NAME: $BACKEND_IMAGE_NAME
+    VERSION: $BACKEND_VERSION
+  needs:
+    - build-backend-image

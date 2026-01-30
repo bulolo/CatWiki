@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# 虚拟环境
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# 环境变量（开发环境可能需要，但生产环境不应该包含）
+.env.local
+.env.dev
+.env.prod
+
+# 日志
+*.log
+
+# 数据库
+*.db
+*.sqlite
+
+# 测试
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 其他
+.DS_Store
+*.md
+!README.md
+

@@ -1,0 +1,311 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 217 91% 60%; /* 默认蓝色，会被主题色覆盖 */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 46%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 0% 30%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 20%;
+    --radius: 0.75rem;
+    
+    /* 主题色变量 */
+    --theme-primary: hsl(217, 91%, 60%);
+    --theme-primary-hover: hsl(217, 91%, 55%);
+    --theme-primary-light: hsl(217, 91%, 95%);
+    --theme-primary-dark: hsl(217, 91%, 50%);
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 90%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 0 0% 70%;
+    --destructive-foreground: 0 0% 10%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 0 0% 80%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* 移动端优化 */
+  html {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  
+  /* 防止移动端文本调整大小 */
+  @media screen and (max-width: 768px) {
+    html {
+      -webkit-text-size-adjust: 100%;
+    }
+    
+    /* 移动端滚动优化 */
+    body {
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* 移动端选择文本优化 */
+    ::selection {
+      background-color: rgba(0, 0, 0, 0.15);
+    }
+  }
+  
+  /* 移动端字体渲染优化 */
+  @media screen and (max-width: 768px) {
+    body {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)];
+  }
+
+  .sidebar-item-active {
+    background-color: var(--theme-primary-light);
+    color: var(--theme-primary);
+    font-weight: 500;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+  }
+
+  .article-content {
+    @apply max-w-none text-gray-700 leading-relaxed;
+  }
+  
+  .article-content h1 {
+    @apply text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-extrabold tracking-tight mb-6 md:mb-8 text-gray-900;
+  }
+
+  .article-content h2 {
+    @apply border-b border-gray-200 pb-2 text-xl md:text-2xl lg:text-3xl font-semibold tracking-tight first:mt-0 mt-8 md:mt-10 lg:mt-12 mb-4 md:mb-6 text-gray-800;
+  }
+  
+  .article-content h3 {
+    @apply text-lg md:text-xl lg:text-2xl font-semibold tracking-tight mt-6 md:mt-8 mb-3 md:mb-4 text-gray-800;
+  }
+  
+  .article-content p {
+    @apply leading-7 text-sm md:text-base [&:not(:first-child)]:mt-4 md:[&:not(:first-child)]:mt-6;
+  }
+  
+  .article-content ul {
+    @apply my-4 md:my-6 ml-4 md:ml-6 list-disc [&>li]:mt-2 text-sm md:text-base;
+  }
+
+  .article-content ol {
+    @apply my-4 md:my-6 ml-4 md:ml-6 list-decimal [&>li]:mt-2 text-sm md:text-base;
+  }
+  
+  /* 移动端优化的文章内容样式 */
+  .article-content-mobile {
+    @apply max-w-none text-gray-700;
+  }
+  
+  .article-content-mobile h1 {
+    @apply text-[22px] leading-[1.3] font-bold tracking-tight mb-5 text-gray-900;
+  }
+
+  .article-content-mobile h2 {
+    @apply border-b border-gray-200 pb-2 text-[19px] leading-[1.3] font-bold tracking-tight first:mt-0 mt-8 mb-4 text-gray-800;
+  }
+  
+  .article-content-mobile h3 {
+    @apply text-[17px] leading-[1.3] font-bold tracking-tight mt-6 mb-3 text-gray-800;
+  }
+  
+  .article-content-mobile h4 {
+    @apply text-[16px] leading-[1.3] font-semibold tracking-tight mt-5 mb-2.5 text-gray-800;
+  }
+  
+  .article-content-mobile p {
+    @apply leading-[1.7] text-[15px] text-gray-700;
+  }
+  
+  .article-content-mobile p:not(:first-child) {
+    @apply mt-4;
+  }
+  
+  .article-content-mobile ul,
+  .article-content-mobile ol {
+    @apply my-4 ml-5 text-[15px] leading-[1.7];
+  }
+  
+  .article-content-mobile ul {
+    @apply list-disc;
+  }
+  
+  .article-content-mobile ol {
+    @apply list-decimal;
+  }
+  
+  .article-content-mobile li {
+    @apply mt-2 text-gray-700;
+  }
+  
+  .article-content-mobile li > p {
+    @apply mt-1 mb-1;
+  }
+  
+  .article-content-mobile strong {
+    @apply font-semibold text-gray-900;
+  }
+  
+  .article-content-mobile em {
+    @apply italic;
+  }
+  
+  .article-content-mobile code {
+    @apply px-1.5 py-0.5 bg-slate-100 text-[13px] rounded text-slate-800 font-mono;
+  }
+  
+  .article-content-mobile pre {
+    @apply my-4 p-3 bg-slate-900 rounded-lg overflow-x-auto;
+  }
+  
+  .article-content-mobile pre code {
+    @apply p-0 bg-transparent text-[13px] text-slate-100;
+  }
+  
+  /* 桌面端 prose 代码块强制样式 */
+  .prose pre {
+    @apply bg-white border border-slate-200 !important;
+  }
+  
+  .prose pre code {
+    @apply text-slate-900 !important;
+    background-color: transparent !important;
+  }
+  
+  .prose code {
+    @apply bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded;
+  }
+  
+  .prose code::before,
+  .prose code::after {
+    content: "" !important;
+  }
+  
+  .article-content-mobile blockquote {
+    @apply my-4 pl-4 border-l-4 border-slate-300 text-slate-600 italic;
+  }
+  
+  .article-content-mobile a {
+    @apply text-primary underline underline-offset-2 hover:text-primary/80 transition-colors;
+  }
+  
+  .article-content-mobile img {
+    @apply my-5 rounded-lg w-full h-auto;
+  }
+  
+  .article-content-mobile hr {
+    @apply my-6 border-slate-200;
+  }
+  
+  .article-content-mobile table {
+    @apply w-full my-4 text-[14px] border-collapse;
+  }
+  
+  .article-content-mobile th,
+  .article-content-mobile td {
+    @apply border border-slate-200 px-3 py-2 text-left;
+  }
+  
+  .article-content-mobile th {
+    @apply bg-slate-50 font-semibold text-gray-900;
+  }
+  
+  /* 移动端文章内容额外优化 */
+  @media screen and (max-width: 768px) {
+    .article-content-mobile {
+      /* 增加段落间距，提升可读性 */
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+    
+    .article-content-mobile p {
+      /* 移动端段落行高稍大，更易阅读 */
+      line-height: 1.75;
+    }
+    
+    .article-content-mobile h2,
+    .article-content-mobile h3,
+    .article-content-mobile h4 {
+      /* 移动端标题与内容的间距更明显 */
+      scroll-margin-top: 4rem;
+    }
+    
+    /* 移动端代码块横向滚动优化 */
+    .article-content-mobile pre {
+      max-width: calc(100vw - 2.5rem);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* 移动端表格横向滚动 */
+    .article-content-mobile table {
+      display: block;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      white-space: nowrap;
+    }
+  }
+  
+  /* 桌面端使用 prose */
+  @media screen and (min-width: 768px) {
+    .article-content-mobile {
+      /* 在桌面端，prose 类会接管样式 */
+      @apply text-base leading-relaxed;
+    }
+  }
+}

@@ -1,0 +1,4 @@
+export { DocumentDetail } from './DocumentDetail'
+
+
+

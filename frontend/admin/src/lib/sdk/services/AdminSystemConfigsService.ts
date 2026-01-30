@@ -1,0 +1,130 @@
+/* generated using openapi-typescript-codegen -- do not edit */
+/* istanbul ignore file */
+/* tslint:disable */
+/* eslint-disable */
+import type { AIConfigUpdate } from '../models/AIConfigUpdate';
+import type { ApiResponse_dict_ } from '../models/ApiResponse_dict_';
+import type { ApiResponse_SystemConfigResponse_ } from '../models/ApiResponse_SystemConfigResponse_';
+import type { ApiResponse_Union_SystemConfigResponse__NoneType__ } from '../models/ApiResponse_Union_SystemConfigResponse__NoneType__';
+import type { BotConfigUpdate } from '../models/BotConfigUpdate';
+import type { CancelablePromise } from '../core/CancelablePromise';
+import type { BaseHttpRequest } from '../core/BaseHttpRequest';
+export class AdminSystemConfigsService {
+    constructor(public readonly httpRequest: BaseHttpRequest) {}
+    /**
+     * Get Ai Config
+     * 获取 AI 模型配置
+     *
+     * 返回当前的 AI 模型配置，包括自动模式和手动模式的设置
+     * @returns ApiResponse_Union_SystemConfigResponse__NoneType__ Successful Response
+     * @throws ApiError
+     */
+    public getAdminAiConfig(): CancelablePromise<ApiResponse_Union_SystemConfigResponse__NoneType__> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/admin/v1/system-configs/ai-config',
+        });
+    }
+    /**
+     * Update Ai Config
+     * 更新 AI 模型配置
+     *
+     * - **mode**: 配置模式（auto 或 manual）
+     * - **autoConfig**: 自动模式配置
+     * - **manualConfig**: 手动模式配置
+     * @returns ApiResponse_SystemConfigResponse_ Successful Response
+     * @throws ApiError
+     */
+    public updateAdminAiConfig({
+        requestBody,
+    }: {
+        requestBody: AIConfigUpdate,
+    }): CancelablePromise<ApiResponse_SystemConfigResponse_> {
+        return this.httpRequest.request({
+            method: 'PUT',
+            url: '/admin/v1/system-configs/ai-config',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Bot Config
+     * 获取机器人配置
+     *
+     * 返回当前的机器人配置，包括网页挂件、API 接口和微信公众号设置
+     * @returns ApiResponse_Union_SystemConfigResponse__NoneType__ Successful Response
+     * @throws ApiError
+     */
+    public getAdminBotConfig(): CancelablePromise<ApiResponse_Union_SystemConfigResponse__NoneType__> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/admin/v1/system-configs/bot-config',
+        });
+    }
+    /**
+     * Update Bot Config
+     * 更新机器人配置
+     *
+     * - **webWidget**: 网页挂件配置
+     * - **apiBot**: API 机器人配置
+     * - **wechat**: 微信公众号配置
+     * @returns ApiResponse_SystemConfigResponse_ Successful Response
+     * @throws ApiError
+     */
+    public updateAdminBotConfig({
+        requestBody,
+    }: {
+        requestBody: BotConfigUpdate,
+    }): CancelablePromise<ApiResponse_SystemConfigResponse_> {
+        return this.httpRequest.request({
+            method: 'PUT',
+            url: '/admin/v1/system-configs/bot-config',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get All Configs
+     * 获取所有配置（便捷接口）
+     *
+     * 一次性获取所有系统配置
+     * @returns ApiResponse_dict_ Successful Response
+     * @throws ApiError
+     */
+    public listAdminConfigs(): CancelablePromise<ApiResponse_dict_> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/admin/v1/system-configs',
+        });
+    }
+    /**
+     * Delete Config
+     * 删除指定配置
+     *
+     * - **config_key**: 配置键（如 'ai_config' 或 'bot_config'）
+     * @returns ApiResponse_dict_ Successful Response
+     * @throws ApiError
+     */
+    public deleteAdminConfig({
+        configKey,
+    }: {
+        configKey: string,
+    }): CancelablePromise<ApiResponse_dict_> {
+        return this.httpRequest.request({
+            method: 'DELETE',
+            url: '/admin/v1/system-configs/{config_key}',
+            path: {
+                'config_key': configKey,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+}

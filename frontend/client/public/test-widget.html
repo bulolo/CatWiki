@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>External Site Widget Test</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f0f0f0;
+    }
+
+    .content {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="content">
+    <h1>外部网站模拟测试</h1>
+    <p>此页面模拟了一个外部网站，用于测试 CatWiki 聊天挂件的嵌入效果。</p>
+    <p>挂件脚本加载自：<code>http://localhost:8002/widget.js</code></p>
+
+    <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
+
+    <h3>挂件集成指南：</h3>
+    <p>将以下代码嵌入到您的网站 HTML 中即可完成集成。挂件的所有表现（样式、内容、位置）均可在 CatWiki 管理后台统一配置。</p>
+
+    <pre
+      style="background: #f8f8f8; padding: 15px; border-radius: 5px; font-size: 13px; border: 1px solid #ddd; overflow-x: auto;">
+&lt;script src="http://localhost:8002/widget.js" data-site-id="1"&gt;&lt;/script&gt;</pre>
+
+    <h4>工作原理：</h4>
+    <ul style="font-size: 14px; line-height: 1.6;">
+      <li><code>data-site-id</code>: 您的站点 ID。</li>
+      <li><strong>后端驱动内容：</strong> 挂件启动后，会自动从后端拉取该站点的 <strong>标题、主题色、欢迎语</strong>。</li>
+      <li><strong>前端控制布局：</strong> 挂件的物理显示位置（左/右/边距）完全由宿主页面控制，避免样式冲突。</li>
+      <li><strong>零闪烁加载：</strong> 挂件在配置拉取完成前保持隐藏，确保平滑淡入。</li>
+    </ul>
+
+    <p style="font-size: 13px; color: #666; font-style: italic;">
+      贴士：这种设计让您可以灵活地在不同页面通过 CSS 调整挂件位置，而核心内容则由管理后台统一维护。
+    </p>
+  </div>
+
+  <!-- 引入 Widget 脚本（新版极简写法） -->
+  <script src="http://localhost:8002/widget.js" data-site-id="1"></script>
+</body>
+
+</html>

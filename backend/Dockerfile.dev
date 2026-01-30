@@ -1,0 +1,46 @@
+# 开发环境 Dockerfile
+FROM python:3.12-slim
+
+# 设置工作目录
+WORKDIR /app
+
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources || \
+    sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list || true
+
+# 安装系统依赖
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    libpq-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# 配置 pip 使用清华大学镜像源（用于安装 uv）
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn
+
+# 安装 uv（使用清华大学镜像源）
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple uv
+
+# 配置环境变量（uv 在某些情况下会使用这些变量）
+ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+ENV PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
+# 解决 uv 在 Docker 中跨文件系统硬链接失败的警告
+ENV UV_LINK_MODE=copy
+
+# 复制依赖文件
+COPY pyproject.toml uv.lock ./
+
+# 安装 Python 依赖（开发依赖也安装）
+# uv 会使用自己的包索引，如果遇到网络问题，可以考虑：
+# 1. 使用代理
+# 2. 或者修改为使用 pip 安装依赖
+RUN uv sync --frozen --all-extras
+
+# 暴露端口
+EXPOSE 3000
+
+# 启动命令（支持热更新）
+# 注意：数据库迁移和初始化由 backend-init 服务完成
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000", "--reload", "--reload-dir", "/app/app"]
+

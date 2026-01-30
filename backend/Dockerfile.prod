@@ -1,0 +1,50 @@
+# 生产环境 Dockerfile
+FROM python:3.12-slim
+
+# 设置工作目录
+WORKDIR /app
+
+# 配置阿里云 apt 镜像源
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources || \
+    sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list || true
+
+# 安装系统依赖
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# 配置 pip 使用清华大学镜像源
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn
+
+# 安装 uv
+RUN pip install uv
+
+# 配置 uv 环境变量
+ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+ENV PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
+ENV UV_LINK_MODE=copy
+
+# 复制依赖文件
+COPY pyproject.toml uv.lock ./
+
+# 安装 Python 依赖（生产环境，不包含开发依赖）
+RUN uv sync --frozen --no-dev
+
+# 复制应用代码
+COPY . .
+
+# 暴露端口
+EXPOSE 3000
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# 启动命令
+# 注意：数据库迁移和初始化由 backend-init 服务完成
+CMD ["uv", "run", "gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:3000"]
+

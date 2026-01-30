@@ -1,0 +1,55 @@
+/* Markdown Editor Scoped Styles */
+
+.editorWrapper {
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+}
+
+.editorWrapper :global(.md-editor) {
+  --md-bk-color: hsl(var(--card));
+  --md-color: hsl(var(--foreground));
+}
+
+.editorWrapper :global(.md-editor-toolbar-wrapper) {
+  border-bottom: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  padding: 16px 32px;
+}
+
+.editorWrapper :global(.md-editor-content) {
+  font-family: inherit;
+}
+
+.editorWrapper :global(.md-editor-footer) {
+  border-top: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  height: 40px;
+  padding: 0 32px;
+  font-size: 10px;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.editorWrapper :global(.md-editor-preview-wrapper) {
+  padding: 60px;
+  background-color: hsl(var(--muted) / 0.3);
+}
+
+.editorWrapper :global(.md-editor-input-wrapper) {
+  padding: 60px;
+}
+
+.editorWrapper :global(.md-editor-toolbar-item) {
+  color: hsl(var(--muted-foreground));
+  transition: all 0.2s;
+}
+
+.editorWrapper :global(.md-editor-toolbar-item:hover) {
+  color: hsl(var(--primary));
+  background-color: hsl(var(--primary) / 0.1);
+  border-radius: 8px;
+}

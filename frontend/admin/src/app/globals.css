@@ -1,0 +1,178 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/10 selection:text-primary;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* 优化全局滚动条 - 仅对具有 overflow 的容器生效 */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+  }
+}
+
+/* 布局稳定性辅助 */
+.stable-gutter {
+  scrollbar-gutter: stable;
+}
+
+/* 交互过渡增强 */
+.transition-standard {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Markdown Editor Fullscreen Mode */
+/* 当编辑器全屏时，确保占满整个屏幕 */
+.md-editor-fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  background: white !important;
+}
+
+/* 全屏模式下调整内边距，提供更好的阅读体验 */
+.md-editor-fullscreen .md-editor-preview-wrapper,
+.md-editor-fullscreen .md-editor-input-wrapper {
+  padding: 80px 120px !important;
+}
+
+@media (max-width: 1280px) {
+
+  .md-editor-fullscreen .md-editor-preview-wrapper,
+  .md-editor-fullscreen .md-editor-input-wrapper {
+    padding: 60px 80px !important;
+  }
+}
+
+@media (max-width: 768px) {
+
+  .md-editor-fullscreen .md-editor-preview-wrapper,
+  .md-editor-fullscreen .md-editor-input-wrapper {
+    padding: 40px 20px !important;
+  }
+}
+
+/* 全屏模式下优化工具栏 */
+.md-editor-fullscreen .md-editor-toolbar-wrapper {
+  padding: 16px 40px !important;
+  backdrop-filter: blur(8px);
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* 全屏模式下的页脚 */
+.md-editor-fullscreen .md-editor-footer {
+  padding: 0 40px !important;
+  backdrop-filter: blur(8px);
+  background-color: rgba(251, 251, 252, 0.98) !important;
+}
+
+/* 当编辑器全屏时，隐藏 body 的滚动条 */
+body:has(.md-editor-fullscreen) {
+  overflow: hidden !important;
+}
+
+/* 确保全屏编辑器的父容器也适应全屏 */
+.md-editor-wrapper:has(.md-editor-fullscreen) {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}

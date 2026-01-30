@@ -1,0 +1,42 @@
+# 多阶段构建 - 构建阶段
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# 配置 npm 使用淘宝镜像源
+RUN npm config set registry https://registry.npmmirror.com
+
+# 复制依赖文件
+COPY package.json pnpm-lock.yaml* ./
+
+# 安装 pnpm（使用淘宝镜像源）
+RUN npm install -g pnpm --registry=https://registry.npmmirror.com
+
+# 配置 pnpm 使用淘宝镜像源
+RUN pnpm config set registry https://registry.npmmirror.com
+
+# 安装依赖
+RUN pnpm install --frozen-lockfile
+
+# 复制源代码
+COPY . .
+
+# 构建应用（生成 out 目录）
+RUN pnpm build
+
+# 生产阶段 - 使用 Nginx 提供静态服务
+FROM nginx:alpine
+
+# 配置阿里云 alpine apk 镜像源
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
+# 复制构建产物到 Nginx 目录
+COPY --from=builder /app/out /usr/share/nginx/html
+
+# 复制自定义 Nginx 配置
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# 暴露端口
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

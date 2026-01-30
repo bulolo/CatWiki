@@ -1,0 +1,18 @@
+# 环境变量文件
+.env
+.env.local
+.env.production
+
+# SSL 证书
+ssl/
+
+# 日志文件
+*.log
+
+# 备份文件
+*.sql
+*.sql.gz
+*.dump
+
+
+

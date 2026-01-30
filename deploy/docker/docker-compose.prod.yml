@@ -1,0 +1,312 @@
+
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: catwiki-postgres-prod
+    env_file:
+      - .env.backend
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      LANG: C.UTF-8
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - catwiki-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # RustFS 对象存储服务
+  rustfs:
+    image: rustfs/rustfs:1.0.0-alpha.76
+    container_name: catwiki-rustfs-prod
+    env_file:
+      - .env.backend
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - rustfs_data:/data
+      - rustfs_logs:/logs
+    networks:
+      - catwiki-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # 后端初始化服务（生产环境）
+  # 负责数据库迁移和初始化
+  # 注意：生产环境建议在部署流程中单独执行，而不是每次部署都运行
+  backend-init:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile.prod
+    container_name: catwiki-backend-init-prod
+    env_file:
+      - .env.backend
+    environment:
+      # 环境配置
+      ENVIRONMENT: prod
+      
+      # 数据库配置
+      POSTGRES_SERVER: postgres
+      POSTGRES_PORT: 5432
+      
+      # RustFS 对象存储配置
+      RUSTFS_ENDPOINT: ${RUSTFS_ENDPOINT:-rustfs:9000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+    networks:
+      - catwiki-network
+    command: >
+      sh -c "
+        echo '==========================================' &&
+        echo '🚀 开始初始化 CatWiki 生产环境...' &&
+        echo '==========================================' &&
+        echo '' &&
+        echo '📦 运行数据库迁移...' &&
+        uv run alembic upgrade head &&
+        echo '✅ 数据库迁移完成' &&
+        echo '' &&
+        echo '📚 初始化 Demo 站点和医学知识文档...' &&
+        uv run python scripts/init_demo_data.py &&
+        echo '✅ Demo 数据初始化完成' &&
+        echo '' &&
+        echo '🗄️  初始化 RustFS 对象存储...' &&
+        uv run python scripts/init_rustfs.py &&
+        echo '✅ RustFS 初始化完成' &&
+        echo '' &&
+        echo '==========================================' &&
+        echo '🎉 CatWiki 生产环境初始化完成！' &&
+        echo '==========================================' &&
+        echo '' &&
+        echo '📋 默认管理员账号：' &&
+        echo '   📧 邮箱: admin@example.com' &&
+        echo '   🔑 密码: admin123' &&
+        echo '' &&
+        echo '📚 Demo 站点：' &&
+        echo '   🌐 域名: medical' &&
+        echo '' &&
+        echo '==========================================' &&
+        echo ''
+      "
+    restart: "no"
+    profiles:
+      - init
+
+  # FastAPI 后端服务
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile.prod
+    container_name: catwiki-backend-prod
+    env_file:
+      - .env.backend
+    environment:
+      # 环境配置
+      ENVIRONMENT: prod
+      
+      # 数据库配置
+      POSTGRES_SERVER: postgres
+      POSTGRES_PORT: 5432
+      
+      # RustFS 对象存储配置
+      RUSTFS_ENDPOINT: ${RUSTFS_ENDPOINT:-rustfs:9000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+      # 注意：首次部署需要先运行 docker compose --profile init up backend-init
+      # 后续部署不需要再运行初始化
+    networks:
+      - catwiki-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-3000}:3000"
+
+  # 管理后台前端
+  admin-frontend:
+    build:
+      context: ../../frontend/admin
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api.catwiki.cn}
+    container_name: catwiki-admin-prod
+    env_file:
+      - .env.admin
+    environment:
+      NODE_ENV: production
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - catwiki-network
+    restart: unless-stopped
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    ports:
+      - "127.0.0.1:${ADMIN_PORT:-8001}:8001"
+
+  # 客户端前端
+  client-frontend:
+    build:
+      context: ../../frontend/client
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api.catwiki.cn}
+        NEXT_PUBLIC_DOCS_URL: ${NEXT_PUBLIC_DOCS_URL:-http://docs.catwiki.cn}
+    container_name: catwiki-client-prod
+    env_file:
+      - .env.client
+    environment:
+      NODE_ENV: production
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - catwiki-network
+    restart: unless-stopped
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    ports:
+      - "127.0.0.1:${CLIENT_PORT:-8002}:8002"
+
+  # 文档站点服务
+  docs-frontend:
+    build:
+      context: ../../frontend/docs
+      dockerfile: Dockerfile.prod
+    container_name: catwiki-docs-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DOCS_PORT:-8003}:80"
+    networks:
+      - catwiki-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # 官网服务
+  website:
+    build:
+      context: ../../frontend/website
+      dockerfile: Dockerfile.prod
+    container_name: catwiki-website-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEBSITE_PORT:-8004}:80"
+    networks:
+      - catwiki-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+networks:
+  catwiki-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  rustfs_data:
+    driver: local
+  rustfs_logs:
+    driver: local
+
