@@ -66,14 +66,15 @@ export function ManualModeConfig({ onSelectModel, activeTab }: ManualModeConfigP
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
         <h3 className="text-lg font-bold text-slate-900 mb-2 flex items-center gap-2">
           <Settings className="h-5 w-5 text-blue-500" />
-          手动模式 - 选择要配置的模型
+          选择要配置的模型
         </h3>
         <p className="text-sm text-slate-500 mb-4">
           点击下方卡片进入对应模型的详细配置页面
         </p>
         <div className="grid grid-cols-2 gap-4">
           {modelCards.map((item) => {
-            const conf = configs.manualConfig[item.id as "chat" | "embedding" | "rerank" | "vl"]
+            // @ts-ignore
+            const conf = configs[item.id as "chat" | "embedding" | "rerank" | "vl"]
             const isConfigured = isModelConfigured(item.id as "chat" | "embedding" | "rerank" | "vl")
             
             return (

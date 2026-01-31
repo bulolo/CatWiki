@@ -10,7 +10,6 @@ import { toast } from "sonner"
 import { useAllConfigs, useUpdateAIConfig, useUpdateBotConfig } from "@/hooks"
 import { type AIModelConfig, type BotConfig as ApiBotConfigType, AIConfigUpdate, AutoModeConfig as AutoModeConfigType, WebWidgetConfig } from "@/lib/api-client"
 import { logError } from "@/lib/error-handler"
-import { PROVIDER_BASE_URLS } from "@/constants/constants"
 import { type AIConfigs, type ModelType, type BotConfig, initialConfigs } from "@/types/settings"
 
 interface SettingsContextType {
@@ -23,7 +22,6 @@ interface SettingsContextType {
   // 更新函数
   handleUpdate: (type: string, field: string, value: string | boolean | number) => void
   handleSave: () => Promise<void>
-  handleModeChange: (mode: "auto" | "manual") => void
   handleSaveBotConfig: () => Promise<void>
 
   // 工具函数
@@ -64,16 +62,29 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       let loadedConfigs: AIConfigs = { ...initialConfigs }
 
       if (allConfigsData.aiConfig) {
+        // [MODIFIED] 处理后端可能返回的旧数据结构 (auto/manual wrapper)
+        // 如果返回的数据有 manualConfig 字段，说明是旧结构，我们提取 manualConfig
+        const aiData = allConfigsData.aiConfig as any
+        
+        let chatConfig = aiData.chat
+        let embeddingConfig = aiData.embedding
+        let rerankConfig = aiData.rerank
+        let vlConfig = aiData.vl
+
+        // 兼容旧结构
+        if (aiData.manualConfig) {
+             chatConfig = aiData.manualConfig.chat
+             embeddingConfig = aiData.manualConfig.embedding
+             rerankConfig = aiData.manualConfig.rerank
+             vlConfig = aiData.manualConfig.vl
+        }
+
         loadedConfigs = {
           ...loadedConfigs,
-          mode: allConfigsData.aiConfig.mode || initialConfigs.mode,
-          autoConfig: deepMerge(initialConfigs.autoConfig, allConfigsData.aiConfig.autoConfig),
-          manualConfig: {
-            chat: deepMerge(initialConfigs.manualConfig.chat, allConfigsData.aiConfig.manualConfig?.chat),
-            embedding: deepMerge(initialConfigs.manualConfig.embedding, allConfigsData.aiConfig.manualConfig?.embedding),
-            rerank: deepMerge(initialConfigs.manualConfig.rerank, allConfigsData.aiConfig.manualConfig?.rerank),
-            vl: deepMerge(initialConfigs.manualConfig.vl, allConfigsData.aiConfig.manualConfig?.vl),
-          }
+          chat: deepMerge(initialConfigs.chat, chatConfig),
+          embedding: deepMerge(initialConfigs.embedding, embeddingConfig),
+          rerank: deepMerge(initialConfigs.rerank, rerankConfig),
+          vl: deepMerge(initialConfigs.vl, vlConfig),
         }
       }
 
@@ -90,30 +101,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setConfigs(prev => {
       const newConfigs = { ...prev }
 
-      // 处理自动模式配置
-      if (type === "autoConfig") {
-        if (field === "provider" || field === "apiKey") {
-          newConfigs.autoConfig = { ...prev.autoConfig, [field]: value }
-        } else {
-          newConfigs.autoConfig = {
-            ...prev.autoConfig,
-            models: { ...prev.autoConfig.models, [field]: value }
-          }
-        }
-      }
-      // 处理手动模式配置
-      else if (type === "chat" || type === "embedding" || type === "rerank" || type === "vl") {
-        const updatedConfig = { ...prev.manualConfig[type], [field]: value }
-
-        // 如果改变的是 provider，则自动更新对应的 baseUrl
-        if (field === "provider" && typeof value === "string" && PROVIDER_BASE_URLS[value] !== undefined) {
-          updatedConfig.baseUrl = PROVIDER_BASE_URLS[value]
-        }
-
-        newConfigs.manualConfig = {
-          ...prev.manualConfig,
-          [type]: updatedConfig
-        }
+      // 处理 AI 模型配置 (chat, embedding, rerank, vl)
+      if (type === "chat" || type === "embedding" || type === "rerank" || type === "vl") {
+        // @ts-ignore
+        const modelConfig = prev[type]
+        const updatedConfig = { ...modelConfig, [field]: value }
+        // @ts-ignore
+        newConfigs[type] = updatedConfig
       }
       // 处理机器人配置
       else if (type === "botConfig") {
@@ -126,35 +120,31 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           }
         }
       }
-      // 处理模式切换
-      else if (type === "mode") {
-        newConfigs.mode = value as "auto" | "manual"
-      }
 
       return newConfigs
     })
   }
 
   const handleSave = async () => {
-    // 构建完整的 AI 配置对象
+    // 构建完整的 AI 配置对象 (扁平结构)
+    // @ts-ignore
     const aiConfig: AIModelConfig = {
-      mode: configs.mode as AIConfigUpdate.mode,
-      autoConfig: {
-        ...configs.autoConfig,
-        provider: configs.autoConfig.provider as AutoModeConfigType.provider,
-      },
-      manualConfig: configs.manualConfig,
+        chat: configs.chat,
+        embedding: configs.embedding,
+        rerank: configs.rerank,
+        vl: configs.vl
     }
 
     updateAIConfigMutation.mutate(aiConfig, {
       onSuccess: () => {
         setSavedConfigs(prev => ({
           ...prev,
-          mode: configs.mode,
-          autoConfig: { ...configs.autoConfig },
-          manualConfig: { ...configs.manualConfig }
+          chat: { ...configs.chat },
+          embedding: { ...configs.embedding },
+          rerank: { ...configs.rerank },
+          vl: { ...configs.vl }
         }))
-        toast.success("AI 模型及其模式配置已保存")
+        toast.success("AI 模型配置已保存")
       },
       onError: (error) => {
         logError("保存 AI 配置", error)
@@ -163,19 +153,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  const handleModeChange = (mode: "auto" | "manual") => {
-    // 仅更新本地状态，不触发 API 调用
-    handleUpdate("mode", "", mode)
-  }
-
   const isAiDirty = JSON.stringify({
-    mode: configs.mode,
-    autoConfig: configs.autoConfig,
-    manualConfig: configs.manualConfig
+    chat: configs.chat,
+    embedding: configs.embedding,
+    rerank: configs.rerank,
+    vl: configs.vl
   }) !== JSON.stringify({
-    mode: savedConfigs.mode,
-    autoConfig: savedConfigs.autoConfig,
-    manualConfig: savedConfigs.manualConfig
+    chat: savedConfigs.chat,
+    embedding: savedConfigs.embedding,
+    rerank: savedConfigs.rerank,
+    vl: savedConfigs.vl
   })
 
   const handleSaveBotConfig = async () => {
@@ -195,7 +182,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }
 
   const isModelConfigured = (modelType: "chat" | "embedding" | "rerank" | "vl") => {
-    const config = configs.manualConfig[modelType]
+    // @ts-ignore
+    const config = configs[modelType]
     return !!(config.provider && config.model && config.apiKey && config.baseUrl)
   }
 
@@ -206,7 +194,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     isAiDirty,
     handleUpdate,
     handleSave,
-    handleModeChange,
     handleSaveBotConfig,
     isModelConfigured,
   }

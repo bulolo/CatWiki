@@ -22,25 +22,13 @@ class Settings(BaseSettings):
 
     # AI 配置 - 对话 (Chat)
     AI_CHAT_API_KEY: str = Field(default="", description="Chat API Key")
-    AI_CHAT_API_BASE: str = Field(
-        default="https://dashscope.aliyuncs.com/compatible-mode/v1",
-        description="Chat API Base URL"
-    )
-    AI_CHAT_MODEL: str = Field(
-        default="qwen-plus",
-        description="Chat 模型名称"
-    )
+    AI_CHAT_API_BASE: str = Field(default="", description="Chat API Base URL")
+    AI_CHAT_MODEL: str = Field(default="", description="Chat 模型名称")
 
     # AI 配置 - 向量 (Embedding)
     AI_EMBEDDING_API_KEY: str = Field(default="", description="Embedding API Key")
-    AI_EMBEDDING_API_BASE: str = Field(
-        default="https://dashscope.aliyuncs.com/compatible-mode/v1",
-        description="Embedding API Base URL"
-    )
-    AI_EMBEDDING_MODEL: str = Field(
-        default="text-embedding-v4",
-        description="Embedding 模型名称"
-    )
+    AI_EMBEDDING_API_BASE: str = Field(default="", description="Embedding API Base URL")
+    AI_EMBEDDING_MODEL: str = Field(default="", description="Embedding 模型名称")
     AI_EMBEDDING_DIMENSION: int = Field(
         default=1024,
         description="Embedding 向量维度"
@@ -50,18 +38,12 @@ class Settings(BaseSettings):
     AI_RERANK_ENABLE: bool = Field(default=False, description="是否启用重排序")
     AI_RERANK_API_KEY: str = Field(default="", description="Reranker API Key")
     AI_RERANK_API_BASE: str = Field(default="", description="Reranker API Base URL")
-    AI_RERANK_MODEL: str = Field(default="Dakewe-Reranker", description="Reranker 模型名称")
+    AI_RERANK_MODEL: str = Field(default="", description="Reranker 模型名称")
 
     # AI 配置 - 视觉 (VL/Vision)
     AI_VL_API_KEY: str = Field(default="", description="VL API Key")
-    AI_VL_API_BASE: str = Field(
-        default="https://dashscope.aliyuncs.com/compatible-mode/v1",
-        description="VL API Base URL"
-    )
-    AI_VL_MODEL: str = Field(
-        default="qwen-vl-plus",
-        description="VL 模型名称"
-    )
+    AI_VL_API_BASE: str = Field(default="", description="VL API Base URL")
+    AI_VL_MODEL: str = Field(default="", description="VL 模型名称")
 
     # 数据库配置
     POSTGRES_SERVER: str = Field(default="localhost")
@@ -138,14 +120,6 @@ class Settings(BaseSettings):
 
         return v
 
-    @field_validator("AI_CHAT_API_KEY")
-    @classmethod
-    def validate_ai_chat_api_key(cls, v: str, info) -> str:
-        """验证 AI Chat API Key"""
-        # 如果是默认的占位符，给出提醒
-        if v == "sk-your-openai-api-key":
-             return v
-        return v
 
     # 日志配置
     LOG_LEVEL: str = Field(default="INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")

@@ -15,6 +15,7 @@ from app.schemas.system_config import (
     AIConfigUpdate,
     BotConfigUpdate,
     SystemConfigResponse,
+    TestConnectionRequest,
 )
 
 router = APIRouter()
@@ -34,18 +35,33 @@ def mask_variable(value: str) -> str:
     return value
 
 
+
 def _mask_ai_config_inplace(config_value: dict) -> None:
     """对 AI 配置进行原地脱敏处理"""
-    # 1. 脱敏自动模式配置
-    if "autoConfig" in config_value and "apiKey" in config_value["autoConfig"]:
-        config_value["autoConfig"]["apiKey"] = mask_variable(config_value["autoConfig"]["apiKey"])
+    for model_type in ["chat", "embedding", "rerank", "vl"]:
+        if model_type in config_value and "apiKey" in config_value[model_type]:
+            config_value[model_type]["apiKey"] = mask_variable(config_value[model_type]["apiKey"])
 
-    # 2. 脱敏手动模式配置
-    if "manualConfig" in config_value:
-        manual_config = config_value["manualConfig"]
-        for model_type in ["chat", "embedding", "rerank", "vl"]:
-            if model_type in manual_config and "apiKey" in manual_config[model_type]:
-                manual_config[model_type]["apiKey"] = mask_variable(manual_config[model_type]["apiKey"])
+
+def _normalize_ai_config_value(value: dict) -> dict:
+    """
+    将可能的旧配置结构 (nested mode/manualConfig) 转换为扁平结构
+    """
+    if "manualConfig" in value:
+        # 旧结构，提取 manualConfig
+        manual = value.get("manualConfig", {})
+        return {
+            "chat": manual.get("chat", {}),
+            "embedding": manual.get("embedding", {}),
+            "rerank": manual.get("rerank", {}),
+            "vl": manual.get("vl", {})
+        }
+    # 假设已经是新结构，或者缺失某些字段
+    # 确保基本的 keys存在
+    normalized = {}
+    for key in ["chat", "embedding", "rerank", "vl"]:
+        normalized[key] = value.get(key, {})
+    return normalized
 
 
 @router.get("/ai-config", response_model=ApiResponse[SystemConfigResponse | None], operation_id="getAdminAiConfig")
@@ -55,8 +71,6 @@ async def get_ai_config(
 ) -> ApiResponse[SystemConfigResponse | None]:
     """
     获取 AI 模型配置
-
-    返回当前的 AI 模型配置，包括自动模式和手动模式的设置
     """
     config = await crud_system_config.get_by_key(db, config_key=AI_CONFIG_KEY)
 
@@ -66,11 +80,15 @@ async def get_ai_config(
 
     # 脱敏处理
     config_response = SystemConfigResponse.model_validate(config)
-    config_value = copy.deepcopy(config_response.config_value)
     
-    _mask_ai_config_inplace(config_value)
+    # 确保返回给前端的是扁平结构 (即使数据库存的是旧的)
+    normalized_value = _normalize_ai_config_value(config_response.config_value)
+    
+    # 脱敏
+    masked_value = copy.deepcopy(normalized_value)
+    _mask_ai_config_inplace(masked_value)
 
-    config_response.config_value = config_value
+    config_response.config_value = masked_value
     return ApiResponse.ok(data=config_response, msg="获取成功")
 
 
@@ -81,11 +99,7 @@ async def update_ai_config(
     current_user: User = Depends(get_current_active_user),
 ) -> ApiResponse[SystemConfigResponse]:
     """
-    更新 AI 模型配置
-
-    - **mode**: 配置模式（auto 或 manual）
-    - **autoConfig**: 自动模式配置
-    - **manualConfig**: 手动模式配置
+    更新 AI 模型配置 (扁平结构)
     """
     config_value = config_in.model_dump(mode='json')
 
@@ -93,37 +107,44 @@ async def update_ai_config(
     existing_config = await crud_system_config.get_by_key(db, config_key=AI_CONFIG_KEY)
     
     if existing_config:
-        existing_value = existing_config.config_value
+        # 获取现有的真实值(未脱敏)，并标准化为扁平结构，以便轻松对比
+        existing_value = _normalize_ai_config_value(existing_config.config_value)
         
-        # 1. 还原自动模式配置的 API Key
-        if (
-            "autoConfig" in config_value 
-            and "apiKey" in config_value["autoConfig"] 
-            and config_value["autoConfig"]["apiKey"] == MASKED_API_KEY
-            and "autoConfig" in existing_value
-            and "apiKey" in existing_value["autoConfig"]
-        ):
-            config_value["autoConfig"]["apiKey"] = existing_value["autoConfig"]["apiKey"]
-
-        # 2. 还原手动模式配置的 API Key
-        if "manualConfig" in config_value and "manualConfig" in existing_value:
-            for model_type in ["chat", "embedding", "rerank", "vl"]:
-                if (
-                    model_type in config_value["manualConfig"]
-                    and "apiKey" in config_value["manualConfig"][model_type]
-                    and config_value["manualConfig"][model_type]["apiKey"] == MASKED_API_KEY
-                    and model_type in existing_value["manualConfig"]
-                    and "apiKey" in existing_value["manualConfig"][model_type]
-                ):
-                    config_value["manualConfig"][model_type]["apiKey"] = existing_value["manualConfig"][model_type]["apiKey"]
+        # 还原手动模式配置的 API Key
+        for model_type in ["chat", "embedding", "rerank", "vl"]:
+            if (
+                model_type in config_value
+                and "apiKey" in config_value[model_type]
+                and config_value[model_type]["apiKey"] == MASKED_API_KEY
+                and model_type in existing_value
+                and "apiKey" in existing_value[model_type]
+            ):
+                config_value[model_type]["apiKey"] = existing_value[model_type]["apiKey"]
 
     config = await crud_system_config.update_by_key(
         db,
         config_key=AI_CONFIG_KEY,
         config_value=config_value
     )
+    
+    # 触发 VectorStore 热更新
+    try:
+        from app.core.vector_store import VectorStoreManager
+        manager = await VectorStoreManager.get_instance()
+        await manager.reload_credentials(config_value)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"❌ Failed to trigger vector store reload: {e}")
 
-    return ApiResponse.ok(data=config, msg="AI 配置更新成功")
+    # 返回处理
+    response_data = SystemConfigResponse.model_validate(config)
+    # 此时 config_value 已经是新的扁平结构 (因为我们存的就是 config_value)
+    # 对返回数据进行脱敏
+    response_val = copy.deepcopy(response_data.config_value)
+    _mask_ai_config_inplace(response_val)
+    response_data.config_value = response_val
+
+    return ApiResponse.ok(data=response_data, msg="AI 配置更新成功")
 
 
 @router.get("/bot-config", response_model=ApiResponse[SystemConfigResponse | None], operation_id="getAdminBotConfig")
@@ -214,3 +235,129 @@ async def delete_config(
         raise NotFoundException(detail=f"配置 {config_key} 不存在")
 
     return ApiResponse.ok(data={"deleted": True}, msg="配置删除成功")
+
+
+@router.post("/test-connection", response_model=ApiResponse[dict], operation_id="testModelConnection")
+async def test_model_connection(
+    request: TestConnectionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> ApiResponse[dict]:
+    """
+    测试模型连接性
+    """
+    model_type = request.model_type
+    config = request.config
+    
+    # 0. 如果 API Key 是掩码，则从数据库读取真实 Key
+    if config.apiKey == MASKED_API_KEY:
+        existing_config = await crud_system_config.get_by_key(db, config_key=AI_CONFIG_KEY)
+        if existing_config:
+            # 提取真实值
+            existing_value = _normalize_ai_config_value(existing_config.config_value)
+            real_key = existing_value.get(model_type, {}).get("apiKey", "")
+            if real_key:
+                config.apiKey = real_key
+            else:
+                 return ApiResponse.error(msg="无法获取有效的 API Key，请检查配置。")
+        else:
+            return ApiResponse.error(msg="未找到现有配置，请先填写有效 API Key。")
+            
+    if not config.apiKey:
+         return ApiResponse.error(msg="API Key 不能为空")
+
+    # 1. 对话/多模态/视觉测试 (使用 OpenAI Chat API)
+    if model_type in ["chat", "vl"]:
+        try:
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(
+                api_key=config.apiKey,
+                base_url=config.baseUrl,
+                timeout=10.0
+            )
+            # 发送简单的 Hello 消息
+            response = await client.chat.completions.create(
+                model=config.model,
+                messages=[{"role": "user", "content": "Hello"}],
+                max_tokens=5
+            )
+            return ApiResponse.ok(
+                data={
+                    "details": f"Response: {response.choices[0].message.content[:20]}..."
+                }, 
+                msg="连接成功"
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            msg = str(e)
+            logger.error(f"❌ [TestConnection] Chat/VL failed: {msg}", exc_info=True)
+            return ApiResponse.error(msg=f"连接失败: {msg}")
+
+    # 2. 向量测试 (使用 OpenAI Embedding API)
+    elif model_type == "embedding":
+        try:
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(
+                api_key=config.apiKey,
+                base_url=config.baseUrl,
+                timeout=10.0
+            )
+            # 发送简单的嵌入请求
+            await client.embeddings.create(
+                model=config.model,
+                input="test"
+            )
+            return ApiResponse.ok(msg="连接成功")
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            msg = str(e)
+            # 优化 OpenAI 错误显示
+            if "AuthenticationError" in str(type(e)):
+                 msg = "认证失败 (401)，请检查 API Key"
+            
+            logger.error(f"❌ [TestConnection] Embedding failed: {msg}", exc_info=True)
+            return ApiResponse.error(msg=f"连接失败: {msg}")
+
+    # 3. 重排序测试 (使用 Standard/Cohere-like Rerank API)
+    elif model_type == "rerank":
+        try:
+            import httpx
+            
+            # 构建 URL
+            url = config.baseUrl.rstrip("/")
+            if not url.endswith("/rerank"):
+                url = f"{url}/rerank"
+            
+            payload = {
+                "model": config.model,
+                "query": "What is Deep Learning?",
+                "documents": ["Deep Learning is ...", "Hello World"],
+                "top_n": 1
+            }
+            headers = {
+                "Authorization": f"Bearer {config.apiKey}",
+                "Content-Type": "application/json"
+            }
+            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(url, json=payload, headers=headers)
+                
+                # 兼容性处理
+                if resp.status_code != 200:
+                    return ApiResponse.error(msg=f"请求失败 (Status {resp.status_code}): {resp.text[:100]}")
+                
+                # 检查返回格式
+                data = resp.json()
+                # ...
+
+                return ApiResponse.ok(msg="连接成功")
+
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"❌ [TestConnection] Rerank failed: {e}", exc_info=True)
+            return ApiResponse.error(msg=f"连接失败: {str(e)}")
+
+    return ApiResponse.error(msg="未知的模型类型")

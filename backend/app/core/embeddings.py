@@ -31,6 +31,16 @@ class OpenAICompatibleEmbeddings(Embeddings):
             timeout=timeout,
         )
 
+    def update_credentials(self, api_key: str, base_url: str, model: str):
+        """更新客户端凭证"""
+        self.model = model
+        self.client = AsyncOpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            max_retries=self.client.max_retries,
+            timeout=self.client.timeout,
+        )
+
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         """异步嵌入多个文档"""
         try:

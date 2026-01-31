@@ -14,9 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Save, ShieldCheck } from "lucide-react"
+import { Save, ShieldCheck, PlugZap, Loader2 } from "lucide-react"
 import { useSettings } from "@/contexts/SettingsContext"
 import { initialConfigs } from "@/types/settings"
+import { useTestConnection } from "@/hooks/useSystemConfig"
+import { toast } from "sonner"
 
 interface SingleModelConfigProps {
   type: "chat" | "embedding" | "rerank" | "vl"
@@ -24,9 +26,25 @@ interface SingleModelConfigProps {
 
 export function SingleModelConfig({ type }: SingleModelConfigProps) {
   const { configs, handleUpdate, handleSave } = useSettings()
+  const testConnection = useTestConnection()
 
   // 确保配置存在，如果不存在则使用默认值
-  const config = configs.manualConfig[type] || initialConfigs.manualConfig[type]
+  // @ts-ignore
+  const config = configs[type] || initialConfigs[type]
+
+  const handleTest = () => {
+    testConnection.mutate(
+      { modelType: type, config }, 
+      {
+        onSuccess: () => {
+          toast.success("连接测试成功")
+        },
+        onError: (err) => {
+          toast.error(err.message || "连接测试失败")
+        }
+      }
+    )
+  }
 
   const getModelLabel = () => {
     const labels = {
@@ -42,24 +60,10 @@ export function SingleModelConfig({ type }: SingleModelConfigProps) {
     <div className="space-y-6 pt-4">
       <div className="grid grid-cols-2 gap-6">
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">模型提供商</label>
-          <Select
-            value={config.provider}
-            onValueChange={(val) => handleUpdate(type, "provider", val)}
-          >
-            <SelectTrigger className="w-full bg-white">
-              <SelectValue placeholder="选择提供商" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="deepseek">DeepSeek (深度求索)</SelectItem>
-              <SelectItem value="siliconflow">SiliconFlow (硅基流动)</SelectItem>
-              <SelectItem value="moonshot">月之暗面 (Moonshot)</SelectItem>
-              <SelectItem value="bailian">阿里云百炼 (Qwen)</SelectItem>
-              <SelectItem value="volcengine">火山引擎 (豆包)</SelectItem>
-              <SelectItem value="openai">OpenAI / 兼容代理</SelectItem>
-              <SelectItem value="local">Local (Ollama / vLLM)</SelectItem>
-            </SelectContent>
-          </Select>
+          <label className="text-sm font-semibold text-slate-700">协议类型</label>
+          <div className="flex items-center h-10 px-3 rounded-md border border-slate-200 bg-slate-50 text-slate-500 text-sm">
+            OpenAI API 兼容协议
+          </div>
         </div>
         <div className="space-y-2">
           <label className="text-sm font-semibold text-slate-700">模型名称</label>
@@ -100,6 +104,21 @@ export function SingleModelConfig({ type }: SingleModelConfigProps) {
             当前处于手动编辑状态。修改后请点击外层卡片顶部的“保存”按钮生效。
           </p>
         </div>
+        
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={handleTest}
+          disabled={testConnection.isPending || !config.apiKey}
+          className="text-slate-600"
+        >
+          {testConnection.isPending ? (
+            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+          ) : (
+            <PlugZap className="mr-2 h-3 w-3 text-amber-500" />
+          )}
+          测试连接
+        </Button>
       </div>
     </div>
   )

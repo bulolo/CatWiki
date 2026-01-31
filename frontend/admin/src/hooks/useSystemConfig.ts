@@ -2,7 +2,7 @@
  * React Query hooks for System Config management
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import type { AIConfigUpdate, BotConfigUpdate } from '@/lib/api-client'
 import { isAuthenticated } from '@/lib/auth'
@@ -90,6 +90,15 @@ export function useDeleteConfig() {
     mutationFn: (configKey: string) => api.systemConfig.deleteConfig(configKey),
     invalidateKeys: [systemConfigKeys.allConfigs()],
     successMsg: '配置删除成功',
+  })
+}
+
+/**
+ * 测试模型连接
+ */
+export function useTestConnection() {
+  return useMutation({
+    mutationFn: (data: { modelType: string; config: any }) => api.systemConfig.testConnection(data.modelType, data.config),
   })
 }
 

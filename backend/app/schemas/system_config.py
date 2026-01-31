@@ -14,34 +14,13 @@ class ModelConfig(BaseModel):
     baseUrl: str = Field(..., description="API Base URL")
 
 
-class AutoModeModels(BaseModel):
-    """自动模式下的模型选择"""
-    chat: str = Field(..., description="对话模型")
-    embedding: str = Field(..., description="向量模型")
-    rerank: str = Field(..., description="重排序模型")
-    vl: str = Field(..., description="视觉模型")
 
-
-class AutoModeConfig(BaseModel):
-    """自动模式配置"""
-    provider: Literal["bailian", "openai", "deepseek"] = Field(..., description="预设提供商")
-    apiKey: str = Field(..., description="API Key")
-    models: AutoModeModels = Field(..., description="模型选择")
-
-
-class ManualModeConfig(BaseModel):
-    """手动模式配置"""
+class AIModelConfig(BaseModel):
+    """AI 模型完整配置 (扁平化结构)"""
     chat: ModelConfig = Field(..., description="对话模型配置")
     embedding: ModelConfig = Field(..., description="向量模型配置")
     rerank: ModelConfig = Field(..., description="重排序模型配置")
     vl: ModelConfig = Field(..., description="视觉模型配置")
-
-
-class AIModelConfig(BaseModel):
-    """AI 模型完整配置"""
-    mode: Literal["auto", "manual"] = Field(..., description="配置模式")
-    autoConfig: AutoModeConfig = Field(..., description="自动模式配置")
-    manualConfig: ManualModeConfig = Field(..., description="手动模式配置")
 
 
 # ============ 机器人配置相关 Schema ============
@@ -112,11 +91,19 @@ class SystemConfigResponse(SystemConfigBase):
 
 # ============ 特定配置的便捷 Schema ============
 
+
 class AIConfigUpdate(BaseModel):
     """更新 AI 配置"""
-    mode: Literal["auto", "manual"] = Field(..., description="配置模式")
-    autoConfig: AutoModeConfig = Field(..., description="自动模式配置")
-    manualConfig: ManualModeConfig = Field(..., description="手动模式配置")
+    chat: ModelConfig = Field(..., description="对话模型配置")
+    embedding: ModelConfig = Field(..., description="向量模型配置")
+    rerank: ModelConfig = Field(..., description="重排序模型配置")
+    vl: ModelConfig = Field(..., description="视觉模型配置")
+
+
+class TestConnectionRequest(BaseModel):
+    """测试连接请求"""
+    model_type: Literal["chat", "embedding", "rerank", "vl"] = Field(..., description="模型类型")
+    config: ModelConfig = Field(..., description="模型配置")
 
 
 class BotConfigUpdate(BaseModel):

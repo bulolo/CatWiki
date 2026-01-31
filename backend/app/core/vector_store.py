@@ -141,6 +141,53 @@ class VectorStoreManager:
         await cls._instance._ensure_initialized()
         return cls._instance
 
+    async def reload_credentials(self, config_value: dict) -> None:
+        """
+        热更新向量存储的凭证信息
+        :param config_value: 最新的 system_config["config_value"]
+        """
+        await self._ensure_initialized()
+        
+        try:
+            # 提取 Embedding 配置
+            # 逻辑类似 dynamic_config，但专门针对 embedding
+            
+            new_model = ""
+            new_api_key = ""
+            new_base_url = ""
+            
+            # 1. 尝试读取扁平配置
+            embedding_conf = config_value.get("embedding", {})
+            
+            # 2. 兼容旧结构
+            if not embedding_conf and "manualConfig" in config_value:
+                 embedding_conf = config_value.get("manualConfig", {}).get("embedding", {})
+
+            if embedding_conf.get("apiKey") and embedding_conf.get("baseUrl"):
+                new_api_key = embedding_conf.get("apiKey")
+                new_base_url = embedding_conf.get("baseUrl")
+                new_model = embedding_conf.get("model", "")
+            else:
+                 logger.warning("⚠️ [VectorStore] Reload triggered but Config for Embedding is missing or incomplete.")
+
+            if new_api_key and new_base_url:
+                logger.info(f"🔄 [VectorStore] Reloading credentials. Model: {new_model}, Base: {new_base_url}")
+                
+                # 更新 Embeddings 实例
+                if hasattr(self.embeddings, "update_credentials"):
+                    self.embeddings.update_credentials(
+                        api_key=new_api_key,
+                        base_url=new_base_url,
+                        model=new_model
+                    )
+                else:
+                    logger.warning("⚠️ Current embeddings instance does not support update_credentials")
+            else:
+                logger.warning("❌ [VectorStore] Failed to reload: Missing API Key or Base URL in config.")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to reload vector store credentials: {e}")
+
     async def add_documents(
         self,
         documents: list[LangChainDocument],

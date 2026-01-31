@@ -2,26 +2,26 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { AutoModeConfig } from './AutoModeConfig';
-import type { ManualModeConfig } from './ManualModeConfig';
+import type { ModelConfig } from './ModelConfig';
 /**
  * 更新 AI 配置
  */
 export type AIConfigUpdate = {
     /**
-     * 配置模式
+     * 对话模型配置
      */
-    mode: AIConfigUpdate.mode;
-    autoConfig: AutoModeConfig;
-    manualConfig: ManualModeConfig;
-};
-export namespace AIConfigUpdate {
+    chat: ModelConfig;
     /**
-     * 配置模式
+     * 向量模型配置
      */
-    export enum mode {
-        AUTO = 'auto',
-        MANUAL = 'manual',
-    }
-}
+    embedding: ModelConfig;
+    /**
+     * 重排序模型配置
+     */
+    rerank: ModelConfig;
+    /**
+     * 视觉模型配置
+     */
+    vl: ModelConfig;
+};
 

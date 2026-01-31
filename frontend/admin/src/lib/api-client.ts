@@ -223,6 +223,11 @@ const systemConfigApi = {
   updateBotConfig: (config: Models.BotConfigUpdate) => wrapResponse<any>(client.adminSystemConfigs.updateAdminBotConfig({ requestBody: config })),
   getAllConfigs: () => wrapResponse<any>(client.adminSystemConfigs.listAdminConfigs()),
   deleteConfig: (configKey: string) => wrapResponse<void>(client.adminSystemConfigs.deleteAdminConfig({ configKey })),
+  testConnection: (modelType: string, config: any) => wrapResponse<any>(client.adminSystemConfigs.httpRequest.request({
+    method: 'POST',
+    url: '/admin/v1/system-configs/test-connection',
+    body: { model_type: modelType, config },
+  })),
 }
 
 

@@ -24,17 +24,17 @@ from app.schemas.chat import (
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# 初始化 OpenAI 客户端
-client = AsyncOpenAI(
-    api_key=settings.AI_CHAT_API_KEY,
-    base_url=settings.AI_CHAT_API_BASE
-)
+# Global client removed in favor of dynamic instantiation
+# client = AsyncOpenAI(...) 
 
-async def stream_generator(request: ChatCompletionRequest, citations: list = None) -> AsyncGenerator[str, None]:
+from app.core.dynamic_config import get_dynamic_chat_config
+from app.db.database import AsyncSessionLocal
+
+async def stream_generator(client: AsyncOpenAI, model: str, request: ChatCompletionRequest, citations: list = None) -> AsyncGenerator[str, None]:
     """真实流式响应生成器"""
     try:
         stream = await client.chat.completions.create(
-            model=settings.AI_CHAT_MODEL,
+            model=model,
             messages=[msg.model_dump(exclude_none=True) for msg in request.messages],
             stream=True,
             temperature=request.temperature,
@@ -62,7 +62,7 @@ async def stream_generator(request: ChatCompletionRequest, citations: list = Non
         # 发送错误信息给前端
         error_chunk = ChatCompletionChunk(
             id=f"error-{uuid.uuid4()}",
-            model=settings.AI_CHAT_MODEL,
+            model=model,
             choices=[
                 ChatCompletionChunkChoice(
                     index=0,
@@ -83,6 +83,20 @@ async def create_chat_completion(
     创建聊天补全 (OpenAI 兼容接口)
     对接真实 AI 服务
     """
+    # 1. 获取动态配置
+    async with AsyncSessionLocal() as db:
+        chat_config = await get_dynamic_chat_config(db)
+    
+    current_model = chat_config["model"]
+    current_api_key = chat_config["apiKey"]
+    current_base_url = chat_config["baseUrl"]
+
+    # 实例化客户端 (Per-request)
+    client = AsyncOpenAI(
+        api_key=current_api_key,
+        base_url=current_base_url,
+    )
+
     # 记录请求信息
     # 记录详细请求信息 (使用显眼的格式)
     last_msg = request.messages[-1].content if request.messages else "No messages"
@@ -90,12 +104,13 @@ async def create_chat_completion(
     
     log_banner = (
         "\n"
-        "╭─────────────────────── � AI Chat Request ───────────────────────╮\n"
-        f"│ 🤖 Model    : {settings.AI_CHAT_MODEL:<46} │\n"
+        "╭───────────────────────  AI Chat Request ───────────────────────╮\n"
+        f"│ 🤖 Model    : {current_model:<46} │\n"
         f"│ 🌊 Stream   : {str(request.stream):<46} │\n"
         f"│ 🔍 Filter   : {str(request.filter if request.filter else 'None (Global Mode)'):<46} │\n"
-        f"│ � Messages : {len(request.messages):<46} │\n"
+        f"│  Messages : {len(request.messages):<46} │\n"
         "│ ──────────────────────────────────────────────────────────────── │\n"
+        "│ 🗨️  Config      : {current_base_url} ({current_api_key[:6]}...)     \n"
         "│ 🗨️  Last Message:                                                │\n"
         f"{last_msg_preview}\n"
         "╰──────────────────────────────────────────────────────────────────╯"
@@ -103,11 +118,11 @@ async def create_chat_completion(
     # 使用 print 确保直接输出到控制台 (有时候 logger 会有格式化)
     print(log_banner)
     # 同时记录到 logger 供持久化
-    logger.info(f"AI Chat Request: model={settings.AI_CHAT_MODEL} filter={request.filter}")
+    logger.info(f"AI Chat Request: model={current_model} filter={request.filter}")
 
     # 如果有 filter，目前仅打印日志，后续对接 RAG
     if request.filter:
-        logger.info(f"� [Chat] RAG Filter: {request.filter}")
+        logger.info(f" [Chat] RAG Filter: {request.filter}")
 
     # RAG: 如果有最后一条消息，尝试检索相关文档
     context_str = ""
@@ -227,7 +242,6 @@ async def create_chat_completion(
             if retrieved_docs:
                 try:
                     from app.crud import crud_site
-                    from app.db.database import AsyncSessionLocal
                     
                     # 获取涉及到的 site_id
                     site_ids = list(set(doc.metadata.get("site_id") for doc in retrieved_docs if doc.metadata.get("site_id")))
@@ -262,13 +276,13 @@ async def create_chat_completion(
 
             # Pass modified messages (with enhanced system prompt) AND citations
             return StreamingResponse(
-                stream_generator(request, citations=citations),
+                stream_generator(client, current_model, request, citations=citations),
                 media_type="text/event-stream"
             )
 
         # 非流式响应
         response = await client.chat.completions.create(
-            model=settings.AI_CHAT_MODEL,
+            model=current_model,
             messages=[msg.model_dump(exclude_none=True) for msg in request.messages],
             stream=False,
             temperature=request.temperature,

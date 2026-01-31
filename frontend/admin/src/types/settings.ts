@@ -33,67 +33,39 @@ export type BotConfig = {
 }
 
 export type AIConfigs = {
-  mode: "auto" | "manual"
-  // 自动模式配置
-  autoConfig: {
-    provider: "bailian" | "openai" | "deepseek"
-    apiKey: string
-    models: {
-      chat: string
-      embedding: string
-      rerank: string
-      vl: string
-    }
-  }
-  // 手动模式配置
-  manualConfig: {
-    chat: ModelConfig
-    embedding: ModelConfig
-    rerank: ModelConfig
-    vl: ModelConfig
-  }
+  chat: ModelConfig
+  embedding: ModelConfig
+  rerank: ModelConfig
+  vl: ModelConfig
   botConfig: BotConfig
 }
 
 export type ModelType = "models" | "chat" | "embedding" | "rerank" | "vl" | "security" | "users" | "sites"
 
 export const initialConfigs: AIConfigs = {
-  mode: "auto",
-  autoConfig: {
-    provider: "bailian",
+  chat: {
+    provider: "openai",
+    model: "",
     apiKey: "",
-    models: {
-      chat: "qwen3-max",
-      embedding: "text-embedding-v4",
-      rerank: "qwen3-rerank",
-      vl: "qwen3-vl-plus"
-    }
+    baseUrl: ""
   },
-  manualConfig: {
-    chat: {
-      provider: "deepseek",
-      model: "deepseek-chat",
-      apiKey: "",
-      baseUrl: "https://api.deepseek.com"
-    },
-    embedding: {
-      provider: "zhipu",
-      model: "embedding-3",
-      apiKey: "",
-      baseUrl: "https://open.bigmodel.cn/api/paas/v4/"
-    },
-    rerank: {
-      provider: "siliconflow",
-      model: "BAAI/bge-reranker-v2-m3",
-      apiKey: "",
-      baseUrl: "https://api.siliconflow.cn/v1"
-    },
-    vl: {
-      provider: "deepseek",
-      model: "deepseek-chat",
-      apiKey: "",
-      baseUrl: "https://api.deepseek.com"
-    }
+  embedding: {
+    provider: "openai",
+    model: "",
+    apiKey: "",
+    baseUrl: ""
+  },
+  rerank: {
+    provider: "openai",
+    model: "",
+    apiKey: "",
+    baseUrl: ""
+  },
+  vl: {
+    provider: "openai",
+    model: "",
+    apiKey: "",
+    baseUrl: ""
   },
   botConfig: {
     webWidget: {

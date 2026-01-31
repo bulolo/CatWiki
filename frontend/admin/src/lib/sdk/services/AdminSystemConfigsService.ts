@@ -7,6 +7,7 @@ import type { ApiResponse_dict_ } from '../models/ApiResponse_dict_';
 import type { ApiResponse_SystemConfigResponse_ } from '../models/ApiResponse_SystemConfigResponse_';
 import type { ApiResponse_Union_SystemConfigResponse__NoneType__ } from '../models/ApiResponse_Union_SystemConfigResponse__NoneType__';
 import type { BotConfigUpdate } from '../models/BotConfigUpdate';
+import type { TestConnectionRequest } from '../models/TestConnectionRequest';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class AdminSystemConfigsService {
@@ -14,8 +15,6 @@ export class AdminSystemConfigsService {
     /**
      * Get Ai Config
      * 获取 AI 模型配置
-     *
-     * 返回当前的 AI 模型配置，包括自动模式和手动模式的设置
      * @returns ApiResponse_Union_SystemConfigResponse__NoneType__ Successful Response
      * @throws ApiError
      */
@@ -27,11 +26,7 @@ export class AdminSystemConfigsService {
     }
     /**
      * Update Ai Config
-     * 更新 AI 模型配置
-     *
-     * - **mode**: 配置模式（auto 或 manual）
-     * - **autoConfig**: 自动模式配置
-     * - **manualConfig**: 手动模式配置
+     * 更新 AI 模型配置 (扁平结构)
      * @returns ApiResponse_SystemConfigResponse_ Successful Response
      * @throws ApiError
      */
@@ -122,6 +117,27 @@ export class AdminSystemConfigsService {
             path: {
                 'config_key': configKey,
             },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Test Model Connection
+     * 测试模型连接性
+     * @returns ApiResponse_dict_ Successful Response
+     * @throws ApiError
+     */
+    public testModelConnection({
+        requestBody,
+    }: {
+        requestBody: TestConnectionRequest,
+    }): CancelablePromise<ApiResponse_dict_> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/admin/v1/system-configs/test-connection',
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

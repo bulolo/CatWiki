@@ -6,10 +6,8 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Zap, Settings, CircuitBoard } from "lucide-react"
 import { useSettings } from "@/contexts/SettingsContext"
-import { AutoModeConfig } from "./AutoModeConfig"
 import { ManualModeConfig } from "./ManualModeConfig"
 import { type ModelType } from "@/types/settings"
 
@@ -30,41 +28,14 @@ export function ModelSettingsCard({ onSelectModel, activeTab }: ModelSettingsCar
           </div>
           <div className="space-y-1">
             <h2 className="text-xl font-bold tracking-tight text-slate-900">模型配置</h2>
-            <p className="text-sm text-slate-500 font-medium">选择自动模式快速配置，或手动模式自定义每个模型。</p>
+            <p className="text-sm text-slate-500 font-medium">配置您的 AI 模型参数 (基于 OpenAI 兼容协议)。</p>
           </div>
         </div>
       </div>
 
       <Card className="border-border/60 shadow-md rounded-2xl min-h-[500px] overflow-hidden">
         <CardContent className="pt-6">
-          <Tabs
-            value={configs.mode}
-            onValueChange={(value) => handleModeChange(value as "auto" | "manual")}
-            className="w-full"
-          >
-            <TabsList className="grid w-full grid-cols-2 mb-6 h-12 bg-slate-100">
-              <TabsTrigger
-                value="auto"
-                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm"
-              >
-                <Zap className="h-4 w-4" />
-                <span className="font-semibold">自动模式</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="manual"
-                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm"
-              >
-                <Settings className="h-4 w-4" />
-                <span className="font-semibold">手动模式</span>
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="auto" className="mt-0">
-              <AutoModeConfig />
-            </TabsContent>
-            <TabsContent value="manual" className="mt-0">
-              <ManualModeConfig onSelectModel={onSelectModel} activeTab={activeTab} />
-            </TabsContent>
-          </Tabs>
+          <ManualModeConfig onSelectModel={onSelectModel} activeTab={activeTab} />
         </CardContent>
       </Card>
     </div>
