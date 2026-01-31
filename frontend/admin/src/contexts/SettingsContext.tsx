@@ -8,7 +8,7 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react"
 import { toast } from "sonner"
 import { useAllConfigs, useUpdateAIConfig, useUpdateBotConfig } from "@/hooks"
-import { type AIModelConfig, type BotConfig as ApiBotConfigType, AIConfigUpdate, AutoModeConfig as AutoModeConfigType, WebWidgetConfig } from "@/lib/api-client"
+import { type AIModelConfig, type BotConfig as ApiBotConfigType, AIConfigUpdate, WebWidgetConfig } from "@/lib/api-client"
 import { logError } from "@/lib/error-handler"
 import { type AIConfigs, type ModelType, type BotConfig, initialConfigs } from "@/types/settings"
 
