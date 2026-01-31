@@ -86,7 +86,7 @@ export function ModelDetailCard({ modelType, onBack }: ModelDetailCardProps) {
         </div>
       </CardHeader>
       <CardContent className="p-8">
-        <SingleModelConfig type={modelType} />
+        <SingleModelConfig type={modelType} onSuccess={onBack} />
       </CardContent>
     </Card>
   )

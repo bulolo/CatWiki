@@ -22,9 +22,10 @@ import { toast } from "sonner"
 
 interface SingleModelConfigProps {
   type: "chat" | "embedding" | "rerank" | "vl"
+  onSuccess?: () => void
 }
 
-export function SingleModelConfig({ type }: SingleModelConfigProps) {
+export function SingleModelConfig({ type, onSuccess }: SingleModelConfigProps) {
   const { configs, handleUpdate, handleSave } = useSettings()
   const testConnection = useTestConnection()
 
@@ -58,6 +59,9 @@ export function SingleModelConfig({ type }: SingleModelConfigProps) {
       
       // 2. 测试通过后保存 (如果测试失败会抛出异常进入 catch)
       await handleSave()
+      
+      // 3. 调用成功回调 (返回列表页)
+      onSuccess?.()
     } catch (e: any) {
       toast.error(e.message || "连接测试发生错误，无法保存")
     }
