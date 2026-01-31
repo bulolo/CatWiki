@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Save, ShieldCheck, PlugZap, Loader2 } from "lucide-react"
+import { Save, PlugZap, Loader2 } from "lucide-react"
 import { useSettings } from "@/contexts/SettingsContext"
 import { initialConfigs } from "@/types/settings"
 import { useTestConnection } from "@/hooks/useSystemConfig"
@@ -46,14 +46,21 @@ export function SingleModelConfig({ type }: SingleModelConfigProps) {
     )
   }
 
-  const getModelLabel = () => {
-    const labels = {
-      chat: "对话",
-      embedding: "向量",
-      rerank: "重排",
-      vl: "视觉"
+  const handleSaveWithCheck = async () => {
+    if (!config.apiKey) {
+      toast.error("请先填写 API Key")
+      return
     }
-    return labels[type]
+
+    try {
+      // 1. 先进行连接测试
+      await testConnection.mutateAsync({ modelType: type, config })
+      
+      // 2. 测试通过后保存 (如果测试失败会抛出异常进入 catch)
+      await handleSave()
+    } catch (e: any) {
+      toast.error(e.message || "连接测试发生错误，无法保存")
+    }
   }
 
   return (
@@ -97,27 +104,32 @@ export function SingleModelConfig({ type }: SingleModelConfigProps) {
         />
       </div>
 
-      <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
-        <div className="bg-slate-50 px-4 py-2 rounded-xl flex items-center gap-3 border border-slate-100 italic">
-          <ShieldCheck className="h-4 w-4 text-emerald-500" />
-          <p className="text-[10px] text-slate-500">
-            当前处于手动编辑状态。修改后请点击外层卡片顶部的“保存”按钮生效。
-          </p>
-        </div>
-        
+      <div className="pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
         <Button 
           variant="outline" 
-          size="sm"
           onClick={handleTest}
           disabled={testConnection.isPending || !config.apiKey}
           className="text-slate-600"
         >
           {testConnection.isPending ? (
-            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <PlugZap className="mr-2 h-3 w-3 text-amber-500" />
+            <PlugZap className="mr-2 h-4 w-4 text-amber-500" />
           )}
-          测试连接
+          仅测试连接
+        </Button>
+
+        <Button 
+          onClick={handleSaveWithCheck}
+          disabled={testConnection.isPending || !config.apiKey}
+          className="bg-slate-900 hover:bg-slate-800 text-white min-w-[100px]"
+        >
+          {testConnection.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
+          保存配置
         </Button>
       </div>
     </div>

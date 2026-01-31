@@ -137,7 +137,8 @@ function SettingsContent() {
           </div>
 
           <div className="flex items-center gap-3">
-            {isAiDirty && activeTab === "models" && !selectedModel && (
+            {/* 仅在非模型配置 Tab 显示保存按钮 (因为模型配置现在有独立的保存逻辑) */}
+            {isAiDirty && activeTab !== "models" && (
               <Button
                 onClick={() => handleSave()}
                 className="flex items-center gap-2 h-8 px-4 text-xs rounded-full shadow-sm animate-in fade-in zoom-in duration-300"

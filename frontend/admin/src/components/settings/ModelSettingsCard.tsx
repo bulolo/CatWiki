@@ -6,8 +6,7 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Zap, Settings, CircuitBoard } from "lucide-react"
-import { useSettings } from "@/contexts/SettingsContext"
+import { CircuitBoard } from "lucide-react"
 import { ManualModeConfig } from "./ManualModeConfig"
 import { type ModelType } from "@/types/settings"
 
@@ -17,7 +16,6 @@ interface ModelSettingsCardProps {
 }
 
 export function ModelSettingsCard({ onSelectModel, activeTab }: ModelSettingsCardProps) {
-  const { configs, handleModeChange } = useSettings()
 
   return (
     <div className="space-y-6">
