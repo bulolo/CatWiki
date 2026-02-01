@@ -5,9 +5,12 @@
 import type { AIConfigUpdate } from '../models/AIConfigUpdate';
 import type { ApiResponse_dict_ } from '../models/ApiResponse_dict_';
 import type { ApiResponse_SystemConfigResponse_ } from '../models/ApiResponse_SystemConfigResponse_';
+import type { ApiResponse_Union_dict__NoneType__ } from '../models/ApiResponse_Union_dict__NoneType__';
 import type { ApiResponse_Union_SystemConfigResponse__NoneType__ } from '../models/ApiResponse_Union_SystemConfigResponse__NoneType__';
 import type { BotConfigUpdate } from '../models/BotConfigUpdate';
+import type { DocProcessorsUpdate } from '../models/DocProcessorsUpdate';
 import type { TestConnectionRequest } from '../models/TestConnectionRequest';
+import type { TestDocProcessorRequest } from '../models/TestDocProcessorRequest';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class AdminSystemConfigsService {
@@ -136,6 +139,64 @@ export class AdminSystemConfigsService {
         return this.httpRequest.request({
             method: 'POST',
             url: '/admin/v1/system-configs/test-connection',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Doc Processor Config
+     * 获取文档处理服务配置
+     *
+     * 返回当前配置的文档处理服务列表
+     * @returns ApiResponse_Union_dict__NoneType__ Successful Response
+     * @throws ApiError
+     */
+    public getAdminDocProcessorConfig(): CancelablePromise<ApiResponse_Union_dict__NoneType__> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/admin/v1/system-configs/doc-processor',
+        });
+    }
+    /**
+     * Update Doc Processor Config
+     * 更新文档处理服务配置
+     *
+     * - **processors**: 文档处理服务列表
+     * @returns ApiResponse_dict_ Successful Response
+     * @throws ApiError
+     */
+    public updateAdminDocProcessorConfig({
+        requestBody,
+    }: {
+        requestBody: DocProcessorsUpdate,
+    }): CancelablePromise<ApiResponse_dict_> {
+        return this.httpRequest.request({
+            method: 'PUT',
+            url: '/admin/v1/system-configs/doc-processor',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Test Doc Processor Connection
+     * 测试文档处理服务连接性
+     * @returns ApiResponse_dict_ Successful Response
+     * @throws ApiError
+     */
+    public testDocProcessorConnection({
+        requestBody,
+    }: {
+        requestBody: TestDocProcessorRequest,
+    }): CancelablePromise<ApiResponse_dict_> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/admin/v1/system-configs/doc-processor/test',
             body: requestBody,
             mediaType: 'application/json',
             errors: {

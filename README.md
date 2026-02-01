@@ -30,8 +30,16 @@
 ---
 
 ## 🚀 最近更新
+
+### 2026-02-01 🤖 LangGraph Agentic AI 改造
+- 🔧 **LangGraph 集成**: 采用 LangGraph 1.x 重构聊天功能，支持工具调用模式
+- 🛠️ **RAG 工具化**: 将知识库检索封装为 `search_knowledge_base` 工具
+- 🚦 **智能路由**: AI 自主判断是否需要调用知识库
+- � **会话持久化**: 集成 PostgreSQL Checkpointer，后端自动管理聊天历史
+- 📝 **API 简化**: 前端只需传 `thread_id` + `message`，无需传完整历史
+
 ### 2026-01-18 ⚡ 全新文档站点
-- 🌐 **文档站点上线**: 集成了全新的 [VitePress 文档站点](http://docs.catwiki.cn) (2026-01-18)
+- 🌐 **文档站点上线**: 集成了全新的 [VitePress 文档站点](http://docs.catwiki.cn)
 - 📝 **多语言对齐**: 重新对齐了中英文 README 说明
 - 🔧 **架构清理**: 优化了项目目录结构和 Docker 配置
 
@@ -43,7 +51,7 @@
 - ✅ **双端架构**: 独立的管理后台和客户端，职责清晰
 - ✅ **类型安全**: 前后端全面使用 TypeScript 和 Pydantic，类型安全有保障
 - ✅ **现代技术栈**: FastAPI + Next.js 14 + SQLAlchemy 2.0，使用最新技术
-- ✅ **AI 集成**: 内置 AI 智能问答，支持主流大语言模型
+- ✅ **AI 集成**: 内置 AI 智能问答，基于 LangGraph 构建 Agentic RAG 流程
 - ✅ **热更新**: 开发环境支持前后端代码热更新
 - ✅ **自动生成 SDK**: 后端 API 变更后自动生成 TypeScript SDK
 - ✅ **完善的文档**: 详细的 API 文档和使用指南
@@ -107,7 +115,9 @@
 
 ### 后端技术栈
 - **框架**: FastAPI
+- **AI 工作流**: LangGraph 1.x + LangChain
 - **数据库**: PostgreSQL + SQLAlchemy 2.0
+- **向量检索**: pgvector + langchain-postgres
 - **迁移工具**: Alembic
 - **包管理**: uv (高性能 Python 包管理器)
 - **身份认证**: JWT + PassLib

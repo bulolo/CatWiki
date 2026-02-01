@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_active_user
-from app.crud import crud_document
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas import ApiResponse
 from app.schemas.stats import SiteStats
+from app.services.stats_service import StatsService
 
 router = APIRouter()
 
@@ -28,7 +28,8 @@ async def get_site_stats(
     """
 
 
-    stats = await crud_document.get_site_stats(db, site_id=site_id)
+
+    stats = await StatsService.get_site_stats(db, site_id=site_id)
 
     return ApiResponse.ok(
         data=SiteStats(**stats),

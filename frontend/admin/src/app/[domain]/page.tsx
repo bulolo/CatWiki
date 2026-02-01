@@ -50,14 +50,23 @@ export default function AdminHome() {
     orderDir: 'desc',
   })
 
-  const { data: statsData, isLoading: statsLoading } = useSiteStats(siteId)
+  const { data: statsData, isLoading: statsLoading, error: statsError } = useSiteStats(siteId)
 
   const hotDocs = hotDocsData?.documents || []
   const recentDocs = recentDocsData?.documents || []
-  const loading = hotDocsLoading || recentDocsLoading
+  const loading = hotDocsLoading || recentDocsLoading || statsLoading
+  
+  // 调试辅助与数据转换
   const stats = {
-    totalDocuments: statsData?.total_documents || 0,
-    totalViews: statsData?.total_views || 0,
+    totalDocuments: statsData?.total_documents ?? 0,
+    totalViews: statsData?.total_views ?? 0,
+    totalChatSessions: statsData?.total_chat_sessions ?? 0,
+    totalChatMessages: statsData?.total_chat_messages ?? 0,
+    activeChatUsers: statsData?.active_chat_users ?? 0,
+    newSessionsToday: statsData?.new_sessions_today ?? 0,
+    newMessagesToday: statsData?.new_messages_today ?? 0,
+    dailyTrends: statsData?.daily_trends || [],
+    recentSessions: statsData?.recent_sessions || [],
   }
 
   return (
@@ -74,11 +83,21 @@ export default function AdminHome() {
           const Icon = statIcons[stat.title as keyof typeof statIcons] || FileText
           // 根据标题显示实际数据
           let displayValue = "0"
+          let subValue = ""
+          
           if (stat.title === "文档总数") {
             displayValue = stats.totalDocuments.toString()
           } else if (stat.title === "访问次数") {
             displayValue = stats.totalViews.toString()
+          } else if (stat.title === "问答次数") {
+            displayValue = stats.totalChatMessages.toString()
+            if (stats.newMessagesToday > 0) {
+              subValue = `今日 +${stats.newMessagesToday}`
+            }
+          } else if (stat.title === "访问用户数") {
+            displayValue = stats.activeChatUsers.toString()
           }
+
           return (
             <Card key={stat.title} className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -91,13 +110,126 @@ export default function AdminHome() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{displayValue}</div>
-                <p className="text-xs text-slate-500 mt-1">
-                  {stat.description}
-                </p>
+                <div className="flex items-center justify-between mt-1.5">
+                  <p className="text-xs text-slate-500 font-medium">
+                    {stat.description}
+                  </p>
+                  {stat.title === "问答次数" || stat.title === "访问次数" ? (
+                    <div className="flex items-center gap-1.5 font-bold">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-tighter">TODAY</span>
+                        <span className={cn(
+                          "text-xs px-2 py-0.5 rounded-full transition-all",
+                          (subValue.includes("+0") || !subValue) ? "bg-slate-100 text-slate-400" : "bg-emerald-500 text-white shadow-sm"
+                        )}>
+                          {subValue.replace('今日 ', '') || '0'}
+                        </span>
+                    </div>
+                  ) : subValue && (
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                      {subValue}
+                    </span>
+                  )}
+                </div>
               </CardContent>
             </Card>
           )
         })}
+      </div>
+
+      {/* 趋势与动态汇总 */}
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* AI 会话趋势 - 占据 2/3 宽度 */}
+        <Card className="md:col-span-2 border-border/50 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-border/40 bg-muted/20 px-6 py-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-purple-500/10 rounded-xl text-purple-600">
+                <Network className="h-5 w-5" />
+              </div>
+              <CardTitle className="text-base font-bold">AI 会话趋势</CardTitle>
+            </div>
+            <div className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-1 rounded">最近 7 天</div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="h-[200px] w-full flex items-stretch justify-between gap-2 px-2">
+              {statsError ? (
+                <div className="w-full h-full flex items-center justify-center text-rose-500 text-xs text-center p-4">
+                  加载趋势失败: {(statsError as any)?.message || "未知错误"}
+                </div>
+              ) : (stats.dailyTrends && stats.dailyTrends.length > 0) ? (
+                (() => {
+                  const maxVal = Math.max(...stats.dailyTrends.map((d: any) => Number(d.sessions) || 0)) || 1
+                  return stats.dailyTrends.map((day: any, i: number) => {
+                    const sessions = Number(day.sessions) || 0
+                    const height = (sessions / maxVal) * 100
+                    const isToday = i === stats.dailyTrends.length - 1
+                    return (
+                      <div key={day.date} className="flex-1 h-full flex flex-col items-center gap-2 group">
+                        <div className="flex-1 w-full relative flex flex-col items-center justify-end">
+                          {/* 气泡提示 */}
+                          <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-20 pointer-events-none shadow-xl">
+                            {sessions} 会话 / {day.messages || 0} 问答
+                          </div>
+                          <div 
+                            className={cn(
+                              "w-full max-w-[32px] transition-all duration-300 rounded-t-sm",
+                              sessions > 0 ? "bg-purple-500 hover:bg-purple-600 shadow-sm" : "bg-slate-100 group-hover:bg-slate-200"
+                            )}
+                            style={{ height: `${Math.max(height, 4)}%` }}
+                          />
+                        </div>
+                        <span className={cn(
+                          "flex-shrink-0 text-[10px] font-medium transition-colors",
+                          isToday ? "text-purple-600 font-bold underline decoration-purple-200 underline-offset-4" : "text-slate-400 group-hover:text-slate-600"
+                        )}>{day.date}</span>
+                      </div>
+                    )
+                  })
+                })()
+              ) : statsLoading ? (
+                 <div className="w-full h-full flex items-center justify-center text-slate-300 animate-pulse text-sm">正在加载统计数据...</div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-300 italic text-sm">暂无趋势采样数据</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 最近 AI 问答 - 占据 1/3 宽度 */}
+        <Card className="md:col-span-1 border-border/50 shadow-sm overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-border/40 bg-muted/20 px-6 py-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-600">
+                <MessageSquare className="h-5 w-5" />
+              </div>
+              <CardTitle className="text-base font-bold">最近 AI 问答</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border/30">
+              {stats.recentSessions.length > 0 ? (
+                stats.recentSessions.map((session: any) => (
+                  <div key={session.thread_id} className="p-4 hover:bg-muted/30 transition-colors cursor-default group">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="text-xs font-bold text-slate-700 truncate max-w-[150px]">{session.title || '新对话'}</h4>
+                      <span className="text-[10px] font-medium text-slate-400">
+                        {new Date(session.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                       <div className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] text-slate-500 font-medium">
+                        {session.message_count} 轮对话
+                       </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-20 text-center">
+                  <p className="text-xs text-muted-foreground italic">暂无对话记录</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

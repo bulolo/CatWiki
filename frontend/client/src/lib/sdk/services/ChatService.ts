@@ -11,7 +11,9 @@ export class ChatService {
     /**
      * Create Chat Completion
      * 创建聊天补全 (OpenAI 兼容接口)
-     * 对接真实 AI 服务
+     *
+     * 使用 PostgreSQL Checkpointer 持久化会话历史，
+     * 前端只需传入 thread_id 和当前消息。
      * @returns ChatCompletionResponse Successful Response
      * @throws ApiError
      */

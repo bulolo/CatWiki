@@ -146,7 +146,7 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, quickQuestions: pr
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="问问 AI 助手..."
-              className="flex-1 bg-transparent border-none outline-none px-4 md:px-6 py-2 md:py-3 text-sm md:text-base lg:text-lg placeholder:text-slate-400"
+              className="flex-1 bg-transparent border-none outline-none px-4 md:px-6 py-2 md:py-3 text-sm md:text-base lg:text-lg placeholder:text-slate-400 font-sans"
               disabled={isLoading}
               aria-label="输入您的问题"
             />

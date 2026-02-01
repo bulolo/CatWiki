@@ -289,7 +289,7 @@ async def respond_node(state: ChatGraphState) -> dict:
 # 构建 Agent 图
 # =============================================================================
 
-def create_agent_graph() -> StateGraph:
+def create_agent_graph(checkpointer=None):
     """创建工具调用 Agent 图
     
     流程:
@@ -297,8 +297,8 @@ def create_agent_graph() -> StateGraph:
         agent --[需要工具]--> retrieve -> respond -> END
         agent --[不需要工具]--> respond -> END
     
-    注意：这是简化版的 Agent 图。在完整实现中，
-    应该使用 create_agent() 或 model.bind_tools() + ToolNode。
+    Args:
+        checkpointer: 可选的 Checkpointer 实例，用于持久化状态
     
     Returns:
         编译后的 StateGraph
@@ -326,7 +326,7 @@ def create_agent_graph() -> StateGraph:
     graph_builder.add_edge("retrieve", "respond")
     graph_builder.add_edge("respond", END)
     
-    return graph_builder.compile()
+    return graph_builder.compile(checkpointer=checkpointer)
 
 
 # 全局单例图实例

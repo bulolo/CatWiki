@@ -5,12 +5,8 @@ import { env } from "@/lib/env"
 import type { Message, Source } from "@/types"
 
 interface UseAIChatOptions {
-  /** 初始消息列表 */
+  /** 初始消息列表（用于欢迎消息等） */
   initialMessages?: Message[]
-  /** 当前选中的站点名称（用于生成 filter，暂未用到） */
-  selectedSiteName?: string | null
-  /** 当前选中的站点域名（用于生成 filter，暂未用到） */
-  selectedSiteDomain?: string | null
   /** 当前选中的站点ID（用于生成 filter） */
   selectedSiteId?: number | null
 }
@@ -22,8 +18,17 @@ interface UseAIChatReturn {
   isLoading: boolean
   /** 发送消息 */
   sendMessage: (content: string) => Promise<void>
-  /** 重置消息 */
+  /** 重置消息（同时重置 thread_id） */
   resetMessages: () => void
+  /** 当前会话ID */
+  threadId: string
+}
+
+/**
+ * 生成唯一的 thread_id
+ */
+function generateThreadId(): string {
+  return `thread-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
 }
 
 export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
@@ -34,6 +39,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [isLoading, setIsLoading] = useState(false)
+  const [threadId, setThreadId] = useState<string>(generateThreadId)
   const abortControllerRef = useRef<AbortController | null>(null)
 
   // 引用初始消息，用于重置
@@ -61,19 +67,13 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
     setMessages(prev => [...prev, userMsg, assistantMsg])
 
-    // 3. 准备请求
+    // 3. 准备请求（持久化模式）
     abortControllerRef.current = new AbortController()
 
-    // 构建请求体
+    // 构建请求体 - 只传 thread_id 和 message
     const requestBody: any = {
-      model: "qwen-plus", // 后端有默认值，这里也可传
-      messages: [
-        ...messages,
-        userMsg
-      ].map(m => ({
-        role: m.role,
-        content: m.content
-      })),
+      thread_id: threadId,
+      message: content.trim(),
       stream: true,
     }
 
@@ -162,7 +162,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
         console.log("Chat aborted")
       } else {
         console.error("Chat error:", error)
-        //在这里可以添加错误提示消息
         setMessages(prev =>
           prev.map(msg =>
             msg.id === assistantMsgId
@@ -175,13 +174,14 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       setIsLoading(false)
       abortControllerRef.current = null
     }
-  }, [messages, isLoading, selectedSiteId])
+  }, [threadId, isLoading, selectedSiteId])
 
   const resetMessages = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
     setMessages(initialMessagesRef.current)
+    setThreadId(generateThreadId()) // 重置时生成新的 thread_id
     setIsLoading(false)
   }, [])
 
@@ -190,5 +190,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     isLoading,
     sendMessage,
     resetMessages,
+    threadId,
   }
 }

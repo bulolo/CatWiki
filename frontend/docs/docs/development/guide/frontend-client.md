@@ -73,9 +73,13 @@ const response = await apiClient.documents.listDocuments({
 ```typescript
 import { useAIChat } from '@/hooks/useAIChat'
 
-const { messages, input, handleInputChange, handleSubmit } = useAIChat({
-  siteIdOrDomain: 'medical'
+// threadId 自动生成，用于持久化会话
+const { messages, isLoading, sendMessage, threadId } = useAIChat({
+  selectedSiteId: 1  // 可选，用于过滤知识库
 })
+
+// 发送消息（只需传当前消息内容）
+await sendMessage("你好，请介绍一下...")
 ```
 
 ---

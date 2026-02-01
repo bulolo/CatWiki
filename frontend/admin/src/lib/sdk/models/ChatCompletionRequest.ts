@@ -2,11 +2,11 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { ChatMessage } from './ChatMessage';
 import type { VectorRetrieveFilter } from './VectorRetrieveFilter';
 export type ChatCompletionRequest = {
     model?: string;
-    messages: Array<ChatMessage>;
+    message: string;
+    thread_id: string;
     temperature?: (number | null);
     top_p?: (number | null);
     'n'?: (number | null);

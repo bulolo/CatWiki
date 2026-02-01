@@ -6,6 +6,7 @@ import type { BaseHttpRequest } from './core/BaseHttpRequest';
 import type { OpenAPIConfig } from './core/OpenAPI';
 import { FetchHttpRequest } from './core/FetchHttpRequest';
 import { ChatService } from './services/ChatService';
+import { ChatSessionsService } from './services/ChatSessionsService';
 import { CollectionsService } from './services/CollectionsService';
 import { DocumentsService } from './services/DocumentsService';
 import { FilesService } from './services/FilesService';
@@ -13,6 +14,7 @@ import { SitesService } from './services/SitesService';
 type HttpRequestConstructor = new (config: OpenAPIConfig) => BaseHttpRequest;
 export class CatWikiClientSdk {
     public readonly chat: ChatService;
+    public readonly chatSessions: ChatSessionsService;
     public readonly collections: CollectionsService;
     public readonly documents: DocumentsService;
     public readonly files: FilesService;
@@ -31,6 +33,7 @@ export class CatWikiClientSdk {
             ENCODE_PATH: config?.ENCODE_PATH,
         });
         this.chat = new ChatService(this.request);
+        this.chatSessions = new ChatSessionsService(this.request);
         this.collections = new CollectionsService(this.request);
         this.documents = new DocumentsService(this.request);
         this.files = new FilesService(this.request);
