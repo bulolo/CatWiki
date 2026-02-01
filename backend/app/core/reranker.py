@@ -69,7 +69,7 @@ class Reranker:
         Returns:
             重排序后的文档列表
         """
-        """
+
         # 每次或者定期加载配置
         await self._ensure_config()
 

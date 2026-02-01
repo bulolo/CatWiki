@@ -126,6 +126,8 @@ async def create_chat_completion(
 
     # RAG: 如果有最后一条消息，尝试检索相关文档
     context_str = ""
+    retrieved_docs = []
+    relevant_docs = []
     if request.messages:
         try:
             from app.services.vector_service import VectorService
