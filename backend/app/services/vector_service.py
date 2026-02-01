@@ -48,9 +48,12 @@ class VectorService:
                     filter_dict["source"] = filter.source
                 
             # 2. 决定检索数量
+            # 确保 Reranker 配置是最新的
+            await reranker._ensure_config()
+            
             # 如果启用了 Rerank，初始召回数量需要增加
             recall_k = k
-            do_rerank = enable_rerank if enable_rerank is not None else settings.AI_RERANK_ENABLE
+            do_rerank = enable_rerank if enable_rerank is not None else reranker.is_enabled
             
             if do_rerank:
                 recall_k = max(recall_k * 5, 50)  # 至少召回 50 条用于精排

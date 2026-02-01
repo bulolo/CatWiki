@@ -22,5 +22,9 @@ export type ModelConfig = {
      * API Base URL
      */
     baseUrl: string;
+    /**
+     * Embedding 维度 (自动探测)
+     */
+    dimension?: (number | null);
 };
 

@@ -136,14 +136,50 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
 
     updateAIConfigMutation.mutate(aiConfig, {
-      onSuccess: () => {
-        setSavedConfigs(prev => ({
-          ...prev,
-          chat: { ...configs.chat },
-          embedding: { ...configs.embedding },
-          rerank: { ...configs.rerank },
-          vl: { ...configs.vl }
-        }))
+      onSuccess: (data: any) => {
+        // [MODIFIED] 直接使用后端返回的最新配置更新本地状态
+        // 这样可以立即显示自动探测的 dimension，而无需等待 refetch
+        if (data && data.config_value) {
+            const aiData = data.config_value;
+            // 处理 manualConfig 兼容性
+            let chatConfig = aiData.chat
+            let embeddingConfig = aiData.embedding
+            let rerankConfig = aiData.rerank
+            let vlConfig = aiData.vl
+
+            if (aiData.manualConfig) {
+                 chatConfig = aiData.manualConfig.chat
+                 embeddingConfig = aiData.manualConfig.embedding
+                 rerankConfig = aiData.manualConfig.rerank
+                 vlConfig = aiData.manualConfig.vl
+            }
+            
+            setSavedConfigs(prev => ({
+                ...prev,
+                chat: deepMerge(initialConfigs.chat, chatConfig),
+                embedding: deepMerge(initialConfigs.embedding, embeddingConfig),
+                rerank: deepMerge(initialConfigs.rerank, rerankConfig),
+                vl: deepMerge(initialConfigs.vl, vlConfig),
+            }))
+            // 同时更新当前编辑状态，以显示最新值
+            setConfigs(prev => ({
+                ...prev,
+                chat: deepMerge(initialConfigs.chat, chatConfig),
+                embedding: deepMerge(initialConfigs.embedding, embeddingConfig),
+                rerank: deepMerge(initialConfigs.rerank, rerankConfig),
+                vl: deepMerge(initialConfigs.vl, vlConfig),
+            }))
+        } else {
+             // Fallback logic if data missing
+             setSavedConfigs(prev => ({
+              ...prev,
+              chat: { ...configs.chat },
+              embedding: { ...configs.embedding },
+              rerank: { ...configs.rerank },
+              vl: { ...configs.vl }
+            }))
+        }
+
         toast.success("AI 模型配置已保存")
       },
       onError: (error) => {

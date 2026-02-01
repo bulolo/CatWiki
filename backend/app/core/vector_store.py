@@ -13,6 +13,8 @@ from langchain_postgres.v2.engine import Column
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import settings
+from app.db.database import AsyncSessionLocal
+from app.crud.system_config import crud_system_config
 
 logger = logging.getLogger(__name__)
 
@@ -36,16 +38,8 @@ class VectorStoreManager:
         self._sa_engine = None  # Underlying SQLAlchemy AsyncEngine
         self._vector_store: PGVectorStore | None = None
 
-        # 初始化 OpenAI 兼容 Embeddings
-        from app.core.embeddings import OpenAICompatibleEmbeddings
+        self.embeddings = None
 
-        self.embeddings = OpenAICompatibleEmbeddings(
-            model=settings.AI_EMBEDDING_MODEL,
-            api_key=settings.AI_EMBEDDING_API_KEY,
-            base_url=settings.AI_EMBEDDING_API_BASE
-        )
-
-        logger.info(f"向量存储配置: model={settings.AI_EMBEDDING_MODEL}, dim={settings.AI_EMBEDDING_DIMENSION}")
 
     async def _ensure_initialized(self):
         """确保向量存储已初始化（懒加载）"""
@@ -53,6 +47,33 @@ class VectorStoreManager:
             return
 
         try:
+            # 1. 获取 AI 配置
+            ai_config = await self._get_ai_config()
+            embedding_conf = ai_config.get("embedding", {})
+            
+            # 校验配置
+            if not embedding_conf or not embedding_conf.get("apiKey"):
+                 logger.error("❌ 未找到有效的 Embedding 配置，无法初始化向量存储。请在管理后台配置 AI 模型。")
+                 # 可以在这里抛出异常，或者设为不可用状态
+                 raise ValueError("Missing Embedding Configuration")
+
+            model = embedding_conf.get("model", "")
+            api_key = embedding_conf.get("apiKey", "")
+            base_url = embedding_conf.get("baseUrl", "")
+            dimension = int(embedding_conf.get("dimension") or 1024)
+
+            # 初始化 Embeddings
+            from app.core.embeddings import OpenAICompatibleEmbeddings
+            self.embeddings = OpenAICompatibleEmbeddings(
+                model=model,
+                api_key=api_key,
+                base_url=base_url
+            )
+            logger.info(f"向量存储配置: model={model}, dim={dimension}")
+
+            # 2. 检查数据库维度 (Safeguard)
+            # 在连接建立后检查
+            
             # 构建异步连接字符串
             encoded_user = quote_plus(settings.POSTGRES_USER)
             encoded_password = quote_plus(settings.POSTGRES_PASSWORD)
@@ -60,6 +81,7 @@ class VectorStoreManager:
                 f"postgresql+asyncpg://{encoded_user}:{encoded_password}"
                 f"@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
             )
+
 
             # 创建配置好的 AsyncEngine
             logger.debug("创建数据库引擎...")
@@ -80,6 +102,10 @@ class VectorStoreManager:
             # 使用 PGEngine.from_engine()（文档推荐）
             logger.debug("创建 PGEngine...")
             self._engine = PGEngine.from_engine(engine=async_engine)
+            
+            # --- 维度检查 (Start) ---
+            await self._check_database_dimension(dimension)
+            # --- 维度检查 (End) ---
 
             # 定义元数据列
             metadata_columns = [
@@ -102,7 +128,7 @@ class VectorStoreManager:
                     logger.info(f"创建向量存储表: {self.collection_name}")
                     await self._engine.ainit_vectorstore_table(
                         table_name=self.collection_name,
-                        vector_size=settings.AI_EMBEDDING_DIMENSION,
+                        vector_size=dimension,
                         metadata_columns=metadata_columns,
                     )
                 else:
@@ -125,7 +151,8 @@ class VectorStoreManager:
             )
 
             self._initialized = True
-            logger.info(f"✅ [VectorStore] 初始化完成 (Model: {settings.AI_EMBEDDING_MODEL})")
+            self._initialized = True
+            logger.info(f"✅ [VectorStore] 初始化完成 (Model: {model})")
 
         except Exception as e:
             logger.error(f"向量存储初始化失败: {e}", exc_info=True)
@@ -347,6 +374,71 @@ class VectorStoreManager:
         except Exception as e:
             logger.error(f"获取文档片段失败: {e}", exc_info=True)
             return []
+
+    async def _get_ai_config(self) -> dict:
+        """从数据库获取 AI 配置"""
+        async with AsyncSessionLocal() as db:
+            # 硬编码 key，或者从常量导入。为了避免循环导入，这里直接使用 "ai_config"
+            config = await crud_system_config.get_by_key(db, config_key="ai_config")
+            if not config:
+                return {}
+            
+            # 标准化配置 (类似 system_config.py 中的逻辑)
+            val = config.config_value
+            if "manualConfig" in val:
+                manual = val.get("manualConfig", {})
+                return {
+                    "chat": manual.get("chat", {}),
+                    "embedding": manual.get("embedding", {}),
+                    "rerank": manual.get("rerank", {}),
+                    "vl": manual.get("vl", {})
+                }
+            
+            # 假设已经是新结构
+            return val
+
+    async def _check_database_dimension(self, expected_dim: int):
+        """检查数据库中的向量维度是否与配置匹配"""
+        try:
+            from sqlalchemy import text
+            
+            # 查询列类型定义
+            # format_type(atttypid, atttypmod) 会返回如 'vector(1024)' 的字符串
+            sql = text(f"SELECT format_type(atttypid, atttypmod) as type_def FROM pg_attribute WHERE attrelid = :table::regclass AND attname = 'embedding'")
+            
+            async with self._sa_engine.connect() as conn:
+                try:
+                    result = await conn.execute(sql, {"table": self.collection_name})
+                    row = result.fetchone()
+                except Exception:
+                    # 表可能不存在，那就不需要检查
+                    return
+
+                if row and row.type_def:
+                    type_def = row.type_def # e.g., "vector(1024)"
+                    if "vector(" in type_def:
+                        try:
+                            # 提取括号内的数字
+                            actual_dim = int(type_def.split("(")[1].split(")")[0])
+                            
+                            if actual_dim != expected_dim:
+                                error_msg = (
+                                    f"CRITICAL: Database vector dimension mismatch! "
+                                    f"DB Table '{self.collection_name}' has dimension {actual_dim}, "
+                                    f"but configuration requires {expected_dim}. "
+                                    f"Please DROP the table to reset: 'DROP TABLE {self.collection_name};'"
+                                )
+                                logger.critical(error_msg)
+                                raise ValueError(error_msg)
+                            else:
+                                logger.info(f"✅ [VectorStore] Dimension check passed: {actual_dim}")
+                        except ValueError:
+                             logger.warning(f"⚠️ [VectorStore] Could not parse vector dimension from '{type_def}'")
+        except Exception as e:
+            # 如果是 "relation does not exist" 之类的错误，说明表还没建，可以忽略
+            if "does not exist" in str(e):
+                return
+            raise e
 
     async def close(self):
         """关闭数据库连接"""

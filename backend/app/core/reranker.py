@@ -18,10 +18,35 @@ class Reranker:
     """Reranker 处理类"""
 
     def __init__(self):
-        self.api_key = settings.AI_RERANK_API_KEY
-        self.base_url = settings.AI_RERANK_API_BASE
-        self.model = settings.AI_RERANK_MODEL
-        self._enabled = settings.AI_RERANK_ENABLE
+        self.api_key = None
+        self.base_url = None
+        self.model = None
+        self._enabled = False
+        
+    async def _ensure_config(self):
+        """确保配置已加载"""
+        from app.db.database import AsyncSessionLocal
+        from app.crud.system_config import crud_system_config
+        
+        async with AsyncSessionLocal() as db:
+            config = await crud_system_config.get_by_key(db, config_key="ai_config")
+            if not config:
+                return
+
+            val = config.config_value
+            # check for manualConfig/legacy structure or flat structure
+            rerank_conf = {}
+            if "manualConfig" in val:
+                rerank_conf = val.get("manualConfig", {}).get("rerank", {})
+            else:
+                rerank_conf = val.get("rerank", {})
+                
+            if rerank_conf:
+                self.api_key = rerank_conf.get("apiKey")
+                self.base_url = rerank_conf.get("baseUrl")
+                self.model = rerank_conf.get("model")
+                # 如果有 key/url 就算 enable (或者可以加一个 enable 字段，这里假设存在即启用)
+                self._enabled = bool(self.api_key and self.base_url)
 
     @property
     def is_enabled(self) -> bool:
@@ -44,6 +69,10 @@ class Reranker:
         Returns:
             重排序后的文档列表
         """
+        """
+        # 每次或者定期加载配置
+        await self._ensure_config()
+
         if not self.is_enabled or not documents:
             return documents[:top_n]
 

@@ -138,10 +138,8 @@ async def create_chat_completion(
             retrieved_docs = await VectorService.retrieve(
                 query=query,
                 k=10,  # 召回10条
-                threshold=0.3, # 相似度阈值
-                filter=request.filter, # 传递过滤器
                 # 后续可以在 request 中增加 enable_rerank 参数控制
-                enable_rerank=settings.AI_RERANK_ENABLE
+                # enable_rerank=settings.AI_RERANK_ENABLE (已移除，由 VectorService 自动判断)
             )
             
             if retrieved_docs:

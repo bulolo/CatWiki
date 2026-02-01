@@ -20,30 +20,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = Field(default="local", pattern="^(local|dev|prod)$")
     DEBUG: bool = Field(default=False)
 
-    # AI 配置 - 对话 (Chat)
-    AI_CHAT_API_KEY: str = Field(default="", description="Chat API Key")
-    AI_CHAT_API_BASE: str = Field(default="", description="Chat API Base URL")
-    AI_CHAT_MODEL: str = Field(default="", description="Chat 模型名称")
 
-    # AI 配置 - 向量 (Embedding)
-    AI_EMBEDDING_API_KEY: str = Field(default="", description="Embedding API Key")
-    AI_EMBEDDING_API_BASE: str = Field(default="", description="Embedding API Base URL")
-    AI_EMBEDDING_MODEL: str = Field(default="", description="Embedding 模型名称")
-    AI_EMBEDDING_DIMENSION: int = Field(
-        default=1024,
-        description="Embedding 向量维度"
-    )
-
-    # AI 配置 - 重排序 (Reranker)
-    AI_RERANK_ENABLE: bool = Field(default=False, description="是否启用重排序")
-    AI_RERANK_API_KEY: str = Field(default="", description="Reranker API Key")
-    AI_RERANK_API_BASE: str = Field(default="", description="Reranker API Base URL")
-    AI_RERANK_MODEL: str = Field(default="", description="Reranker 模型名称")
-
-    # AI 配置 - 视觉 (VL/Vision)
-    AI_VL_API_KEY: str = Field(default="", description="VL API Key")
-    AI_VL_API_BASE: str = Field(default="", description="VL API Base URL")
-    AI_VL_MODEL: str = Field(default="", description="VL 模型名称")
 
     # 数据库配置
     POSTGRES_SERVER: str = Field(default="localhost")

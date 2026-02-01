@@ -37,8 +37,12 @@ export function SingleModelConfig({ type, onSuccess }: SingleModelConfigProps) {
     testConnection.mutate(
       { modelType: type, config }, 
       {
-        onSuccess: () => {
+        onSuccess: (data: any) => {
           toast.success("连接测试成功")
+          // 如果返回了 dimension，则更新到配置中
+          if (data && data.dimension) {
+            handleUpdate(type, "dimension", data.dimension)
+          }
         },
         onError: (err) => {
           toast.error(err.message || "连接测试失败")
@@ -69,6 +73,32 @@ export function SingleModelConfig({ type, onSuccess }: SingleModelConfigProps) {
 
   return (
     <div className="space-y-6 pt-4">
+      {type === "embedding" && (
+        <div className="bg-amber-50 border border-amber-200 rounded-md p-4 flex gap-3 text-amber-900 text-sm">
+          <div className="shrink-0 mt-0.5">
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              className="h-5 w-5 text-amber-600"
+            >
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+              <path d="M12 9v4"/>
+              <path d="M12 17h.01"/>
+            </svg>
+          </div>
+          <div className="space-y-1">
+             <p className="font-medium text-amber-800">更改需谨慎</p>
+             <p>修改向量模型配置可能导致现有的向量知识库无法检索！</p>
+             <p>一旦修改，建议在"文档管理"中对所有文档执行"重新向量化"操作，否则旧数据的向量将与新模型不兼容。</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-6">
         <div className="space-y-2">
           <label className="text-sm font-semibold text-slate-700">协议类型</label>
@@ -107,6 +137,25 @@ export function SingleModelConfig({ type, onSuccess }: SingleModelConfigProps) {
           className="bg-white font-mono"
         />
       </div>
+
+      {type === "embedding" && (
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">向量维度 (自动获取)</label>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              value={config.dimension || ""}
+              disabled={true}
+              placeholder="等待自动探测..."
+              className="bg-slate-50 font-mono text-slate-500"
+            />
+          </div>
+          <p className="text-xs text-slate-500">
+            该值将在保存配置时自动从模型提供商探测。
+          </p>
+        </div>
+      )}
+
 
       <div className="pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
         <Button 

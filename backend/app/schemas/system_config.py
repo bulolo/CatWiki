@@ -12,6 +12,7 @@ class ModelConfig(BaseModel):
     model: str = Field(..., description="模型名称")
     apiKey: str = Field(..., description="API Key")
     baseUrl: str = Field(..., description="API Base URL")
+    dimension: int | None = Field(default=None, description="Embedding 维度 (自动探测)")
 
 
 

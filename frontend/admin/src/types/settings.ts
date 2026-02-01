@@ -7,6 +7,7 @@ export type ModelConfig = {
   model: string
   apiKey: string
   baseUrl: string
+  dimension?: number
 }
 
 export type BotConfig = {

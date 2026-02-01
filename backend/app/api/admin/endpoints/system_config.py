@@ -28,6 +28,29 @@ BOT_CONFIG_KEY = "bot_config"
 MASKED_API_KEY = "********"
 
 
+
+def _format_openai_error(e: Exception) -> str:
+    """格式化 OpenAI 错误信息，使其更易读"""
+    try:
+        # 尝试解析 JSON 错误信息
+        error_str = str(e)
+        if "Error code:" in error_str:
+            # 提取 Error code
+            import re
+            code_match = re.search(r"Error code: (\d+)", error_str)
+            code = code_match.group(1) if code_match else "Unknown"
+            
+            # 尝试提取 message
+            if "'message':" in error_str:
+                msg_match = re.search(r"'message': '([^']*)'", error_str)
+                msg = msg_match.group(1) if msg_match else "Unknown error"
+                return f"请求失败 ({code}): {msg}"
+            
+        return f"请求失败: {error_str}"
+    except:
+        return f"发生未知错误: {str(e)}"
+
+
 def mask_variable(value: str) -> str:
     """如果值存在且不为空，则返回掩码，否则返回原值"""
     if value and len(value) > 0:
@@ -120,6 +143,36 @@ async def update_ai_config(
                 and "apiKey" in existing_value[model_type]
             ):
                 config_value[model_type]["apiKey"] = existing_value[model_type]["apiKey"]
+
+    # 自动探测 Embedding Dimension
+    embedding_conf = config_value.get("embedding", {})
+    # 如果有配置，且 apiKey/baseUrl 存在
+    if embedding_conf and embedding_conf.get("apiKey") and embedding_conf.get("baseUrl"):
+        # 如果 dimension 为空 (None or 0)，尝试探测
+        if not embedding_conf.get("dimension"):
+            try:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info("🔍 Auto-detecting embedding dimension...")
+                
+                from openai import AsyncOpenAI
+                client = AsyncOpenAI(
+                    api_key=embedding_conf["apiKey"],
+                    base_url=embedding_conf["baseUrl"],
+                    timeout=10.0
+                )
+                resp = await client.embeddings.create(
+                    model=embedding_conf["model"],
+                    input="test"
+                )
+                if resp.data:
+                    dim = len(resp.data[0].embedding)
+                    embedding_conf["dimension"] = dim
+                    logger.info(f"✅ Detected dimension: {dim}")
+            except Exception as e:
+                # 探测失败不阻断保存，但记录错误
+                import logging
+                logging.getLogger(__name__).warning(f"⚠️ Failed to auto-detect dimension: {e}")
 
     config = await crud_system_config.update_by_key(
         db,
@@ -290,9 +343,8 @@ async def test_model_connection(
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
-            msg = str(e)
-            logger.error(f"❌ [TestConnection] Chat/VL failed: {msg}", exc_info=True)
-            return ApiResponse.error(msg=f"连接失败: {msg}")
+            logger.error(f"❌ [TestConnection] Chat/VL failed: {e}", exc_info=True)
+            return ApiResponse.error(msg=_format_openai_error(e))
 
     # 2. 向量测试 (使用 OpenAI Embedding API)
     elif model_type == "embedding":
@@ -304,21 +356,20 @@ async def test_model_connection(
                 timeout=10.0
             )
             # 发送简单的嵌入请求
-            await client.embeddings.create(
+            resp = await client.embeddings.create(
                 model=config.model,
                 input="test"
             )
-            return ApiResponse.ok(msg="连接成功")
+            dim = len(resp.data[0].embedding)
+            return ApiResponse.ok(
+                data={"dimension": dim},
+                msg=f"连接成功 (Detected Dimension: {dim})"
+            )
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
-            msg = str(e)
-            # 优化 OpenAI 错误显示
-            if "AuthenticationError" in str(type(e)):
-                 msg = "认证失败 (401)，请检查 API Key"
-            
-            logger.error(f"❌ [TestConnection] Embedding failed: {msg}", exc_info=True)
-            return ApiResponse.error(msg=f"连接失败: {msg}")
+            logger.error(f"❌ [TestConnection] Embedding failed: {e}", exc_info=True)
+            return ApiResponse.error(msg=_format_openai_error(e))
 
     # 3. 重排序测试 (使用 Standard/Cohere-like Rerank API)
     elif model_type == "rerank":
