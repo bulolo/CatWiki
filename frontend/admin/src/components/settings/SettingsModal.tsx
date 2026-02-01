@@ -15,12 +15,14 @@ import {
   Save,
   Loader2,
   X,
-  ChevronLeft
+  ChevronLeft,
+  FileText
 } from "lucide-react"
 import { getUserInfo } from "@/lib/auth"
 import { UserRole } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { SiteSettings } from "./SiteSettings"
+import { DocProcessorSettings } from "./DocProcessorSettings"
 import {
   Tabs,
   TabsContent,
@@ -209,6 +211,20 @@ function SettingsContent() {
                   用户权限
                 </TabsTrigger>
               )}
+
+              {isAdmin && (
+                <TabsTrigger
+                  value="doc-processor"
+                  className={cn(
+                    "w-full justify-start px-3 py-2.5 h-auto text-sm font-medium rounded-lg transition-all",
+                    "data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-slate-200",
+                    "hover:bg-white/60 hover:text-slate-900 text-slate-500"
+                  )}
+                >
+                  <FileText className="h-4 w-4 mr-3 opacity-70" />
+                  文档解析 (开发中)
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Content Area */}
@@ -234,6 +250,10 @@ function SettingsContent() {
 
                 <TabsContent value="users" className="mt-0 h-full space-y-6 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <GlobalUsers />
+                </TabsContent>
+
+                <TabsContent value="doc-processor" className="mt-0 h-full space-y-6 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <DocProcessorSettings />
                 </TabsContent>
               </div>
             </div>

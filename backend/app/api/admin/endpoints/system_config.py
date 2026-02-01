@@ -14,8 +14,10 @@ from app.schemas.response import ApiResponse
 from app.schemas.system_config import (
     AIConfigUpdate,
     BotConfigUpdate,
+    DocProcessorsUpdate,
     SystemConfigResponse,
     TestConnectionRequest,
+    TestDocProcessorRequest,
 )
 
 router = APIRouter()
@@ -23,6 +25,7 @@ router = APIRouter()
 # 配置键常量
 AI_CONFIG_KEY = "ai_config"
 BOT_CONFIG_KEY = "bot_config"
+DOC_PROCESSOR_CONFIG_KEY = "doc_processor_config"
 
 # 模型类型常量
 MODEL_TYPES = ["chat", "embedding", "rerank", "vl"]
@@ -401,3 +404,127 @@ async def test_model_connection(
             return ApiResponse.error(msg=f"请求失败: {str(e)}")
 
     return ApiResponse.error(msg="未知的模型类型")
+
+
+# ============ 文档处理服务配置端点 ============
+
+def _mask_doc_processor_config_inplace(config_value: dict) -> None:
+    """对文档处理服务配置进行原地脱敏处理"""
+    processors = config_value.get("processors", [])
+    for processor in processors:
+        if "apiKey" in processor and processor["apiKey"]:
+            processor["apiKey"] = MASKED_API_KEY
+
+
+@router.get("/doc-processor", response_model=ApiResponse[dict | None], operation_id="getAdminDocProcessorConfig")
+async def get_doc_processor_config(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> ApiResponse[dict | None]:
+    """
+    获取文档处理服务配置
+
+    返回当前配置的文档处理服务列表
+    """
+    config = await crud_system_config.get_by_key(db, config_key=DOC_PROCESSOR_CONFIG_KEY)
+
+    if not config:
+        return ApiResponse.ok(data={"processors": []}, msg="暂无配置")
+
+    # 脱敏处理
+    masked_value = copy.deepcopy(config.config_value)
+    _mask_doc_processor_config_inplace(masked_value)
+
+    return ApiResponse.ok(data=masked_value, msg="获取成功")
+
+
+@router.put("/doc-processor", response_model=ApiResponse[dict], operation_id="updateAdminDocProcessorConfig")
+async def update_doc_processor_config(
+    config_in: DocProcessorsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> ApiResponse[dict]:
+    """
+    更新文档处理服务配置
+
+    - **processors**: 文档处理服务列表
+    """
+    config_value = config_in.model_dump(mode='json')
+
+    # 获取现有配置用于还原掩码的 API Key
+    existing_config = await crud_system_config.get_by_key(db, config_key=DOC_PROCESSOR_CONFIG_KEY)
+
+    if existing_config:
+        existing_processors = {p.get("name"): p for p in existing_config.config_value.get("processors", [])}
+        
+        # 还原被掩码的 API Key
+        for processor in config_value.get("processors", []):
+            if processor.get("apiKey") == MASKED_API_KEY:
+                existing = existing_processors.get(processor.get("name"))
+                if existing and existing.get("apiKey"):
+                    processor["apiKey"] = existing["apiKey"]
+
+    config = await crud_system_config.update_by_key(
+        db,
+        config_key=DOC_PROCESSOR_CONFIG_KEY,
+        config_value=config_value
+    )
+
+    # 返回脱敏后的数据
+    response_val = copy.deepcopy(config.config_value)
+    _mask_doc_processor_config_inplace(response_val)
+
+    return ApiResponse.ok(data=response_val, msg="文档处理服务配置更新成功")
+
+
+@router.post("/doc-processor/test", response_model=ApiResponse[dict], operation_id="testDocProcessorConnection")
+async def test_doc_processor_connection(
+    request: TestDocProcessorRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> ApiResponse[dict]:
+    """
+    测试文档处理服务连接性
+    """
+    config = request.config
+    
+    # 如果 API Key 是掩码，从数据库读取真实值
+    if config.apiKey == MASKED_API_KEY:
+        existing_config = await crud_system_config.get_by_key(db, config_key=DOC_PROCESSOR_CONFIG_KEY)
+        if existing_config:
+            existing_processors = {p.get("name"): p for p in existing_config.config_value.get("processors", [])}
+            existing = existing_processors.get(config.name)
+            if existing and existing.get("apiKey"):
+                config.apiKey = existing["apiKey"]
+
+    try:
+        import httpx
+        
+        # 构建健康检查 URL
+        base_url = config.baseUrl.rstrip("/")
+        health_url = f"{base_url}/health"
+        
+        headers = {}
+        if config.apiKey:
+            headers["Authorization"] = f"Bearer {config.apiKey}"
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(health_url, headers=headers)
+            
+            if resp.status_code == 200:
+                return ApiResponse.ok(
+                    data={"status": "healthy"},
+                    msg="连接成功"
+                )
+            else:
+                return ApiResponse.error(msg=f"连接失败 (状态码: {resp.status_code})")
+
+    except httpx.ConnectError:
+        return ApiResponse.error(msg="连接失败：无法连接到服务器")
+    except httpx.TimeoutException:
+        return ApiResponse.error(msg="连接失败：请求超时")
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"❌ [TestDocProcessor] Failed: {e}", exc_info=True)
+        return ApiResponse.error(msg=f"连接失败: {str(e)}")

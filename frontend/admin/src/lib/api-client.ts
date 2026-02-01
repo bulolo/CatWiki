@@ -228,6 +228,21 @@ const systemConfigApi = {
     url: '/admin/v1/system-configs/test-connection',
     body: { model_type: modelType, config },
   })),
+  // 文档处理服务配置
+  getDocProcessorConfig: () => wrapResponse<{ processors: any[] }>(client.adminSystemConfigs.httpRequest.request({
+    method: 'GET',
+    url: '/admin/v1/system-configs/doc-processor',
+  })),
+  updateDocProcessorConfig: (data: { processors: any[] }) => wrapResponse<any>(client.adminSystemConfigs.httpRequest.request({
+    method: 'PUT',
+    url: '/admin/v1/system-configs/doc-processor',
+    body: data,
+  })),
+  testDocProcessorConnection: (config: any) => wrapResponse<{ status: string }>(client.adminSystemConfigs.httpRequest.request({
+    method: 'POST',
+    url: '/admin/v1/system-configs/doc-processor/test',
+    body: { config },
+  })),
 }
 
 

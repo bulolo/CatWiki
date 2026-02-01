@@ -1,5 +1,6 @@
 """系统配置 Schema"""
 from datetime import datetime
+from enum import Enum
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -112,4 +113,38 @@ class BotConfigUpdate(BaseModel):
     webWidget: WebWidgetConfig = Field(..., description="网页挂件配置")
     apiBot: ApiBotConfig = Field(..., description="API 机器人配置")
     wechat: WechatBotConfig = Field(..., description="微信公众号配置")
+
+
+# ============ 文档处理服务配置相关 Schema ============
+
+class DocProcessorType(str, Enum):
+    """文档处理服务类型"""
+    docling = "docling"
+    mineru = "mineru"
+    paddleocr = "paddleocr"
+    tianshu = "tianshu"
+
+
+class DocProcessorConfig(BaseModel):
+    """单个文档处理服务配置"""
+    name: str = Field(..., description="服务名称（用于标识）")
+    type: DocProcessorType = Field(..., description="服务类型")
+    baseUrl: str = Field(..., description="API 端点地址")
+    apiKey: str = Field(default="", description="API 密钥（可选）")
+    enabled: bool = Field(default=True, description="是否启用")
+
+
+class DocProcessorsConfig(BaseModel):
+    """文档处理服务列表配置"""
+    processors: list[DocProcessorConfig] = Field(default_factory=list, description="服务列表")
+
+
+class DocProcessorsUpdate(BaseModel):
+    """更新文档处理服务配置"""
+    processors: list[DocProcessorConfig] = Field(..., description="服务列表")
+
+
+class TestDocProcessorRequest(BaseModel):
+    """测试文档处理服务连接请求"""
+    config: DocProcessorConfig = Field(..., description="服务配置")
 

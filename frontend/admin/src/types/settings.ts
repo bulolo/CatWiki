@@ -100,3 +100,29 @@ export const BAILIAN_BASE = {
   baseUrl: "https://dashscope.aliyuncs.com/api/v1"
 }
 
+// ============ 文档处理服务配置 ============
+
+export type DocProcessorType = "docling" | "mineru" | "paddleocr" | "tianshu"
+
+export type DocProcessorConfig = {
+  name: string
+  type: DocProcessorType
+  baseUrl: string
+  apiKey: string
+  enabled: boolean
+}
+
+export const DOC_PROCESSOR_TYPES: { value: DocProcessorType; label: string; description: string; docUrl?: string }[] = [
+  { value: "docling", label: "Docling", description: "IBM 开源文档处理引擎", docUrl: "https://github.com/docling-project/docling-serve" },
+  { value: "mineru", label: "MinerU", description: "高质量文档解析工具", docUrl: "https://opendatalab.github.io/MinerU/zh/quick_start/docker_deployment/#docker-compose" },
+  { value: "paddleocr", label: "PaddleOCR", description: "百度 OCR 引擎", docUrl: "https://www.paddleocr.ai/main/version3.x/pipeline_usage/PaddleOCR-VL.html#41-docker-compose" },
+  { value: "tianshu", label: "天枢", description: "天枢文档解析引擎", docUrl: "https://github.com/magicyuan876/mineru-tianshu" },
+]
+
+export const initialDocProcessorConfig: DocProcessorConfig = {
+  name: "",
+  type: "docling",
+  baseUrl: "",
+  apiKey: "",
+  enabled: true,
+}

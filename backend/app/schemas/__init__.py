@@ -21,9 +21,12 @@ from app.schemas.stats import SiteStats
 from app.schemas.system_config import (
     AIConfigUpdate,
     BotConfigUpdate,
+    DocProcessorConfig,
+    DocProcessorsUpdate,
     SystemConfigCreate,
     SystemConfigResponse,
     SystemConfigUpdate,
+    TestDocProcessorRequest,
 )
 
 __all__ = [
@@ -51,6 +54,9 @@ __all__ = [
     "SystemConfigResponse",
     "AIConfigUpdate",
     "BotConfigUpdate",
+    "DocProcessorConfig",
+    "DocProcessorsUpdate",
+    "TestDocProcessorRequest",
     "SiteStats",
 ]
 
