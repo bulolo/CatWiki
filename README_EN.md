@@ -39,7 +39,7 @@ English | [简体中文](./README.md)
 - ✅ **Dual-end Architecture**: Independent Admin Dashboard and Client Side with clear responsibilities.
 - ✅ **Type Safety**: Full use of TypeScript and Pydantic for robust type safety across frontend and backend.
 - ✅ **Modern Tech Stack**: FastAPI + Next.js 14 + SQLAlchemy 2.0, utilizing the latest technologies.
-- ✅ **AI Integration**: Built-in intelligent AI Q&A based on Vercel AI SDK.
+- ✅ **AI Integration**: Built-in intelligent AI Q&A, supporting mainstream LLMs.
 - ✅ **Hot Reload**: Supports hot reloading for both frontend and backend in the development environment.
 - ✅ **Auto-generated SDK**: Backend API changes automatically trigger TypeScript SDK generation.
 - ✅ **Comprehensive Documentation**: Detailed API documentation and usage guides.
@@ -120,7 +120,6 @@ English | [简体中文](./README.md)
 ### Key Libraries
 - **Drag & Drop**: @dnd-kit/core + @dnd-kit/sortable (Admin)
 - **Markdown Editor**: md-editor-rt (Admin)
-- **AI Integration**: Vercel AI SDK (ai + @ai-sdk/react) (Client)
 - **Markdown Rendering**: streamdown (Client)
 - **Notification**: Sonner (Common)
 
@@ -321,6 +320,31 @@ A: Ensure your access path includes the site domain suffix, e.g., `http://localh
 - 🔌 [API Architecture](./frontend/docs/docs/development/api/overview.md) - Admin vs Client API design principles
 - 📦 [RustFS Usage Guide](./frontend/docs/docs/development/tech/rustfs.md) - Upload, download, and Object storage
 - 🎯 [SDK Usage Guide](./frontend/docs/docs/development/tech/sdk-usage.md) - Frontend SDK usage and examples
+- 🔗 [Document Connectors](./frontend/docs/docs/development/connectors/overview.md) - Document parsing engine integration guide
+
+---
+
+## 🔗 Document Processing Connectors
+
+Connectors are core components in the CatWiki knowledge base platform for **document preprocessing**. Through connectors, you can integrate various document parsing engines to convert unstructured documents like PDF, Word, and images into structured text that AI can understand.
+
+### Connector Features
+
+- **Document Parsing**: Convert PDF, Word, PPT documents into structured text
+- **OCR Recognition**: Recognize text content in scanned documents and images
+- **Layout Analysis**: Identify document structure (headings, paragraphs, tables, images, etc.)
+- **Format Preservation**: Preserve original document formatting and hierarchy as much as possible
+
+### Supported Connectors
+
+| Connector | Description | Features |
+|-----------|-------------|----------|
+| [Docling](./frontend/docs/docs/development/connectors/docling.md) | IBM Open Source Document Processing Engine | Lightweight, easy deployment |
+| [MinerU](./frontend/docs/docs/development/connectors/mineru.md) | High-quality Document Parsing Tool | High accuracy, complex layout support |
+| [PaddleOCR](./frontend/docs/docs/development/connectors/paddleocr.md) | Baidu OCR Engine | Strong OCR, multi-language support |
+| [Tianshu](./frontend/docs/docs/development/connectors/tianshu.md) | Tianshu Document Parser | Chinese optimized |
+
+> For detailed configuration, please refer to the [Document Connectors Guide](./frontend/docs/docs/development/connectors/overview.md)
 
 ---
 

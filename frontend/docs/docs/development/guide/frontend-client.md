@@ -8,7 +8,7 @@
 - **语言**: TypeScript 5.3+
 - **样式**: Tailwind CSS
 - **组件库**: shadcn/ui
-- **AI 集成**: Vercel AI SDK
+- **Markdown 渲染**: streamdown
 - **包管理**: pnpm
 
 ---
@@ -71,10 +71,10 @@ const response = await apiClient.documents.listDocuments({
 ### AI 对话集成
 
 ```typescript
-import { useChat } from 'ai/react'
+import { useAIChat } from '@/hooks/useAIChat'
 
-const { messages, input, handleInputChange, handleSubmit } = useChat({
-  api: '/api/chat'
+const { messages, input, handleInputChange, handleSubmit } = useAIChat({
+  siteIdOrDomain: 'medical'
 })
 ```
 

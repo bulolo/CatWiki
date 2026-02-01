@@ -194,7 +194,7 @@ make prod-up
       <h4>前端应用</h4>
     </div>
     <div class="tags">
-      <span>Next.js 14</span><span>TypeScript</span><span>Tailwind CSS</span><span>Vercel AI SDK</span>
+      <span>Next.js 14</span><span>TypeScript</span><span>Tailwind CSS</span><span>shadcn/ui</span>
     </div>
   </div>
   <div class="tech-group">
