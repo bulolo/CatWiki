@@ -50,6 +50,16 @@ export default defineConfig({
           ]
         },
         {
+          text: '连接器',
+          items: [
+            { text: '连接器概述', link: '/development/connectors/overview' },
+            { text: 'Docling', link: '/development/connectors/docling' },
+            { text: 'MinerU', link: '/development/connectors/mineru' },
+            { text: 'PaddleOCR', link: '/development/connectors/paddleocr' },
+            { text: '天枢', link: '/development/connectors/tianshu' }
+          ]
+        },
+        {
           text: 'API 文档',
           items: [
             { text: 'API 概览', link: '/development/api/overview' },
