@@ -43,6 +43,8 @@ export type AIConfigs = {
 
 export type ModelType = "models" | "chat" | "embedding" | "rerank" | "vl" | "security" | "users" | "sites"
 
+export const MODEL_TYPES = ["chat", "embedding", "rerank", "vl"] as const
+
 export const initialConfigs: AIConfigs = {
   chat: {
     provider: "openai",

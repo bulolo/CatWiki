@@ -10,7 +10,23 @@ import { toast } from "sonner"
 import { useAllConfigs, useUpdateAIConfig, useUpdateBotConfig } from "@/hooks"
 import { type AIModelConfig, type BotConfig as ApiBotConfigType, AIConfigUpdate, WebWidgetConfig } from "@/lib/api-client"
 import { logError } from "@/lib/error-handler"
-import { type AIConfigs, type ModelType, type BotConfig, initialConfigs } from "@/types/settings"
+import { type AIConfigs, type ModelType, type BotConfig, initialConfigs, MODEL_TYPES } from "@/types/settings"
+
+// 深度合并函数
+const deepMerge = (target: any, source: any): any => {
+  if (!source) return target
+  if (typeof source !== 'object' || typeof target !== 'object') return source || target
+
+  const result = { ...target }
+  for (const key in source) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      result[key] = deepMerge(target[key] || {}, source[key])
+    } else {
+      result[key] = source[key] !== undefined && source[key] !== null ? source[key] : target[key]
+    }
+  }
+  return result
+}
 
 interface SettingsContextType {
   // 配置状态
@@ -40,21 +56,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const updateAIConfigMutation = useUpdateAIConfig()
   const updateBotConfigMutation = useUpdateBotConfig()
 
-  // 深度合并函数
-  const deepMerge = (target: any, source: any): any => {
-    if (!source) return target
-    if (typeof source !== 'object' || typeof target !== 'object') return source || target
 
-    const result = { ...target }
-    for (const key in source) {
-      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-        result[key] = deepMerge(target[key] || {}, source[key])
-      } else {
-        result[key] = source[key] !== undefined && source[key] !== null ? source[key] : target[key]
-      }
-    }
-    return result
-  }
 
   // 当配置数据加载完成时，合并到本地状态
   useEffect(() => {
@@ -62,22 +64,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       let loadedConfigs: AIConfigs = { ...initialConfigs }
 
       if (allConfigsData.aiConfig) {
-        // [MODIFIED] 处理后端可能返回的旧数据结构 (auto/manual wrapper)
-        // 如果返回的数据有 manualConfig 字段，说明是旧结构，我们提取 manualConfig
+        // [MODIFIED] 直接使用后端返回的扁平结构
         const aiData = allConfigsData.aiConfig as any
         
-        let chatConfig = aiData.chat
-        let embeddingConfig = aiData.embedding
-        let rerankConfig = aiData.rerank
-        let vlConfig = aiData.vl
-
-        // 兼容旧结构
-        if (aiData.manualConfig) {
-             chatConfig = aiData.manualConfig.chat
-             embeddingConfig = aiData.manualConfig.embedding
-             rerankConfig = aiData.manualConfig.rerank
-             vlConfig = aiData.manualConfig.vl
-        }
+        const chatConfig = aiData.chat
+        const embeddingConfig = aiData.embedding
+        const rerankConfig = aiData.rerank
+        const vlConfig = aiData.vl
 
         loadedConfigs = {
           ...loadedConfigs,
@@ -102,12 +95,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       const newConfigs = { ...prev }
 
       // 处理 AI 模型配置 (chat, embedding, rerank, vl)
-      if (type === "chat" || type === "embedding" || type === "rerank" || type === "vl") {
-        // @ts-ignore
-        const modelConfig = prev[type]
+      if (MODEL_TYPES.includes(type as any)) {
+        const modelType = type as (typeof MODEL_TYPES)[number]
+        const modelConfig = prev[modelType]
         const updatedConfig = { ...modelConfig, [field]: value }
-        // @ts-ignore
-        newConfigs[type] = updatedConfig
+        newConfigs[modelType] = updatedConfig
       }
       // 处理机器人配置
       else if (type === "botConfig") {
@@ -127,7 +119,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const handleSave = async () => {
     // 构建完整的 AI 配置对象 (扁平结构)
-    // @ts-ignore
     const aiConfig: AIModelConfig = {
         chat: configs.chat,
         embedding: configs.embedding,
@@ -141,19 +132,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         // 这样可以立即显示自动探测的 dimension，而无需等待 refetch
         if (data && data.config_value) {
             const aiData = data.config_value;
-            // 处理 manualConfig 兼容性
-            let chatConfig = aiData.chat
-            let embeddingConfig = aiData.embedding
-            let rerankConfig = aiData.rerank
-            let vlConfig = aiData.vl
+            // 直接使用扁平结构
+            const chatConfig = aiData.chat
+            const embeddingConfig = aiData.embedding
+            const rerankConfig = aiData.rerank
+            const vlConfig = aiData.vl
 
-            if (aiData.manualConfig) {
-                 chatConfig = aiData.manualConfig.chat
-                 embeddingConfig = aiData.manualConfig.embedding
-                 rerankConfig = aiData.manualConfig.rerank
-                 vlConfig = aiData.manualConfig.vl
-            }
-            
             setSavedConfigs(prev => ({
                 ...prev,
                 chat: deepMerge(initialConfigs.chat, chatConfig),
@@ -218,7 +202,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }
 
   const isModelConfigured = (modelType: "chat" | "embedding" | "rerank" | "vl") => {
-    // @ts-ignore
     const config = configs[modelType]
     return !!(config.provider && config.model && config.apiKey && config.baseUrl)
   }

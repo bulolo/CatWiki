@@ -24,6 +24,9 @@ router = APIRouter()
 AI_CONFIG_KEY = "ai_config"
 BOT_CONFIG_KEY = "bot_config"
 
+# 模型类型常量
+MODEL_TYPES = ["chat", "embedding", "rerank", "vl"]
+
 # 掩码常量
 MASKED_API_KEY = "********"
 
@@ -51,6 +54,16 @@ def _format_openai_error(e: Exception) -> str:
         return f"发生未知错误: {str(e)}"
 
 
+
+def _create_openai_client(api_key: str, base_url: str, timeout: float = 10.0):
+    from openai import AsyncOpenAI
+    return AsyncOpenAI(
+        api_key=api_key,
+        base_url=base_url,
+        timeout=timeout
+    )
+
+
 def mask_variable(value: str) -> str:
     """如果值存在且不为空，则返回掩码，否则返回原值"""
     if value and len(value) > 0:
@@ -59,32 +72,12 @@ def mask_variable(value: str) -> str:
 
 
 
+
 def _mask_ai_config_inplace(config_value: dict) -> None:
     """对 AI 配置进行原地脱敏处理"""
-    for model_type in ["chat", "embedding", "rerank", "vl"]:
+    for model_type in MODEL_TYPES:
         if model_type in config_value and "apiKey" in config_value[model_type]:
             config_value[model_type]["apiKey"] = mask_variable(config_value[model_type]["apiKey"])
-
-
-def _normalize_ai_config_value(value: dict) -> dict:
-    """
-    将可能的旧配置结构 (nested mode/manualConfig) 转换为扁平结构
-    """
-    if "manualConfig" in value:
-        # 旧结构，提取 manualConfig
-        manual = value.get("manualConfig", {})
-        return {
-            "chat": manual.get("chat", {}),
-            "embedding": manual.get("embedding", {}),
-            "rerank": manual.get("rerank", {}),
-            "vl": manual.get("vl", {})
-        }
-    # 假设已经是新结构，或者缺失某些字段
-    # 确保基本的 keys存在
-    normalized = {}
-    for key in ["chat", "embedding", "rerank", "vl"]:
-        normalized[key] = value.get(key, {})
-    return normalized
 
 
 @router.get("/ai-config", response_model=ApiResponse[SystemConfigResponse | None], operation_id="getAdminAiConfig")
@@ -104,11 +97,8 @@ async def get_ai_config(
     # 脱敏处理
     config_response = SystemConfigResponse.model_validate(config)
     
-    # 确保返回给前端的是扁平结构 (即使数据库存的是旧的)
-    normalized_value = _normalize_ai_config_value(config_response.config_value)
-    
     # 脱敏
-    masked_value = copy.deepcopy(normalized_value)
+    masked_value = copy.deepcopy(config_response.config_value)
     _mask_ai_config_inplace(masked_value)
 
     config_response.config_value = masked_value
@@ -130,11 +120,11 @@ async def update_ai_config(
     existing_config = await crud_system_config.get_by_key(db, config_key=AI_CONFIG_KEY)
     
     if existing_config:
-        # 获取现有的真实值(未脱敏)，并标准化为扁平结构，以便轻松对比
-        existing_value = _normalize_ai_config_value(existing_config.config_value)
+        # 获取现有的真实值(未脱敏)
+        existing_value = existing_config.config_value
         
         # 还原手动模式配置的 API Key
-        for model_type in ["chat", "embedding", "rerank", "vl"]:
+        for model_type in MODEL_TYPES:
             if (
                 model_type in config_value
                 and "apiKey" in config_value[model_type]
@@ -155,11 +145,13 @@ async def update_ai_config(
                 logger = logging.getLogger(__name__)
                 logger.info("🔍 Auto-detecting embedding dimension...")
                 
-                from openai import AsyncOpenAI
-                client = AsyncOpenAI(
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info("🔍 Auto-detecting embedding dimension...")
+                
+                client = _create_openai_client(
                     api_key=embedding_conf["apiKey"],
-                    base_url=embedding_conf["baseUrl"],
-                    timeout=10.0
+                    base_url=embedding_conf["baseUrl"]
                 )
                 resp = await client.embeddings.create(
                     model=embedding_conf["model"],
@@ -307,7 +299,7 @@ async def test_model_connection(
         existing_config = await crud_system_config.get_by_key(db, config_key=AI_CONFIG_KEY)
         if existing_config:
             # 提取真实值
-            existing_value = _normalize_ai_config_value(existing_config.config_value)
+            existing_value = existing_config.config_value
             real_key = existing_value.get(model_type, {}).get("apiKey", "")
             if real_key:
                 config.apiKey = real_key
@@ -322,11 +314,9 @@ async def test_model_connection(
     # 1. 对话/多模态/视觉测试 (使用 OpenAI Chat API)
     if model_type in ["chat", "vl"]:
         try:
-            from openai import AsyncOpenAI
-            client = AsyncOpenAI(
+            client = _create_openai_client(
                 api_key=config.apiKey,
-                base_url=config.baseUrl,
-                timeout=10.0
+                base_url=config.baseUrl
             )
             # 发送简单的 Hello 消息
             response = await client.chat.completions.create(
@@ -349,11 +339,9 @@ async def test_model_connection(
     # 2. 向量测试 (使用 OpenAI Embedding API)
     elif model_type == "embedding":
         try:
-            from openai import AsyncOpenAI
-            client = AsyncOpenAI(
+            client = _create_openai_client(
                 api_key=config.apiKey,
-                base_url=config.baseUrl,
-                timeout=10.0
+                base_url=config.baseUrl
             )
             # 发送简单的嵌入请求
             resp = await client.embeddings.create(
@@ -409,6 +397,7 @@ async def test_model_connection(
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"❌ [TestConnection] Rerank failed: {e}", exc_info=True)
-            return ApiResponse.error(msg=f"连接失败: {str(e)}")
+            # 统一错误格式
+            return ApiResponse.error(msg=f"请求失败: {str(e)}")
 
     return ApiResponse.error(msg="未知的模型类型")
