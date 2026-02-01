@@ -122,10 +122,12 @@ export function GlobalUsers() {
 
   if (isCreating) {
     return (
-      <CreateUserForm
-        onCancel={handleCancelCreate}
-        onSuccess={handleCreateSuccess}
-      />
+      <div key="create" className="animate-in fade-in slide-in-from-right-4 duration-300">
+        <CreateUserForm
+          onCancel={handleCancelCreate}
+          onSuccess={handleCreateSuccess}
+        />
+      </div>
     )
   }
 
@@ -302,6 +304,7 @@ export function GlobalUsers() {
   }
 
   return (
+    <div key="list" className="animate-in fade-in slide-in-from-left-4 duration-300">
     <div className="space-y-6">
       {/* ... (existing header and dialogs) */}
       <div className="flex items-center justify-between mb-8">
@@ -506,5 +509,6 @@ export function GlobalUsers() {
         </CardContent>
       </Card >
     </div >
+    </div>
   )
 }

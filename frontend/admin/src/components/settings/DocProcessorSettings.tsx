@@ -165,6 +165,7 @@ export function DocProcessorSettings() {
 
   // 内联编辑表单
   const renderForm = () => (
+    <div className="animate-in fade-in slide-in-from-right-4 duration-300">
     <Card className="border-primary/50 bg-primary/5">
       <CardHeader className="pb-4">
         <CardTitle className="text-base">
@@ -273,9 +274,11 @@ export function DocProcessorSettings() {
         </div>
       </CardContent>
     </Card>
+    </div>
   )
 
   return (
+    <div className="animate-in fade-in slide-in-from-left-4 duration-300">
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
@@ -372,6 +375,7 @@ export function DocProcessorSettings() {
           ))}
         </div>
       )}
+    </div>
     </div>
   )
 }

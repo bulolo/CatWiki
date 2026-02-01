@@ -80,10 +80,12 @@ export function GlobalSites() {
 
   if (isCreating) {
     return (
-      <CreateSiteForm
-        onCancel={handleCancelCreate}
-        onSuccess={handleCreateSuccess}
-      />
+      <div key="create" className="animate-in fade-in slide-in-from-right-4 duration-300">
+        <CreateSiteForm
+          onCancel={handleCancelCreate}
+          onSuccess={handleCreateSuccess}
+        />
+      </div>
     )
   }
 
@@ -94,7 +96,8 @@ export function GlobalSites() {
   }
 
   return (
-    <div className="space-y-6">
+    <div key="list" className="animate-in fade-in slide-in-from-left-4 duration-300">
+      <div className="space-y-6">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-5">
           <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm ring-1 ring-primary/20">
@@ -189,6 +192,7 @@ export function GlobalSites() {
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }

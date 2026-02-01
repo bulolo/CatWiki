@@ -165,7 +165,7 @@ function SettingsContent() {
 
         {/* Window Body: Context Switch */}
         {isSiteSettings ? (
-          <div className="flex-1 overflow-hidden p-6 bg-slate-50/50">
+          <div className="flex-1 overflow-hidden p-6 bg-slate-50/50 animate-in fade-in slide-in-from-right-4 duration-300">
             <SiteSettings siteId={Number(siteId)} />
           </div>
         ) : (
@@ -230,29 +230,33 @@ function SettingsContent() {
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto bg-white relative">
               <div className="max-w-4xl mx-auto p-8 h-full">
-                <TabsContent value="models" className="mt-0 h-full space-y-6 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <TabsContent value="models" className="mt-0 h-full space-y-6 outline-none">
                   {selectedModel ? (
-                    <ModelDetailCard
-                      modelType={selectedModel}
-                      onBack={handleBackToModels}
-                    />
+                    <div key="detail" className="animate-in fade-in slide-in-from-right-4 duration-300">
+                      <ModelDetailCard
+                        modelType={selectedModel}
+                        onBack={handleBackToModels}
+                      />
+                    </div>
                   ) : (
-                    <ModelSettingsCard
-                      onSelectModel={handleSelectModel}
-                      activeTab="models"
-                    />
+                    <div key="list" className="animate-in fade-in slide-in-from-left-4 duration-300">
+                      <ModelSettingsCard
+                        onSelectModel={handleSelectModel}
+                        activeTab="models"
+                      />
+                    </div>
                   )}
                 </TabsContent>
 
-                <TabsContent value="sites" className="mt-0 h-full space-y-6 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <TabsContent value="sites" className="mt-0 h-full space-y-6 outline-none">
                   <GlobalSites />
                 </TabsContent>
 
-                <TabsContent value="users" className="mt-0 h-full space-y-6 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <TabsContent value="users" className="mt-0 h-full space-y-6 outline-none">
                   <GlobalUsers />
                 </TabsContent>
 
-                <TabsContent value="doc-processor" className="mt-0 h-full space-y-6 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <TabsContent value="doc-processor" className="mt-0 h-full space-y-6 outline-none">
                   <DocProcessorSettings />
                 </TabsContent>
               </div>

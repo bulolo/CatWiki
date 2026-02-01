@@ -173,17 +173,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  const isAiDirty = JSON.stringify({
-    chat: configs.chat,
-    embedding: configs.embedding,
-    rerank: configs.rerank,
-    vl: configs.vl
-  }) !== JSON.stringify({
-    chat: savedConfigs.chat,
-    embedding: savedConfigs.embedding,
-    rerank: savedConfigs.rerank,
-    vl: savedConfigs.vl
-  })
+  // 使用稳定的深度比较，避免因属性顺序或 undefined/null 差异导致假阳性
+  const isAiDirty = (() => {
+    const normalize = (obj: any): string => {
+      if (obj === null || obj === undefined) return ''
+      if (typeof obj !== 'object') return String(obj)
+      if (Array.isArray(obj)) return obj.map(normalize).join(',')
+      // 对对象的键进行排序，确保顺序一致
+      return Object.keys(obj)
+        .sort()
+        .map(k => `${k}:${normalize(obj[k])}`)
+        .join('|')
+    }
+    const currentStr = normalize({ chat: configs.chat, embedding: configs.embedding, rerank: configs.rerank, vl: configs.vl })
+    const savedStr = normalize({ chat: savedConfigs.chat, embedding: savedConfigs.embedding, rerank: savedConfigs.rerank, vl: savedConfigs.vl })
+    return currentStr !== savedStr
+  })()
 
   const handleSaveBotConfig = async () => {
     const botConfigData: ApiBotConfigType = {
