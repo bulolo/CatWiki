@@ -17,6 +17,14 @@ export type SiteStats = {
      */
     total_views: number;
     /**
+     * 今日浏览量
+     */
+    views_today?: number;
+    /**
+     * 今日独立IP数
+     */
+    unique_ips_today?: number;
+    /**
      * AI会话总数
      */
     total_chat_sessions?: number;

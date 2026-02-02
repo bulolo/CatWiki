@@ -22,10 +22,10 @@ const statIcons = {
 // 统计项配置
 const STATS_CONFIG = [
   { title: "文档总数", description: "知识库文档", color: "text-blue-600", bg: "bg-blue-50" },
-  { title: "访问次数", description: "今日访问", color: "text-emerald-600", bg: "bg-emerald-50" },
-  { title: "问答次数", description: "AI 问答统计", color: "text-blue-600", bg: "bg-blue-50" },
-  { title: "访问用户数", description: "独立访客", color: "text-orange-600", bg: "bg-orange-50" },
-  { title: "来源 IP 数", description: "不同 IP 地址", color: "text-rose-600", bg: "bg-rose-50" },
+  { title: "累计阅读", description: "文章阅读总数", color: "text-emerald-600", bg: "bg-emerald-50" },
+  { title: "AI 会话", description: "今日新增会话", color: "text-blue-600", bg: "bg-blue-50" },
+  { title: "AI 消息", description: "互动消息总量", color: "text-orange-600", bg: "bg-orange-50" },
+  { title: "独立访客", description: "今日独立IP", color: "text-rose-600", bg: "bg-rose-50" },
 ] as const
 
 import AISessionChart from "@/components/charts/AISessionChart"
@@ -63,6 +63,8 @@ export default function AdminHome() {
   const stats = {
     totalDocuments: statsData?.total_documents ?? 0,
     totalViews: statsData?.total_views ?? 0,
+    viewsToday: statsData?.views_today ?? 0,
+    uniqueIpsToday: statsData?.unique_ips_today ?? 0,
     totalChatSessions: statsData?.total_chat_sessions ?? 0,
     totalChatMessages: statsData?.total_chat_messages ?? 0,
     activeChatUsers: statsData?.active_chat_users ?? 0,
@@ -90,15 +92,24 @@ export default function AdminHome() {
           
           if (stat.title === "文档总数") {
             displayValue = stats.totalDocuments.toString()
-          } else if (stat.title === "访问次数") {
+          } else if (stat.title === "累计阅读") {
             displayValue = stats.totalViews.toString()
-          } else if (stat.title === "问答次数") {
+            if (stats.viewsToday >= 0) {
+              subValue = `今日 +${stats.viewsToday}`
+            }
+          } else if (stat.title === "AI 会话") {
+            displayValue = stats.totalChatSessions.toString()
+            if (stats.newSessionsToday >= 0) {
+              subValue = `今日 +${stats.newSessionsToday}`
+            }
+          } else if (stat.title === "AI 消息") {
             displayValue = stats.totalChatMessages.toString()
-            if (stats.newMessagesToday > 0) {
+            if (stats.newMessagesToday >= 0) {
               subValue = `今日 +${stats.newMessagesToday}`
             }
-          } else if (stat.title === "访问用户数") {
-            displayValue = stats.activeChatUsers.toString()
+          } else if (stat.title === "独立访客") {
+            displayValue = stats.uniqueIpsToday.toString()
+            subValue = "今日独立 IP"
           }
 
           return (
@@ -117,7 +128,7 @@ export default function AdminHome() {
                   <p className="text-xs text-slate-500 font-medium">
                     {stat.description}
                   </p>
-                  {stat.title === "问答次数" || stat.title === "访问次数" ? (
+                  {stat.title === "AI 会话" || stat.title === "AI 消息" ? (
                     <div className="flex items-center gap-1.5 font-bold">
                         <span className="text-[10px] text-slate-400 uppercase tracking-tighter">TODAY</span>
                         <span className={cn(

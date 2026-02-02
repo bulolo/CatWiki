@@ -22,5 +22,3 @@ api_router.include_router(system_config.router, prefix="/system-configs", tags=[
 api_router.include_router(stats.router, prefix="/stats", tags=["admin-stats"])
 api_router.include_router(files.router, prefix="/files", tags=["admin-files"])
 api_router.include_router(cache.router, prefix="/cache", tags=["admin-cache"])
-
-

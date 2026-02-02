@@ -262,6 +262,21 @@ const fileApi = {
 }
 
 
+const chatSessionsApi = {
+  adminListChatSessions: (params: { siteId?: number; memberId?: number; page?: number; size?: number }) =>
+    wrapResponse<Models.ChatSessionListResponse>(client.adminChatSessions.adminListChatSessions(params)),
+
+  adminGetChatSession: (params: { threadId: string }) =>
+    wrapResponse<Models.ChatSessionResponse>(client.adminChatSessions.adminGetChatSession(params)),
+
+  adminGetChatMessages: (params: { threadId: string }) =>
+    wrapResponse<Models.ChatSessionMessagesResponse>(client.adminChatSessions.adminGetChatMessages(params)),
+
+  adminDeleteChatSession: (params: { threadId: string }) =>
+    wrapResponse<any>(client.adminChatSessions.adminDeleteChatSession(params)),
+}
+
+
 // ==================== 导出 ====================
 
 export const api = {
@@ -272,6 +287,7 @@ export const api = {
   systemConfig: systemConfigApi,
   stats: statsApi,
   file: fileApi,
+  chatSessions: chatSessionsApi,
 }
 
 export default api

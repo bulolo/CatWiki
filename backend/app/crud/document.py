@@ -175,14 +175,40 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         result = await db.execute(query)
         return list(result.scalars())
 
-    async def increment_views(self, db: AsyncSession, *, document_id: int) -> Document | None:
-        """增加浏览量（不更新 updated_at）"""
-        # 使用原生 SQL 更新，确保只更新 views 字段，不触发 ORM 的 onupdate
+    async def increment_views(
+        self, 
+        db: AsyncSession, 
+        *, 
+        document_id: int,
+        site_id: int | None = None,  # 新增：用于记录事件
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        referer: str | None = None,
+    ) -> Document | None:
+        """增加浏览量（不更新 updated_at）
+        
+        同时记录浏览事件到 document_view_events 表，用于统计今日浏览和独立访客。
+        """
+        from app.crud.document_view_event import crud_document_view_event
+        
+        # 1. 原逻辑：累加 views 字段
         await db.execute(
             text("UPDATE document SET views = views + 1 WHERE id = :id"),
             {"id": document_id}
         )
-        await db.commit()
+        
+        # 2. 新增：记录浏览事件（如果提供了 site_id）
+        if site_id is not None:
+            await crud_document_view_event.create(
+                db,
+                document_id=document_id,
+                site_id=site_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                referer=referer,
+            )
+        else:
+            await db.commit()
 
         # 返回更新后的文档
         return await self.get_with_related_site(db, id=document_id)

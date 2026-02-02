@@ -3,6 +3,13 @@
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface PaginationProps {
   currentPage: number
@@ -10,8 +17,12 @@ interface PaginationProps {
   totalItems: number
   pageSize: number
   onPageChange: (page: number) => void
+  onPageSizeChange?: (size: number) => void  // 新增：每页条数变更回调
+  pageSizeOptions?: number[]  // 新增：可选的每页条数选项
   className?: string
 }
+
+const DEFAULT_PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
 export function Pagination({
   currentPage,
@@ -19,6 +30,8 @@ export function Pagination({
   totalItems,
   pageSize,
   onPageChange,
+  onPageSizeChange,
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   className
 }: PaginationProps) {
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1
@@ -65,10 +78,39 @@ export function Pagination({
 
   const pageNumbers = getPageNumbers()
 
+  const handlePageSizeChange = (value: string) => {
+    const newSize = parseInt(value, 10)
+    if (onPageSizeChange) {
+      onPageSizeChange(newSize)
+      // 切换每页条数时，重置到第一页
+      onPageChange(1)
+    }
+  }
+
   return (
-    <div className={cn("flex items-center justify-between", className)}>
-      <div className="text-sm text-slate-500">
-        显示 {startItem} - {endItem} 条，共 {totalItems} 条
+    <div className={cn("flex items-center justify-between gap-4 flex-wrap", className)}>
+      <div className="flex items-center gap-3 text-sm text-slate-500">
+        <span>显示 {startItem} - {endItem} 条，共 {totalItems} 条</span>
+        
+        {/* 每页条数选择器 */}
+        {onPageSizeChange && (
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400">|</span>
+            <span>每页</span>
+            <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+              <SelectTrigger className="h-8 w-[90px] text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {pageSizeOptions.map((size) => (
+                  <SelectItem key={size} value={size.toString()}>
+                    {size} 条
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-1">
@@ -111,7 +153,7 @@ export function Pagination({
           variant="outline"
           size="sm"
           onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
+          disabled={currentPage === totalPages || totalPages === 0}
           className="h-8 w-8 p-0"
         >
           <ChevronRight className="h-4 w-4" />
@@ -120,4 +162,3 @@ export function Pagination({
     </div>
   )
 }
-

@@ -79,7 +79,7 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
         for (let i = 0; i < pts.length - 1; i++) {
             const curr = pts[i];
             const next = pts[i+1];
-            const dx = (next.x - curr.x) / 3;
+            const dx = (next.x - curr.x) / 2.75;
             const cy = curr.y;
             const ny = next.y;
             path += ` C ${curr.x + dx} ${(cy as number) + slopes[i] * dx}, ${next.x - dx} ${(ny as number) - slopes[i+1] * dx}, ${next.x} ${ny}`;
@@ -120,13 +120,21 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
       >
          <defs>
           <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.18"/>
-            <stop offset="40%" stopColor={color} stopOpacity="0.08"/>
-            <stop offset="75%" stopColor={color} stopOpacity="0.02"/>
+            <stop offset="0%" stopColor={color} stopOpacity="0.12"/>
+            <stop offset="40%" stopColor={color} stopOpacity="0.05"/>
+            <stop offset="75%" stopColor={color} stopOpacity="0.01"/>
             <stop offset="100%" stopColor={color} stopOpacity="0"/>
           </linearGradient>
+
+          {/* Stroke Gradient for the path itself */}
+          <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse">
+             <stop offset="0%" stopColor={color} stopOpacity="0.8"/>
+             <stop offset="50%" stopColor={color} stopOpacity="1"/>
+             <stop offset="100%" stopColor={color} stopOpacity="0.9"/>
+          </linearGradient>
+
           <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
             <feMerge>
                 <feMergeNode in="coloredBlur"/>
                 <feMergeNode in="SourceGraphic"/>
@@ -166,22 +174,40 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
         {/* Area Fill */}
         <path d={areaPath} fill="url(#chartGradient)" stroke="none" clipPath="url(#revealMask)" />
         
-        {/* Line Path with Glow & Drawing Animation */}
-        <path 
-          d={linePath} 
-          fill="none" 
-          stroke={color} 
-          strokeWidth="2.5" 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          className="drop-shadow-md"
-          filter="url(#glow)"
-          style={{
-              strokeDasharray: 3000,
-              strokeDashoffset: hasLoaded ? 0 : 3000,
-              transition: hasLoaded ? 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
-          }}
-        />
+        {/* Neon Line Path Duo */}
+        <g clipPath="url(#revealMask)">
+            {/* Halo Stroke (Soft Light) */}
+            <path 
+                d={linePath} 
+                fill="none" 
+                stroke={color} 
+                strokeWidth="5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className="opacity-20"
+                filter="url(#glow)"
+                style={{
+                    strokeDasharray: 3000,
+                    strokeDashoffset: hasLoaded ? 0 : 3000,
+                    transition: hasLoaded ? 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
+                }}
+            />
+            {/* Core Stroke (Sharp & Vibrant) */}
+            <path 
+                d={linePath} 
+                fill="none" 
+                stroke="url(#lineGradient)" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className="drop-shadow-sm"
+                style={{
+                    strokeDasharray: 3000,
+                    strokeDashoffset: hasLoaded ? 0 : 3000,
+                    transition: hasLoaded ? 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
+                }}
+            />
+        </g>
 
         {/* Interaction Points - Discrete Rendering (No coordinate transitions) */}
         {points.map((point: any, i: number) => {
@@ -195,9 +221,9 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
                         <circle 
                             cx={point.x} 
                             cy={point.y} 
-                            r="5" 
+                            r="6" 
                             fill={color} 
-                            className="animate-pulse opacity-30"
+                            className="animate-pulse opacity-25"
                         />
                     )}
                     
@@ -209,21 +235,21 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
                                 cy={point.y} 
                                 r="10" 
                                 fill={color} 
-                                className="opacity-15"
+                                className="opacity-10"
                             />
                             <circle 
                                 cx={point.x} 
                                 cy={point.y} 
-                                r="6.5" 
+                                r="6" 
                                 fill="white" 
                                 stroke={color}
-                                strokeWidth="2.5"
+                                strokeWidth="2"
                                 className="shadow-sm"
                             />
                             <circle 
                                 cx={point.x} 
                                 cy={point.y} 
-                                r="2.5" 
+                                r="2" 
                                 fill={color}
                             />
                         </g>

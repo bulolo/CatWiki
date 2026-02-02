@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type ChatMessage = {
+export type app__schemas__chat__ChatMessage = {
     role: string;
     content: string;
     name?: (string | null);

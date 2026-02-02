@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException
@@ -80,20 +80,38 @@ async def list_published_documents(
 @router.get("/{document_id}", response_model=ApiResponse[Document], operation_id="getClientDocument")
 async def get_document(
     document_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> ApiResponse[Document]:
-    """获取文档详情（客户端，自动增加浏览量）"""
-    # 自动增加浏览量
-    document = await crud_document.increment_views(db, document_id=document_id)
-
+    """获取文档详情（客户端，自动增加浏览量并记录浏览事件）"""
+    
+    # 提取访客信息
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    referer = request.headers.get("referer")
+    
+    # 先获取文档以确认存在并获取 site_id
+    document = await crud_document.get(db, id=document_id)
+    
     if not document:
         raise NotFoundException(detail=f"文档 {document_id} 不存在")
 
     # 只返回已发布的文档
     if document.status != "published":
         raise NotFoundException(detail=f"文档 {document_id} 不存在")
+    
+    # 自动增加浏览量并记录浏览事件
+    document = await crud_document.increment_views(
+        db, 
+        document_id=document_id,
+        site_id=document.site_id,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        referer=referer,
+    )
 
     # 构建文档字典，添加关联信息
     document_dict = await enrich_document_dict(document, db, crud_collection, include_site_name=True)
 
     return ApiResponse.ok(data=document_dict, msg="获取成功")
+

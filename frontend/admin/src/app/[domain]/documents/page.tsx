@@ -1325,6 +1325,7 @@ export default function DocumentsPage() {
                   totalItems={totalDocuments}
                   pageSize={pageSize}
                   onPageChange={setCurrentPage}
+                  onPageSizeChange={setPageSize}
                 />
               </div>
             )}

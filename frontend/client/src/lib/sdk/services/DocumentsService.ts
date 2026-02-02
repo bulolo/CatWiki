@@ -59,7 +59,7 @@ export class DocumentsService {
     }
     /**
      * Get Document
-     * 获取文档详情（客户端，自动增加浏览量）
+     * 获取文档详情（客户端，自动增加浏览量并记录浏览事件）
      * @returns ApiResponse_Document_ Successful Response
      * @throws ApiError
      */

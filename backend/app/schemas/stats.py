@@ -24,6 +24,10 @@ class SiteStats(BaseModel):
     total_documents: int = Field(description="文档总数")
     total_views: int = Field(description="总访问次数")
 
+    # 浏览事件统计 (NEW)
+    views_today: int = Field(0, description="今日浏览量")
+    unique_ips_today: int = Field(0, description="今日独立IP数")
+
     # AI 统计
     total_chat_sessions: int = Field(0, description="AI会话总数")
     total_chat_messages: int = Field(0, description="AI消息总数")
@@ -31,7 +35,7 @@ class SiteStats(BaseModel):
     new_sessions_today: int = Field(0, description="今日新增会话")
     new_messages_today: int = Field(0, description="今日新增消息")
 
-    # 增强统计 (NEW)
+    # 增强统计
     daily_trends: List[TrendData] = Field(default_factory=list, description="最近7天趋势")
     recent_sessions: List[RecentSession] = Field(default_factory=list, description="最近对话记录")
 

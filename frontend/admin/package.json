@@ -21,6 +21,7 @@
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
+    "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-query": "^5.17.0",
     "@tanstack/react-query-devtools": "^5.17.0",
     "browser-image-compression": "^2.0.2",
@@ -32,6 +33,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sonner": "^2.0.7",
+    "streamdown": "^1.6.10",
     "tailwind-merge": "^2.1.0",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.22.4"
