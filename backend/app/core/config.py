@@ -118,6 +118,24 @@ class Settings(BaseSettings):
         description="是否将 RustFS 存储桶设置为公共可读"
     )
 
+    # AI 服务配置 (OpenAI Compatible)
+    AI_CHAT_API_KEY: str | None = Field(default=None)
+    AI_CHAT_API_BASE: str | None = Field(default=None)
+    AI_CHAT_MODEL: str | None = Field(default=None)
+
+    AI_EMBEDDING_API_KEY: str | None = Field(default=None)
+    AI_EMBEDDING_API_BASE: str | None = Field(default=None)
+    AI_EMBEDDING_MODEL: str | None = Field(default=None)
+    AI_EMBEDDING_DIMENSION: int | None = Field(default=None)
+
+    AI_RERANK_API_KEY: str | None = Field(default=None)
+    AI_RERANK_API_BASE: str | None = Field(default=None)
+    AI_RERANK_MODEL: str | None = Field(default=None)
+
+    AI_VL_API_KEY: str | None = Field(default=None)
+    AI_VL_API_BASE: str | None = Field(default=None)
+    AI_VL_MODEL: str | None = Field(default=None)
+
     # 文件上传配置
     UPLOAD_MAX_SIZE: int = Field(
         default=100 * 1024 * 1024,  # 100MB

@@ -113,13 +113,15 @@ services:
       
       # RustFS 对象存储配置 (从 .env 加载，Docker 内部通信使用 RUSTFS_DOCKER_ENDPOINT)
       RUSTFS_ENDPOINT: ${RUSTFS_DOCKER_ENDPOINT:-rustfs:9000}
+      UV_CACHE_DIR: /root/.cache/uv
       
     volumes:
       # 挂载代码目录以访问脚本
-      - ./backend:/app
+      - ./backend:/app:delegated
       # 排除不需要同步的目录
       - /app/.venv
       - /app/__pycache__
+      - /app/.pytest_cache
       - /app/**/__pycache__
     depends_on:
       postgres:
@@ -202,13 +204,14 @@ services:
       - "3000:3000"
     volumes:
       # 挂载代码目录以支持热更新
-      - ./backend:/app
+      - ./backend:/app:delegated
       # 排除不需要同步的目录（保留容器内的虚拟环境）
       - /app/.venv
       - /app/__pycache__
       - /app/**/__pycache__
       - /app/.git
       - /app/*.pyc
+      - /app/.pytest_cache
     depends_on:
       postgres:
         condition: service_healthy
@@ -259,9 +262,10 @@ services:
       - "8001:8001"
     volumes:
       # 挂载代码目录以支持热更新
-      - ./frontend/admin:/app
-      - /app/node_modules
-      - /app/.next
+      - ./frontend/admin:/app:delegated
+      - admin_node_modules:/app/node_modules
+      - admin_next_cache:/app/.next
+      - pnpm_store:/root/.local/share/pnpm/store
     depends_on:
       backend:
         condition: service_healthy
@@ -301,9 +305,10 @@ services:
       - "8002:8002"
     volumes:
       # 挂载代码目录以支持热更新
-      - ./frontend/client:/app
-      - /app/node_modules
-      - /app/.next
+      - ./frontend/client:/app:delegated
+      - client_node_modules:/app/node_modules
+      - client_next_cache:/app/.next
+      - pnpm_store:/root/.local/share/pnpm/store
     depends_on:
       backend:
         condition: service_healthy
@@ -341,8 +346,9 @@ services:
       - "8003:8003"
     volumes:
       # 挂载代码目录以支持热更新
-      - ./frontend/docs:/app
-      - /app/node_modules
+      - ./frontend/docs:/app:delegated
+      - docs_node_modules:/app/node_modules
+      - pnpm_store:/root/.local/share/pnpm/store
     networks:
       - catwiki-network
     # 资源限制
@@ -370,6 +376,18 @@ volumes:
   rustfs_data:
     driver: local
   rustfs_logs:
+    driver: local
+  pnpm_store:
+    driver: local
+  admin_node_modules:
+    driver: local
+  admin_next_cache:
+    driver: local
+  client_node_modules:
+    driver: local
+  client_next_cache:
+    driver: local
+  docs_node_modules:
     driver: local
 
 networks:
