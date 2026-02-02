@@ -23,10 +23,13 @@ const statIcons = {
 const STATS_CONFIG = [
   { title: "文档总数", description: "知识库文档", color: "text-blue-600", bg: "bg-blue-50" },
   { title: "访问次数", description: "今日访问", color: "text-emerald-600", bg: "bg-emerald-50" },
-  { title: "问答次数", description: "AI 问答统计", color: "text-purple-600", bg: "bg-purple-50" },
+  { title: "问答次数", description: "AI 问答统计", color: "text-blue-600", bg: "bg-blue-50" },
   { title: "访问用户数", description: "独立访客", color: "text-orange-600", bg: "bg-orange-50" },
   { title: "来源 IP 数", description: "不同 IP 地址", color: "text-rose-600", bg: "bg-rose-50" },
 ] as const
+
+import AISessionChart from "@/components/charts/AISessionChart"
+
 
 export default function AdminHome() {
   const currentSite = useSiteData()
@@ -139,54 +142,32 @@ export default function AdminHome() {
       {/* 趋势与动态汇总 */}
       <div className="grid gap-6 md:grid-cols-3">
         {/* AI 会话趋势 - 占据 2/3 宽度 */}
-        <Card className="md:col-span-2 border-border/50 shadow-sm">
+        <Card className="md:col-span-2 border-border/50 shadow-sm flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between border-b border-border/40 bg-muted/20 px-6 py-4">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-purple-500/10 rounded-xl text-purple-600">
+              <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
                 <Network className="h-5 w-5" />
               </div>
               <CardTitle className="text-base font-bold">AI 会话趋势</CardTitle>
             </div>
             <div className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-1 rounded">最近 7 天</div>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-[200px] w-full flex items-stretch justify-between gap-2 px-2">
+          <CardContent className="p-6 flex-1 flex flex-col">
+            <div className="flex-1 w-full min-h-[200px] px-2">
               {statsError ? (
                 <div className="w-full h-full flex items-center justify-center text-rose-500 text-xs text-center p-4">
                   加载趋势失败: {(statsError as any)?.message || "未知错误"}
                 </div>
-              ) : (stats.dailyTrends && stats.dailyTrends.length > 0) ? (
-                (() => {
-                  const maxVal = Math.max(...stats.dailyTrends.map((d: any) => Number(d.sessions) || 0)) || 1
-                  return stats.dailyTrends.map((day: any, i: number) => {
-                    const sessions = Number(day.sessions) || 0
-                    const height = (sessions / maxVal) * 100
-                    const isToday = i === stats.dailyTrends.length - 1
-                    return (
-                      <div key={day.date} className="flex-1 h-full flex flex-col items-center gap-2 group">
-                        <div className="flex-1 w-full relative flex flex-col items-center justify-end">
-                          {/* 气泡提示 */}
-                          <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-20 pointer-events-none shadow-xl">
-                            {sessions} 会话 / {day.messages || 0} 问答
-                          </div>
-                          <div 
-                            className={cn(
-                              "w-full max-w-[32px] transition-all duration-300 rounded-t-sm",
-                              sessions > 0 ? "bg-purple-500 hover:bg-purple-600 shadow-sm" : "bg-slate-100 group-hover:bg-slate-200"
-                            )}
-                            style={{ height: `${Math.max(height, 4)}%` }}
-                          />
-                        </div>
-                        <span className={cn(
-                          "flex-shrink-0 text-[10px] font-medium transition-colors",
-                          isToday ? "text-purple-600 font-bold underline decoration-purple-200 underline-offset-4" : "text-slate-400 group-hover:text-slate-600"
-                        )}>{day.date}</span>
-                      </div>
-                    )
-                  })
-                })()
               ) : statsLoading ? (
                  <div className="w-full h-full flex items-center justify-center text-slate-300 animate-pulse text-sm">正在加载统计数据...</div>
+              ) : (stats.dailyTrends && stats.dailyTrends.length > 0) ? (
+                 <AISessionChart 
+                    data={stats.dailyTrends.map((d: any) => ({
+                        date: d.date,
+                        value: Number(d.sessions) || 0,
+                        subValue: d.messages || 0
+                    }))}
+                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-slate-300 italic text-sm">暂无趋势采样数据</div>
               )}
@@ -198,7 +179,7 @@ export default function AdminHome() {
         <Card className="md:col-span-1 border-border/50 shadow-sm overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between border-b border-border/40 bg-muted/20 px-6 py-4">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-600">
+              <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
                 <MessageSquare className="h-5 w-5" />
               </div>
               <CardTitle className="text-base font-bold">最近 AI 问答</CardTitle>
