@@ -6,7 +6,6 @@ import type { BaseHttpRequest } from './core/BaseHttpRequest';
 import type { OpenAPIConfig } from './core/OpenAPI';
 import { FetchHttpRequest } from './core/FetchHttpRequest';
 import { AdminCacheService } from './services/AdminCacheService';
-import { AdminChatSessionsService } from './services/AdminChatSessionsService';
 import { AdminCollectionsService } from './services/AdminCollectionsService';
 import { AdminDocumentsService } from './services/AdminDocumentsService';
 import { AdminFilesService } from './services/AdminFilesService';
@@ -17,7 +16,6 @@ import { AdminUsersService } from './services/AdminUsersService';
 type HttpRequestConstructor = new (config: OpenAPIConfig) => BaseHttpRequest;
 export class CatWikiAdminSdk {
     public readonly adminCache: AdminCacheService;
-    public readonly adminChatSessions: AdminChatSessionsService;
     public readonly adminCollections: AdminCollectionsService;
     public readonly adminDocuments: AdminDocumentsService;
     public readonly adminFiles: AdminFilesService;
@@ -39,7 +37,6 @@ export class CatWikiAdminSdk {
             ENCODE_PATH: config?.ENCODE_PATH,
         });
         this.adminCache = new AdminCacheService(this.request);
-        this.adminChatSessions = new AdminChatSessionsService(this.request);
         this.adminCollections = new AdminCollectionsService(this.request);
         this.adminDocuments = new AdminDocumentsService(this.request);
         this.adminFiles = new AdminFilesService(this.request);

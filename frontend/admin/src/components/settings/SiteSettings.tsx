@@ -12,7 +12,6 @@ import {
   Bot,
   Users,
   Save,
-  History
 } from "lucide-react"
 import { toast } from "sonner"
 import { useSiteById, useUpdateSite } from "@/hooks"
@@ -26,7 +25,6 @@ import { QuickQuestionsConfig } from "@/components/features/QuickQuestionsConfig
 import type { QuickQuestion } from "@/lib/api-client"
 import { SiteBotSettings } from "@/components/sites/SiteBotSettings"
 import { SiteUsers } from "@/components/sites/SiteUsers"
-import { SiteChatHistory } from "@/components/sites/SiteChatHistory"
 import { initialConfigs } from "@/types/settings"
 import { env } from "@/lib/env"
 
@@ -229,13 +227,6 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
                 <Bot className="h-4 w-4 mr-2.5 opacity-70 group-data-[state=active]:opacity-100" />
                 AI 机器人
               </TabsTrigger>
-              <TabsTrigger
-                value="history"
-                className="w-full justify-start rounded-lg px-3 py-2.5 h-auto data-[state=active]:bg-primary/5 data-[state=active]:text-primary text-slate-600 hover:bg-slate-100/80 transition-all font-medium group"
-              >
-                <History className="h-4 w-4 mr-2.5 opacity-70 group-data-[state=active]:opacity-100" />
-                历史会话
-              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -398,9 +389,6 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
               />
             </TabsContent>
 
-            <TabsContent value="history" className="space-y-6 mt-0 animate-in fade-in-50 duration-300 data-[state=inactive]:hidden h-full">
-              <SiteChatHistory siteId={siteId} siteName={name} />
-            </TabsContent>
           </div>
         </div>
       </Tabs>

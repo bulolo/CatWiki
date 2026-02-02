@@ -2,10 +2,10 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__schemas__chat__ChatMessage } from './app__schemas__chat__ChatMessage';
+import type { ChatMessage } from './ChatMessage';
 export type ChatCompletionChoice = {
     index: number;
-    message: app__schemas__chat__ChatMessage;
+    message: ChatMessage;
     finish_reason?: (string | null);
 };
 
