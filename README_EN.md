@@ -32,6 +32,9 @@ English | [简体中文](./README.md)
 > **Official Brand Domain is Live!**
 > We have officially launched our flagship portal **[catwiki.ai](https://catwiki.ai)**. All demo, documentation, and management services are now accessible via the new domain. Please update your bookmarks!
 
+### 2026-02-06 🔍 Full PaddleOCR Integration
+- 🚀 **PaddleOCR Integration**: Deeply integrated Baidu's PaddleOCR engine, providing industry-leading recognition accuracy, especially for multi-language and complex documents.
+
 ### 2026-02-05 🎨 Branding & Visual Standardization
 - 🚀 **Official Brand Domain**: Launched [catwiki.ai](https://catwiki.ai) official website and brand domain family.
 - 🚀 **Public Document Images**: Automatically extract images during document parsing, upload to object storage, and generate public access links.
@@ -349,7 +352,7 @@ Parsers are core components in the CatWiki knowledge base platform for **documen
 |-----------|-------------|----------|--------|
 | [MinerU](./frontend/docs/docs/development/parsers/mineru.md) | **(Recommended)** High-quality Document Parsing Tool | High accuracy, complex layout support | ✅ Integrated |
 | [Docling](./frontend/docs/docs/development/parsers/docling.md) | IBM Open Source Document Processing Engine | Lightweight, easy deployment | ✅ Integrated |
-| [PaddleOCR](./frontend/docs/docs/development/parsers/paddleocr.md) | Baidu OCR Engine | Strong OCR, multi-language support | ⏳ Planned |
+| [PaddleOCR](./frontend/docs/docs/development/parsers/paddleocr.md) | Baidu OCR Engine | Strong OCR, multi-language support | ✅ Integrated |
 
 > [!TIP]
 > **Integration Status**: The above parsers have been officially integrated into the system. We recommend using MinerU and Docling.

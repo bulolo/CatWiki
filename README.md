@@ -37,6 +37,9 @@
 > **全新品牌域名正式启用！**
 > 我们已正式上线官方门户网站 **[catwiki.ai](https://catwiki.ai)**。所有的演示、文档以及管理服务均已迁移至新域名下。请更新您的书签！
 
+### 2026-02-06 🔍 PaddleOCR 深度集成
+- 🚀 **PaddleOCR 集成**: 深度对接百度 PaddleOCR 引擎，提供业界领先的 OCR 识别精度，尤其在多语言和复杂场景下表现卓越。
+
 ### 2026-02-05 🎨 视觉标准化与品牌优化
 - 🚀 **全新品牌域名启用**: 正式启用 [catwiki.ai](https://catwiki.ai) 官方网站与全线品牌域名。
 - 🚀 **文档图片公开化**: 文档解析过程自动提取图片并上传至对象存储，生成永久公开访问链接。
@@ -357,7 +360,7 @@ A: 确保你的访问路径包含站点域名后缀，例如：`http://localhost
 |--------|------|------|------|
 | [MinerU](./frontend/docs/docs/development/parsers/mineru.md) | **(首选支持)** 高质量文档解析工具 | 解析精度高、支持复杂版面 | ✅ 已集成 |
 | [Docling](./frontend/docs/docs/development/parsers/docling.md) | IBM 开源文档处理引擎 | 轻量级、易部署 | ✅ 已集成 |
-| [PaddleOCR](./frontend/docs/docs/development/parsers/paddleocr.md) | 百度 OCR 引擎 | OCR 能力强、支持多语言 | ⏳ 规划中 |
+| [PaddleOCR](./frontend/docs/docs/development/parsers/paddleocr.md) | 百度 OCR 引擎 | OCR 能力强、支持多语言 | ✅ 已集成 |
 
 > [!TIP]
 > **集成状态**: 以上解析器已正式集成到系统中。我们首选支持 MinerU 和 Docling。
