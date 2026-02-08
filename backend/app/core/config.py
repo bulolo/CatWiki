@@ -137,6 +137,12 @@ class Settings(BaseSettings):
     AI_EMBEDDING_API_BASE: str | None = Field(default=None)
     AI_EMBEDDING_MODEL: str | None = Field(default=None)
     AI_EMBEDDING_DIMENSION: int | None = Field(default=None)
+    AI_EMBEDDING_BATCH_SIZE: int = Field(
+        default=10,
+        ge=1,
+        le=2048,
+        description="Embedding API 单次请求的最大文本数量，不同服务商限制不同（如阿里云 10，OpenAI 2048）",
+    )
 
     AI_RERANK_API_KEY: str | None = Field(default=None)
     AI_RERANK_API_BASE: str | None = Field(default=None)

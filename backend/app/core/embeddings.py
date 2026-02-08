@@ -36,8 +36,10 @@ class OpenAICompatibleEmbeddings(Embeddings):
         base_url: str,
         max_retries: int = 3,
         timeout: float = 60.0,
+        embedding_batch_size: int = 10,
     ):
         self.model = model
+        self.embedding_batch_size = embedding_batch_size
         self.client = AsyncOpenAI(
             api_key=api_key,
             base_url=base_url,
@@ -45,9 +47,17 @@ class OpenAICompatibleEmbeddings(Embeddings):
             timeout=timeout,
         )
 
-    def update_credentials(self, api_key: str, base_url: str, model: str):
-        """更新客户端凭证"""
+    def update_credentials(
+        self, api_key: str, base_url: str, model: str, embedding_batch_size: int | None = None
+    ):
+        """更新客户端凭证
+
+        Args:
+            embedding_batch_size: 可选，如果提供则更新 Embedding API 分批大小
+        """
         self.model = model
+        if embedding_batch_size is not None:
+            self.embedding_batch_size = embedding_batch_size
         self.client = AsyncOpenAI(
             api_key=api_key,
             base_url=base_url,
@@ -56,10 +66,18 @@ class OpenAICompatibleEmbeddings(Embeddings):
         )
 
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
-        """异步嵌入多个文档"""
+        """异步嵌入多个文档（自动分批处理以防止超过 API 限制）"""
         try:
-            response = await self.client.embeddings.create(model=self.model, input=texts)
-            return [item.embedding for item in response.data]
+            # 分批处理，防止超过服务商的单次请求限制
+            all_embeddings: list[list[float]] = []
+            batch_size = self.embedding_batch_size
+
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i : i + batch_size]
+                response = await self.client.embeddings.create(model=self.model, input=batch)
+                all_embeddings.extend([item.embedding for item in response.data])
+
+            return all_embeddings
         except Exception as e:
             from openai import AuthenticationError
 

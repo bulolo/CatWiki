@@ -81,7 +81,10 @@ class VectorStoreManager:
             from app.core.embeddings import OpenAICompatibleEmbeddings
 
             self.embeddings = OpenAICompatibleEmbeddings(
-                model=model, api_key=api_key, base_url=base_url
+                model=model,
+                api_key=api_key,
+                base_url=base_url,
+                embedding_batch_size=settings.AI_EMBEDDING_BATCH_SIZE,
             )
             logger.info(f"向量存储配置: model={model}, dim={dimension}")
 
@@ -223,7 +226,10 @@ class VectorStoreManager:
                 # 更新 Embeddings 实例
                 if hasattr(self.embeddings, "update_credentials"):
                     self.embeddings.update_credentials(
-                        api_key=new_api_key, base_url=new_base_url, model=new_model
+                        api_key=new_api_key,
+                        base_url=new_base_url,
+                        model=new_model,
+                        embedding_batch_size=settings.AI_EMBEDDING_BATCH_SIZE,
                     )
                 else:
                     logger.warning(
@@ -238,9 +244,15 @@ class VectorStoreManager:
             logger.error(f"❌ Failed to reload vector store credentials: {e}")
 
     async def add_documents(
-        self, documents: list[LangChainDocument], ids: list[str], batch_size: int = 100
+        self, documents: list[LangChainDocument], ids: list[str], storage_batch_size: int = 100
     ) -> list[str]:
-        """添加文档到向量存储（支持分批处理）"""
+        """添加文档到向量存储
+
+        Args:
+            documents: 要存储的文档列表
+            ids: 文档 ID 列表
+            storage_batch_size: 每批写入数据库的档数量（Embedding API 分批由 AI_EMBEDDING_BATCH_SIZE 配置控制）
+        """
         await self._ensure_initialized()
 
         try:
@@ -249,14 +261,14 @@ class VectorStoreManager:
             start_time = time.time()
             total = len(documents)
 
-            # 分批处理
-            for i in range(0, total, batch_size):
-                batch_docs = documents[i : i + batch_size]
-                batch_ids = ids[i : i + batch_size]
+            # 分批写入数据库
+            for i in range(0, total, storage_batch_size):
+                batch_docs = documents[i : i + storage_batch_size]
+                batch_ids = ids[i : i + storage_batch_size]
 
                 await self._vector_store.aadd_documents(documents=batch_docs, ids=batch_ids)
                 logger.debug(
-                    f"已存储批次 {i // batch_size + 1}/{(total + batch_size - 1) // batch_size}"
+                    f"已存储批次 {i // storage_batch_size + 1}/{(total + storage_batch_size - 1) // storage_batch_size}"
                 )
 
             elapsed = time.time() - start_time
