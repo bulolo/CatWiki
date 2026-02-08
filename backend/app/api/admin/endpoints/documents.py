@@ -479,7 +479,7 @@ async def delete_document(
         from app.core.vector_store import VectorStoreManager
 
         vector_store = await VectorStoreManager.get_instance()
-        await vector_store.delete_by_metadata(key="document_id", value=str(document_id))
+        await vector_store.delete_by_metadata(key="id", value=str(document_id))
     except Exception as e:
         logger.warning(f"删除文档向量失败: {e}")
 

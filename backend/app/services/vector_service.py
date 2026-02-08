@@ -95,7 +95,7 @@ class VectorService:
                 if similarity < threshold:
                     continue
 
-                doc_id_val = doc.metadata.get("id") or doc.metadata.get("document_id")
+                doc_id_val = doc.metadata.get("id")
                 doc_title = doc.metadata.get("title")
 
                 candidate_list.append(

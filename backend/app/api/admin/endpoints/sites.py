@@ -222,7 +222,7 @@ async def delete_site(
 
             # 逐个文档清理向量（因为每个文档可能有多个 chunk）
             for doc_id in document_ids:
-                await vector_store.delete_by_metadata(key="document_id", value=str(doc_id))
+                await vector_store.delete_by_metadata(key="id", value=str(doc_id))
 
             logger.info(f"✅ 已清理站点 {site_id} 下 {len(document_ids)} 个文档的向量数据")
         except Exception as e:
