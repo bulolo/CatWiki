@@ -58,7 +58,7 @@ async def stream_graph_events(
     model_name: str,
     thread_id: str,
 ) -> AsyncGenerator[str, None]:
-    """流式响应生成器 - 适配 OpenAI SSE 格式"""
+    """流式响应生成器 - 适配 OpenAI SSE 格式（含 tool_calls 支持）"""
     full_response = ""
     citations = []
     
@@ -72,9 +72,10 @@ async def stream_graph_events(
             
             # 1. 处理 LLM 流式输出 (Token)
             if kind == "on_chat_model_stream":
-                # 过滤掉非 final agent 的输出（例如如果未来有 sub-agents）
-                # 这里假设 agent node 直接调用 model
-                chunk_content = event["data"]["chunk"].content
+                chunk_data = event["data"]["chunk"]
+                chunk_content = chunk_data.content
+                
+                # 处理文本内容
                 if chunk_content:
                     full_response += chunk_content
                     
@@ -93,11 +94,53 @@ async def stream_graph_events(
                         ],
                     )
                     yield f"data: {chunk.model_dump_json()}\n\n"
+                
+                # 处理 tool_calls (如果存在)
+                # LangChain 的 AIMessageChunk 可能包含 tool_call_chunks
+                if hasattr(chunk_data, "tool_call_chunks") and chunk_data.tool_call_chunks:
+                    for tc_chunk in chunk_data.tool_call_chunks:
+                        tool_call_delta = {
+                            "index": tc_chunk.get("index", 0),
+                            "id": tc_chunk.get("id"),
+                            "type": "function" if tc_chunk.get("id") else None,
+                            "function": {
+                                "name": tc_chunk.get("name"),
+                                "arguments": tc_chunk.get("args", "")
+                            }
+                        }
+                        # 清理 None 值
+                        tool_call_delta = {k: v for k, v in tool_call_delta.items() if v is not None}
+                        if tool_call_delta.get("function"):
+                            tool_call_delta["function"] = {k: v for k, v in tool_call_delta["function"].items() if v is not None}
+                        
+                        chunk = ChatCompletionChunk(
+                            id=chunk_id_prefix,
+                            object="chat.completion.chunk",
+                            created=int(time.time()),
+                            model=model_name,
+                            choices=[
+                                ChatCompletionChunkChoice(
+                                    index=0,
+                                    delta=ChatCompletionChunkDelta(
+                                        tool_calls=[tool_call_delta]
+                                    ),
+                                    finish_reason=None,
+                                )
+                            ],
+                        )
+                        yield f"data: {chunk.model_dump_json()}\n\n"
             
-            # 2. 监听工具调用结束，提取引用
+            # 2. 工具开始调用 - 发送状态指示
+            elif kind == "on_tool_start":
+                tool_name = event.get("name", "unknown")
+                logger.debug(f"🔧 [Stream] Tool started: {tool_name}")
+                # 可选：发送自定义状态 chunk 供前端显示 "正在搜索..."
+                # 这不是 OpenAI 标准，但可作为扩展
+                status_chunk = {"status": "tool_calling", "tool": tool_name}
+                yield f"data: {json.dumps(status_chunk)}\n\n"
+            
+            # 3. 监听工具调用结束
             elif kind == "on_tool_end":
-                # 实时收集引用（可选，也可以最后统一收集）
-                # 这里我们等到最后统一处理，确保准确性
                 pass
 
         # 循环结束，处理收尾工作

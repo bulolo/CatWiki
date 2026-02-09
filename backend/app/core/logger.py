@@ -78,3 +78,18 @@ def setup_logging() -> None:
 
     # 抑制一些嘈杂的日志
     logging.getLogger("multipart").setLevel(logging.WARNING)
+    
+    # 抑制第三方 HTTP 库的 DEBUG 日志（httpcore, httpx, openai 等）
+    # 这些库在 DEBUG 模式下会输出大量连接细节，通常不需要
+    noisy_loggers = [
+        "httpcore",
+        "httpx",
+        "openai",
+        "openai._base_client",
+        "httpcore.connection",
+        "httpcore.http11",
+        "hpack",
+        "urllib3",
+    ]
+    for logger_name in noisy_loggers:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)

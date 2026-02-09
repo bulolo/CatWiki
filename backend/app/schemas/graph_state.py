@@ -39,6 +39,8 @@ class ChatGraphState(TypedDict):
     should_retrieve: bool
     rewritten_query: str
     site_id: Optional[int]  # 站点ID上下文 (0=全局)
+    iteration_count: int  # 工具调用迭代计数，用于限制最大循环次数
+    consecutive_empty_count: int  # 连续空结果计数，用于智能终止
 
 
 class RetrieveInput(TypedDict):

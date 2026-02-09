@@ -152,6 +152,20 @@ class Settings(BaseSettings):
     AI_VL_API_BASE: str | None = Field(default=None)
     AI_VL_MODEL: str | None = Field(default=None)
 
+    # Agent 配置
+    AGENT_MAX_ITERATIONS: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="ReAct Agent 最大迭代次数，防止无限循环",
+    )
+    AGENT_MAX_CONSECUTIVE_EMPTY: int = Field(
+        default=2,
+        ge=1,
+        le=10,
+        description="连续空结果自动终止阈值，减少无效 API 调用",
+    )
+
     # 文档解析服务配置 (DocProcessor)
     DOCLING_NAME: str = Field(default="Docling")
     DOCLING_BASE_URL: str | None = Field(default=None)

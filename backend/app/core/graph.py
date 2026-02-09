@@ -26,12 +26,16 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, Base
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
-from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.prebuilt import ToolNode
 
 from app.schemas.graph_state import ChatGraphState
 from app.services.vector_service import VectorService
 
 logger = logging.getLogger(__name__)
+
+# 最大迭代次数限制，防止 Agent 无限循环（从配置读取）
+from app.core.config import settings
+MAX_ITERATIONS = settings.AGENT_MAX_ITERATIONS
 
 
 # =============================================================================
@@ -192,8 +196,73 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
     # 3. 构建图
     graph_builder = StateGraph(ChatGraphState)
 
+    # 工具节点包装器：递增迭代计数 + 检测空结果
+    tool_node = ToolNode(tools)
+    
+    # 连续空结果终止阈值（从配置读取）
+    MAX_CONSECUTIVE_EMPTY = settings.AGENT_MAX_CONSECUTIVE_EMPTY
+    
+    async def tools_wrapper_node(state: ChatGraphState) -> dict:
+        """工具节点包装器，执行工具并追踪迭代计数和空结果"""
+        # 调用原始工具节点
+        result = await tool_node.ainvoke(state)
+        
+        # 递增迭代计数
+        current_count = state.get("iteration_count", 0)
+        result["iteration_count"] = current_count + 1
+        
+        # 检测工具返回是否为空结果
+        consecutive_empty = state.get("consecutive_empty_count", 0)
+        is_empty_result = False
+        
+        # 检查最后一条工具消息是否为空结果
+        if result.get("messages"):
+            last_tool_msg = result["messages"][-1] if result["messages"] else None
+            if last_tool_msg:
+                content = getattr(last_tool_msg, "content", "")
+                # 检测空结果标志
+                if "未找到相关文档" in content or content == "[]":
+                    is_empty_result = True
+        
+        if is_empty_result:
+            result["consecutive_empty_count"] = consecutive_empty + 1
+            logger.debug(f"🔄 [Graph] Empty result, consecutive count: {result['consecutive_empty_count']}/{MAX_CONSECUTIVE_EMPTY}")
+        else:
+            result["consecutive_empty_count"] = 0  # 重置
+        
+        logger.debug(f"🔄 [Graph] Iteration count: {result['iteration_count']}/{MAX_ITERATIONS}")
+        return result
+
+    # 条件路由函数：检查迭代次数限制 + 连续空结果
+    def route_after_agent(state: ChatGraphState) -> Literal["tools", "__end__"]:
+        """Agent 后的路由决策，包含迭代次数和连续空结果检查"""
+        messages = state["messages"]
+        last_message = messages[-1] if messages else None
+        
+        # 检查是否需要调用工具
+        if last_message and hasattr(last_message, "tool_calls") and last_message.tool_calls:
+            # 检查迭代次数
+            current_count = state.get("iteration_count", 0)
+            if current_count >= MAX_ITERATIONS:
+                logger.warning(
+                    f"⚠️ [Graph] Max iterations ({MAX_ITERATIONS}) reached, forcing end"
+                )
+                return "__end__"
+            
+            # 检查连续空结果
+            consecutive_empty = state.get("consecutive_empty_count", 0)
+            if consecutive_empty >= MAX_CONSECUTIVE_EMPTY:
+                logger.warning(
+                    f"⚠️ [Graph] {MAX_CONSECUTIVE_EMPTY} consecutive empty results, stopping early"
+                )
+                return "__end__"
+            
+            return "tools"
+        
+        return "__end__"
+
     graph_builder.add_node("agent", agent_node)
-    graph_builder.add_node("tools", ToolNode(tools))
+    graph_builder.add_node("tools", tools_wrapper_node)
     
     # 引用提取节点（可选，可以作为最后一步优化状态）
     # 为了简化流式处理，我们通常不在图中显式加这个节点作为必须步骤，
@@ -203,10 +272,10 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
     # 4. 定义边
     graph_builder.add_edge(START, "agent")
     
-    # 条件边: Agent -> (Tools | END)
+    # 条件边: Agent -> (Tools | END)，包含迭代次数检查
     graph_builder.add_conditional_edges(
         "agent",
-        tools_condition,
+        route_after_agent,
     )
     
     # 循环边: Tools -> Agent
@@ -220,26 +289,57 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
 # =============================================================================
 
 def langchain_to_openai(messages: list[BaseMessage], filter_system: bool = False) -> list[dict]:
-    """将 LangChain 格式消息转换为 OpenAI 格式 (用于前端展示)"""
+    """将 LangChain 格式消息转换为 OpenAI 格式 (完全兼容 tool calling)
+    
+    支持转换：
+    - SystemMessage -> {"role": "system", "content": ...}
+    - HumanMessage -> {"role": "user", "content": ...}
+    - AIMessage -> {"role": "assistant", "content": ..., "tool_calls": [...]}
+    - ToolMessage -> {"role": "tool", "tool_call_id": ..., "content": ...}
+    """
     result = []
     for msg in messages:
         if isinstance(msg, SystemMessage):
             if filter_system:
                 continue
             result.append({"role": "system", "content": msg.content})
+        
         elif isinstance(msg, AIMessage):
-            # 处理工具调用
-            if msg.tool_calls:
-                # OpenAI 格式通常不直接展示 tool_calls 给用户看文本，
-                # 但如果是最终的消息历史返回，我们可能只关心文本内容。
-                # 如果没有文本内容但有 tool_calls，这通常是中间状态。
-                if msg.content:
-                    result.append({"role": "assistant", "content": msg.content})
+            message_dict = {"role": "assistant"}
+            
+            # 处理 content（可能为空字符串或 None）
+            if msg.content:
+                message_dict["content"] = msg.content
             else:
-                result.append({"role": "assistant", "content": msg.content})
+                message_dict["content"] = None
+            
+            # 处理 tool_calls（如果存在）
+            if msg.tool_calls:
+                tool_calls_list = []
+                for tc in msg.tool_calls:
+                    # LangChain 的 tool_call 结构转换为 OpenAI 格式
+                    tool_call_dict = {
+                        "id": tc.get("id", ""),
+                        "type": "function",
+                        "function": {
+                            "name": tc.get("name", ""),
+                            "arguments": json.dumps(tc.get("args", {}), ensure_ascii=False)
+                        }
+                    }
+                    tool_calls_list.append(tool_call_dict)
+                message_dict["tool_calls"] = tool_calls_list
+            
+            result.append(message_dict)
+        
         elif isinstance(msg, HumanMessage):
             result.append({"role": "user", "content": msg.content})
-        # ToolMessage 通常不直接展示给用户，或者作为 'tool' role 展示
-        # 前端 UI 可能需要适配显示 "Thinking..." 或 "Used tool: X"
+        
+        elif isinstance(msg, ToolMessage):
+            # OpenAI 格式的 tool role 消息
+            result.append({
+                "role": "tool",
+                "tool_call_id": msg.tool_call_id,
+                "content": msg.content if isinstance(msg.content, str) else json.dumps(msg.content, ensure_ascii=False)
+            })
     
     return result
