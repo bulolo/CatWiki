@@ -32,6 +32,10 @@ English | [简体中文](./README.md)
 > **Official Brand Domain is Live!**
 > We have officially launched our flagship portal **[catwiki.ai](https://catwiki.ai)**. All demo, documentation, and management services are now accessible via the new domain. Please update your bookmarks!
 
+### 2026-02-09 🛠️ Multi-turn Autonomous Knowledge Base Retrieval
+- ⚙️ **ReAct Loop Architecture**: Supports ReAct loop architecture, enabling AI to autonomously invoke knowledge base for multi-turn retrieval.
+- 🎨 **Tool Call Display**: Frontend AI chat now displays the complete multi-turn retrieval history, showing users all search attempts.
+
 ### 2026-02-06 🔍 Full PaddleOCR Integration
 - 🚀 **PaddleOCR Integration**: Deeply integrated Baidu's PaddleOCR engine, providing industry-leading recognition accuracy, especially for multi-language and complex documents.
 
