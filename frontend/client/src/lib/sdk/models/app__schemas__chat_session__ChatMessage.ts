@@ -11,12 +11,20 @@ export type app__schemas__chat_session__ChatMessage = {
      */
     role: string;
     /**
-     * 内容
+     * 内容，tool_call 时可能为空
      */
-    content: string;
+    content?: (string | null);
     /**
      * 消息ID
      */
     id?: (string | null);
+    /**
+     * 工具调用列表
+     */
+    tool_calls?: null;
+    /**
+     * 工具调用ID（role=tool时）
+     */
+    tool_call_id?: (string | null);
 };
 

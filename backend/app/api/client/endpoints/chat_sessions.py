@@ -105,12 +105,13 @@ async def get_session_messages(
 
     从持久化 Checkpointer 中读取所有消息。
     """
-    messages = await ChatSessionService.get_session_messages(thread_id=thread_id)
+    result = await ChatSessionService.get_session_messages(thread_id=thread_id)
 
     return ApiResponse.ok(
         data=ChatSessionMessagesResponse(
             thread_id=thread_id,
-            messages=messages,
+            messages=result["messages"],
+            citations=result["citations"],
         )
     )
 

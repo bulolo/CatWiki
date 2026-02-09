@@ -211,30 +211,37 @@ class ChatSessionService:
     @staticmethod
     async def get_session_messages(
         thread_id: str,
-    ) -> list[dict]:
+    ) -> dict:
         """从 LangGraph Checkpointer 获取对话历史
 
         Args:
             thread_id: 会话 ID
 
         Returns:
-            OpenAI 格式的消息列表
+            包含 messages 和 citations 的字典
         """
+        from app.core.graph import extract_citations_from_messages
+
         async with get_checkpointer() as checkpointer:
             config = {"configurable": {"thread_id": thread_id}}
             checkpoint_tuple = await checkpointer.aget_tuple(config)
 
             if not checkpoint_tuple:
                 logger.warning(f"⚠️ [ChatSession] No checkpoint found for thread_id: {thread_id}")
-                return []
+                return {"messages": [], "citations": []}
 
             # 从 checkpoint 中提取消息
             # LangGraph 的消息存储在 channel_values 的 "messages" 中
             checkpoint = checkpoint_tuple.checkpoint
             langchain_messages = checkpoint.get("channel_values", {}).get("messages", [])
 
+            # 提取引用信息
+            citations = extract_citations_from_messages(langchain_messages)
+
             # 使用现有的转换工具转换为 OpenAI 格式 (UI 展示需过滤系统消息)
-            return langchain_to_openai(langchain_messages, filter_system=True)
+            messages = langchain_to_openai(langchain_messages, filter_system=True)
+
+            return {"messages": messages, "citations": citations}
 
     @staticmethod
     async def delete_by_thread_id(

@@ -333,14 +333,81 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
     setIsLoading(true)
     try {
-      const { messages: historyMessages } = await api.chatSession.getMessages(targetThreadId)
+      const { messages: historyMessages, citations } = await api.chatSession.getMessages(targetThreadId)
 
       // 转换后端消息格式到前端格式
-      const formattedMessages: Message[] = historyMessages.map((m: any, idx) => ({
-        id: m.id || `${targetThreadId}-${idx}`,
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }))
+      // 需要将工具调用信息合并到最终的 AI 回复消息上
+      // 消息序列通常是: user -> assistant(tool_calls) -> tool -> assistant(content)
+      // 我们需要把 tool_calls 从第一个 assistant 消息移到最后一个 assistant 消息
+
+      const formattedMessages: Message[] = []
+      let pendingToolCalls: any[] = [] // 暂存工具调用信息
+
+      for (let i = 0; i < historyMessages.length; i++) {
+        const m = historyMessages[i]
+
+        // 跳过 tool 角色的消息（工具返回结果）
+        if (m.role === "tool") {
+          continue
+        }
+
+        // 处理 assistant 消息
+        if (m.role === "assistant") {
+          // 如果是 content 为空但有 tool_calls 的消息，暂存 tool_calls
+          if (!m.content && m.tool_calls?.length) {
+            pendingToolCalls = [...pendingToolCalls, ...m.tool_calls]
+            continue
+          }
+
+          // 如果有实际内容，创建消息并附加之前暂存的 tool_calls
+          formattedMessages.push({
+            id: m.id || `${targetThreadId}-${i}`,
+            role: "assistant" as const,
+            content: m.content || "",
+            // 合并所有暂存的 tool_calls
+            ...(pendingToolCalls.length > 0 ? {
+              toolCalls: pendingToolCalls.map((tc: any) => ({
+                id: tc.id,
+                type: "function" as const,
+                function: tc.function,
+                status: "completed" as const
+              }))
+            } : {})
+          })
+          // 清空暂存
+          pendingToolCalls = []
+          continue
+        }
+
+        // 处理 user 消息
+        if (m.role === "user") {
+          formattedMessages.push({
+            id: m.id || `${targetThreadId}-${i}`,
+            role: "user" as const,
+            content: m.content || "",
+          })
+        }
+      }
+
+      // 将 citations 附加到最后一条 assistant 消息上
+      if (citations && citations.length > 0) {
+        const lastAssistantIndex = formattedMessages.findIndex(
+          (msg, idx, arr) => msg.role === "assistant" &&
+            !arr.slice(idx + 1).some(m => m.role === "assistant")
+        )
+        if (lastAssistantIndex !== -1) {
+          formattedMessages[lastAssistantIndex] = {
+            ...formattedMessages[lastAssistantIndex],
+            sources: citations.map((c: any) => ({
+              id: c.id,
+              title: c.title,
+              siteId: c.siteId,
+              documentId: c.documentId,
+              score: c.score,
+            }))
+          }
+        }
+      }
 
       setMessages(formattedMessages)
       setThreadId(targetThreadId)

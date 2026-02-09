@@ -64,8 +64,10 @@ class ChatMessage(BaseModel):
     """单条消息模型（OpenAI 格式）"""
 
     role: str = Field(..., description="角色: user/assistant/system")
-    content: str = Field(..., description="内容")
+    content: Optional[str] = Field(None, description="内容，tool_call 时可能为空")
     id: Optional[str] = Field(None, description="消息ID")
+    tool_calls: Optional[list[dict]] = Field(None, description="工具调用列表")
+    tool_call_id: Optional[str] = Field(None, description="工具调用ID（role=tool时）")
 
 
 class ChatSessionMessagesResponse(BaseModel):
@@ -73,3 +75,4 @@ class ChatSessionMessagesResponse(BaseModel):
 
     thread_id: str
     messages: list[ChatMessage]
+    citations: Optional[list[dict]] = Field(None, description="引用来源列表")

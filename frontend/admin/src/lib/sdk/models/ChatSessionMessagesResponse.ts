@@ -9,5 +9,9 @@ import type { app__schemas__chat_session__ChatMessage } from './app__schemas__ch
 export type ChatSessionMessagesResponse = {
     thread_id: string;
     messages: Array<app__schemas__chat_session__ChatMessage>;
+    /**
+     * 引用来源列表
+     */
+    citations?: null;
 };
 
