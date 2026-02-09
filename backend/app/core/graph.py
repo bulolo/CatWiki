@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""LangGraph 工具调用 Agent (方案 C)
-
-使用 LangGraph create_agent 构建的 RAG Agent：
-- 将知识库检索封装为工具
-- LLM 自主决定何时调用工具
-- 支持多轮工具调用直到完成
+"""LangGraph ReAct Agent
+1. ReAct 循环: Agent -> Tools -> Agent ... -> End
+2. 支持多轮检索和推理
+3. 动态引用提取
 """
 
 import logging
-from typing import Literal
+import json
+from typing import Literal, List, Annotated
 
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, BaseMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, BaseMessage, ToolMessage
 from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
 
@@ -42,14 +42,16 @@ logger = logging.getLogger(__name__)
 @tool
 async def search_knowledge_base(query: str) -> str:
     """在知识库中搜索相关信息。
-
-    当用户提问需要查找文档、资料或知识库中的信息时使用此工具。
-
+    
+    当用户的问题需要事实依据、文档支持或你不知道答案时，**必须**使用此工具。
+    可以多次调用此工具以查找不同方面的信息。
+    
     Args:
-        query: 搜索查询词，应该是清晰的问题或关键词
-
+        query: 搜索查询词。应该是针对特定信息的清晰问题。
+    
     Returns:
-        搜索到的相关文档内容，包含标题和内容摘要
+        JSON 格式的字符串，包含搜索结果列表。
+        每个结果包含 'content' (内容摘录) 和 'metadata' (包含 title, document_id 等)。
     """
     logger.info(f"🔧 [Tool] search_knowledge_base called with query: {query}")
 
@@ -62,50 +64,24 @@ async def search_knowledge_base(query: str) -> str:
         )
 
         if not retrieved_docs:
-            return "未找到相关文档。请尝试使用不同的关键词或直接回答用户的问题。"
+            return "未找到相关文档。请尝试尝试使用更泛化或同义的关键词搜索。"
 
-        # 按 document_id 聚合
-        doc_map = {}
+        # 格式化为 JSON 以便 LLM 和引用提取逻辑使用
+        results = []
         for doc in retrieved_docs:
-            doc_id = doc.document_id
-            if not doc_id:
-                continue
-
-            if doc_id not in doc_map:
-                doc_map[doc_id] = {
+            results.append({
+                "content": doc.content,
+                "metadata": {
+                    "document_id": doc.document_id,
                     "title": doc.document_title,
-                    "content": [],
                     "score": doc.score,
+                    # 尽可能保留更多元数据供引用使用
+                    **doc.metadata
                 }
-            doc_map[doc_id]["content"].append(doc.content)
-
-        # 转换为唯一文档列表
-        relevant_docs = []
-        seen_ids = set()
-        for doc in retrieved_docs:
-            doc_id = doc.document_id
-            if not doc_id or doc_id in seen_ids:
-                continue
-
-            seen_ids.add(doc_id)
-            info = doc_map[doc_id]
-            full_content = "\n...\n".join(info["content"])
-            relevant_docs.append(
-                {
-                    "title": info["title"],
-                    "content": full_content,
-                    "score": info["score"],
-                }
-            )
-
-        # 构建返回结果
-        result_parts = []
-        for i, doc in enumerate(relevant_docs):
-            result_parts.append(f"[文档 {i + 1}] {doc['title']}\n{doc['content']}\n")
-
-        result = "\n---\n".join(result_parts)
-        logger.info(f"📚 [Tool] Found {len(relevant_docs)} relevant documents")
-        return result
+            })
+        
+        # 返回 JSON 字符串，LLM 可以理解结构化数据
+        return json.dumps(results, ensure_ascii=False)
 
     except Exception as e:
         logger.error(f"❌ [Tool] Knowledge base search failed: {e}", exc_info=True)
@@ -117,268 +93,134 @@ tools = [search_knowledge_base]
 
 
 # =============================================================================
-# Agent 节点
+# 辅助函数：引用提取
 # =============================================================================
 
+def extract_citations_from_messages(messages: List[BaseMessage]) -> List[dict]:
+    """从历史消息的 ToolMessage 中提取引用"""
+    citations = {}
+    
+    for msg in messages:
+        if isinstance(msg, ToolMessage) and msg.name == "search_knowledge_base":
+            try:
+                # 尝试解析 JSON 输出
+                content = msg.content
+                if isinstance(content, str):
+                    results = json.loads(content)
+                else:
+                    results = content
+                
+                if isinstance(results, list):
+                    for doc in results:
+                        if isinstance(doc, dict) and "metadata" in doc:
+                            meta = doc["metadata"]
+                            doc_id = meta.get("document_id")
+                            if doc_id:
+                                #去重: 使用 document_id 作为 key
+                                if doc_id not in citations:
+                                    citations[doc_id] = {
+                                        "id": str(doc_id),
+                                        "title": meta.get("title", "Unknown"),
+                                        "siteId": meta.get("site_id"),
+                                        "documentId": doc_id,
+                                        "score": meta.get("score")
+                                    }
+            except json.JSONDecodeError:
+                logger.warning(f"⚠️ Failed to parse tool output as JSON for citations: {msg.content[:50]}...")
+            except Exception as e:
+                logger.error(f"❌ Error extracting citations: {e}")
 
-async def agent_node(state: ChatGraphState) -> dict:
-    """Agent 入口节点
-
-    此节点作为图的入口，仅记录日志和透传消息。
-    实际的消息处理在 respond_node 中进行。
-    """
-    logger.info("🤖 [Agent] Entering agent_node")
-
-    # 入口节点只透传，不做处理
-    return {}
-
-
-async def retrieve_for_agent(state: ChatGraphState) -> dict:
-    """为 Agent 执行检索
-
-    从最后一条用户消息中提取查询并执行检索。
-    返回上下文和引用来源。
-    """
-    logger.info("🔍 [Agent] Executing retrieval for agent")
-
-    # 提取最后一条用户消息
-    query = ""
-    for msg in reversed(state["messages"]):
-        if isinstance(msg, HumanMessage):
-            query = msg.content
-            break
-
-    if not query:
-        return {"context": "", "citations": []}
-
-    try:
-        # 构建过滤器
-        from app.schemas.document import VectorRetrieveFilter
-
-        retrieve_filter = None
-        site_id = state.get("site_id")
-        if site_id is not None:
-            retrieve_filter = VectorRetrieveFilter(site_id=site_id)
-
-        # 直接调用 VectorService（不通过工具）以获取完整的文档信息
-        retrieved_docs = await VectorService.retrieve(
-            query=query, k=5, threshold=0.3, filter=retrieve_filter
-        )
-
-        if not retrieved_docs:
-            logger.info("🤷 [Agent] No relevant context found")
-            return {"context": "", "citations": []}
-
-        # 按 document_id 聚合
-        doc_map = {}
-        for doc in retrieved_docs:
-            doc_id = doc.document_id
-            if not doc_id:
-                continue
-
-            if doc_id not in doc_map:
-                doc_map[doc_id] = {
-                    "title": doc.document_title,
-                    "content": [],
-                    "metadata": doc.metadata,
-                    "score": doc.score,
-                    "document_id": doc_id,
-                }
-            doc_map[doc_id]["content"].append(doc.content)
-
-        # 转换为唯一文档列表（保持相关性排序）
-        relevant_docs = []
-        seen_ids = set()
-        for doc in retrieved_docs:
-            doc_id = doc.document_id
-            if not doc_id or doc_id in seen_ids:
-                continue
-
-            seen_ids.add(doc_id)
-            info = doc_map[doc_id]
-            full_content = "\n...\n".join(info["content"])
-
-            relevant_docs.append(
-                {
-                    "title": info["title"],
-                    "content": full_content,
-                    "metadata": info["metadata"],
-                    "score": info["score"],
-                    "document_id": doc_id,
-                }
-            )
-
-        logger.info(
-            f"📚 [Agent] Found {len(retrieved_docs)} chunks -> collapsed to {len(relevant_docs)} unique docs"
-        )
-
-        # 构建上下文字符串
-        context_parts = []
-        for i, doc in enumerate(relevant_docs):
-            context_parts.append(f"Document [{i + 1}] (Title: {doc['title']})\n{doc['content']}\n")
-        context_str = "\n".join(context_parts)
-
-        # 构建 Citations
-        citations = []
-        for i, doc in enumerate(relevant_docs):
-            citations.append(
-                {
-                    "id": str(doc["document_id"]),
-                    "title": doc["title"],
-                    "siteId": doc["metadata"].get("site_id"),
-                    "documentId": doc["document_id"],
-                    "score": doc["score"],
-                }
-            )
-
-        logger.info(f"📎 [Agent] Prepared {len(citations)} citations")
-
-        return {"context": context_str, "citations": citations}
-
-    except Exception as e:
-        logger.error(f"❌ [Agent] Retrieval failed: {e}", exc_info=True)
-        return {"context": "", "citations": []}
-
-
-def should_use_tools(state: ChatGraphState) -> Literal["retrieve", "respond"]:
-    """判断是否需要使用工具（简化版路由）
-
-    在完整的 Agent 实现中，这个判断会由 LLM 通过 tool_calls 决定。
-    这里使用简化的规则判断。
-    """
-    # 提取最后一条用户消息
-    query = ""
-    for msg in reversed(state["messages"]):
-        if isinstance(msg, HumanMessage):
-            query = msg.content
-            break
-
-    if not query:
-        return "respond"
-
-    # 简单的规则判断
-    greetings = ["你好", "hi", "hello", "hey", "嗨", "早上好", "晚上好", "在吗"]
-    query_lower = query.lower().strip()
-
-    if len(query) < 20 and any(g in query_lower for g in greetings):
-        logger.info("👋 [Agent] Detected greeting, skipping tools")
-        return "respond"
-
-    logger.info("🔧 [Agent] Will use knowledge base tool")
-    return "retrieve"
-
-
-async def respond_node(state: ChatGraphState) -> dict:
-    """响应节点：准备最终响应的消息
-
-    此节点在工具调用完成后（或跳过工具时）执行，
-    整理消息列表供后续 LLM 调用使用。
-    """
-    logger.info("💬 [Agent] Entering respond_node")
-
-    messages = list(state["messages"])
-    context = state.get("context", "")
-
-    if context:
-        # 注入检索到的上下文
-        system_prompt = (
-            "你是一个知识库的智能 AI 助手。\n"
-            "请使用以下检索到的上下文片段来回答用户的问题。\n"
-            "如果无法从上下文中找到答案，请告知用户你根据知识库无法回答，但你可以尝试提供帮助。\n"
-            "如果相关，请始终引用文档标题。\n\n"
-            "上下文信息:\n"
-            f"{context}\n"
-        )
-
-        if messages and isinstance(messages[0], SystemMessage):
-            messages[0] = SystemMessage(content=messages[0].content + f"\n\n{system_prompt}")
-        else:
-            messages.insert(0, SystemMessage(content=system_prompt))
-
-        logger.debug(f"📝 [Agent] Context injected into system prompt ({len(context)} chars)")
-    else:
-        # 无上下文时使用默认 System Prompt
-        default_prompt = "你是一个友好的 AI 助手，可以帮助用户回答各种问题。"
-        if not messages or not isinstance(messages[0], SystemMessage):
-            messages.insert(0, SystemMessage(content=default_prompt))
-            logger.debug("📝 [Agent] Default system prompt added (no context)")
-
-    return {"messages": messages}
+    return list(citations.values())
 
 
 # =============================================================================
-# 构建 Agent 图
+# Agent 图构建
 # =============================================================================
 
 
-def create_agent_graph(checkpointer=None):
-    """创建工具调用 Agent 图
-
-    流程:
-        START -> agent
-        agent --[需要工具]--> retrieve -> respond -> END
-        agent --[不需要工具]--> respond -> END
-
+def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
+    """创建 ReAct Agent 图
+    
     Args:
-        checkpointer: 可选的 Checkpointer 实例，用于持久化状态
-
+        checkpointer: 可选的 Checkpointer 实例
+        model: 配置好的 LLM 实例 (必须支持 bind_tools)
+        
     Returns:
         编译后的 StateGraph
     """
+    if model is None:
+        raise ValueError("Model must be provided to create_agent_graph")
+
+    # 1. 绑定工具到模型
+    model_with_tools = model.bind_tools(tools)
+
+    # 2. 定义节点
+    async def agent_node(state: ChatGraphState) -> dict:
+        """Agent 决策节点"""
+        logger.debug("🤖 [Agent] Thinking...")
+        messages = state["messages"]
+        
+        # 确保 SystemPrompt 存在
+        system_prompt = (
+            "你是一个智能 AI 助手，同时也能够访问外部知识库。\n"
+            "能够进行多步推理和检索。\n"
+            "请遵循以下规则：\n"
+            "1. 如果用户的问题需要事实信息，请务必使用 search_knowledge_base 工具。\n"
+            "2. 如果第一次搜索结果不完整，请尝试从不同角度再次搜索。\n"
+            "3. 回答时请依据检索到的信息，保持客观准确。\n"
+            "4. 如果检索结果为空，请诚实告知用户。\n"
+        )
+        
+        # 如果历史消息中第一条不是 SystemMessage，则插入
+        if not messages or not isinstance(messages[0], SystemMessage):
+            messages = [SystemMessage(content=system_prompt)] + list(messages)
+        elif isinstance(messages[0], SystemMessage):
+             # 确保 System Prompt 内容是最新的（或者是合并的）
+             # 这里简单起见，我们假设外部调用者可能会传入 SystemMessage，或者我们在这里强制覆盖/追加
+             pass
+
+        # 调用模型
+        response = await model_with_tools.ainvoke(messages)
+        return {"messages": [response]}
+
+    async def citation_node(state: ChatGraphState) -> dict:
+        """后处理节点：提取引用"""
+        citations = extract_citations_from_messages(state["messages"])
+        logger.info(f"📚 [Graph] Extracted {len(citations)} citations")
+        return {"citations": citations}
+
+    # 3. 构建图
     graph_builder = StateGraph(ChatGraphState)
 
-    # 添加节点
     graph_builder.add_node("agent", agent_node)
-    graph_builder.add_node("retrieve", retrieve_for_agent)
-    graph_builder.add_node("respond", respond_node)
+    graph_builder.add_node("tools", ToolNode(tools))
+    
+    # 引用提取节点（可选，可以作为最后一步优化状态）
+    # 为了简化流式处理，我们通常不在图中显式加这个节点作为必须步骤，
+    # 而是让前端或外层从 messages 中提取。但为了 State 完整性，我们可以加一个结束前的节点。
+    # graph_builder.add_node("process_citations", citation_node)
 
-    # 添加边
+    # 4. 定义边
     graph_builder.add_edge(START, "agent")
-
-    # 条件边：决定是否使用工具
+    
+    # 条件边: Agent -> (Tools | END)
     graph_builder.add_conditional_edges(
-        "agent", should_use_tools, {"retrieve": "retrieve", "respond": "respond"}
+        "agent",
+        tools_condition,
     )
-
-    graph_builder.add_edge("retrieve", "respond")
-    graph_builder.add_edge("respond", END)
+    
+    # 循环边: Tools -> Agent
+    graph_builder.add_edge("tools", "agent")
 
     return graph_builder.compile(checkpointer=checkpointer)
-
-
-# 全局单例图实例
-rag_graph = create_agent_graph()
 
 
 # =============================================================================
 # 辅助函数
 # =============================================================================
 
-
-def messages_to_langchain(messages: list[dict]) -> list[BaseMessage]:
-    """将 OpenAI 格式消息转换为 LangChain 格式"""
-    result = []
-    for msg in messages:
-        role = msg.get("role", "user")
-        content = msg.get("content", "")
-
-        if role == "system":
-            result.append(SystemMessage(content=content))
-        elif role == "assistant":
-            result.append(AIMessage(content=content))
-        else:
-            result.append(HumanMessage(content=content))
-
-    return result
-
-
 def langchain_to_openai(messages: list[BaseMessage], filter_system: bool = False) -> list[dict]:
-    """将 LangChain 格式消息转换为 OpenAI 格式
-
-    Args:
-        messages: LangChain 消息列表
-        filter_system: 是否过滤掉系统消息（用于 UI 展示时设为 True）
-    """
+    """将 LangChain 格式消息转换为 OpenAI 格式 (用于前端展示)"""
     result = []
     for msg in messages:
         if isinstance(msg, SystemMessage):
@@ -386,13 +228,18 @@ def langchain_to_openai(messages: list[BaseMessage], filter_system: bool = False
                 continue
             result.append({"role": "system", "content": msg.content})
         elif isinstance(msg, AIMessage):
-            result.append({"role": "assistant", "content": msg.content})
+            # 处理工具调用
+            if msg.tool_calls:
+                # OpenAI 格式通常不直接展示 tool_calls 给用户看文本，
+                # 但如果是最终的消息历史返回，我们可能只关心文本内容。
+                # 如果没有文本内容但有 tool_calls，这通常是中间状态。
+                if msg.content:
+                    result.append({"role": "assistant", "content": msg.content})
+            else:
+                result.append({"role": "assistant", "content": msg.content})
         elif isinstance(msg, HumanMessage):
             result.append({"role": "user", "content": msg.content})
-
+        # ToolMessage 通常不直接展示给用户，或者作为 'tool' role 展示
+        # 前端 UI 可能需要适配显示 "Thinking..." 或 "Used tool: X"
+    
     return result
-
-
-def get_tools():
-    """获取可用工具列表（供外部使用）"""
-    return tools
