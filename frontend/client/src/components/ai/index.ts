@@ -15,3 +15,4 @@
 export { AIChat } from './AIChat'
 export { AIChatLanding } from './AIChatLanding'
 export { ChatHistorySidebar } from './ChatHistorySidebar'
+export { ToolCallCard } from './ToolCallCard'

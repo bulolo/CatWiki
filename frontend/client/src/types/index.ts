@@ -47,11 +47,32 @@ export interface Source {
   documentId?: number
 }
 
+// Tool Call 类型（OpenAI 兼容）
+export interface ToolCallFunction {
+  name: string
+  arguments: string // JSON 字符串
+}
+
+export interface ToolCall {
+  id: string
+  type: "function"
+  function: ToolCallFunction
+  // 前端扩展字段
+  status?: "pending" | "running" | "completed" | "error"
+  result?: string
+}
+
+// 消息状态类型
+export type MessageStatus = "idle" | "thinking" | "tool_calling" | "streaming"
+
 // 消息类型（AI 对话）
 export interface Message {
   id: string
   role: "user" | "assistant" | "system"
   content: string
   sources?: Source[]
+  // Tool calling 扩展
+  toolCalls?: ToolCall[]
+  status?: MessageStatus
+  activeToolName?: string // 当前正在调用的工具名称
 }
-

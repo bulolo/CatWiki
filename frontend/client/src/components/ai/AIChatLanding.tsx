@@ -21,6 +21,7 @@ import { Streamdown } from "streamdown"
 import { cn } from "@/lib/utils"
 import { useAIChat } from "@/hooks"
 import { MessageSources } from "./MessageSources"
+import { ToolCallCard } from "./ToolCallCard"
 import { ChatHistorySidebar } from "./ChatHistorySidebar"
 import { Site } from "@/lib/sdk/models/Site"
 import type { QuickQuestion } from "@/lib/sdk/models/QuickQuestion"
@@ -174,17 +175,23 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, quickQuestions: pr
                         "text-sm md:text-[16px] leading-relaxed",
                         message.role === "assistant" ? "prose prose-slate max-w-none prose-p:leading-relaxed" : ""
                       )}>
-                        {message.role === "assistant" && !message.content ? (
+                        {/* Tool Call 展示 */}
+                        {message.role === "assistant" && message.toolCalls && message.toolCalls.length > 0 && (
+                          <ToolCallCard toolCalls={message.toolCalls} />
+                        )}
+                        
+                        {/* 消息内容 */}
+                        {message.role === "assistant" && !message.content && !message.toolCalls?.length ? (
                           <div className="flex gap-1 md:gap-1.5 items-center py-2 h-6">
                             <div className="w-1 h-1 md:w-1.5 md:h-1.5 bg-slate-400 rounded-full animate-bounce" />
                             <div className="w-1 h-1 md:w-1.5 md:h-1.5 bg-slate-400 rounded-full animate-bounce delay-75" />
                             <div className="w-1 h-1 md:w-1.5 md:h-1.5 bg-slate-400 rounded-full animate-bounce delay-150" />
                           </div>
-                        ) : (
-                          <Streamdown isAnimating={isLoading && message.role === "assistant"}>
+                        ) : message.content ? (
+                          <Streamdown isAnimating={isLoading && message.role === "assistant" && message.status === "streaming"}>
                             {message.content}
                           </Streamdown>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                     <MessageSources sources={message.sources} allSites={allSites} />

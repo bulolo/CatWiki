@@ -133,6 +133,8 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let accumulatedContent = ""
+      // 用于累积 tool_calls (因为可能分多个 chunk 发送)
+      const accumulatedToolCalls: Map<number, { id: string; name: string; arguments: string }> = new Map()
 
       while (true) {
         const { done, value } = await reader.read()
@@ -152,7 +154,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
           try {
             const data = JSON.parse(dataStr)
 
-            // Check for citations
+            // 1. 处理 citations
             if (data.citations) {
               setMessages(prev =>
                 prev.map(msg =>
@@ -164,16 +166,88 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
               continue
             }
 
+            // 2. 处理 status 事件 (工具调用状态)
+            if (data.status === "tool_calling") {
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === assistantMsgId
+                    ? {
+                      ...msg,
+                      status: "tool_calling",
+                      activeToolName: data.tool
+                    }
+                    : msg
+                )
+              )
+              continue
+            }
+
+            // 3. 处理 tool_calls delta
+            const toolCallsDeltas = data.choices?.[0]?.delta?.tool_calls
+            if (toolCallsDeltas && Array.isArray(toolCallsDeltas)) {
+              for (const tcDelta of toolCallsDeltas) {
+                const index = tcDelta.index ?? 0
+                const existing = accumulatedToolCalls.get(index) || { id: "", name: "", arguments: "" }
+
+                // 累积 tool call 信息
+                if (tcDelta.id) existing.id = tcDelta.id
+                if (tcDelta.function?.name) existing.name = tcDelta.function.name
+                if (tcDelta.function?.arguments) existing.arguments += tcDelta.function.arguments
+
+                accumulatedToolCalls.set(index, existing)
+              }
+
+              // 更新消息的 toolCalls
+              const toolCallsList = Array.from(accumulatedToolCalls.values()).map(tc => ({
+                id: tc.id,
+                type: "function" as const,
+                function: {
+                  name: tc.name,
+                  arguments: tc.arguments
+                },
+                status: "running" as const
+              }))
+
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === assistantMsgId
+                    ? { ...msg, toolCalls: toolCallsList, status: "tool_calling" }
+                    : msg
+                )
+              )
+              continue
+            }
+
+            // 4. 处理文本 content delta
             const deltaContent = data.choices?.[0]?.delta?.content || ""
 
             if (deltaContent) {
               accumulatedContent += deltaContent
 
+              // 如果有 tool calls，标记为已完成
+              const updatedToolCalls = accumulatedToolCalls.size > 0
+                ? Array.from(accumulatedToolCalls.values()).map(tc => ({
+                  id: tc.id,
+                  type: "function" as const,
+                  function: {
+                    name: tc.name,
+                    arguments: tc.arguments
+                  },
+                  status: "completed" as const
+                }))
+                : undefined
+
               // 实时更新 AI 消息内容
               setMessages(prev =>
                 prev.map(msg =>
                   msg.id === assistantMsgId
-                    ? { ...msg, content: accumulatedContent }
+                    ? {
+                      ...msg,
+                      content: accumulatedContent,
+                      status: "streaming",
+                      toolCalls: updatedToolCalls || msg.toolCalls,
+                      activeToolName: undefined
+                    }
                     : msg
                 )
               )
@@ -183,6 +257,15 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
           }
         }
       }
+
+      // 流结束后，清除状态
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === assistantMsgId
+            ? { ...msg, status: undefined, activeToolName: undefined }
+            : msg
+        )
+      )
 
     } catch (error: any) {
       if (error.name === "AbortError") {

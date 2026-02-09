@@ -31,6 +31,7 @@ import { Site } from "@/lib/sdk/models/Site"
 import { Streamdown } from "streamdown"
 import { useAIChat } from "@/hooks"
 import { MessageSources } from "./MessageSources"
+import { ToolCallCard } from "./ToolCallCard"
 
 interface AIChatProps {
   open: boolean
@@ -131,9 +132,17 @@ export function AIChat({ open, onOpenChange, initialQuery, siteId, allSites }: A
                     "text-sm md:text-[15px] leading-relaxed",
                     message.role === "assistant" ? "prose prose-slate prose-sm max-w-none prose-p:leading-relaxed" : ""
                   )}>
-                    <Streamdown isAnimating={isLoading && message.role === "assistant"}>
-                      {message.content}
-                    </Streamdown>
+                    {/* Tool Call 展示 */}
+                    {message.role === "assistant" && message.toolCalls && message.toolCalls.length > 0 && (
+                      <ToolCallCard toolCalls={message.toolCalls} />
+                    )}
+                    
+                    {/* 消息内容 */}
+                    {message.content && (
+                      <Streamdown isAnimating={isLoading && message.role === "assistant" && message.status === "streaming"}>
+                        {message.content}
+                      </Streamdown>
+                    )}
                     <MessageSources sources={message.sources} allSites={allSites} />
                   </div>
                 </div>

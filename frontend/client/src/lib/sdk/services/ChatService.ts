@@ -10,11 +10,7 @@ export class ChatService {
     constructor(public readonly httpRequest: BaseHttpRequest) {}
     /**
      * Create Chat Completion
-     * 创建聊天补全 (OpenAI 兼容接口) - 公开/Web挂件使用
-     *
-     * 安全机制：
-     * 1. CORS/Origin 校验：确保请求来自受信任的域名（防止跨站调用滥用）
-     * 2. 速率限制 (TODO)：建议在网关层配置
+     * 创建聊天补全 (OpenAI 兼容接口)
      * @returns ChatCompletionResponse Successful Response
      * @throws ApiError
      */
@@ -43,7 +39,7 @@ export class ChatService {
     }
     /**
      * Create Site Chat Completion
-     * 创建聊天补全 (专用接口) - 只有带有效 API Key 才能访问
+     * 创建聊天补全 (专用接口)
      * @returns ChatCompletionResponse Successful Response
      * @throws ApiError
      */
