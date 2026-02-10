@@ -378,7 +378,9 @@ class ChatSessionService:
             # 为每一条 Assistant 消息提取其对应的引用
             if msg.role == "assistant":
                 # 传入截止到当前消息的历史，并只提取当前回合的引用
-                msg_sources = extract_sources_from_messages(langchain_msgs[:i+1], from_last_turn=True)
+                msg_sources = extract_sources_from_messages(
+                    langchain_msgs[: i + 1], from_last_turn=True
+                )
                 if msg_sources:
                     msg_dict["sources"] = msg_sources
 

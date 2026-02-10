@@ -286,6 +286,7 @@ async def _process_chat_request(
     try:
         # 7. 处理请求
         if request.stream:
+
             async def protected_generator():
                 async with get_checkpointer() as cp:
                     g = create_agent_graph(checkpointer=cp, model=llm)

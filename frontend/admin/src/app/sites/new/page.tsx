@@ -87,7 +87,7 @@ export default function NewSitePage() {
 
     createSiteMutation.mutate({
       name: name.trim(),
-      slug: slug.trim() || undefined,
+      slug: slug.trim(),
       description: description.trim() || undefined,
       status: isActive ? "active" : "disabled",
       theme_color: themeColor,

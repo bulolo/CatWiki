@@ -14,13 +14,11 @@ from langchain_core.messages import (
 logger = logging.getLogger(__name__)
 
 
-
 def extract_sources_from_messages(
-    messages: list[BaseMessage], 
-    from_last_turn: bool = False
+    messages: list[BaseMessage], from_last_turn: bool = False
 ) -> list[dict]:
     """从历史消息的 ToolMessage 中提取引用
-    
+
     注意：为了确保与 UI 的自动编号 [1, 2, 3...] 匹配，我们严格按顺序收集。
     由于工具侧已进行“合并”处理，此处按 document_id 过滤仅为多工具调用时的稳健性。
     """
@@ -50,7 +48,7 @@ def extract_sources_from_messages(
                         meta = doc.get("metadata", {})
                         doc_id = meta.get("document_id")
                         source_idx = doc.get("source_index") or meta.get("source_index")
-                        
+
                         # 仅保留每个文档的首个引用点，以对齐 AI 开始引用该文档时的序号
                         if doc_id and doc_id not in sources:
                             sources[doc_id] = {
@@ -68,10 +66,11 @@ def extract_sources_from_messages(
 
     # 按 sourceIndex 排序以确保前端列表序号递增
     sorted_sources = sorted(
-        sources.values(), 
-        key=lambda x: x.get("sourceIndex") if x.get("sourceIndex") is not None else 999
+        sources.values(),
+        key=lambda x: x.get("sourceIndex") if x.get("sourceIndex") is not None else 999,
     )
     return sorted_sources
+
 
 def convert_tool_call_chunk_to_openai(tc_chunk: dict[str, Any]) -> dict[str, Any]:
     """将 LangChain 的 tool_call_chunk 转换为 OpenAI 兼容格式"""
@@ -87,10 +86,9 @@ def convert_tool_call_chunk_to_openai(tc_chunk: dict[str, Any]) -> dict[str, Any
     # 清理 None 值
     cleaned_tc = {k: v for k, v in tc.items() if v is not None}
     if "function" in cleaned_tc:
-        cleaned_tc["function"] = {
-            k: v for k, v in cleaned_tc["function"].items() if v is not None
-        }
+        cleaned_tc["function"] = {k: v for k, v in cleaned_tc["function"].items() if v is not None}
     return cleaned_tc
+
 
 def is_meaningful_message(msg: BaseMessage) -> bool:
     """判断消息是否具有实际语义内容（过滤掉 System、Remove 等）"""

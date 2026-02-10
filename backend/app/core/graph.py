@@ -82,7 +82,7 @@ async def search_knowledge_base(query: str, config: RunnableConfig) -> str:
             k=settings.RAG_RECALL_K,
             filter=VectorRetrieveFilter(site_id=int(site_id)) if site_id else None,
             enable_rerank=settings.RAG_ENABLE_RERANK,
-            rerank_k=settings.RAG_RERANK_TOP_K
+            rerank_k=settings.RAG_RERANK_TOP_K,
         )
 
         if not retrieved_docs:
@@ -98,8 +98,8 @@ async def search_knowledge_base(query: str, config: RunnableConfig) -> str:
                 merged_docs_map[doc_id] = {
                     "title": doc.document_title,
                     "contents": [doc.content],
-                    "score": doc.score, # 保留第一个片段的分数作为代表
-                    "metadata": doc.metadata
+                    "score": doc.score,  # 保留第一个片段的分数作为代表
+                    "metadata": doc.metadata,
                 }
             else:
                 merged_docs_map[doc_id]["contents"].append(doc.content)
