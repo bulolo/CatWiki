@@ -28,18 +28,9 @@ class VectorService:
         执行语义检索（包含 召回 + 重排序）
         """
         # 使用环境变量作为默认值
-        final_k = k if k is not None else settings.RAG_RERANK_TOP_K
+        final_top_k = k if k is not None else settings.RAG_RERANK_TOP_K
         final_threshold = threshold if threshold is not None else settings.RAG_RECALL_THRESHOLD
         
-        logger.info(
-            "\n"
-            + "=" * 80
-            + f"\n🚀 [VECTOR RETRIEVAL START]\n"
-            + f"   Query: '{query}'\n"
-            + f"   Params: k={final_k}, threshold={final_threshold}\n"
-            + f"   Filter: {filter.model_dump() if filter else 'None'}\n"
-            + "=" * 80
-        )
         start_time = time.time()
 
         try:
@@ -61,21 +52,40 @@ class VectorService:
             await reranker._ensure_config()
 
             # 确定是否使用重排序
-            do_rerank = enable_rerank if enable_rerank is not None else settings.RAG_ENABLE_RERANK
+            env_rerank_enabled = settings.RAG_ENABLE_RERANK
+            reranker_active = reranker.is_enabled
+            
             # 只有在 reranker.is_enabled (有 API 配置) 且 do_rerank (业务逻辑启用) 时才真正执行
-            should_apply_rerank = do_rerank and reranker.is_enabled
+            should_apply_rerank = env_rerank_enabled and reranker_active
+            if enable_rerank is not None:
+                should_apply_rerank = enable_rerank and reranker_active
 
             # 计算召回深度 recall_k
-            # 如果要重排序，则按照环境变量设定的 RECALL_K 召回，但为保证精排质量，召回深度应至少为 final_k 的 2 倍
+            # 如果要重排序，则按照环境变量设定的 RECALL_K 召回，但为保证精排质量，召回深度应至少为 final_top_k 的 2 倍
             if should_apply_rerank:
-                recall_k = max(settings.RAG_RECALL_K, final_k * 2)
+                recall_k = max(settings.RAG_RECALL_K, final_top_k * 2)
             else:
-                recall_k = final_k
+                recall_k = final_top_k
 
             # 应用全局硬上限保护
             recall_k = min(recall_k, settings.RAG_RECALL_MAX)
 
-            logger.debug(f"🔍 [Retrieve] 初始召回深度: {recall_k} | Rerank: {should_apply_rerank}")
+            logger.info(
+                "\n"
+                + "=" * 80
+                + f"\n🚀 [VECTOR RETRIEVAL START]\n"
+                + f"   Query     : '{query}'\n"
+                + f"   Recall K  : {recall_k} (From RAG_RECALL_K)\n"
+                + f"   Top K     : {final_top_k} (From RAG_RERANK_TOP_K)\n"
+                + f"   Threshold : {final_threshold} (From RAG_RECALL_THRESHOLD)\n"
+                + f"   Rerank    : {should_apply_rerank} (From RAG_ENABLE_RERANK)\n"
+                + f"   Filter    : {filter.model_dump() if filter else 'None'}\n"
+                + "=" * 80
+            )
+
+            logger.debug(
+                f"🔍 [Retrieve] 决策路径: Env_Enable={env_rerank_enabled} | Reranker_Host_Active={reranker_active} | Param_Override={enable_rerank}"
+            )
 
             # 3. 执行相似度搜索
             results = await vector_store.similarity_search_with_score(
@@ -105,12 +115,12 @@ class VectorService:
             final_list = []
             if should_apply_rerank and candidate_list:
                 final_list = await reranker.rerank(
-                    query=query, documents=candidate_list, top_n=final_k
+                    query=query, documents=candidate_list, top_n=final_top_k
                 )
             else:
                 # 没启用 Rerank 则按分数排序取 top k
                 candidate_list.sort(key=lambda x: x["score"], reverse=True)
-                final_list = candidate_list[:final_k]
+                final_list = candidate_list[:final_top_k]
 
             # 6. 转换为响应对象
             response_objects = [VectorRetrieveResponse(**item) for item in final_list]

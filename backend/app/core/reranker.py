@@ -40,12 +40,14 @@ class Reranker:
         """确保配置已加载，使用全局配置管理器同步 API 配置"""
         from app.core.dynamic_config_manager import dynamic_config_manager
 
+        # 获取数据库中的动态配置
         rerank_conf = await dynamic_config_manager.get_rerank_config()
 
-        if rerank_conf:
-            self.api_key = rerank_conf.get("apiKey")
-            self.base_url = rerank_conf.get("baseUrl")
-            self.model = rerank_conf.get("model")
+        # 优先级：数据库动态配置 > 环境变量固化配置
+        # 注意：dict.get() missing key returns None, which triggers the 'or' fallback
+        self.api_key = rerank_conf.get("apiKey") or settings.AI_RERANK_API_KEY
+        self.base_url = rerank_conf.get("baseUrl") or settings.AI_RERANK_API_BASE
+        self.model = rerank_conf.get("model") or settings.AI_RERANK_MODEL
 
     @property
     def is_enabled(self) -> bool:
