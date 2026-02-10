@@ -32,6 +32,7 @@ from app.schemas.response import (
 )
 from app.schemas.site import Site, SiteCreate, SiteUpdate
 from app.schemas.stats import SiteStats
+from app.schemas.tenant import TenantCreate, TenantSchema, TenantUpdate
 from app.schemas.system_config import (
     AIConfigUpdate,
     BotConfigUpdate,
@@ -72,4 +73,7 @@ __all__ = [
     "DocProcessorsUpdate",
     "TestDocProcessorRequest",
     "SiteStats",
+    "TenantCreate",
+    "TenantSchema",
+    "TenantUpdate",
 ]

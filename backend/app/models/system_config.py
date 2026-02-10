@@ -14,7 +14,7 @@
 
 """系统配置模型"""
 
-from sqlalchemy import Boolean, Column, String
+from sqlalchemy import Boolean, Column, String, Integer, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSON
 
 from app.models.base import BaseModel
@@ -25,14 +25,19 @@ class SystemConfig(BaseModel):
 
     __tablename__ = "system_configs"
 
+    # 多租户
+    tenant_id = Column(Integer, nullable=True, comment="所属租户ID(null表示平台全局配置)")
+
     # 配置键（唯一标识）
     config_key = Column(
         String(100),
-        unique=True,
         nullable=False,
         index=True,
         comment="配置键，如 'ai_config', 'bot_config'",
     )
+
+    # 复合唯一约束
+    __table_args__ = (UniqueConstraint("tenant_id", "config_key", name="uq_tenant_config_key"),)
 
     # 配置值（JSON 格式存储复杂配置）
     config_value = Column(JSON, nullable=False, default={}, comment="配置值（JSON 格式）")

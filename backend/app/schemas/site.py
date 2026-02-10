@@ -28,6 +28,7 @@ class SiteBase(BaseModel):
     """站点基础 Schema"""
 
     name: str = Field(..., max_length=100, description="站点名称")
+    tenant_id: int = Field(..., description="所属租户ID")
     slug: str = Field(..., max_length=200, description="站点标识")
     description: str | None = Field(None, description="站点描述")
     icon: str | None = Field(None, max_length=50, description="图标名称")

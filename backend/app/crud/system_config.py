@@ -38,9 +38,15 @@ class CRUDSystemConfig(CRUDBase[SystemConfig, SystemConfigCreate, SystemConfigUp
 
         return query
 
-    async def get_by_key(self, db: AsyncSession, *, config_key: str) -> SystemConfig | None:
+    async def get_by_key(
+        self, db: AsyncSession, *, config_key: str, tenant_id: int | None = None
+    ) -> SystemConfig | None:
         """根据配置键获取配置"""
-        result = await db.execute(select(self.model).where(self.model.config_key == config_key))
+        result = await db.execute(
+            select(self.model).where(
+                self.model.config_key == config_key, self.model.tenant_id == tenant_id
+            )
+        )
         return result.scalar_one_or_none()
 
     async def list(
@@ -61,10 +67,10 @@ class CRUDSystemConfig(CRUDBase[SystemConfig, SystemConfigCreate, SystemConfigUp
         return result.scalar_one()
 
     async def update_by_key(
-        self, db: AsyncSession, *, config_key: str, config_value: dict
+        self, db: AsyncSession, *, config_key: str, config_value: dict, tenant_id: int | None = None
     ) -> SystemConfig:
         """根据配置键更新配置（如果不存在则创建）"""
-        db_config = await self.get_by_key(db, config_key=config_key)
+        db_config = await self.get_by_key(db, config_key=config_key, tenant_id=tenant_id)
 
         if db_config:
             # 更新已有配置
@@ -75,6 +81,7 @@ class CRUDSystemConfig(CRUDBase[SystemConfig, SystemConfigCreate, SystemConfigUp
         else:
             # 创建新配置
             db_config = SystemConfig(
+                tenant_id=tenant_id,
                 config_key=config_key,
                 config_value=config_value,
                 is_active=True,

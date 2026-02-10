@@ -14,8 +14,9 @@
 
 import enum
 
-from sqlalchemy import Column, DateTime, String
+from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
 
@@ -23,9 +24,9 @@ from app.models.base import BaseModel
 class UserRole(str, enum.Enum):
     """用户角色枚举"""
 
-    ADMIN = "admin"  # 系统管理员
+    ADMIN = "admin"  # 平台管理员 (tenant_id 为空)
+    TENANT_ADMIN = "tenant_admin"  # 租户管理员
     SITE_ADMIN = "site_admin"  # 站点管理员
-    EDITOR = "editor"  # 站点编辑
 
 
 class UserStatus(str, enum.Enum):
@@ -41,6 +42,11 @@ class User(BaseModel):
 
     __tablename__ = "users"
 
+    # 多租户
+    tenant_id = Column(
+        Integer, nullable=True, comment="所属租户ID(null=平台管理员)"
+    )
+
     # 基本信息
     name = Column(String(100), nullable=False, comment="用户名")
     email = Column(String(255), unique=True, nullable=False, index=True, comment="邮箱")
@@ -49,7 +55,7 @@ class User(BaseModel):
     # 角色和权限
     role = Column(
         SQLEnum(UserRole, native_enum=False, length=20),
-        default=UserRole.EDITOR,
+        default=UserRole.SITE_ADMIN,
         nullable=False,
         comment="用户角色",
     )
@@ -72,6 +78,14 @@ class User(BaseModel):
 
     # 头像
     avatar_url = Column(String(500), nullable=True, comment="头像URL")
+
+    # 关系
+    tenant = relationship(
+        "Tenant",
+        foreign_keys=[tenant_id],
+        primaryjoin="User.tenant_id == Tenant.id",
+        back_populates="users",
+    )
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, role={self.role})>"

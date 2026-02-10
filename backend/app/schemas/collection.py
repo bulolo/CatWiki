@@ -23,6 +23,7 @@ class CollectionBase(BaseModel):
     """合集基础 Schema"""
 
     title: str = Field(..., max_length=200, description="合集名称")
+    tenant_id: int = Field(..., description="所属租户ID")
     site_id: int = Field(..., description="所属站点ID")
     parent_id: int | None = Field(None, description="父合集ID")
     order: int = Field(default=0, description="排序")

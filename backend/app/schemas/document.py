@@ -45,6 +45,7 @@ class DocumentBase(BaseModel):
     """文档基础 Schema"""
 
     title: str = Field(..., max_length=200, description="文章标题")
+    tenant_id: int = Field(..., description="所属租户ID")
     content: str | None = Field(None, description="文章内容(Markdown)")
     summary: str | None = Field(None, description="文章摘要")
     cover_image: str | None = Field(None, description="封面图片URL")

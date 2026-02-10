@@ -11,6 +11,10 @@ export type CollectionCreate = {
      */
     title: string;
     /**
+     * 所属租户ID
+     */
+    tenant_id: number;
+    /**
      * 所属站点ID
      */
     site_id: number;

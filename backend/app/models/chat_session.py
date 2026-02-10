@@ -32,6 +32,9 @@ class ChatSession(BaseModel):
 
     __tablename__ = "chat_sessions"
 
+    # 多租户
+    tenant_id = Column(Integer, nullable=False, comment="所属租户ID")
+
     # 关联 Checkpointer 的 thread_id
     thread_id = Column(String(255), unique=True, nullable=False, index=True)
 

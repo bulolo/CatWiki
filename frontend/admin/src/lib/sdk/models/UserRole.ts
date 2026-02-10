@@ -7,6 +7,6 @@
  */
 export enum UserRole {
     ADMIN = 'admin',
+    TENANT_ADMIN = 'tenant_admin',
     SITE_ADMIN = 'site_admin',
-    EDITOR = 'editor',
 }

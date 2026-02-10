@@ -17,6 +17,10 @@ export type Document = {
      */
     title: string;
     /**
+     * 所属租户ID
+     */
+    tenant_id: number;
+    /**
      * 文章内容(Markdown)
      */
     content?: (string | null);

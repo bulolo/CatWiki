@@ -40,6 +40,9 @@ class DocumentStatus(str, enum.Enum):
 class Document(BaseModel):
     """文档/文章模型"""
 
+    # 多租户
+    tenant_id = Column(Integer, nullable=False, index=True, comment="所属租户ID")
+
     title = Column(String(200), nullable=False, index=True, comment="文章标题")
     content = Column(Text, nullable=True, comment="文章内容(Markdown)")
     summary = Column(Text, nullable=True, comment="文章摘要")

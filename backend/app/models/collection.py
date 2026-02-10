@@ -21,6 +21,9 @@ from app.models.base import BaseModel
 class Collection(BaseModel):
     """文档合集模型"""
 
+    # 多租户
+    tenant_id = Column(Integer, nullable=False, index=True, comment="所属租户ID")
+
     title = Column(String(200), nullable=False, index=True, comment="合集名称")
     site_id = Column(Integer, nullable=False, index=True, comment="所属站点ID")
     parent_id = Column(Integer, nullable=True, index=True, comment="父合集ID")

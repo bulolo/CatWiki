@@ -20,6 +20,10 @@ export type UserCreate = {
      */
     password: string;
     /**
+     * 所属租户ID(null=平台管理员)
+     */
+    tenant_id?: (number | null);
+    /**
      * 用户角色
      */
     role?: UserRole;

@@ -33,6 +33,7 @@ class DocumentViewEvent(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 
     # 外键关联
+    tenant_id: Mapped[int] = mapped_column(nullable=False, index=True)
     document_id: Mapped[int] = mapped_column(
         ForeignKey("document.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -54,10 +55,10 @@ class DocumentViewEvent(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    # 复合索引：按站点和时间查询
+    # 复合索引：按租户、站点和时间查询
     __table_args__ = (
-        Index("idx_view_events_site_date", "site_id", "viewed_at"),
-        Index("idx_view_events_doc_date", "document_id", "viewed_at"),
+        Index("idx_view_events_tenant_site_date", "tenant_id", "site_id", "viewed_at"),
+        Index("idx_view_events_tenant_doc_date", "tenant_id", "document_id", "viewed_at"),
     )
 
     # 关联关系（可选）

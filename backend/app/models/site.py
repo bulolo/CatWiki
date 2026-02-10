@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlalchemy import Column, Integer, String, Text, JSON
+from sqlalchemy import JSON, Column, String, Integer, Text, DateTime
+from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
 
@@ -21,6 +22,9 @@ class Site(BaseModel):
     """站点模型"""
 
     __tablename__ = "sites"
+
+    # 多租户
+    tenant_id = Column(Integer, nullable=False, comment="所属租户ID")
 
     name = Column(String(100), nullable=False, index=True, comment="站点名称")
     slug = Column(String(200), nullable=False, unique=True, comment="站点标识")
@@ -36,6 +40,14 @@ class Site(BaseModel):
     )
     quick_questions = Column(JSON, nullable=True, comment="快速问题配置，JSON数组格式")
     bot_config = Column(JSON, nullable=True, comment="机器人配置，包含网页挂件、API等")
+
+    # 关系
+    tenant = relationship(
+        "Tenant",
+        foreign_keys=[tenant_id],
+        primaryjoin="Site.tenant_id == Tenant.id",
+        back_populates="sites",
+    )
 
     def __repr__(self) -> str:
         return f"<Site(id={self.id}, name='{self.name}')>"

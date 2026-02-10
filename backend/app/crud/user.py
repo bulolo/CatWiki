@@ -185,6 +185,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             name=obj_in.name,
             email=obj_in.email,
             password_hash=get_password_hash(obj_in.password),
+            tenant_id=obj_in.tenant_id,
             role=obj_in.role,
             status=UserStatus.ACTIVE,
             avatar_url=obj_in.avatar_url,
@@ -209,6 +210,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             name=obj_in.email.split("@")[0],  # 从邮箱提取用户名
             email=obj_in.email,
             password_hash=password_hash,
+            tenant_id=obj_in.tenant_id,
             role=obj_in.role,
             status=UserStatus.ACTIVE,
         )

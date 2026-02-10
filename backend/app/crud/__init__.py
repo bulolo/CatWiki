@@ -15,15 +15,17 @@
 from app.crud.collection import crud_collection
 from app.crud.document import crud_document
 from app.crud.document_view_event import crud_document_view_event
-from app.crud.site import crud_site
-from app.crud.system_config import crud_system_config
-from app.crud.user import crud_user
+from app.crud.site import crud_site  # noqa
+from app.crud.system_config import crud_system_config  # noqa
+from app.crud.user import crud_user  # noqa
+from app.crud.tenant import crud_tenant  # noqa
 
 __all__ = [
+    "crud_user",
     "crud_site",
     "crud_collection",
     "crud_document",
     "crud_document_view_event",
-    "crud_user",
     "crud_system_config",
+    "crud_tenant",
 ]

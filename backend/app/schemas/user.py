@@ -29,7 +29,8 @@ class UserBase(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=100, description="用户名")
     email: EmailStr = Field(..., description="邮箱")
-    role: UserRole = Field(default=UserRole.EDITOR, description="用户角色")
+    tenant_id: int | None = Field(None, description="所属租户ID(null=平台管理员)")
+    role: UserRole = Field(default=UserRole.SITE_ADMIN, description="用户角色")
     managed_site_ids: list[int] = Field(default=[], description="管理的站点ID列表")
     status: UserStatus = Field(default=UserStatus.ACTIVE, description="用户状态")
     avatar_url: str | None = Field(None, description="头像URL")
@@ -44,7 +45,8 @@ class UserCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="用户名")
     email: EmailStr = Field(..., description="邮箱")
     password: str = Field(..., min_length=6, max_length=100, description="密码")
-    role: UserRole = Field(default=UserRole.EDITOR, description="用户角色")
+    tenant_id: int | None = Field(None, description="所属租户ID(null=平台管理员)")
+    role: UserRole = Field(default=UserRole.SITE_ADMIN, description="用户角色")
     managed_site_ids: list[int] = Field(default=[], description="管理的站点ID列表")
     avatar_url: str | None = Field(None, description="头像URL")
 
@@ -53,7 +55,8 @@ class UserInvite(BaseModel):
     """邀请用户请求"""
 
     email: EmailStr = Field(..., description="邮箱")
-    role: UserRole = Field(default=UserRole.EDITOR, description="用户角色")
+    tenant_id: int | None = Field(None, description="所属租户ID(null=平台管理员)")
+    role: UserRole = Field(default=UserRole.SITE_ADMIN, description="用户角色")
     managed_site_ids: list[int] = Field(default=[], description="管理的站点ID列表")
 
 

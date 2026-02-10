@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from app.models.base import BaseModel  # noqa
+from app.models.tenant import Tenant  # noqa
 from app.models.collection import Collection  # noqa
 from app.models.document import Document, DocumentStatus, VectorStatus  # noqa
 from app.models.document_view_event import DocumentViewEvent  # noqa
@@ -24,6 +24,7 @@ from app.models.chat_message import ChatMessage  # noqa
 
 __all__ = [
     "BaseModel",
+    "Tenant",
     "Site",
     "Collection",
     "Document",

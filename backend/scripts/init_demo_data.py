@@ -42,38 +42,93 @@ from app.schemas.site import SiteCreate  # noqa: E402
 from app.crud.user import crud_user  # noqa: E402
 from app.schemas.user import UserCreate  # noqa: E402
 from app.models.user import UserRole, UserStatus  # noqa: E402
+from app.crud.tenant import crud_tenant  # noqa: E402
+from app.schemas.tenant import TenantCreate  # noqa: E402
+from datetime import datetime, timezone, timedelta  # noqa: E402
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 
 async def create_default_admin_user():
-    """创建默认管理员用户"""
+    """创建默认平台管理员用户"""
     async with AsyncSessionLocal() as db:
         try:
             # 检查管理员是否已存在
             admin_email = "admin@example.com"
             user = await crud_user.get_by_email(db, email=admin_email)
             if not user:
-                # 创建管理员
+                # 创建管理员 (平台级，tenant_id=None)
                 user_in = UserCreate(
                     name="Admin",
                     email=admin_email,
                     password="admin123",
                     role=UserRole.ADMIN,
                     status=UserStatus.ACTIVE,
+                    tenant_id=None,
                 )
                 user = await crud_user.create(db, obj_in=user_in)
-                logger.info(f"✅ 创建默认管理员用户：{user.email} / admin123")
+                logger.info(f"✅ 创建默认平台管理员用户：{user.email} / admin123")
             else:
-                logger.info(f"✅ 管理员用户已存在：{user.email}")
+                logger.info(f"✅ 平台管理员用户已存在：{user.email}")
             return user
         except Exception as e:
             logger.error(f"❌ 创建管理员用户失败: {e}", exc_info=True)
             raise
 
 
-async def create_demo_site():
+async def create_demo_tenant():
+    """创建或获取 demo 租户"""
+    async with AsyncSessionLocal() as db:
+        try:
+            tenant_slug = "catwiki-team"
+            tenant = await crud_tenant.get_by_slug(db, slug=tenant_slug)
+            if not tenant:
+                tenant_in = TenantCreate(
+                    name="CatWiki Team",
+                    slug=tenant_slug,
+                    description="CatWiki 官方演示团队",
+                    plan="pro",
+                    plan_expires_at=datetime.now(timezone.utc) + timedelta(days=365),
+                    status="active",
+                )
+                tenant = await crud_tenant.create(db, obj_in=tenant_in)
+                logger.info(f"✅ 创建 Demo 租户：{tenant.name} (Slug: {tenant.slug})")
+            else:
+                logger.info(f"✅ Demo 租户已存在：{tenant.name}")
+            return tenant
+        except Exception as e:
+            logger.error(f"❌ 创建 Demo 租户失败: {e}", exc_info=True)
+            raise
+
+
+async def create_demo_tenant_admin(tenant_id: int, managed_site_ids: list[int] = None):
+    """创建租户管理员"""
+    async with AsyncSessionLocal() as db:
+        try:
+            email = "tenant_admin@example.com"
+            user = await crud_user.get_by_email(db, email=email)
+            if not user:
+                user_in = UserCreate(
+                    name="Tenant Admin",
+                    email=email,
+                    password="admin123",
+                    role=UserRole.TENANT_ADMIN,
+                    status=UserStatus.ACTIVE,
+                    tenant_id=tenant_id,
+                    managed_site_ids=managed_site_ids or [],
+                )
+                user = await crud_user.create(db, obj_in=user_in)
+                logger.info(f"✅ 创建租户管理员用户：{user.email} / admin123")
+            else:
+                logger.info(f"✅ 租户管理员用户已存在：{user.email}")
+            return user
+        except Exception as e:
+            logger.error(f"❌ 创建租户管理员用户失败: {e}", exc_info=True)
+            raise
+
+
+async def create_demo_site(tenant_id: int):
     """创建或获取 demo 站点"""
     async with AsyncSessionLocal() as db:
         try:
@@ -83,6 +138,7 @@ async def create_demo_site():
                 # 创建新站点
                 site_create = SiteCreate(
                     name="医学科普",
+                    tenant_id=tenant_id,
                     slug="medical",
                     description="医学知识科普站点，提供常见疾病、健康生活、急救知识等内容",
                     icon="medical",
@@ -113,7 +169,7 @@ async def create_demo_site():
             raise
 
 
-async def init_medical_documents(site_id: int):
+async def init_medical_documents(tenant_id: int, site_id: int):
     """初始化医学知识文档"""
     async with AsyncSessionLocal() as db:
         try:
@@ -136,7 +192,9 @@ async def init_medical_documents(site_id: int):
                 # 检查合集是否已存在
                 result = await db.execute(
                     select(Collection).where(
-                        Collection.title == collection_data["title"], Collection.site_id == site_id
+                        Collection.title == collection_data["title"], 
+                        Collection.site_id == site_id,
+                        Collection.tenant_id == tenant_id
                     )
                 )
                 existing = result.scalar_one_or_none()
@@ -148,6 +206,7 @@ async def init_medical_documents(site_id: int):
                     # 创建合集
                     collection_create = CollectionCreate(
                         title=collection_data["title"],
+                        tenant_id=tenant_id,
                         site_id=site_id,
                         parent_id=None,
                         order=collection_data["order"],
@@ -166,6 +225,7 @@ async def init_medical_documents(site_id: int):
                             Document.title == doc_data["title"],
                             Document.site_id == site_id,
                             Document.collection_id == collection.id,
+                            Document.tenant_id == tenant_id
                         )
                     )
                     existing_doc = doc_result.scalar_one_or_none()
@@ -179,6 +239,7 @@ async def init_medical_documents(site_id: int):
 
                     document_create = DocumentCreate(
                         title=doc_data["title"],
+                        tenant_id=tenant_id,
                         content=doc_data["content"],
                         summary=doc_data["summary"],
                         site_id=site_id,
@@ -1338,15 +1399,21 @@ async def init_demo_data():
     """初始化 Demo 数据"""
     logger.info("🚀 开始初始化 Demo 数据...")
 
-    # 0. 创建默认管理员
+    # 1. 创建默认平台管理员
     await create_default_admin_user()
 
-    # 1. 创建或获取 demo 站点
-    demo_site = await create_demo_site()
+    # 2. 创建默认租户
+    tenant = await create_demo_tenant()
 
-    # 2. 初始化医学知识文档
+    # 4. 创建或获取 demo 站点
+    demo_site = await create_demo_site(tenant.id)
+
+    # 3. 创建租户管理员 (绑定刚才创建的站点)
+    await create_demo_tenant_admin(tenant.id, managed_site_ids=[demo_site.id])
+
+    # 5. 初始化医学知识文档
     logger.debug("📚 初始化医学知识文档...")
-    await init_medical_documents(demo_site.id)
+    await init_medical_documents(tenant.id, demo_site.id)
 
     logger.info("✅ Demo 数据初始化完成！")
 

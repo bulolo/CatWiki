@@ -15,6 +15,10 @@ export type Site = {
      */
     name: string;
     /**
+     * 所属租户ID
+     */
+    tenant_id: number;
+    /**
      * 站点标识
      */
     slug: string;
