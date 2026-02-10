@@ -68,6 +68,8 @@ class ChatMessage(BaseModel):
     id: Optional[str] = Field(None, description="消息ID")
     tool_calls: list[dict] = Field(default_factory=list, description="工具调用列表")
     tool_call_id: Optional[str] = Field(None, description="工具调用ID（role=tool时）")
+    sources: Optional[list[dict]] = Field(None, description="引用来源列表（每条消息专属）")
+    additional_kwargs: Optional[dict] = Field(None, description="其他元数据")
 
 
 class ChatSessionMessagesResponse(BaseModel):

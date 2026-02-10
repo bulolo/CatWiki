@@ -26,5 +26,13 @@ export type app__schemas__chat_session__ChatMessage = {
      * 工具调用ID（role=tool时）
      */
     tool_call_id?: (string | null);
+    /**
+     * 引用来源列表（每条消息专属）
+     */
+    sources?: null;
+    /**
+     * 其他元数据
+     */
+    additional_kwargs?: (Record<string, any> | null);
 };
 

@@ -310,7 +310,7 @@ async def _process_chat_request(
                 last_message = messages[-1] if messages else AIMessage(content="")
                 content = last_message.content if isinstance(last_message, BaseMessage) else ""
 
-                # 提取引用
+                # 提取引用 (仅当前回合)
                 citations = extract_citations_from_messages(messages, from_last_turn=True)
 
                 # 更新数据库 (元数据 + 全量历史)

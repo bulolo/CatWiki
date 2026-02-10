@@ -56,20 +56,13 @@ async def search_knowledge_base(query: str, config: RunnableConfig) -> str:
     """
     # 获取站点上下文和消息历史以计算偏移量
     site_id = config.get("configurable", {}).get("site_id")
-    messages = config.get("configurable", {}).get("messages", [])
 
+    # 计算全局偏移量：统计历史消息中所有检索结果的总数
+    # 这样能保证索引在整个会话中全局唯一且递增，避免历史记录加载时出现序号冲突
+    messages = config.get("configurable", {}).get("messages", [])
     offset = 0
     if messages:
-        # 仅统计当前轮次（最后一条 HumanMessage 之后）的工具调用结果数量
-        last_human_idx = -1
-        for i in range(len(messages) - 1, -1, -1):
-            if isinstance(messages[i], HumanMessage):
-                last_human_idx = i
-                break
-
-        target_messages = messages[last_human_idx + 1:] if last_human_idx != -1 else messages
-
-        for msg in target_messages:
+        for msg in messages:
             if isinstance(msg, ToolMessage) and msg.name == "search_knowledge_base":
                 try:
                     prev_results = json.loads(msg.content)
@@ -83,40 +76,53 @@ async def search_knowledge_base(query: str, config: RunnableConfig) -> str:
     )
 
     try:
-        search_filter = VectorRetrieveFilter(site_id=int(site_id)) if site_id else None
-
         # 执行检索
         retrieved_docs = await VectorService.retrieve(
             query=query,
-            filter=search_filter,
+            k=settings.RAG_RECALL_K,
+            filter=VectorRetrieveFilter(site_id=int(site_id)) if site_id else None,
+            enable_rerank=settings.RAG_ENABLE_RERANK,
+            rerank_k=settings.RAG_RERANK_TOP_K
         )
 
         if not retrieved_docs:
             return NO_RESULTS_MESSAGE
 
-        # 1. 工具侧“合并”：按 document_id 进行去重合并（保留最高分/首个出现的片段）
-        seen_ids = set()
-        unique_docs = []
+        # 1. 工具侧“合并”：将属于同一文档的多个片段内容进行拼接
+        merged_docs_map = {}
+        ordered_ids = []
         for doc in retrieved_docs:
-            if doc.document_id not in seen_ids:
-                unique_docs.append(doc)
-                seen_ids.add(doc.document_id)
+            doc_id = doc.document_id
+            if doc_id not in merged_docs_map:
+                ordered_ids.append(doc_id)
+                merged_docs_map[doc_id] = {
+                    "title": doc.document_title,
+                    "contents": [doc.content],
+                    "score": doc.score, # 保留第一个片段的分数作为代表
+                    "metadata": doc.metadata
+                }
+            else:
+                merged_docs_map[doc_id]["contents"].append(doc.content)
 
         # 2. 格式化结果，增加全局索引 source_index
         results = []
-        for i, doc in enumerate(unique_docs):
+        for i, doc_id in enumerate(ordered_ids):
+            data = merged_docs_map[doc_id]
             current_idx = offset + i + 1
+            # 拼接该文档下的所有片段，使 AI 能获得更完整的信息
+            full_content = "\n\n[...]\n\n".join(data["contents"])
+
             results.append(
                 {
                     "source_index": current_idx,
-                    "title": doc.document_title,
-                    "content": doc.content,
+                    "title": data["title"],
+                    "content": full_content,
                     "metadata": {
-                        "document_id": doc.document_id,
-                        "title": doc.document_title,
-                        "score": doc.score,
-                        "site_id": doc.metadata.get("site_id"),
-                        **doc.metadata,
+                        "document_id": doc_id,
+                        "title": data["title"],
+                        "score": data["score"],
+                        "site_id": data["metadata"].get("site_id"),
+                        **data["metadata"],
                     },
                 }
             )

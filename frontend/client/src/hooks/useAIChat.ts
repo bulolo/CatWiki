@@ -346,7 +346,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       let pendingToolCalls: any[] = [] // 暂存工具调用信息
 
       for (let i = 0; i < historyMessages.length; i++) {
-        const m = historyMessages[i]
+        const m = historyMessages[i] as any
 
         // 跳过 tool 角色的消息（工具返回结果）
         if (m.role === "tool") {
@@ -361,7 +361,18 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
             continue
           }
 
-          // 如果有实际内容，创建消息并附加之前暂存的 tool_calls
+          // 提取消息自带的引用
+          const backendSources = m.sources || []
+          const mappedSources = backendSources.map((c: any) => ({
+            id: c.id?.toString(),
+            title: c.title,
+            siteId: c.siteId,
+            documentId: c.documentId,
+            score: c.score,
+            sourceIndex: c.sourceIndex
+          }))
+
+          // 如果有实际内容，创建消息并附加之前暂存的 tool_calls 和 引用
           formattedMessages.push({
             id: m.id || `${targetThreadId}-${i}`,
             role: "assistant" as const,
@@ -371,13 +382,17 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
               toolCalls: pendingToolCalls.map((tc: any) => ({
                 id: tc.id,
                 type: "function" as const,
-                function: tc.function || {
-                  name: tc.name || "unknown",
-                  arguments: typeof tc.args === 'string' ? tc.args : JSON.stringify(tc.args || "{}")
+                function: {
+                  name: tc.function?.name || "unknown",
+                  arguments: typeof tc.function?.arguments === 'string'
+                    ? tc.function.arguments
+                    : JSON.stringify(tc.function?.arguments || "{}")
                 },
                 status: "completed" as const
               }))
             } : {}),
+            // 附加该消息对应的引用来源
+            ...(mappedSources.length > 0 ? { sources: mappedSources } : {}),
             additional_kwargs: m.additional_kwargs
           })
           // 清空暂存
@@ -392,26 +407,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
             role: "user" as const,
             content: m.content || "",
           })
-        }
-      }
-
-      // 将 citations 附加到最后一条 assistant 消息上
-      if (citations && citations.length > 0) {
-        const lastAssistantIndex = formattedMessages.findIndex(
-          (msg, idx, arr) => msg.role === "assistant" &&
-            !arr.slice(idx + 1).some(m => m.role === "assistant")
-        )
-        if (lastAssistantIndex !== -1) {
-          formattedMessages[lastAssistantIndex] = {
-            ...formattedMessages[lastAssistantIndex],
-            sources: citations.map((c: any) => ({
-              id: c.id,
-              title: c.title,
-              siteId: c.siteId,
-              documentId: c.documentId,
-              score: c.score,
-            }))
-          }
         }
       }
 

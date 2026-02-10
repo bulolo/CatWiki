@@ -332,8 +332,7 @@ class ChatSessionService:
         )
         db_messages = result.scalars().all()
 
-        # 2. 从全量历史消息中提取引用
-        # 我们将 SQL 消息转换为 LangChain 格式，以便复用 extract_citations_from_messages 逻辑
+        # 2. 转换为 LangChain 消息格式（用于引用提取）
         langchain_msgs = []
         for msg in db_messages:
             if msg.role == "user":
@@ -342,20 +341,17 @@ class ChatSessionService:
                 l_tool_calls = []
                 if msg.tool_calls:
                     for tc in msg.tool_calls:
-                        # 从 OpenAI 标准格式转换回 LangChain 内部格式
                         func = tc.get("function", {})
-                        args_raw = func.get("arguments", "{}")
                         try:
-                            args = json.loads(args_raw) if isinstance(args_raw, str) else args_raw
+                            args = json.loads(func.get("arguments", "{}"))
                         except json.JSONDecodeError:
                             args = {}
-
                         l_tool_calls.append(
                             {
                                 "name": func.get("name", "unknown"),
                                 "args": args,
                                 "id": tc.get("id"),
-                                "type": "tool_call",  # LangChain 期望的类型标识
+                                "type": "tool_call",
                             }
                         )
                 langchain_msgs.append(AIMessage(content=msg.content or "", tool_calls=l_tool_calls))
@@ -368,12 +364,9 @@ class ChatSessionService:
                     )
                 )
 
-        # 提取当前轮次的引用（从最后一条 HumanMessage 开始算）
-        citations = extract_citations_from_messages(langchain_msgs, from_last_turn=True)
-
-        # 3. 转换 SQL 消息为 OpenAI 格式渲染
+        # 3. 转换 SQL 消息为 OpenAI 格式渲染，并为每个 AI 回复关联其专属引用
         messages = []
-        for msg in db_messages:
+        for i, msg in enumerate(db_messages):
             msg_dict = {"role": msg.role, "content": msg.content}
             if msg.tool_calls:
                 msg_dict["tool_calls"] = msg.tool_calls
@@ -381,9 +374,20 @@ class ChatSessionService:
                 msg_dict["tool_call_id"] = msg.tool_call_id
             if msg.additional_kwargs:
                 msg_dict["additional_kwargs"] = msg.additional_kwargs
+
+            # 为每一条 Assistant 消息提取其对应的引用
+            if msg.role == "assistant":
+                # 传入截止到当前消息的历史，并只提取当前回合的引用
+                msg_citations = extract_citations_from_messages(langchain_msgs[:i+1], from_last_turn=True)
+                if msg_citations:
+                    msg_dict["sources"] = msg_citations
+
             messages.append(msg_dict)
 
-        return {"messages": messages, "citations": citations}
+        # 提取全量会话的最后一次引用用于兼容性返回
+        last_turn_citations = extract_citations_from_messages(langchain_msgs, from_last_turn=True)
+
+        return {"messages": messages, "citations": last_turn_citations}
 
     @staticmethod
     async def delete_by_thread_id(
