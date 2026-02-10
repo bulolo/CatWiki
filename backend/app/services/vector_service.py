@@ -1,12 +1,10 @@
 import logging
 import time
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel
 
 from app.core.config import settings
-from app.core.vector_store import VectorStoreManager
 from app.core.reranker import reranker
-from app.schemas.document import VectorRetrieveResponse, VectorRetrieveFilter
+from app.core.vector_store import VectorStoreManager
+from app.schemas.document import VectorRetrieveFilter, VectorRetrieveResponse
 
 logger = logging.getLogger(__name__)
 
@@ -18,19 +16,19 @@ class VectorService:
     async def retrieve(
         cls,
         query: str,
-        k: Optional[int] = None,
-        threshold: Optional[float] = None,
-        filter: Optional[VectorRetrieveFilter] = None,
-        enable_rerank: Optional[bool] = None,
-        rerank_k: Optional[int] = None,
-    ) -> List[VectorRetrieveResponse]:
+        k: int | None = None,
+        threshold: float | None = None,
+        filter: VectorRetrieveFilter | None = None,
+        enable_rerank: bool | None = None,
+        rerank_k: int | None = None,
+    ) -> list[VectorRetrieveResponse]:
         """
         执行语义检索（包含 召回 + 重排序）
         """
         # 使用环境变量作为默认值
         final_top_k = k if k is not None else settings.RAG_RERANK_TOP_K
         final_threshold = threshold if threshold is not None else settings.RAG_RECALL_THRESHOLD
-        
+
         start_time = time.time()
 
         try:
@@ -54,7 +52,7 @@ class VectorService:
             # 确定是否使用重排序
             env_rerank_enabled = settings.RAG_ENABLE_RERANK
             reranker_active = reranker.is_enabled
-            
+
             # 只有在 reranker.is_enabled (有 API 配置) 且 do_rerank (业务逻辑启用) 时才真正执行
             should_apply_rerank = env_rerank_enabled and reranker_active
             if enable_rerank is not None:
@@ -71,20 +69,8 @@ class VectorService:
             recall_k = min(recall_k, settings.RAG_RECALL_MAX)
 
             logger.info(
-                "\n"
-                + "=" * 80
-                + f"\n🚀 [VECTOR RETRIEVAL START]\n"
-                + f"   Query     : '{query}'\n"
-                + f"   Recall K  : {recall_k} (From RAG_RECALL_K)\n"
-                + f"   Top K     : {final_top_k} (From RAG_RERANK_TOP_K)\n"
-                + f"   Threshold : {final_threshold} (From RAG_RECALL_THRESHOLD)\n"
-                + f"   Rerank    : {should_apply_rerank} (From RAG_ENABLE_RERANK)\n"
-                + f"   Filter    : {filter.model_dump() if filter else 'None'}\n"
-                + "=" * 80
-            )
-
-            logger.debug(
-                f"🔍 [Retrieve] 决策路径: Env_Enable={env_rerank_enabled} | Reranker_Host_Active={reranker_active} | Param_Override={enable_rerank}"
+                f"🚀 [Retrieve] Query: '{query}' | Site: {filter.site_id if filter else 'Global'} | "
+                f"Recall K: {recall_k} | Top K: {final_top_k} | Rerank: {should_apply_rerank}"
             )
 
             # 3. 执行相似度搜索
@@ -126,16 +112,8 @@ class VectorService:
             response_objects = [VectorRetrieveResponse(**item) for item in final_list]
 
             # 日志
-            log_lines = [f"✅ [Retrieve] 最终返回结果数: {len(response_objects)}"]
-            for i, res in enumerate(response_objects):
-                score_str = f"Score={res.score:.4f}"
-                if res.original_score is not None and res.score != res.original_score:
-                    score_str = f"Original={res.original_score:.4f} -> Final={res.score:.4f}"
-                log_lines.append(
-                    f"   #{i + 1}: {score_str} | Title: {res.document_title[:40] if res.document_title else 'N/A'}"
-                )
-
-            logger.info("\n" + "\n".join(log_lines))
+            duration = time.time() - start_time
+            logger.info(f"✅ [Retrieve] Found {len(response_objects)} results in {duration:.3f}s")
 
             return response_objects
 

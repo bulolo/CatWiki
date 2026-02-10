@@ -5,29 +5,27 @@
 4. 自动对话摘要 (长期记忆)
 """
 
-import logging
 import json
-import re
-from typing import Literal, List, Annotated
+import logging
+from typing import Literal
 
 from langchain_core.messages import (
-    SystemMessage,
-    BaseMessage,
-    ToolMessage,
     HumanMessage,
     RemoveMessage,
-    AIMessage,
+    SystemMessage,
+    ToolMessage,
 )
+from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
-from langchain_core.runnables import RunnableConfig
 
+from app.core.prompts import FORCE_STOP_PROMPT, NO_RESULTS_MESSAGE, SUMMARIZE_PROMPT, SYSTEM_PROMPT
+from app.core.rag_utils import is_meaningful_message
+from app.schemas.document import VectorRetrieveFilter
 from app.schemas.graph_state import ChatGraphState
 from app.services.vector_service import VectorService
-from app.schemas.document import VectorRetrieveFilter
-from app.core.prompts import SYSTEM_PROMPT, NO_RESULTS_MESSAGE, SUMMARIZE_PROMPT, FORCE_STOP_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -123,53 +121,7 @@ tools = [search_knowledge_base]
 # =============================================================================
 
 
-def extract_citations_from_messages(
-    messages: List[BaseMessage], from_last_turn: bool = False
-) -> List[dict]:
-    """从历史消息的 ToolMessage 中提取引用
-
-    Args:
-        messages: 消息列表
-        from_last_turn: 是否仅提取最后一轮对话的引用 (从最后一条 HumanMessage 开始)
-    """
-    citations = {}
-    target_messages = messages
-
-    if from_last_turn:
-        # 找到最后一条 HumanMessage 的索引
-        last_human_idx = -1
-        for i in range(len(messages) - 1, -1, -1):
-            if isinstance(messages[i], HumanMessage):
-                last_human_idx = i
-                break
-
-        if last_human_idx != -1:
-            target_messages = messages[last_human_idx:]
-
-    for msg in target_messages:
-        if isinstance(msg, ToolMessage) and msg.name == "search_knowledge_base":
-            try:
-                content = msg.content if isinstance(msg.content, str) else json.dumps(msg.content)
-                results = json.loads(content)
-
-                if isinstance(results, list):
-                    for doc in results:
-                        meta = doc.get("metadata", {})
-                        doc_id = meta.get("document_id")
-                        if doc_id and doc_id not in citations:
-                            citations[doc_id] = {
-                                "id": str(doc_id),
-                                "title": meta.get("title", "Unknown"),
-                                "siteId": meta.get("site_id"),
-                                "documentId": doc_id,
-                                "score": meta.get("score"),
-                            }
-            except (json.JSONDecodeError, AttributeError):
-                continue
-            except Exception as e:
-                logger.error(f"❌ Error extracting citations: {e}")
-
-    return list(citations.values())
+# extract_citations_from_messages moved to app.core.rag_utils
 
 
 # =============================================================================
@@ -224,38 +176,30 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
         if summary:
             summarize_message += f"\n\n(现有摘要: {summary})"
 
-        # 只取除了 SystemMessage 之外的消息进行摘要
-        conversation_messages = [msg for msg in messages if not isinstance(msg, SystemMessage)]
+        # 只取除了 SystemMessage/RemoveMessage 之外的消息进行摘要
+        conversation_messages = [msg for msg in messages if is_meaningful_message(msg)]
 
-        # 如果没有足够的消息需要摘要（虽然路由逻辑应该已经过滤了，但做个防御）
         if not conversation_messages:
             return {}
 
         # 添加摘要指令 (HumanMessage)
         prompt_messages = conversation_messages + [HumanMessage(content=summarize_message)]
 
-        # 调用模型生成摘要 (使用未绑定工具的基础模型，或者同一个模型但 ignore tools)
-        # 这里直接用 model (未 bind_tools) 可能会更纯粹，但 create_agent_graph 参数传进来的是 model 还是 model_with_tools?
-        # 参数是 `model: ChatOpenAI` (原始模型)。
+        # 调用模型生成摘要
         response = await model.ainvoke(prompt_messages)
-        new_summary = response.content
+        new_summary = str(response.content)
         logger.info(f"📝 [Summarize] New summary: {new_summary[:100]}...")
 
         # 删除旧消息，保留最近的 N 条交互
-        # 策略：保留最后 6 条消息 (通常包含完整的最近 1-2 轮对话及其工具调用)
         KEEP_LAST_N = 6
-        delete_messages = []
         if len(conversation_messages) > KEEP_LAST_N:
             # 计算需要删除的消息
-            # 我们通过 RemoveMessage 来清理历史，防止 Context Window 溢出
             messages_to_delete = conversation_messages[:-KEEP_LAST_N]
-
-            # 优化：确保不删除“孤儿”AI消息（如果 AI 消息有 tool_calls，我们最好保留其对应的 ToolMessages）
-            # 简单的 KEEP_LAST_N 策略在 standard ReAct (A -> T -> A) 中通常没问题
-            delete_messages = [RemoveMessage(id=m.id) for m in messages_to_delete]
+            delete_messages = [RemoveMessage(id=m.id) for m in messages_to_delete if m.id]
             logger.info(f"🗑️ [Summarize] Pruning {len(delete_messages)} old messages")
+            return {"summary": new_summary, "messages": delete_messages}
 
-        return {"summary": new_summary, "messages": delete_messages}
+        return {"summary": new_summary}
 
     # 3. 构建图
     graph_builder = StateGraph(ChatGraphState)

@@ -6,30 +6,30 @@
 3. 自动提取引用并同步
 """
 
-import logging
-import uuid
 import json
+import logging
 import time
-from typing import AsyncGenerator, List, Any
+import uuid
+from collections.abc import AsyncGenerator
 
-from fastapi import APIRouter, Header, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
 from fastapi.responses import StreamingResponse
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 
+from app.core.checkpointer import get_checkpointer
+from app.core.graph import create_agent_graph
+from app.core.rag_utils import convert_tool_call_chunk_to_openai, extract_citations_from_messages
+from app.db.database import AsyncSessionLocal
 from app.schemas.chat import (
-    ChatCompletionRequest,
-    ChatCompletionResponse,
     ChatCompletionChoice,
-    ChatCompletionUsage,
-    ChatMessage,
     ChatCompletionChunk,
     ChatCompletionChunkChoice,
     ChatCompletionChunkDelta,
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    ChatMessage,
 )
-from app.core.graph import create_agent_graph, extract_citations_from_messages
-from app.core.checkpointer import get_checkpointer
-from app.db.database import AsyncSessionLocal
 from app.services.chat_session_service import ChatSessionService
 
 router = APIRouter()
@@ -82,30 +82,9 @@ async def stream_graph_events(
                     yield f"data: {chunk.model_dump_json()}\n\n"
 
                 # 处理 tool_calls (如果存在)
-                # LangChain 的 AIMessageChunk 可能包含 tool_call_chunks
                 if hasattr(chunk_data, "tool_call_chunks") and chunk_data.tool_call_chunks:
-                    # Use helper function to convert tool call chunk to OpenAI format
-                    # This avoids manual dictionary construction and potential errors
-                    tool_call_chunks = [
-                        {
-                            "index": tc_chunk.get("index", 0),
-                            "id": tc_chunk.get("id"),
-                            "type": "function" if tc_chunk.get("id") else None,
-                            "function": {
-                                "name": tc_chunk.get("name"),
-                                "arguments": tc_chunk.get("args", ""),
-                            },
-                        }
-                        for tc_chunk in chunk_data.tool_call_chunks
-                    ]
-
-                    for tc in tool_call_chunks:
-                        # Clean up None values
-                        cleaned_tc = {k: v for k, v in tc.items() if v is not None}
-                        if cleaned_tc.get("function"):
-                            cleaned_tc["function"] = {
-                                k: v for k, v in cleaned_tc["function"].items() if v is not None
-                            }
+                    for tc_chunk in chunk_data.tool_call_chunks:
+                        cleaned_tc = convert_tool_call_chunk_to_openai(tc_chunk)
 
                         chunk = ChatCompletionChunk(
                             id=chunk_id_prefix,
@@ -294,47 +273,18 @@ async def _process_chat_request(
             db=db, thread_id=request.thread_id, role="user", content=request.message
         )
 
-    # 6. 准备 Agent
-    # 使用 checkpointer 管理状态
-    checkpointer_cm = get_checkpointer()
-    checkpointer = await checkpointer_cm.__aenter__()  # 手动 enter 以便后续使用
-
-    # 记录日志 (放在 session 更新后以获取正确轮次)
-    log_banner = (
-        "\n"
-        "╭───────────────────────  AI Chat Request (ReAct) ───────────────────────────╮\n"
-        f"│ 🤖 Model    : {current_model:<50} │\n"
-        f"│ 🌊 Stream   : {str(request.stream):<50} │\n"
-        f"│ 🧵 Thread   : {request.thread_id:<50} │\n"
-        f"│ 🏢 Site ID  : {site_id:<50} │\n"
-        f"│ 🔄 Round    : {round_count:<50} │\n"
-        "│ ──────────────────────────────────────────────────────────────────────────── │\n"
-        f"│ 🗨️  Message: {msg_preview[:60]:<60} │\n"
-        "╰──────────────────────────────────────────────────────────────────────────────╯"
-    )
-    print(log_banner)
+    # 6. 准备初始状态
+    initial_state = {
+        "messages": [HumanMessage(content=request.message)],
+        "site_id": site_id,
+        "iteration_count": 0,
+        "consecutive_empty_count": 0,
+    }
+    config = {"configurable": {"thread_id": request.thread_id, "site_id": site_id}}
 
     try:
-        graph = create_agent_graph(checkpointer=checkpointer, model=llm)
-
-        # 构造初始状态
-        initial_state = {
-            "messages": [HumanMessage(content=request.message)],
-            # 其他状态字段根据 graph_state.py 如果有默认值可省略，或在此初始化
-            "site_id": site_id,
-            # 重置计数器，防止跨轮次持久化导致 Agent 提前停止
-            "iteration_count": 0,
-            "consecutive_empty_count": 0,
-        }
-
-        config = {"configurable": {"thread_id": request.thread_id, "site_id": site_id}}
-
         # 7. 处理请求
         if request.stream:
-            # 流式响应：返回 StreamingResponse
-            # 为了避免连接泄露，我们先关闭这里的 checkpointer，让 generator 自己去获取
-            await checkpointer_cm.__aexit__(None, None, None)
-
             async def protected_generator():
                 async with get_checkpointer() as cp:
                     g = create_agent_graph(checkpointer=cp, model=llm)
@@ -350,49 +300,43 @@ async def _process_chat_request(
 
         else:
             # 非流式响应
-            result = await graph.ainvoke(initial_state, config)
+            async with get_checkpointer() as cp:
+                graph = create_agent_graph(checkpointer=cp, model=llm)
+                result = await graph.ainvoke(initial_state, config)
 
-            # 提取最后回复
-            messages = result["messages"]
-            last_message = messages[-1] if messages else AIMessage(content="")
-            content = last_message.content if isinstance(last_message, BaseMessage) else ""
+                # 提取最后回复
+                messages = result["messages"]
+                last_message = messages[-1] if messages else AIMessage(content="")
+                content = last_message.content if isinstance(last_message, BaseMessage) else ""
 
-            # 提取引用
-            citations = extract_citations_from_messages(messages, from_last_turn=True)
+                # 提取引用
+                citations = extract_citations_from_messages(messages, from_last_turn=True)
 
-            # 更新数据库 (元数据 + 全量历史)
-            async with AsyncSessionLocal() as db:
-                await ChatSessionService.update_assistant_response(
-                    db=db, thread_id=request.thread_id, assistant_message=content
-                )
-                await ChatSessionService.save_history_from_messages(
-                    db=db, thread_id=request.thread_id, messages=messages
-                )
-
-            # 构造响应
-            return ChatCompletionResponse(
-                id=f"chatcmpl-{uuid.uuid4()}",
-                object="chat.completion",
-                created=int(time.time()),
-                model=current_model,
-                choices=[
-                    ChatCompletionChoice(
-                        index=0,
-                        message=ChatMessage(role="assistant", content=content),
-                        finish_reason="stop",
+                # 更新数据库 (元数据 + 全量历史)
+                async with AsyncSessionLocal() as db:
+                    await ChatSessionService.update_assistant_response(
+                        db=db, thread_id=request.thread_id, assistant_message=content
                     )
-                ],
-                usage=None,
-            )
+                    await ChatSessionService.save_history_from_messages(
+                        db=db, thread_id=request.thread_id, messages=messages
+                    )
 
-            # 别忘了关闭 checkpointer
-            await checkpointer_cm.__aexit__(None, None, None)
+                # 构造响应
+                return ChatCompletionResponse(
+                    id=f"chatcmpl-{uuid.uuid4()}",
+                    object="chat.completion",
+                    created=int(time.time()),
+                    model=current_model,
+                    choices=[
+                        ChatCompletionChoice(
+                            index=0,
+                            message=ChatMessage(role="assistant", content=content),
+                            finish_reason="stop",
+                        )
+                    ],
+                    usage=None,
+                )
 
     except Exception as e:
         logger.error(f"❌ [Chat] Execution Error: {e}", exc_info=True)
-        # 确保资源释放
-        try:
-            await checkpointer_cm.__aexit__(None, None, None)
-        except:
-            pass
         raise e

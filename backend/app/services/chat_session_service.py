@@ -28,6 +28,8 @@ from app.core.checkpointer import get_checkpointer
 import json
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, AIMessage, ToolMessage
 
+from app.core.rag_utils import extract_citations_from_messages
+
 logger = logging.getLogger(__name__)
 
 
@@ -323,16 +325,7 @@ class ChatSessionService:
         db: AsyncSession,
         thread_id: str,
     ) -> dict:
-        """获取对话历史（从 SQL 全量历史表获取）
-
-        Args:
-            db: 数据库会话
-            thread_id: 会话 ID
-
-        Returns:
-            包含 messages 和 citations 的字典
-        """
-        from app.core.graph import extract_citations_from_messages
+        """获取对话历史（从 SQL 全量历史表获取）"""
 
         # 1. 从 SQL 获取全量历史消息
         result = await db.execute(
