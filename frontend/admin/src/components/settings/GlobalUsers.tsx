@@ -336,8 +336,8 @@ export function GlobalUsers() {
               <Users className="h-6 w-6" />
             </div>
             <div className="space-y-1">
-              <h2 className="text-xl font-bold tracking-tight text-slate-900">平台用户管理</h2>
-              <p className="text-sm text-slate-500 font-medium">管理全平台的所有用户账户及权限。</p>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900">用户管理</h2>
+              <p className="text-sm text-slate-500 font-medium">管理用户账户及权限。</p>
             </div>
           </div>
 

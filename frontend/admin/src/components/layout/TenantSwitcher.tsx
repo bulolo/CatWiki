@@ -13,7 +13,8 @@
 // limitations under the License.
 
 "use client"
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   ChevronDown,
   Building2,
@@ -31,16 +32,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { getSelectedTenantId, setSelectedTenantId, getUserInfo } from "@/lib/auth"
-import { UserRole } from "@/lib/api-client"
-import api from "@/lib/api-client"
+import api, { UserRole, Models } from "@/lib/api-client"
 import { toast } from "sonner"
 
 export function TenantSwitcher() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [tenants, setTenants] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-
   // 检查权限
   const currentUser = typeof window !== 'undefined' ? getUserInfo() : null
   const isPlatformAdmin = currentUser?.role === UserRole.ADMIN
@@ -48,22 +45,15 @@ export function TenantSwitcher() {
   const selectedTenantId = getSelectedTenantId()
 
   // 加载租户列表
-  useEffect(() => {
-    if (isPlatformAdmin) {
-      setIsLoading(true)
-      api.tenant.list({ size: 100 })
-        .then(data => {
-          setTenants(data.list)
-        })
-        .catch(err => {
-          console.error("Failed to fetch tenants:", err)
-          toast.error("加载租户列表失败")
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
-    }
-  }, [isPlatformAdmin])
+  const { data: tenants = [], isLoading } = useQuery<Models.TenantSchema[]>({
+    queryKey: ['tenants', 'list'],
+    queryFn: async () => {
+      const res = await api.tenant.list({ size: 100 })
+      return res.list
+    },
+    enabled: isPlatformAdmin,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
 
   const selectedTenant = useMemo(() => {
     if (!selectedTenantId) return null
@@ -89,8 +79,19 @@ export function TenantSwitcher() {
           aria-label="选择租户"
           className="flex items-center gap-2 px-3 py-2 h-auto hover:bg-slate-100 transition-colors rounded-xl border border-transparent hover:border-slate-200"
         >
-          <div className="w-6 h-6 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-            <Building2 className="h-4 w-4" />
+          <div className={cn(
+            "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-amber-600",
+            selectedTenant?.logo_url ? "bg-transparent" : "bg-amber-100"
+          )}>
+            {selectedTenant?.logo_url ? (
+              <img
+                src={selectedTenant.logo_url}
+                alt={selectedTenant.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Building2 className="h-4 w-4" />
+            )}
           </div>
           <div className="flex flex-col items-start text-left">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">系统租户</span>
@@ -128,10 +129,18 @@ export function TenantSwitcher() {
             className="flex items-center gap-3 py-2.5 cursor-pointer"
           >
             <div className={cn(
-              "p-1.5 rounded-lg transition-colors",
-              selectedTenantId === tenant.id ? "bg-primary text-white" : "bg-slate-100 text-slate-500"
+              "p-1.5 rounded-lg transition-colors flex items-center justify-center overflow-hidden w-7 h-7",
+              tenant.logo_url ? "bg-transparent p-0" : (selectedTenantId === tenant.id ? "bg-primary text-white" : "bg-slate-100 text-slate-500")
             )}>
-              <Building2 className="h-4 w-4" />
+              {tenant.logo_url ? (
+                <img
+                  src={tenant.logo_url}
+                  alt={tenant.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Building2 className="h-4 w-4" />
+              )}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
               <span className="text-sm font-semibold truncate">{tenant.name}</span>

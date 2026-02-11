@@ -15,7 +15,7 @@
 "use client"
 
 import { Suspense } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { Toaster } from 'sonner'
 import { ReactQueryProvider } from '@/providers/ReactQueryProvider'
@@ -27,8 +27,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
-  User,
-  Globe
+  User
 } from "lucide-react"
 import { getUserInfo } from '@/lib/auth'
 import { useState, useEffect } from 'react'
@@ -71,6 +70,7 @@ const PlatformModal = dynamic(() => import('@/components/platform/PlatformModal'
  * 必须在 ReactQueryProvider 内部使用
  */
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const isLoginPage = pathname === '/login'
@@ -155,15 +155,18 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               </div>
             )}
 
+            {/* 平台管理入口 - 仅 admin 可见 (常驻) */}
             {userInfo?.role === 'admin' && (
-              <Link
-                href="?modal=platform"
-                scroll={false}
-                className="p-2 transition-all hover:bg-slate-100 rounded-xl text-slate-500 hover:text-primary active:scale-95 group relative"
-                title="平台管理"
+              <button
+                onClick={() => {
+                  router.push('?modal=platform')
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-xl border border-primary/20 hover:bg-primary/20 transition-all active:scale-95"
+                title="平台租户管理"
               >
-                <Globe className="h-5 w-5" />
-              </Link>
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span className="text-xs font-bold">平台</span>
+              </button>
             )}
 
             {(userInfo?.role === 'admin' || userInfo?.role === 'tenant_admin' || userInfo?.role === 'site_admin') && (
