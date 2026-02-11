@@ -43,9 +43,7 @@ class User(BaseModel):
     __tablename__ = "users"
 
     # 多租户
-    tenant_id = Column(
-        Integer, nullable=True, comment="所属租户ID(null=平台管理员)"
-    )
+    tenant_id = Column(Integer, nullable=True, comment="所属租户ID(null=平台管理员)")
 
     # 基本信息
     name = Column(String(100), nullable=False, comment="用户名")

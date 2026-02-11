@@ -179,20 +179,20 @@ const siteApi = {
 
 const tenantApi = {
   list: (params: { page?: number; size?: number } = {}) =>
-    wrapResponse<Models.PaginatedResponse_TenantSchema__>(client.adminTenants.listAdminTenants({
+    wrapResponse<Models.PaginatedResponse_TenantSchema_>(client.adminTenants.listAdminTenants({
       page: params.page ?? 1,
       size: params.size ?? 10,
     })),
-  create: (data: Models.TenantCreate) =>
-    wrapResponse<Models.TenantSchema_>(client.adminTenants.createAdminTenant({
+  create: (data: Models.TenantCreateRequest) =>
+    wrapResponse<Models.TenantSchema>(client.adminTenants.createAdminTenant({
       requestBody: data,
     })),
   get: (id: number) =>
-    wrapResponse<Models.TenantSchema_>(client.adminTenants.getAdminTenant({
+    wrapResponse<Models.TenantSchema>(client.adminTenants.getAdminTenant({
       tenantId: id,
     })),
   update: (id: number, data: Models.TenantUpdate) =>
-    wrapResponse<Models.TenantSchema_>(client.adminTenants.updateAdminTenant({
+    wrapResponse<Models.TenantSchema>(client.adminTenants.updateAdminTenant({
       tenantId: id,
       requestBody: data,
     })),
@@ -278,14 +278,10 @@ const documentApi = {
   })),
 
   /**
-   * 导入文档 (Mock接口，稍后由后端实现)
+   * 导入文档 (上传 -> 解析 -> 创建)
    */
-  importDocument: (formData: FormData) =>
-    wrapResponse<Models.Document>(client.request.request({
-      method: 'POST',
-      url: '/admin/v1/documents/import',
-      body: formData,
-    })),
+  importDocument: (formData: any) =>
+    wrapResponse<Models.Document>(client.adminDocuments.importDocument({ formData })),
 }
 
 
@@ -304,25 +300,37 @@ const userApi = {
 
 
 const systemConfigApi = {
-  getAIConfig: () => wrapResponse<any>(client.adminSystemConfigs.getAdminAiConfig()),
-  updateAIConfig: (config: Models.AIConfigUpdate) => wrapResponse<any>(client.adminSystemConfigs.updateAdminAiConfig({ requestBody: config })),
-  getBotConfig: () => wrapResponse<any>(client.adminSystemConfigs.getAdminBotConfig()),
-  updateBotConfig: (config: Models.BotConfigUpdate) => wrapResponse<any>(client.adminSystemConfigs.updateAdminBotConfig({ requestBody: config })),
-  getAllConfigs: () => wrapResponse<any>(client.adminSystemConfigs.listAdminConfigs()),
-  deleteConfig: (configKey: string) => wrapResponse<void>(client.adminSystemConfigs.deleteAdminConfig({ configKey })),
-  testConnection: (modelType: string, config: any) => wrapResponse<Models.ApiResponse_dict_>(client.adminSystemConfigs.testModelConnection({
-    requestBody: { model_type: modelType as any, config }
-  })),
+  getAIConfig: (scope: 'platform' | 'tenant' = 'tenant') =>
+    wrapResponse<Models.SystemConfigResponse | null>(client.adminSystemConfigs.getAdminAiConfig({ scope })),
+
+  updateAIConfig: (config: Models.AIConfigUpdate, scope: 'platform' | 'tenant' = 'tenant') =>
+    wrapResponse<Models.SystemConfigResponse>(client.adminSystemConfigs.updateAdminAiConfig({ requestBody: config, scope })),
+
+
+  deleteConfig: (configKey: string, scope: 'platform' | 'tenant' = 'tenant') =>
+    wrapResponse<void>(client.adminSystemConfigs.deleteAdminConfig({ configKey, scope })),
+
+  testConnection: (modelType: string, config: any, scope: 'platform' | 'tenant' = 'tenant') =>
+    wrapResponse<Record<string, any>>(client.adminSystemConfigs.testModelConnection({
+      requestBody: { model_type: modelType as any, config },
+      scope
+    })),
+
   // 文档处理服务配置
-  getDocProcessorConfig: () => wrapResponse<any>(client.adminSystemConfigs.getAdminDocProcessorConfig()),
+  getDocProcessorConfig: (scope: 'platform' | 'tenant' = 'tenant') =>
+    wrapResponse<{ processors: any[] } | null>(client.adminSystemConfigs.getAdminDocProcessorConfig({ scope })),
 
-  updateDocProcessorConfig: (data: { processors: any[] }) => wrapResponse<Models.ApiResponse_dict_>(client.adminSystemConfigs.updateAdminDocProcessorConfig({
-    requestBody: data as Models.DocProcessorsUpdate
-  })),
+  updateDocProcessorConfig: (data: { processors: any[] }, scope: 'platform' | 'tenant' = 'tenant') =>
+    wrapResponse<Record<string, any>>(client.adminSystemConfigs.updateAdminDocProcessorConfig({
+      requestBody: data as Models.DocProcessorsUpdate,
+      scope
+    })),
 
-  testDocProcessorConnection: (config: any) => wrapResponse<any>(client.adminSystemConfigs.testDocProcessorConnection({
-    requestBody: { config }
-  })),
+  testDocProcessorConnection: (config: any, scope: 'platform' | 'tenant' = 'tenant') =>
+    wrapResponse<Record<string, any>>(client.adminSystemConfigs.testDocProcessorConnection({
+      requestBody: { config },
+      scope
+    })),
 }
 
 
@@ -365,5 +373,4 @@ export default api
 
 // 别名兼容
 export type AIModelConfig = Models.AIConfigUpdate
-export type BotConfig = Models.BotConfigUpdate
 

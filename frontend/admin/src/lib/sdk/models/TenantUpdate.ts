@@ -3,19 +3,20 @@
 /* tslint:disable */
 /* eslint-disable */
 export type TenantUpdate = {
-    name?: (string | null);
-    slug?: (string | null);
-    domain?: (string | null);
-    logo_url?: (string | null);
-    description?: (string | null);
-    status?: string;
-    max_sites?: number;
-    max_documents?: number;
-    max_storage_mb?: number;
-    max_users?: number;
-    plan?: string;
-    contact_email?: (string | null);
-    contact_phone?: (string | null);
-    plan_expires_at?: (string | null);
+  name?: (string | null);
+  slug?: (string | null);
+  domain?: (string | null);
+  logo_url?: (string | null);
+  description?: (string | null);
+  status?: string;
+  max_sites?: number;
+  max_documents?: number;
+  max_storage_mb?: number;
+  max_users?: number;
+  plan?: string;
+  contact_email?: (string | null);
+  contact_phone?: (string | null);
+  plan_expires_at?: (string | null);
+  platform_resources_allowed?: Array<string>;
 };
 

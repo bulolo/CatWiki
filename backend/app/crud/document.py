@@ -311,9 +311,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         if tenant_id is not None:
             stmt = stmt.where(self.model.tenant_id == tenant_id)
 
-        result = await db.execute(
-            stmt.values(vector_status=status, vector_error=None)
-        )
+        result = await db.execute(stmt.values(vector_status=status, vector_error=None))
         await db.commit()
         return result.rowcount
 

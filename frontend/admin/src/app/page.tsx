@@ -16,33 +16,41 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getLastSiteSlug, setLastSiteSlug } from "@/lib/auth"
+import { getLastSiteSlug, setLastSiteSlug, getUserInfo } from "@/lib/auth"
 import { useSite } from "@/contexts/SiteContext"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Globe, Plus, Loader2 } from "lucide-react"
 
 export default function AdminHome() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
 
-  // 从 SiteContext 获取站点列表，避免重复请求
+  // From SiteContext
   const { sites, isLoadingSites } = useSite()
+  const userInfo = getUserInfo()
 
-  // 动态获取第一个站点并重定向
+  // Dynamic redirect logic
   useEffect(() => {
-    // 等待站点列表加载完成
+    // Wait for sites to load
     if (isLoadingSites) {
       return
     }
 
     const redirectToDefaultSite = () => {
       try {
-        // 尝试获取最近访问的站点
+        // 1. Try last visited site
         const lastSlug = getLastSiteSlug()
         if (lastSlug) {
-          router.replace(`/${lastSlug}`)
-          return
+          // Verify if it still exists in the user's sites
+          const exists = sites.find(s => s.slug === lastSlug || s.id.toString() === lastSlug)
+          if (exists) {
+            router.replace(`/${lastSlug}`)
+            return
+          }
         }
 
-        // 获取第一个激活的站点
+        // 2. Try first active site
         const activeSite = sites.find(site => site.status === "active")
         if (activeSite) {
           const slug = activeSite.slug || activeSite.id.toString()
@@ -51,7 +59,7 @@ export default function AdminHome() {
           return
         }
 
-        // 如果没有激活的站点，尝试获取任意站点
+        // 3. Try any site
         if (sites.length > 0) {
           const firstSite = sites[0]
           const slug = firstSite.slug || firstSite.id.toString()
@@ -60,9 +68,9 @@ export default function AdminHome() {
           return
         }
 
-        // 如果没有任何站点，重定向到站点管理页面
-        router.replace('/settings?tab=sites')
-      } finally {
+        // 4. No sites found - Stop loading and show empty state
+        setLoading(false)
+      } catch (e) {
         setLoading(false)
       }
     }
@@ -70,9 +78,46 @@ export default function AdminHome() {
     redirectToDefaultSite()
   }, [router, sites, isLoadingSites])
 
+  const handleCreateSite = () => {
+    router.push('?modal=settings&tab=sites&action=create')
+  }
+
+  if (loading || isLoadingSites) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center gap-3 bg-slate-50/50">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <p className="text-sm text-slate-500 font-medium">正在加载站点...</p>
+      </div>
+    )
+  }
+
+  // Empty State
   return (
-    <div className="h-screen flex items-center justify-center">
-      <div className="text-slate-400">{loading ? "正在加载..." : "正在跳转..."}</div>
+    <div className="h-screen flex items-center justify-center bg-slate-50/50 p-4">
+      <Card className="max-w-md w-full shadow-xl shadow-slate-200/50 border-slate-200 bg-white/80 backdrop-blur-sm">
+        <CardContent className="pt-12 pb-12 px-8 flex flex-col items-center text-center">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 ring-4 ring-primary/5">
+            <Globe className="h-8 w-8 text-primary" />
+          </div>
+
+          <h1 className="text-xl font-bold text-slate-900 mb-2">
+            欢迎来到 CatWiki
+          </h1>
+
+          <p className="text-sm text-slate-500 mb-8 leading-relaxed max-w-xs mx-auto">
+            当前租户下暂无任何站点。您可以创建一个新的知识库站点来开始使用。
+          </p>
+
+          <Button
+            size="lg"
+            className="w-full h-11 text-sm font-bold shadow-lg shadow-primary/20 rounded-xl"
+            onClick={handleCreateSite}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            创建第一个站点
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }

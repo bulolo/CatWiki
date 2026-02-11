@@ -21,8 +21,8 @@
 
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react"
 import { toast } from "sonner"
-import { useAllConfigs, useUpdateAIConfig, useUpdateBotConfig } from "@/hooks"
-import { type AIModelConfig, type BotConfig as ApiBotConfigType, AIConfigUpdate, WebWidgetConfig } from "@/lib/api-client"
+import { useAIConfig, useUpdateAIConfig } from "@/hooks"
+import { type AIModelConfig, AIConfigUpdate } from "@/lib/api-client"
 import { logError } from "@/lib/error-handler"
 import { type AIConfigs, type ModelType, type BotConfig, initialConfigs, MODEL_TYPES } from "@/types/settings"
 
@@ -48,11 +48,11 @@ interface SettingsContextType {
   savedConfigs: AIConfigs
   isLoading: boolean
   isAiDirty: boolean
+  scope: 'platform' | 'tenant'
 
   // 更新函数
   handleUpdate: (type: string, field: string, value: string | boolean | number) => void
   handleSave: () => Promise<void>
-  handleSaveBotConfig: () => Promise<void>
 
   // 工具函数
   isModelConfigured: (modelType: "chat" | "embedding" | "rerank" | "vl") => boolean
@@ -60,27 +60,24 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
-export function SettingsProvider({ children }: { children: ReactNode }) {
+export function SettingsProvider({ children, scope = 'tenant' }: { children: ReactNode, scope?: 'platform' | 'tenant' }) {
   const [configs, setConfigs] = useState<AIConfigs>(initialConfigs)
   const [savedConfigs, setSavedConfigs] = useState<AIConfigs>(initialConfigs)
   const isSwitchingMode = useRef(false)
 
   // 使用 React Query hooks
-  const { data: allConfigsData, isLoading } = useAllConfigs()
-  const updateAIConfigMutation = useUpdateAIConfig()
-  const updateBotConfigMutation = useUpdateBotConfig()
-
-
+  const { data: aiConfigData, isLoading } = useAIConfig(scope)
+  const updateAIConfigMutation = useUpdateAIConfig(scope)
 
   // 当配置数据加载完成时，合并到本地状态
   useEffect(() => {
-    if (allConfigsData) {
+    if (aiConfigData) {
       let loadedConfigs: AIConfigs = { ...initialConfigs }
 
-      if (allConfigsData.aiConfig) {
-        // [MODIFIED] 直接使用后端返回的扁平结构
-        const aiData = allConfigsData.aiConfig as any
-        
+      // aiConfigData is SystemConfigResponse
+      if (aiConfigData.config_value) {
+        const aiData = aiConfigData.config_value as any
+
         const chatConfig = aiData.chat
         const embeddingConfig = aiData.embedding
         const rerankConfig = aiData.rerank
@@ -95,14 +92,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (allConfigsData.botConfig) {
-        loadedConfigs.botConfig = deepMerge(initialConfigs.botConfig, allConfigsData.botConfig)
-      }
-
       setConfigs(loadedConfigs)
       setSavedConfigs(loadedConfigs)
     }
-  }, [allConfigsData])
+  }, [aiConfigData])
 
   const handleUpdate = (type: string, field: string, value: string | boolean | number) => {
     setConfigs(prev => {
@@ -115,17 +108,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         const updatedConfig = { ...modelConfig, [field]: value }
         newConfigs[modelType] = updatedConfig
       }
-      // 处理机器人配置
-      else if (type === "botConfig") {
-        const [botType, botField] = field.split(".")
-        newConfigs.botConfig = {
-          ...prev.botConfig,
-          [botType]: {
-            ...prev.botConfig[botType as keyof BotConfig],
-            [botField]: value
-          }
-        }
-      }
 
       return newConfigs
     })
@@ -134,48 +116,33 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const handleSave = async () => {
     // 构建完整的 AI 配置对象 (扁平结构)
     const aiConfig: AIModelConfig = {
-        chat: configs.chat,
-        embedding: configs.embedding,
-        rerank: configs.rerank,
-        vl: configs.vl
+      chat: configs.chat,
+      embedding: configs.embedding,
+      rerank: configs.rerank,
+      vl: configs.vl
     }
 
     updateAIConfigMutation.mutate(aiConfig, {
       onSuccess: (data: any) => {
-        // [MODIFIED] 直接使用后端返回的最新配置更新本地状态
-        // 这样可以立即显示自动探测的 dimension，而无需等待 refetch
         if (data && data.config_value) {
-            const aiData = data.config_value;
-            // 直接使用扁平结构
-            const chatConfig = aiData.chat
-            const embeddingConfig = aiData.embedding
-            const rerankConfig = aiData.rerank
-            const vlConfig = aiData.vl
+          const aiData = data.config_value;
+          const chatConfig = aiData.chat
+          const embeddingConfig = aiData.embedding
+          const rerankConfig = aiData.rerank
+          const vlConfig = aiData.vl
 
-            setSavedConfigs(prev => ({
-                ...prev,
-                chat: deepMerge(initialConfigs.chat, chatConfig),
-                embedding: deepMerge(initialConfigs.embedding, embeddingConfig),
-                rerank: deepMerge(initialConfigs.rerank, rerankConfig),
-                vl: deepMerge(initialConfigs.vl, vlConfig),
-            }))
-            // 同时更新当前编辑状态，以显示最新值
-            setConfigs(prev => ({
-                ...prev,
-                chat: deepMerge(initialConfigs.chat, chatConfig),
-                embedding: deepMerge(initialConfigs.embedding, embeddingConfig),
-                rerank: deepMerge(initialConfigs.rerank, rerankConfig),
-                vl: deepMerge(initialConfigs.vl, vlConfig),
-            }))
+          const updated = {
+            ...initialConfigs,
+            chat: deepMerge(initialConfigs.chat, chatConfig),
+            embedding: deepMerge(initialConfigs.embedding, embeddingConfig),
+            rerank: deepMerge(initialConfigs.rerank, rerankConfig),
+            vl: deepMerge(initialConfigs.vl, vlConfig),
+          }
+
+          setSavedConfigs(updated)
+          setConfigs(updated)
         } else {
-             // Fallback logic if data missing
-             setSavedConfigs(prev => ({
-              ...prev,
-              chat: { ...configs.chat },
-              embedding: { ...configs.embedding },
-              rerank: { ...configs.rerank },
-              vl: { ...configs.vl }
-            }))
+          setSavedConfigs({ ...configs })
         }
 
         toast.success("AI 模型配置已保存")
@@ -187,13 +154,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  // 使用稳定的深度比较，避免因属性顺序或 undefined/null 差异导致假阳性
   const isAiDirty = (() => {
     const normalize = (obj: any): string => {
       if (obj === null || obj === undefined) return ''
       if (typeof obj !== 'object') return String(obj)
       if (Array.isArray(obj)) return obj.map(normalize).join(',')
-      // 对对象的键进行排序，确保顺序一致
       return Object.keys(obj)
         .sort()
         .map(k => `${k}:${normalize(obj[k])}`)
@@ -203,22 +168,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const savedStr = normalize({ chat: savedConfigs.chat, embedding: savedConfigs.embedding, rerank: savedConfigs.rerank, vl: savedConfigs.vl })
     return currentStr !== savedStr
   })()
-
-  const handleSaveBotConfig = async () => {
-    const botConfigData: ApiBotConfigType = {
-      ...configs.botConfig,
-      webWidget: {
-        ...configs.botConfig.webWidget,
-        position: configs.botConfig.webWidget.position as WebWidgetConfig.position | undefined,
-      }
-    }
-
-    updateBotConfigMutation.mutate(botConfigData, {
-      onSuccess: () => {
-        setSavedConfigs(configs)
-      }
-    })
-  }
 
   const isModelConfigured = (modelType: "chat" | "embedding" | "rerank" | "vl") => {
     const config = configs[modelType]
@@ -230,9 +179,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     savedConfigs,
     isLoading,
     isAiDirty,
+    scope,
     handleUpdate,
     handleSave,
-    handleSaveBotConfig,
     isModelConfigured,
   }
 

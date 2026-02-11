@@ -41,7 +41,9 @@ async def get_cache_stats(
 
 
 @router.post(":clear", response_model=ApiResponse[dict], operation_id="clearAdminCache")
-async def clear_cache(current_user: User = Depends(get_current_user_with_tenant)) -> ApiResponse[dict]:
+async def clear_cache(
+    current_user: User = Depends(get_current_user_with_tenant),
+) -> ApiResponse[dict]:
     """清空所有缓存"""
     cache = get_cache()
     cache.clear()

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlalchemy import Column, String, Integer, Text, DateTime, UniqueConstraint
+from sqlalchemy import Column, String, Integer, Text, DateTime, UniqueConstraint, JSON
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -49,6 +49,12 @@ class Tenant(BaseModel):
         comment="订阅计划: starter/pro/custom",
     )
     plan_expires_at = Column(DateTime(timezone=True), nullable=False, comment="订阅到期时间")
+    platform_resources_allowed = Column(
+        JSON,
+        nullable=False,
+        default=list,
+        comment="允许使用的平台资源列表: models, doc_processors",
+    )
 
     # 联系信息
     contact_email = Column(String(255), nullable=True, comment="联系邮箱")

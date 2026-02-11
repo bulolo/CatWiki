@@ -145,10 +145,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         # 核心逻辑：自动填充租户 ID
         # 如果模型有 tenant_id 字段，且输入数据中没传，且当前请求上下文中存在有效的 tenant_id
-        if (
-            hasattr(self.model, "tenant_id")
-            and obj_in_data.get("tenant_id") is None
-        ):
+        if hasattr(self.model, "tenant_id") and obj_in_data.get("tenant_id") is None:
             tenant_id = get_current_tenant()
             if tenant_id is not None:
                 obj_in_data["tenant_id"] = tenant_id
@@ -207,6 +204,27 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             await db.delete(obj)
             await db.commit()
         return obj
+
+    async def delete_by_tenant(self, db: AsyncSession, *, tenant_id: int) -> int:
+        """
+        根据租户 ID 批量删除记录
+
+        参数:
+            db: 数据库会话
+            tenant_id: 租户 ID
+
+        返回:
+            删除的记录数
+        """
+        if not hasattr(self.model, "tenant_id"):
+            return 0
+
+        from sqlalchemy import delete
+
+        stmt = delete(self.model).where(self.model.tenant_id == tenant_id)
+        result = await db.execute(stmt)
+        await db.commit()
+        return result.rowcount
 
     async def count(self, db: AsyncSession, **kwargs) -> int:
         """

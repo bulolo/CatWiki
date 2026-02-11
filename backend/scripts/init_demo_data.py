@@ -91,6 +91,7 @@ async def create_demo_tenant():
                     plan="pro",
                     plan_expires_at=datetime.now(timezone.utc) + timedelta(days=365),
                     status="active",
+                    platform_resources_allowed=["models", "doc_processors"],
                 )
                 tenant = await crud_tenant.create(db, obj_in=tenant_in)
                 logger.info(f"✅ 创建 Demo 租户：{tenant.name} (Slug: {tenant.slug})")
@@ -192,9 +193,9 @@ async def init_medical_documents(tenant_id: int, site_id: int):
                 # 检查合集是否已存在
                 result = await db.execute(
                     select(Collection).where(
-                        Collection.title == collection_data["title"], 
+                        Collection.title == collection_data["title"],
                         Collection.site_id == site_id,
-                        Collection.tenant_id == tenant_id
+                        Collection.tenant_id == tenant_id,
                     )
                 )
                 existing = result.scalar_one_or_none()
@@ -225,7 +226,7 @@ async def init_medical_documents(tenant_id: int, site_id: int):
                             Document.title == doc_data["title"],
                             Document.site_id == site_id,
                             Document.collection_id == collection.id,
-                            Document.tenant_id == tenant_id
+                            Document.tenant_id == tenant_id,
                         )
                     )
                     existing_doc = doc_result.scalar_one_or_none()

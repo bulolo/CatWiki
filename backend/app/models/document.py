@@ -84,7 +84,10 @@ class Document(BaseModel):
 
     # 关联（手动指定 foreign_keys 和 primaryjoin）
     site = relationship(
-        "Site", foreign_keys=[site_id], primaryjoin="Document.site_id==Site.id", backref="documents"
+        "Site",
+        foreign_keys=[site_id],
+        primaryjoin="Document.site_id==Site.id",
+        back_populates="documents",
     )
 
     collection = relationship(

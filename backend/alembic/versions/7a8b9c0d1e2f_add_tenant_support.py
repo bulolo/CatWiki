@@ -64,9 +64,26 @@ def upgrade() -> None:
         ),
         sa.Column("contact_email", sa.String(length=255), nullable=True, comment="联系邮箱"),
         sa.Column("contact_phone", sa.String(length=50), nullable=True, comment="联系电话"),
+        sa.Column(
+            "platform_resources_allowed",
+            sa.JSON(),
+            nullable=False,
+            server_default="[]",
+            comment="允许使用的平台资源列表: models, doc_processors",
+        ),
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()')),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()')),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("domain"),
     )
@@ -95,7 +112,9 @@ def upgrade() -> None:
     # === 4. 为 system_configs 表添加 tenant_id 列 ===
     op.add_column(
         "system_configs",
-        sa.Column("tenant_id", sa.Integer(), nullable=True, comment="所属租户ID(null=平台全局配置)"),
+        sa.Column(
+            "tenant_id", sa.Integer(), nullable=True, comment="所属租户ID(null=平台全局配置)"
+        ),
     )
     op.create_index(
         op.f("ix_system_configs_tenant_id"), "system_configs", ["tenant_id"], unique=False
@@ -165,7 +184,9 @@ def downgrade() -> None:
     op.drop_column("document_view_events", "tenant_id")
     # 恢复旧索引 (手动指定名)
     op.create_index("idx_view_events_site_date", "document_view_events", ["site_id", "viewed_at"])
-    op.create_index("idx_view_events_doc_date", "document_view_events", ["document_id", "viewed_at"])
+    op.create_index(
+        "idx_view_events_doc_date", "document_view_events", ["document_id", "viewed_at"]
+    )
 
     # === 7. 移除 chat_sessions 的 tenant_id ===
     op.drop_index(op.f("ix_chat_sessions_tenant_id"), table_name="chat_sessions")

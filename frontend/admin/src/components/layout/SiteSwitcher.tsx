@@ -100,8 +100,8 @@ function SiteSwitcherComponent() {
   }, [pathname])
   // Broadway: Personal Account removed from title list.
 
-  // 加载中或没有站点数据时显示占位符
-  if (isLoadingSites || sites.length === 0) {
+  // 加载中显示占位符
+  if (isLoadingSites) {
     return (
       <div className="w-40 h-12 bg-slate-100 rounded-xl" />
     )
@@ -165,7 +165,7 @@ function SiteSwitcherComponent() {
     )
   }
 
-  // 如果没有选中的站点，使用第一个站点
+  // 如果没有选中的站点，使用第一个站点 (可能为空)
   const activeSite = selectedSite || sites[0]
 
   return (
@@ -178,12 +178,19 @@ function SiteSwitcherComponent() {
           aria-label="选择站点"
           className="flex items-center gap-2 px-3 py-2 h-auto hover:bg-slate-100 transition-colors rounded-xl border border-transparent hover:border-slate-200"
         >
-          <div className="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0" suppressHydrationWarning>
-            <Globe className="h-4 w-4" />
+          <div className={cn(
+            "w-6 h-6 rounded-lg flex items-center justify-center shrink-0",
+            activeSite ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-400"
+          )} suppressHydrationWarning>
+            {activeSite ? <Globe className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />}
           </div>
           <div className="flex flex-col items-start text-left">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">当前站点</span>
-            <span className="text-sm font-bold text-slate-900 leading-none">{activeSite.name}</span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">
+              {activeSite ? "当前站点" : "暂无站点"}
+            </span>
+            <span className="text-sm font-bold text-slate-900 leading-none">
+              {activeSite ? activeSite.name : "创建站点"}
+            </span>
           </div>
           <ChevronDown className="ml-2 h-4 w-4 text-slate-400 shrink-0" />
         </Button>
@@ -191,6 +198,24 @@ function SiteSwitcherComponent() {
       <DropdownMenuContent align="start" className="w-[240px]">
         <DropdownMenuLabel>所有 Wiki 站点</DropdownMenuLabel>
         <DropdownMenuSeparator />
+
+        {sites.length === 0 && (
+          <DropdownMenuItem
+            onSelect={() => {
+              router.push('?modal=settings&tab=sites&action=create')
+            }}
+            className="flex items-center gap-3 py-2.5 cursor-pointer text-primary"
+          >
+            <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <PlusCircle className="h-4 w-4" />
+            </div>
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-sm font-semibold">创建新站点</span>
+              <span className="text-xs text-primary/70">开始使用知识库</span>
+            </div>
+          </DropdownMenuItem>
+        )}
+
         {sites.map((site) => (
           <DropdownMenuItem
             key={site.id}
@@ -199,7 +224,7 @@ function SiteSwitcherComponent() {
           >
             <div className={cn(
               "p-1.5 rounded-lg transition-colors",
-              activeSite.id === site.id ? "bg-primary text-white" : "bg-slate-100 text-slate-500"
+              activeSite?.id === site.id ? "bg-primary text-white" : "bg-slate-100 text-slate-500"
             )} suppressHydrationWarning>
               <Globe className="h-4 w-4" />
             </div>
@@ -225,7 +250,22 @@ function SiteSwitcherComponent() {
             )}
           </DropdownMenuItem>
         ))}
-        {/* Admin Links Removed */}
+
+        {sites.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => {
+                router.push('?modal=settings&tab=sites&action=create')
+              }}
+              className="flex items-center gap-2 py-2 cursor-pointer text-slate-500"
+            >
+              <PlusCircle className="h-4 w-4" />
+              <span className="text-sm">创建新站点</span>
+            </DropdownMenuItem>
+          </>
+        )}
+
       </DropdownMenuContent>
     </DropdownMenu>
   )

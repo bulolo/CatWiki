@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
@@ -16,12 +16,19 @@ class TenantBase(BaseModel):
     max_storage_mb: int = 5120
     max_users: int = 10
     plan: str = "starter"
+    platform_resources_allowed: List[str] = []
     contact_email: Optional[EmailStr] = None
     contact_phone: Optional[str] = None
 
 
 class TenantCreate(TenantBase):
     plan_expires_at: datetime
+
+
+class TenantCreateRequest(TenantCreate):
+    admin_email: EmailStr
+    admin_password: str
+    admin_name: Optional[str] = None
 
 
 class TenantUpdate(TenantBase):

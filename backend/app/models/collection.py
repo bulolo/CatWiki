@@ -34,7 +34,7 @@ class Collection(BaseModel):
         "Site",
         foreign_keys=[site_id],
         primaryjoin="Collection.site_id==Site.id",
-        backref="collections",
+        back_populates="collections",
     )
 
     parent = relationship(

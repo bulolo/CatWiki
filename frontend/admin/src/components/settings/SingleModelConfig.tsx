@@ -43,8 +43,8 @@ interface SingleModelConfigProps {
 }
 
 export function SingleModelConfig({ type, onSuccess }: SingleModelConfigProps) {
-  const { configs, handleUpdate, handleSave } = useSettings()
-  const testConnection = useTestConnection()
+  const { configs, handleUpdate, handleSave, scope } = useSettings()
+  const testConnection = useTestConnection(scope)
   const isDemoMode = useDemoMode()
 
   // 确保配置存在，如果不存在则使用默认值

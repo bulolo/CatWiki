@@ -17,12 +17,14 @@
 """
 
 import copy
+from typing import Any, Literal
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.deps import check_demo_mode, get_current_user_with_tenant
 from app.core.exceptions import NotFoundException
+from app.core.tenant import get_current_tenant, temporary_tenant_context
 from app.core.utils import mask_variable, mask_bot_config_inplace, MASKED_VARIABLE
 from app.crud.system_config import crud_system_config
 from app.db.database import get_db
@@ -30,7 +32,6 @@ from app.models.user import User
 from app.schemas.response import ApiResponse
 from app.schemas.system_config import (
     AIConfigUpdate,
-    BotConfigUpdate,
     DocProcessorsUpdate,
     SystemConfigResponse,
     TestConnectionRequest,
@@ -41,7 +42,6 @@ router = APIRouter()
 
 # 配置键常量
 AI_CONFIG_KEY = "ai_config"
-BOT_CONFIG_KEY = "bot_config"
 DOC_PROCESSOR_CONFIG_KEY = "doc_processor_config"
 SYSTEM_INTEGRITY_KEY = "system_integrity"
 
@@ -104,13 +104,20 @@ def _mask_ai_config_inplace(config_value: dict) -> None:
     operation_id="getAdminAiConfig",
 )
 async def get_ai_config(
+    scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
 ) -> ApiResponse[SystemConfigResponse | None]:
     """
     获取 AI 模型配置
     """
-    config = await crud_system_config.get_by_key(db, config_key=AI_CONFIG_KEY)
+    target_tenant_id = None if scope == "platform" else get_current_tenant()
+
+    # 如果是平台级别，使用全局上下文
+    with temporary_tenant_context(target_tenant_id):
+        config = await crud_system_config.get_by_key(
+            db, config_key=AI_CONFIG_KEY, tenant_id=target_tenant_id
+        )
 
     if not config:
         # 返回默认配置
@@ -134,6 +141,7 @@ async def get_ai_config(
 )
 async def update_ai_config(
     config_in: AIConfigUpdate,
+    scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
     _: None = Depends(check_demo_mode),
@@ -142,9 +150,13 @@ async def update_ai_config(
     更新 AI 模型配置 (扁平结构)
     """
     config_value = config_in.model_dump(mode="json")
+    target_tenant_id = None if scope == "platform" else get_current_tenant()
 
-    # 获取现有配置用于比对
-    existing_config = await crud_system_config.get_by_key(db, config_key=AI_CONFIG_KEY)
+    with temporary_tenant_context(target_tenant_id):
+        # 获取现有配置用于比对
+        existing_config = await crud_system_config.get_by_key(
+            db, config_key=AI_CONFIG_KEY, tenant_id=target_tenant_id
+        )
 
     if existing_config:
         # 获取现有的真实值(未脱敏)
@@ -173,11 +185,6 @@ async def update_ai_config(
                 logger = logging.getLogger(__name__)
                 logger.info("🔍 Auto-detecting embedding dimension...")
 
-                import logging
-
-                logger = logging.getLogger(__name__)
-                logger.info("🔍 Auto-detecting embedding dimension...")
-
                 client = _create_openai_client(
                     api_key=embedding_conf["apiKey"], base_url=embedding_conf["baseUrl"]
                 )
@@ -192,9 +199,13 @@ async def update_ai_config(
 
                 logging.getLogger(__name__).warning(f"⚠️ Failed to auto-detect dimension: {e}")
 
-    config = await crud_system_config.update_by_key(
-        db, config_key=AI_CONFIG_KEY, config_value=config_value
-    )
+    with temporary_tenant_context(target_tenant_id):
+        config = await crud_system_config.update_by_key(
+            db,
+            config_key=AI_CONFIG_KEY,
+            config_value=config_value,
+            tenant_id=target_tenant_id,
+        )
 
     # 触发 VectorStore 热更新
     try:
@@ -218,114 +229,31 @@ async def update_ai_config(
     return ApiResponse.ok(data=response_data, msg="AI 配置更新成功")
 
 
-@router.get(
-    "/bot-config",
-    response_model=ApiResponse[SystemConfigResponse | None],
-    operation_id="getAdminBotConfig",
-)
-async def get_bot_config(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_with_tenant),
-) -> ApiResponse[SystemConfigResponse | None]:
-    """
-    获取机器人配置
-
-    返回当前的机器人配置，包括网页挂件、API 接口和微信公众号设置
-    """
-    config = await crud_system_config.get_by_key(db, config_key=BOT_CONFIG_KEY)
-
-    if not config:
-        # 返回默认配置
-        return ApiResponse.ok(data=None, msg="暂无配置，将返回默认值")
-
-    # 脱敏处理
-    config_data = copy.deepcopy(config.config_value)
-    if settings.DEMO_MODE:
-        mask_bot_config_inplace(config_data)
-
-    config_response = SystemConfigResponse.model_validate(config)
-    config_response.config_value = config_data
-    return ApiResponse.ok(data=config_response, msg="获取成功")
-
-
-@router.put(
-    "/bot-config",
-    response_model=ApiResponse[SystemConfigResponse],
-    operation_id="updateAdminBotConfig",
-)
-async def update_bot_config(
-    config_in: BotConfigUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
-) -> ApiResponse[SystemConfigResponse]:
-    """
-    更新机器人配置
-
-    - **webWidget**: 网页挂件配置
-    - **apiBot**: API 机器人配置
-    - **wechat**: 微信公众号配置
-    """
-    config_value = config_in.model_dump(mode="json")
-
-    config = await crud_system_config.update_by_key(
-        db, config_key=BOT_CONFIG_KEY, config_value=config_value
-    )
-
-    return ApiResponse.ok(data=config, msg="机器人配置更新成功")
-
-
-@router.get("", response_model=ApiResponse[dict], operation_id="listAdminConfigs")
-async def get_all_configs(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_with_tenant),
-) -> ApiResponse[dict]:
-    """
-    获取所有配置（便捷接口）
-
-    一次性获取所有系统配置
-    """
-    ai_config = await crud_system_config.get_by_key(db, config_key=AI_CONFIG_KEY)
-    bot_config = await crud_system_config.get_by_key(db, config_key=BOT_CONFIG_KEY)
-
-    # 脱敏 AI 配置
-    ai_config_value = None
-    if ai_config:
-        ai_config_value = copy.deepcopy(ai_config.config_value)
-        _mask_ai_config_inplace(ai_config_value)
-
-    # 脱敏机器人配置
-    bot_config_value = None
-    if bot_config:
-        bot_config_value = copy.deepcopy(bot_config.config_value)
-        if settings.DEMO_MODE:
-            _mask_bot_config_inplace(bot_config_value)
-
-    return ApiResponse.ok(
-        data={
-            "aiConfig": ai_config_value,
-            "botConfig": bot_config_value,
-        },
-        msg="获取成功",
-    )
 
 
 @router.delete("/{config_key}", response_model=ApiResponse[dict], operation_id="deleteAdminConfig")
 async def delete_config(
     config_key: str,
+    scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
     _: None = Depends(check_demo_mode),
 ) -> ApiResponse[dict]:
     """
     删除指定配置
-
-    - **config_key**: 配置键（如 'ai_config' 或 'bot_config'）
     """
-    success = await crud_system_config.delete_by_key(db, config_key=config_key)
+    target_tenant_id = None if scope == "platform" else current_user.tenant_id
 
-    if not success:
+    with temporary_tenant_context(target_tenant_id):
+        db_config = await crud_system_config.get_by_key(
+            db, config_key=config_key, tenant_id=target_tenant_id
+        )
+
+    if not db_config:
         raise NotFoundException(detail=f"配置 {config_key} 不存在")
+
+    await db.delete(db_config)
+    await db.commit()
 
     return ApiResponse.ok(data={"deleted": True}, msg="配置删除成功")
 
@@ -337,6 +265,7 @@ async def delete_config(
 )
 async def test_model_connection(
     request: TestConnectionRequest,
+    scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
     _: None = Depends(check_demo_mode),
@@ -346,10 +275,14 @@ async def test_model_connection(
     """
     model_type = request.model_type
     config = request.config
+    target_tenant_id = None if scope == "platform" else get_current_tenant()
 
     # 0. 如果 API Key 是掩码，则从数据库读取真实 Key
     if config.apiKey == MASKED_API_KEY:
-        existing_config = await crud_system_config.get_by_key(db, config_key=AI_CONFIG_KEY)
+        with temporary_tenant_context(target_tenant_id):
+            existing_config = await crud_system_config.get_by_key(
+                db, config_key=AI_CONFIG_KEY, tenant_id=target_tenant_id
+            )
         if existing_config:
             # 提取真实值
             existing_value = existing_config.config_value
@@ -468,15 +401,19 @@ def _mask_doc_processor_config_inplace(config_value: dict) -> None:
     operation_id="getAdminDocProcessorConfig",
 )
 async def get_doc_processor_config(
+    scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
 ) -> ApiResponse[dict | None]:
     """
     获取文档处理服务配置
-
-    返回当前配置的文档处理服务列表
     """
-    config = await crud_system_config.get_by_key(db, config_key=DOC_PROCESSOR_CONFIG_KEY)
+    target_tenant_id = None if scope == "platform" else get_current_tenant()
+
+    with temporary_tenant_context(target_tenant_id):
+        config = await crud_system_config.get_by_key(
+            db, config_key=DOC_PROCESSOR_CONFIG_KEY, tenant_id=target_tenant_id
+        )
 
     if not config:
         return ApiResponse.ok(data={"processors": []}, msg="暂无配置")
@@ -493,19 +430,22 @@ async def get_doc_processor_config(
 )
 async def update_doc_processor_config(
     config_in: DocProcessorsUpdate,
+    scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
     _: None = Depends(check_demo_mode),
 ) -> ApiResponse[dict]:
     """
     更新文档处理服务配置
-
-    - **processors**: 文档处理服务列表
     """
     config_value = config_in.model_dump(mode="json")
+    target_tenant_id = None if scope == "platform" else get_current_tenant()
 
-    # 获取现有配置用于还原掩码的 API Key
-    existing_config = await crud_system_config.get_by_key(db, config_key=DOC_PROCESSOR_CONFIG_KEY)
+    with temporary_tenant_context(target_tenant_id):
+        # 获取现有配置用于还原掩码的 API Key
+        existing_config = await crud_system_config.get_by_key(
+            db, config_key=DOC_PROCESSOR_CONFIG_KEY, tenant_id=target_tenant_id
+        )
 
     if existing_config:
         existing_processors = {
@@ -519,9 +459,13 @@ async def update_doc_processor_config(
                 if existing and existing.get("apiKey"):
                     processor["apiKey"] = existing["apiKey"]
 
-    config = await crud_system_config.update_by_key(
-        db, config_key=DOC_PROCESSOR_CONFIG_KEY, config_value=config_value
-    )
+    with temporary_tenant_context(target_tenant_id):
+        config = await crud_system_config.update_by_key(
+            db,
+            config_key=DOC_PROCESSOR_CONFIG_KEY,
+            config_value=config_value,
+            tenant_id=target_tenant_id,
+        )
 
     # 返回脱敏后的数据
     response_val = copy.deepcopy(config.config_value)
@@ -531,12 +475,13 @@ async def update_doc_processor_config(
 
 
 @router.post(
-    "/doc-processor/test",
+    "/doc-processor/test-connection",
     response_model=ApiResponse[dict],
     operation_id="testDocProcessorConnection",
 )
 async def test_doc_processor_connection(
     request: TestDocProcessorRequest,
+    scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
     _: None = Depends(check_demo_mode),
@@ -545,12 +490,14 @@ async def test_doc_processor_connection(
     测试文档处理服务连接性
     """
     config = request.config
+    target_tenant_id = None if scope == "platform" else get_current_tenant()
 
     # 如果 API Key 是掩码，从数据库读取真实值
     if config.apiKey == MASKED_API_KEY:
-        existing_config = await crud_system_config.get_by_key(
-            db, config_key=DOC_PROCESSOR_CONFIG_KEY
-        )
+        with temporary_tenant_context(target_tenant_id):
+            existing_config = await crud_system_config.get_by_key(
+                db, config_key=DOC_PROCESSOR_CONFIG_KEY, tenant_id=target_tenant_id
+            )
         if existing_config:
             existing_processors = {
                 p.get("name"): p for p in existing_config.config_value.get("processors", [])

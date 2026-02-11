@@ -64,7 +64,9 @@ export function TenantSwitcher() {
     setSelectedTenantId(tenantId)
     setOpen(false)
     // 切换租户后刷新页面，使 Header 注入生效并重新加载数据
-    window.location.reload()
+    // 使用 window.location.href = '/' 而不是 reload()，确保清理掉 URL 中的旧站点路径（如 /site-slug/dashboard）
+    // 避免切换到新租户后试图加载不存在的站点导致 404
+    window.location.href = '/'
   }
 
   if (!isPlatformAdmin) return null

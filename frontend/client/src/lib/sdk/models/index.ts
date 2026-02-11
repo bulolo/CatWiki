@@ -4,7 +4,6 @@
 /* eslint-disable */
 
 export * from './AIConfigUpdate';
-export * from './ApiBotConfig';
 export * from './ApiResponse_ChatSessionListResponse_';
 export * from './ApiResponse_ChatSessionMessagesResponse_';
 export * from './ApiResponse_ChatSessionResponse_';
@@ -33,7 +32,6 @@ export * from './ApiResponse_list_dict__';
 export * from './Body_batchUploadAdminFiles';
 export * from './Body_importDocument';
 export * from './Body_uploadAdminFile';
-export * from './BotConfigUpdate';
 export * from './ChatCompletionChoice';
 export * from './ChatCompletionRequest';
 export * from './ChatCompletionResponse';
@@ -71,7 +69,7 @@ export * from './SiteCreate';
 export * from './SiteStats';
 export * from './SiteUpdate';
 export * from './SystemConfigResponse';
-export * from './TenantCreate';
+export * from './TenantCreateRequest';
 export * from './TenantSchema';
 export * from './TenantUpdate';
 export * from './TestConnectionRequest';
@@ -96,7 +94,5 @@ export * from './VectorRetrieveResult';
 export * from './VectorStatus';
 export * from './VectorizeRequest';
 export * from './VectorizeResponse';
-export * from './WebWidgetConfig';
-export * from './WechatBotConfig';
 export * from './app__schemas__chat__ChatMessage';
 export * from './app__schemas__chat_session__ChatMessage';

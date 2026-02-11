@@ -26,12 +26,14 @@ from app.core.tenant import get_current_tenant
 
 logger = logging.getLogger(__name__)
 
+
 def register_tenant_filters(session_factory=None):
     """
     注册租户过滤拦截器。
-    注意：在 SQLAlchemy 2.0 中，直接在 Session 类上注册 do_orm_execute 
+    注意：在 SQLAlchemy 2.0 中，直接在 Session 类上注册 do_orm_execute
     比在 async_sessionmaker 上注册更稳定，可以避开某些环境下的 InvalidRequestError。
     """
+
     @event.listens_for(Session, "do_orm_execute")
     def apply_tenant_filter(execute_state):
         """
@@ -39,22 +41,22 @@ def register_tenant_filters(session_factory=None):
         """
         # 1. 获取当前上下文中的租户 ID
         tenant_id = get_current_tenant()
-        
+
         # 2. 如果存在有效租户 ID，则应用过滤
         # 注意：此处不仅是 select，也包括 update/delete 的 ORM 模式
         if tenant_id is not None:
             # 提前包装租户 ID，解决 lambda 闭包变量缓存追踪问题
             tid_literal = literal(tenant_id)
-            
+
             # 使用 with_loader_criteria 实现全局过滤
             # 逻辑：针对所有继承自 Base 且映射了 tenant_id 的实体注入过滤条件
             execute_state.statement = execute_state.statement.options(
                 with_loader_criteria(
                     Base,
-                    lambda cls: cls.tenant_id == tid_literal 
-                                if hasattr(cls, "tenant_id") and getattr(cls, "__name__", "") != "SystemConfig" 
-                                else true(),
-                    include_aliases=True
+                    lambda cls: cls.tenant_id == tid_literal
+                    if hasattr(cls, "tenant_id")
+                    else true(),
+                    include_aliases=True,
                 )
             )
             # logger.debug(f"应用多租户过滤: tenant_id={tenant_id}")

@@ -53,13 +53,15 @@ import {
   DOC_PROCESSOR_TYPES,
   initialDocProcessorConfig
 } from "@/types/settings"
-import { api } from "@/lib/api-client"
 import { useDemoMode } from '@/hooks/useHealth'
+import {
+  useDocProcessorConfig,
+  useUpdateDocProcessorConfig,
+  useTestDocProcessorConnection
+} from "@/hooks"
 
-export function DocProcessorSettings() {
+export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' | 'tenant' }) {
   const [processors, setProcessors] = useState<DocProcessorConfig[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState<string | null>(null)
 
   // 内联编辑状态
@@ -68,58 +70,44 @@ export function DocProcessorSettings() {
   const [formData, setFormData] = useState<DocProcessorConfig>(initialDocProcessorConfig)
   const isDemoMode = useDemoMode()
 
-  // 加载配置
-  useEffect(() => {
-    loadConfig()
-  }, [])
+  // 使用 React Query hooks
+  const { data: configData, isLoading: loading } = useDocProcessorConfig(scope)
+  const updateMutation = useUpdateDocProcessorConfig(scope)
+  const testMutation = useTestDocProcessorConnection(scope)
 
-  const loadConfig = async () => {
-    try {
-      setLoading(true)
-      const response = await api.systemConfig.getDocProcessorConfig()
-      if (response?.processors) {
-        setProcessors(response.processors)
-      }
-    } catch (error) {
-      console.error("Failed to load doc processor config:", error)
-      toast.error("加载配置失败")
-    } finally {
-      setLoading(false)
+  // 当配置加载完成时，同步到本地 processors 状态
+  useEffect(() => {
+    if (configData?.processors) {
+      setProcessors(configData.processors)
     }
-  }
+  }, [configData])
 
   const handleSave = async (updatedProcessors: DocProcessorConfig[]) => {
-    try {
-      setSaving(true)
-      await api.systemConfig.updateDocProcessorConfig({
-        processors: updatedProcessors
-      })
-      setProcessors(updatedProcessors)
-      toast.success("配置保存成功")
-    } catch (error: any) {
-      console.error("Failed to save config:", error)
-      const errorMsg = error?.response?.data?.msg || error?.message || "保存配置失败"
-      toast.error(errorMsg)
-    } finally {
-      setSaving(false)
-    }
+    updateMutation.mutate({ processors: updatedProcessors }, {
+      onSuccess: () => {
+        setProcessors(updatedProcessors)
+      }
+    })
   }
 
   const handleTest = async (processor: DocProcessorConfig) => {
-    try {
-      setTesting(processor.name)
-      const response = await api.systemConfig.testDocProcessorConnection(processor)
-      if (response?.status === "healthy") {
-        toast.success(`${processor.name} 连接成功`)
-      } else {
-        toast.error("连接失败")
+    setTesting(processor.name)
+    testMutation.mutate(processor, {
+      onSuccess: (response: any) => {
+        if (response?.status === "healthy") {
+          toast.success(`${processor.name} 连接成功`)
+        } else {
+          toast.error("连接失败")
+        }
+      },
+      onError: (error: any) => {
+        console.error("Test connection failed:", error)
+        toast.error("连接测试失败")
+      },
+      onSettled: () => {
+        setTesting(null)
       }
-    } catch (error) {
-      console.error("Test connection failed:", error)
-      toast.error("连接测试失败")
-    } finally {
-      setTesting(null)
-    }
+    })
   }
 
   const handleStartAdd = () => {
@@ -370,8 +358,8 @@ export function DocProcessorSettings() {
               <X className="h-4 w-4 mr-1" />
               取消
             </Button>
-            <Button size="sm" onClick={handleSubmit} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
+            <Button size="sm" onClick={handleSubmit} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
               保存
             </Button>
           </div>

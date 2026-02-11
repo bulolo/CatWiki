@@ -49,5 +49,21 @@ class Site(BaseModel):
         back_populates="sites",
     )
 
+    documents = relationship(
+        "Document",
+        primaryjoin="Site.id == Document.site_id",
+        foreign_keys="[Document.site_id]",
+        back_populates="site",
+        cascade="all, delete-orphan",
+    )
+
+    collections = relationship(
+        "Collection",
+        primaryjoin="Site.id == Collection.site_id",
+        foreign_keys="[Collection.site_id]",
+        back_populates="site",
+        cascade="all, delete-orphan",
+    )
+
     def __repr__(self) -> str:
         return f"<Site(id={self.id}, name='{self.name}')>"

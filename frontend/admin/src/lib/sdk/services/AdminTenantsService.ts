@@ -5,7 +5,7 @@
 import type { ApiResponse_NoneType_ } from '../models/ApiResponse_NoneType_';
 import type { ApiResponse_PaginatedResponse_TenantSchema__ } from '../models/ApiResponse_PaginatedResponse_TenantSchema__';
 import type { ApiResponse_TenantSchema_ } from '../models/ApiResponse_TenantSchema_';
-import type { TenantCreate } from '../models/TenantCreate';
+import type { TenantCreateRequest } from '../models/TenantCreateRequest';
 import type { TenantUpdate } from '../models/TenantUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
@@ -52,7 +52,7 @@ export class AdminTenantsService {
     public createAdminTenant({
         requestBody,
     }: {
-        requestBody: TenantCreate,
+        requestBody: TenantCreateRequest,
     }): CancelablePromise<ApiResponse_TenantSchema_> {
         return this.httpRequest.request({
             method: 'POST',

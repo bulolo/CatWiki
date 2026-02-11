@@ -338,7 +338,11 @@ async def update_user_password(
     # 实际上，修改自己密码应该走 profile 接口，这里是管理接口
 
     # get_current_user_with_tenant 已允许普通用户修改自己
-    if current_user.id != user_id and current_user.role not in [UserRole.ADMIN, UserRole.TENANT_ADMIN, UserRole.SITE_ADMIN]:
+    if current_user.id != user_id and current_user.role not in [
+        UserRole.ADMIN,
+        UserRole.TENANT_ADMIN,
+        UserRole.SITE_ADMIN,
+    ]:
         raise ForbiddenException(detail="权限不足")
 
     db_user = await crud_user.get(db, id=user_id)

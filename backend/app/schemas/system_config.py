@@ -42,48 +42,6 @@ class AIModelConfig(BaseModel):
     vl: ModelConfig = Field(..., description="视觉模型配置")
 
 
-# ============ 机器人配置相关 Schema ============
-
-
-class WebWidgetConfig(BaseModel):
-    """网页挂件配置"""
-
-    enabled: bool = Field(default=False, description="是否启用")
-    title: str = Field(default="AI 客服助手", description="挂件标题")
-    welcomeMessage: str = Field(
-        default="您好！我是 AI 助手，有什么可以帮您？", description="欢迎语"
-    )
-    primaryColor: str = Field(default="#3b82f6", description="主题色")
-    position: Literal["left", "right"] = Field(default="right", description="显示位置")
-
-
-class ApiBotConfig(BaseModel):
-    """API 机器人配置"""
-
-    enabled: bool = Field(default=False, description="是否启用")
-    apiEndpoint: str = Field(default="", description="API 端点地址")
-    apiKey: str = Field(default="", description="API Key")
-    timeout: int = Field(default=30, ge=1, le=300, description="超时时间（秒）")
-
-
-class WechatBotConfig(BaseModel):
-    """微信公众号配置"""
-
-    enabled: bool = Field(default=False, description="是否启用")
-    appId: str = Field(default="", description="微信 AppID")
-    appSecret: str = Field(default="", description="微信 AppSecret")
-    token: str = Field(default="", description="微信 Token")
-    encodingAESKey: str = Field(default="", description="微信 EncodingAESKey")
-
-
-class BotConfig(BaseModel):
-    """机器人完整配置"""
-
-    webWidget: WebWidgetConfig = Field(..., description="网页挂件配置")
-    apiBot: ApiBotConfig = Field(..., description="API 机器人配置")
-    wechat: WechatBotConfig = Field(..., description="微信公众号配置")
-
-
 # ============ 系统配置 CRUD Schema ============
 
 
@@ -137,14 +95,6 @@ class TestConnectionRequest(BaseModel):
 
     model_type: Literal["chat", "embedding", "rerank", "vl"] = Field(..., description="模型类型")
     config: ModelConfig = Field(..., description="模型配置")
-
-
-class BotConfigUpdate(BaseModel):
-    """更新机器人配置"""
-
-    webWidget: WebWidgetConfig = Field(..., description="网页挂件配置")
-    apiBot: ApiBotConfig = Field(..., description="API 机器人配置")
-    wechat: WechatBotConfig = Field(..., description="微信公众号配置")
 
 
 # ============ 文档处理服务配置相关 Schema ============

@@ -38,11 +38,18 @@ import {
   Calendar, // Ensure all imports from SaaS are present
   Settings,
   ShieldCheck,
-  X // Imports for wrapper
+  X, // Imports for wrapper
+  FileText, // Added for new tabs
+  CircuitBoard
 } from "lucide-react"
 // import { useTenantContext } from "@/components/layout/TenantSwitcher" // SaaS context not available locally
 import { api, Models, UserRole } from "@/lib/api-client" // Added UserRole for wrapper check
 import { getUserInfo, setSelectedTenantId } from "@/lib/auth" // For wrapper check and context switch
+import { SettingsProvider } from "@/contexts/SettingsContext"
+import { DocProcessorSettings } from "@/components/settings/DocProcessorSettings"
+import { ModelSettingsCard } from "@/components/settings/ModelSettingsCard"
+import { ModelDetailCard } from "@/components/settings/ModelDetailCard"
+import { type ModelType } from "@/types/settings"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -59,6 +66,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ImageUpload } from "@/components/ui/ImageUpload"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { Switch } from "@/components/ui/switch"
 // Wrapper imports
 import {
   Tabs,
@@ -157,6 +165,7 @@ function PlatformTenants() {
     contact_phone: "",
     admin_name: "",
     plan_expires_at: "",
+    platform_resources_allowed: [] as string[],
   })
 
   useEffect(() => {
@@ -179,6 +188,7 @@ function PlatformTenants() {
     max_users: PLAN_CONFIGS.starter.max_users,
     contact_email: "",
     contact_phone: "",
+    platform_resources_allowed: [] as string[],
   })
 
   // 跟踪用户是否手动编辑过 slug
@@ -277,6 +287,7 @@ function PlatformTenants() {
         contact_email: formData.contact_email || undefined,
         contact_phone: formData.contact_phone || undefined,
         plan_expires_at: new Date(formData.plan_expires_at).toISOString(),
+        platform_resources_allowed: formData.platform_resources_allowed,
       } as any)
 
       toast.success("租户创建成功")
@@ -302,6 +313,7 @@ function PlatformTenants() {
         contact_phone: "",
         admin_name: "",
         plan_expires_at: "",
+        platform_resources_allowed: [],
       })
     } catch (error: any) {
       toast.error(error.message || "创建失败")
@@ -330,6 +342,7 @@ function PlatformTenants() {
         max_users: Number(editFormData.max_users),
         contact_email: editFormData.contact_email || undefined,
         contact_phone: editFormData.contact_phone || undefined,
+        platform_resources_allowed: editFormData.platform_resources_allowed,
       } as any)
       toast.success("更新成功")
       setView('list')
@@ -546,6 +559,7 @@ function PlatformTenants() {
                               max_users: tenant.max_users || 0,
                               contact_email: (tenant as any).contact_email || "",
                               contact_phone: (tenant as any).contact_phone || "",
+                              platform_resources_allowed: (tenant as any).platform_resources_allowed || [],
                             })
                             setView('edit')
                           }}>
@@ -750,7 +764,7 @@ function PlatformTenants() {
                   </div>
                   <h3 className="text-sm font-semibold text-slate-800">订阅与状态</h3>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-4 mb-4">
                   <div className="space-y-2">
                     <Label className="text-slate-600">订阅计划 <span className="text-red-500">*</span></Label>
                     <select
@@ -760,7 +774,6 @@ function PlatformTenants() {
                         const plan = e.target.value
                         const config = PLAN_CONFIGS[plan]
                         if (config && plan !== 'custom') {
-                          // 非自定义计划：自动填充配额
                           setFormData({
                             ...formData,
                             plan,
@@ -770,7 +783,6 @@ function PlatformTenants() {
                             max_users: config.max_users > 0 ? config.max_users : formData.max_users,
                           })
                         } else {
-                          // 自定义计划：只更新 plan，保留当前配额
                           setFormData({ ...formData, plan })
                         }
                       }}
@@ -778,6 +790,17 @@ function PlatformTenants() {
                       <option value="starter">入门版</option>
                       <option value="pro">专业版</option>
                       <option value="custom">自定义</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-600">租户状态 <span className="text-red-500">*</span></Label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as TenantStatus })}
+                    >
+                      <option value={TenantStatus.ACTIVE}>活跃</option>
+                      <option value={TenantStatus.TRIAL}>试用</option>
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -789,16 +812,40 @@ function PlatformTenants() {
                       className="bg-white"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-600">初始状态</Label>
-                    <select
-                      className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as TenantStatus })}
-                    >
-                      <option value={TenantStatus.ACTIVE}>活跃</option>
-                      <option value={TenantStatus.TRIAL}>试用</option>
-                    </select>
+                </div>
+
+                {/* 平台资源授权 ( granular ) */}
+                <div className="p-4 bg-white rounded-lg border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-semibold">模型配置 (Models)</Label>
+                      <p className="text-[11px] text-slate-500">允许此租户所有站点使用平台公共的 AI 模型</p>
+                    </div>
+                    <Switch
+                      checked={formData.platform_resources_allowed.includes('models')}
+                      onCheckedChange={(checked) => {
+                        const next = checked
+                          ? [...formData.platform_resources_allowed, 'models']
+                          : formData.platform_resources_allowed.filter(r => r !== 'models')
+                        setFormData({ ...formData, platform_resources_allowed: next })
+                      }}
+                    />
+                  </div>
+                  <div className="h-px bg-slate-100" />
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-semibold">文档解析 (Document Parsing)</Label>
+                      <p className="text-[11px] text-slate-500">允许此租户所有站点使用平台公共的解析器资源</p>
+                    </div>
+                    <Switch
+                      checked={formData.platform_resources_allowed.includes('doc_processors')}
+                      onCheckedChange={(checked) => {
+                        const next = checked
+                          ? [...formData.platform_resources_allowed, 'doc_processors']
+                          : formData.platform_resources_allowed.filter(r => r !== 'doc_processors')
+                        setFormData({ ...formData, platform_resources_allowed: next })
+                      }}
+                    />
                   </div>
                 </div>
               </div>
@@ -956,7 +1003,7 @@ function PlatformTenants() {
                   </div>
                   <h3 className="text-sm font-semibold text-slate-800">订阅与状态</h3>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-4 mb-4">
                   <div className="space-y-2">
                     <Label className="text-slate-600">订阅计划 <span className="text-red-500">*</span></Label>
                     <select
@@ -966,7 +1013,6 @@ function PlatformTenants() {
                         const plan = e.target.value
                         const config = PLAN_CONFIGS[plan]
                         if (config && plan !== 'custom') {
-                          // 非自定义计划：自动填充配额
                           setEditFormData({
                             ...editFormData,
                             plan,
@@ -976,7 +1022,6 @@ function PlatformTenants() {
                             max_users: config.max_users > 0 ? config.max_users : editFormData.max_users,
                           })
                         } else {
-                          // 自定义计划：只更新 plan，保留当前配额
                           setEditFormData({ ...editFormData, plan })
                         }
                       }}
@@ -1005,6 +1050,41 @@ function PlatformTenants() {
                       value={editFormData.plan_expires_at}
                       onChange={(e) => setEditFormData({ ...editFormData, plan_expires_at: e.target.value })}
                       className="bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* 平台资源授权 ( granular ) */}
+                <div className="p-4 bg-white rounded-lg border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-semibold">模型配置 (Models)</Label>
+                      <p className="text-[11px] text-slate-500">允许此租户所有站点使用平台公共的 AI 模型</p>
+                    </div>
+                    <Switch
+                      checked={editFormData.platform_resources_allowed.includes('models')}
+                      onCheckedChange={(checked) => {
+                        const next = checked
+                          ? [...editFormData.platform_resources_allowed, 'models']
+                          : editFormData.platform_resources_allowed.filter(r => r !== 'models')
+                        setEditFormData({ ...editFormData, platform_resources_allowed: next })
+                      }}
+                    />
+                  </div>
+                  <div className="h-px bg-slate-100" />
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-semibold">文档解析 (Document Parsing)</Label>
+                      <p className="text-[11px] text-slate-500">允许此租户所有站点使用平台公共的解析器资源</p>
+                    </div>
+                    <Switch
+                      checked={editFormData.platform_resources_allowed.includes('doc_processors')}
+                      onCheckedChange={(checked) => {
+                        const next = checked
+                          ? [...editFormData.platform_resources_allowed, 'doc_processors']
+                          : editFormData.platform_resources_allowed.filter(r => r !== 'doc_processors')
+                        setEditFormData({ ...editFormData, platform_resources_allowed: next })
+                      }}
                     />
                   </div>
                 </div>
@@ -1097,26 +1177,14 @@ function PlatformTenants() {
             </div>
           )}
         </CardContent>
-      </Card>
-    </div>
+      </Card >
+    </div >
   )
 }
 
 // ==================== 1:1 SaaS PlatformModal Wrapper ====================
 
 export function PlatformModal() {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState("platform")
-
-  const handleClose = () => {
-    const params = new URLSearchParams(searchParams.toString())
-    params.delete("modal")
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-  }
-
-  // Wrapper Logic from SettingsModal
   const userInfo = getUserInfo()
   const isAdmin = userInfo?.role === UserRole.ADMIN
 
@@ -1131,62 +1199,138 @@ export function PlatformModal() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 md:p-8 animate-in fade-in duration-300">
-      {/* Central Window Container - EXACT COPY from SettingsModal */}
-      <div className="w-full max-w-6xl h-[85vh] min-h-[600px] bg-white rounded-2xl shadow-2xl shadow-black/20 border border-slate-200/60 overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 zoom-in-95 duration-500">
+      <SettingsProvider scope="platform">
+        <PlatformModalContent />
+      </SettingsProvider>
+    </div>
+  )
+}
 
-        {/* Window Header */}
-        <div className="h-16 border-b border-slate-100 flex items-center justify-between px-6 shrink-0 bg-white">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg text-primary">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-slate-900 leading-tight">
-                平台管理
-              </h1>
-            </div>
+function PlatformModalContent() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState("platform")
+  const [selectedModel, setSelectedModel] = useState<ModelType | null>(null)
+
+  const handleClose = () => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("modal")
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  const handleSelectModel = (model: ModelType) => {
+    setSelectedModel(model)
+  }
+
+  const handleBackToModels = () => {
+    setSelectedModel(null)
+  }
+
+  return (
+    <div className="w-full max-w-6xl h-[85vh] min-h-[600px] bg-white rounded-2xl shadow-2xl shadow-black/20 border border-slate-200/60 overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 zoom-in-95 duration-500">
+
+      {/* Window Header */}
+      <div className="h-16 border-b border-slate-100 flex items-center justify-between px-6 shrink-0 bg-white">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <ShieldCheck className="h-5 w-5" />
           </div>
-
-          <div className="flex items-center gap-3">
-            <div className="h-4 w-px bg-slate-200 mx-1" />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClose}
-              className="h-8 w-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+          <div>
+            <h1 className="text-base font-bold text-slate-900 leading-tight">
+              平台管理
+            </h1>
           </div>
         </div>
 
-        {/* Window Body */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex-1 flex overflow-hidden">
-          {/* Sidebar */}
-          <TabsList className="w-64 h-full bg-slate-50/50 border-r border-slate-100 flex-col items-stretch justify-start p-4 space-y-1">
-            <TabsTrigger
-              value="platform"
-              className={cn(
-                "w-full justify-start px-3 py-2.5 h-auto text-sm font-medium rounded-lg transition-all",
-                "data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-slate-200",
-                "hover:bg-white/60 hover:text-slate-900 text-slate-500"
-              )}
-            >
-              <Building2 className="h-4 w-4 mr-3 opacity-70" />
-              平台租户
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Content Area */}
-          <div className="flex-1 overflow-y-auto bg-white relative">
-            <div className="max-w-4xl mx-auto p-8 h-full">
-              <TabsContent value="platform" className="mt-0 h-full space-y-6 outline-none">
-                <PlatformTenants />
-              </TabsContent>
-            </div>
-          </div>
-        </Tabs>
+        <div className="flex items-center gap-3">
+          <div className="h-4 w-px bg-slate-200 mx-1" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClose}
+            className="h-8 w-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
+
+      {/* Window Body */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <TabsList className="w-64 h-full bg-slate-50/50 border-r border-slate-100 flex-col items-stretch justify-start p-4 space-y-1">
+          <TabsTrigger
+            value="platform"
+            className={cn(
+              "w-full justify-start px-3 py-2.5 h-auto text-sm font-medium rounded-lg transition-all",
+              "data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-slate-200",
+              "hover:bg-white/60 hover:text-slate-900 text-slate-500"
+            )}
+          >
+            <Building2 className="h-4 w-4 mr-3 opacity-70" />
+            平台租户
+          </TabsTrigger>
+
+          <div className="h-px bg-slate-200/60 my-2 mx-2" />
+
+          <div className="px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            平台资源
+          </div>
+
+          <TabsTrigger
+            value="doc-processor"
+            className={cn(
+              "w-full justify-start px-3 py-2.5 h-auto text-sm font-medium rounded-lg transition-all",
+              "data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-slate-200",
+              "hover:bg-white/60 hover:text-slate-900 text-slate-500"
+            )}
+          >
+            <FileText className="h-4 w-4 mr-3 opacity-70" />
+            文档解析
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="models"
+            className={cn(
+              "w-full justify-start px-3 py-2.5 h-auto text-sm font-medium rounded-lg transition-all",
+              "data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-slate-200",
+              "hover:bg-white/60 hover:text-slate-900 text-slate-500"
+            )}
+          >
+            <CircuitBoard className="h-4 w-4 mr-3 opacity-70" />
+            模型配置
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto bg-white relative">
+          <div className="max-w-4xl mx-auto p-8 h-full">
+            <TabsContent value="platform" className="mt-0 h-full space-y-6 outline-none">
+              <PlatformTenants />
+            </TabsContent>
+
+            <TabsContent value="doc-processor" className="mt-0 h-full space-y-6 outline-none">
+              <DocProcessorSettings scope="platform" />
+            </TabsContent>
+
+            <TabsContent value="models" className="mt-0 h-full space-y-6 outline-none">
+              {selectedModel ? (
+                <ModelDetailCard
+                  modelType={selectedModel as "chat" | "embedding" | "rerank" | "vl"}
+                  onBack={handleBackToModels}
+                />
+              ) : (
+                <ModelSettingsCard
+                  // @ts-ignore - mismatch in expected types but functional
+                  onSelectModel={handleSelectModel}
+                  activeTab={"" as any}
+                />
+              )}
+            </TabsContent>
+          </div>
+        </div>
+      </Tabs>
     </div>
   )
 }

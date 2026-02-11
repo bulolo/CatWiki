@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type TenantCreate = {
+export type TenantCreateRequest = {
     name: string;
     slug: string;
     domain?: (string | null);
@@ -17,5 +17,8 @@ export type TenantCreate = {
     contact_email?: (string | null);
     contact_phone?: (string | null);
     plan_expires_at: string;
+    admin_email: string;
+    admin_password: string;
+    admin_name?: (string | null);
 };
 
