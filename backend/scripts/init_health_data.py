@@ -82,11 +82,11 @@ async def create_health_tenant_admin(tenant_id: int, managed_site_ids: list[int]
     """创建租户管理员"""
     async with AsyncSessionLocal() as db:
         try:
-            email = "tenant_admin@example.com"
+            email = "health_admin@example.com"
             user = await crud_user.get_by_email(db, email=email)
             if not user:
                 user_in = UserCreate(
-                    name="Tenant Admin",
+                    name="Health Admin",
                     email=email,
                     password="admin123",
                     role=UserRole.TENANT_ADMIN,

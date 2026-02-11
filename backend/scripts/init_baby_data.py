@@ -41,6 +41,9 @@ from app.schemas.collection import CollectionCreate
 from app.schemas.document import DocumentCreate
 from app.schemas.site import SiteCreate
 from app.schemas.tenant import TenantCreate
+from app.crud.user import crud_user
+from app.schemas.user import UserCreate
+from app.models.user import UserRole, UserStatus
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -58,8 +61,7 @@ async def create_baby_tenant():
                     description="专注 0-6 岁科学育儿知识平台",
                     plan="pro",
                     plan_expires_at=datetime.now(timezone.utc) + timedelta(days=365),
-                    status="active",
-                    platform_resources_allowed=["models", "doc_processors"],
+                    status="active"
                 )
                 tenant = await crud_tenant.create(db, obj_in=tenant_in)
                 logger.info(f"✅ 创建育儿租户：{tenant.name} (Slug: {tenant.slug})")
@@ -68,6 +70,31 @@ async def create_baby_tenant():
             return tenant
         except Exception as e:
             logger.error(f"❌ 创建育儿租户失败: {e}", exc_info=True)
+            raise
+
+async def create_baby_tenant_admin(tenant_id: int, managed_site_ids: list[int] = None):
+    """创建育儿租户管理员"""
+    async with AsyncSessionLocal() as db:
+        try:
+            email = "baby_admin@example.com"
+            user = await crud_user.get_by_email(db, email=email)
+            if not user:
+                user_in = UserCreate(
+                    name="Baby Admin",
+                    email=email,
+                    password="admin123",
+                    role=UserRole.TENANT_ADMIN,
+                    status=UserStatus.ACTIVE,
+                    tenant_id=tenant_id,
+                    managed_site_ids=managed_site_ids or [],
+                )
+                user = await crud_user.create(db, obj_in=user_in)
+                logger.info(f"✅ 创建育儿租户管理员用户：{user.email} / admin123")
+            else:
+                logger.info(f"✅ 育儿租户管理员用户已存在：{user.email}")
+            return user
+        except Exception as e:
+            logger.error(f"❌ 创建育儿租户管理员用户失败: {e}", exc_info=True)
             raise
 
 async def create_baby_site(tenant_id: int):
@@ -266,6 +293,7 @@ async def main():
     logger.info("🚀 开始初始化育儿数据...")
     tenant = await create_baby_tenant()
     site = await create_baby_site(tenant.id)
+    await create_baby_tenant_admin(tenant.id, managed_site_ids=[site.id])
     await init_baby_documents(tenant.id, site.id)
     logger.info("✨ 全部初始化工作已完成！")
 
