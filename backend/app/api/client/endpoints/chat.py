@@ -236,10 +236,19 @@ async def _process_chat_request(
 ) -> ChatCompletionResponse | StreamingResponse:
     """核心聊天处理逻辑 (ReAct Agent)"""
 
-    # 1. 获取动态配置 (通过缓存管理器)
+    # 1. 获取 Site 信息以确定 Tenant
+    site_tenant_id = None
+    if site_id > 0:
+        async with AsyncSessionLocal() as db:
+            from app.crud.site import crud_site
+            site = await crud_site.get(db, id=site_id)
+            if site:
+                site_tenant_id = site.tenant_id
+
+    # 2. 获取动态配置 (通过缓存管理器)
     from app.core.dynamic_config_manager import dynamic_config_manager
 
-    chat_config = await dynamic_config_manager.get_chat_config()
+    chat_config = await dynamic_config_manager.get_chat_config(tenant_id=site_tenant_id)
 
     current_model = chat_config["model"]
     current_api_key = chat_config["apiKey"]

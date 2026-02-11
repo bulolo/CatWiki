@@ -22,6 +22,7 @@ export type ModelConfig = {
   apiKey: string
   baseUrl: string
   dimension?: number
+  mode?: "custom" | "platform"
 }
 
 export type BotConfig = {
@@ -64,25 +65,29 @@ export const initialConfigs: AIConfigs = {
     provider: "openai",
     model: "",
     apiKey: "",
-    baseUrl: ""
+    baseUrl: "",
+    mode: "custom"
   },
   embedding: {
     provider: "openai",
     model: "",
     apiKey: "",
-    baseUrl: ""
+    baseUrl: "",
+    mode: "custom"
   },
   rerank: {
     provider: "openai",
     model: "",
     apiKey: "",
-    baseUrl: ""
+    baseUrl: "",
+    mode: "custom"
   },
   vl: {
     provider: "openai",
     model: "",
     apiKey: "",
-    baseUrl: ""
+    baseUrl: "",
+    mode: "custom"
   },
   botConfig: {
     webWidget: {
@@ -125,6 +130,7 @@ export type DocProcessorConfig = {
   apiKey: string
   enabled: boolean
   config?: Record<string, any>
+  origin?: 'platform' | 'tenant'
 }
 
 export const DOC_PROCESSOR_TYPES: { value: DocProcessorType; label: string; description: string; endpoint: string; docUrl?: string; icon: string; color: string; disabled?: boolean }[] = [

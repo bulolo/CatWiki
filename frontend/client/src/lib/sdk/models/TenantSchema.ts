@@ -14,6 +14,7 @@ export type TenantSchema = {
     max_storage_mb?: number;
     max_users?: number;
     plan?: string;
+    platform_resources_allowed?: Array<string>;
     contact_email?: (string | null);
     contact_phone?: (string | null);
     id: number;

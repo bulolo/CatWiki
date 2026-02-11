@@ -56,6 +56,8 @@ interface SettingsContextType {
 
   // 工具函数
   isModelConfigured: (modelType: "chat" | "embedding" | "rerank" | "vl") => boolean
+  platformFallback: Record<string, boolean>
+  platformDefaults: AIConfigs | null
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
@@ -63,6 +65,8 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 export function SettingsProvider({ children, scope = 'tenant' }: { children: ReactNode, scope?: 'platform' | 'tenant' }) {
   const [configs, setConfigs] = useState<AIConfigs>(initialConfigs)
   const [savedConfigs, setSavedConfigs] = useState<AIConfigs>(initialConfigs)
+  const [platformFallback, setPlatformFallback] = useState<Record<string, boolean>>({})
+  const [platformDefaults, setPlatformDefaults] = useState<AIConfigs | null>(null)
   const isSwitchingMode = useRef(false)
 
   // 使用 React Query hooks
@@ -90,6 +94,22 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
           rerank: deepMerge(initialConfigs.rerank, rerankConfig),
           vl: deepMerge(initialConfigs.vl, vlConfig),
         }
+
+        // 提取元数据
+        if (aiData._meta?.is_platform_fallback) {
+          setPlatformFallback(aiData._meta.is_platform_fallback)
+        } else {
+          setPlatformFallback({})
+        }
+      }
+
+      // 提取平台默认配置
+      // @ts-ignore
+      if (aiConfigData.platform_defaults) {
+        // @ts-ignore
+        setPlatformDefaults(aiConfigData.platform_defaults as AIConfigs)
+      } else {
+        setPlatformDefaults(null)
       }
 
       setConfigs(loadedConfigs)
@@ -115,14 +135,14 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
 
   const handleSave = async () => {
     // 构建完整的 AI 配置对象 (扁平结构)
-    const aiConfig: AIModelConfig = {
+    const aiConfig = {
       chat: configs.chat,
       embedding: configs.embedding,
       rerank: configs.rerank,
       vl: configs.vl
     }
 
-    updateAIConfigMutation.mutate(aiConfig, {
+    updateAIConfigMutation.mutate(aiConfig as any, {
       onSuccess: (data: any) => {
         if (data && data.config_value) {
           const aiData = data.config_value;
@@ -141,6 +161,15 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
 
           setSavedConfigs(updated)
           setConfigs(updated)
+
+          if (aiData._meta?.is_platform_fallback) {
+            setPlatformFallback(aiData._meta.is_platform_fallback)
+          }
+
+          // 更新平台默认配置 (虽然通常不变，但为了数据一致性)
+          if (data.platform_defaults) {
+            setPlatformDefaults(data.platform_defaults as AIConfigs)
+          }
         } else {
           setSavedConfigs({ ...configs })
         }
@@ -171,6 +200,13 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
 
   const isModelConfigured = (modelType: "chat" | "embedding" | "rerank" | "vl") => {
     const config = configs[modelType]
+
+    // 如果使用了平台资源，则视为已配置
+    if (config.mode === "platform") {
+      return true
+    }
+
+    // 自定义模式下必须填写所有必填项
     return !!(config.provider && config.model && config.apiKey && config.baseUrl)
   }
 
@@ -183,6 +219,8 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
     handleUpdate,
     handleSave,
     isModelConfigured,
+    platformFallback,
+    platformDefaults
   }
 
   return (

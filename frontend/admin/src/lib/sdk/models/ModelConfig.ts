@@ -26,5 +26,18 @@ export type ModelConfig = {
      * Embedding 维度 (自动探测)
      */
     dimension?: (number | null);
+    /**
+     * 配置模式: custom=自定义, platform=使用平台资源
+     */
+    mode?: ModelConfig.mode;
 };
+export namespace ModelConfig {
+    /**
+     * 配置模式: custom=自定义, platform=使用平台资源
+     */
+    export enum mode {
+        CUSTOM = 'custom',
+        PLATFORM = 'platform',
+    }
+}
 

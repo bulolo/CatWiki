@@ -14,7 +14,7 @@ export type SiteCreate = {
     /**
      * 所属租户ID
      */
-    tenant_id: number;
+    tenant_id?: (number | null);
     /**
      * 站点标识
      */

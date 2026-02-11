@@ -33,7 +33,7 @@ class SystemConfig(BaseModel):
         String(100),
         nullable=False,
         index=True,
-        comment="配置键，如 'ai_config', 'bot_config'",
+        comment="配置键，如 'ai_config'",
     )
 
     # 复合唯一约束

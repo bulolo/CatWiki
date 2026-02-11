@@ -3,23 +3,23 @@
 /* tslint:disable */
 /* eslint-disable */
 export type TenantSchema = {
-  name: string;
-  slug: string;
-  domain?: (string | null);
-  logo_url?: (string | null);
-  description?: (string | null);
-  status?: string;
-  max_sites?: number;
-  max_documents?: number;
-  max_storage_mb?: number;
-  max_users?: number;
-  plan?: string;
-  contact_email?: (string | null);
-  contact_phone?: (string | null);
-  platform_resources_allowed?: Array<string>;
-  id: number;
-  created_at: string;
-  updated_at: string;
-  plan_expires_at: string;
+    name: string;
+    slug: string;
+    domain?: (string | null);
+    logo_url?: (string | null);
+    description?: (string | null);
+    status?: string;
+    max_sites?: number;
+    max_documents?: number;
+    max_storage_mb?: number;
+    max_users?: number;
+    plan?: string;
+    platform_resources_allowed?: Array<string>;
+    contact_email?: (string | null);
+    contact_phone?: (string | null);
+    id: number;
+    created_at: string;
+    updated_at: string;
+    plan_expires_at: string;
 };
 

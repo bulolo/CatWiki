@@ -31,6 +31,7 @@ class ModelConfig(BaseModel):
     apiKey: str = Field(..., description="API Key")
     baseUrl: str = Field(..., description="API Base URL")
     dimension: int | None = Field(default=None, description="Embedding 维度 (自动探测)")
+    mode: Literal["custom", "platform"] = Field(default="custom", description="配置模式: custom=自定义, platform=使用平台资源")
 
 
 class AIModelConfig(BaseModel):
@@ -74,6 +75,7 @@ class SystemConfigResponse(SystemConfigBase):
     id: int = Field(..., description="配置ID")
     created_at: datetime = Field(..., description="创建时间")
     updated_at: datetime = Field(..., description="更新时间")
+    platform_defaults: dict[str, Any] | None = Field(default=None, description="平台默认配置(参考用)")
 
     model_config = ConfigDict(from_attributes=True)
 

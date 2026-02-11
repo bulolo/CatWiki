@@ -31,6 +31,7 @@ from app.core.deps import (
     get_db,
     get_rustfs,
 )
+from app.core.tenant import get_current_tenant
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.core.utils import Paginator, build_collection_map, enrich_document_dict, get_vector_id
 from app.crud import crud_collection, crud_document, crud_site
@@ -357,28 +358,57 @@ async def import_document(
 
     try:
         # 3. 获取解析器配置
+        # 先获取当前租户是否允许使用平台资源
+        active_tenant_id = get_current_tenant()
+        platform_fallback_allowed = False
+        if active_tenant_id:
+            from app.crud.tenant import crud_tenant
+
+            tenant = await crud_tenant.get(db, id=active_tenant_id)
+            if tenant and "doc_processors" in (tenant.platform_resources_allowed or []):
+                platform_fallback_allowed = True
+
+        # 获取当前租户的配置
         doc_processor_config = await crud_system_config.get_by_key(
-            db, config_key="doc_processor_config"
+            db, config_key="doc_processor_config", tenant_id=active_tenant_id
         )
-        if not doc_processor_config:
-            raise BadRequestException(detail="系统未配置文档处理服务，请联系管理员")
+
+        processors = []
+        if doc_processor_config:
+            processors = doc_processor_config.config_value.get("processors", [])
 
         # 找到指定的处理器配置
-        config_value = doc_processor_config.config_value
-        processors = config_value.get("processors", [])
-
         target_processor_config = None
         for p in processors:
             if p.get("type") == processor_type or p.get("name") == processor_type:
                 target_processor_config = p
                 break
 
+        # 如果在租户配置中没找到，且允许降级到平台，则查找平台配置
+        if not target_processor_config and platform_fallback_allowed:
+            platform_config = await crud_system_config.get_by_key(
+                db, config_key="doc_processor_config", tenant_id=None
+            )
+            if platform_config:
+                platform_processors = platform_config.config_value.get("processors", [])
+                for p in platform_processors:
+                    if p.get("type") == processor_type or p.get("name") == processor_type:
+                        target_processor_config = p
+                        break
+
         if not target_processor_config:
-            # 如果找不到指定类型，尝试使用第一个可用的
+            # 如果还是找不到指定类型，尝试使用租户或平台（如果允许）的第一个可用的
             if processors:
                 target_processor_config = processors[0]
-            else:
-                raise BadRequestException(detail=f"未找到类型为 {processor_type} 的文档处理器配置")
+            elif platform_fallback_allowed:
+                platform_config = await crud_system_config.get_by_key(
+                    db, config_key="doc_processor_config", tenant_id=None
+                )
+                if platform_config and platform_config.config_value.get("processors"):
+                    target_processor_config = platform_config.config_value.get("processors")[0]
+
+            if not target_processor_config:
+                raise BadRequestException(detail=f"未找到类型为 {processor_type} 的文档处理器配置，请联系管理员")
 
         # 覆盖设置 (如果支持)
         if "config" not in target_processor_config:

@@ -44,7 +44,8 @@ import {
   Scan,
   BookOpen,
   Pickaxe,
-  AlertTriangle
+  AlertTriangle,
+  Globe
 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -83,9 +84,13 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
   }, [configData])
 
   const handleSave = async (updatedProcessors: DocProcessorConfig[]) => {
-    updateMutation.mutate({ processors: updatedProcessors }, {
+    // 过滤掉平台资源，只保存租户自定义的
+    const tenantProcessors = updatedProcessors.filter(p => p.origin !== 'platform')
+    updateMutation.mutate({ processors: tenantProcessors }, {
       onSuccess: () => {
-        setProcessors(updatedProcessors)
+        // 保存成功后，前端状态需要保持合并后的视图 (平台 + 租户)
+        // 但由于 updateMutation onSuccess 会触发 invalidateQueries -> useDocProcessorConfig 重新获取
+        // 所以这里不需要手动 setProcessors，React Query 会自动更新
       }
     })
   }
@@ -449,7 +454,15 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                           )
                         })()}
                         <div>
-                          <CardTitle className="text-base">{processor.name}</CardTitle>
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-base">{processor.name}</CardTitle>
+                            {processor.origin === 'platform' && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700">
+                                <Globe className="h-3 w-3 mr-1" />
+                                平台共享
+                              </span>
+                            )}
+                          </div>
                           <CardDescription>
                             {DOC_PROCESSOR_TYPES.find(t => t.value === processor.type)?.label || processor.type}
                             {" · "}
@@ -458,10 +471,12 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Switch
-                          checked={processor.enabled}
-                          onCheckedChange={(checked: boolean) => handleToggleEnabled(processor.name, checked)}
-                        />
+                        {processor.origin !== 'platform' && (
+                          <Switch
+                            checked={processor.enabled}
+                            onCheckedChange={(checked: boolean) => handleToggleEnabled(processor.name, checked)}
+                          />
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -474,22 +489,29 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                             <Zap className="h-4 w-4" />
                           )}
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleStartEdit(index)}
-                          disabled={isDemoMode}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(processor.name)}
-                          disabled={isDemoMode}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2" title={processor.origin === 'platform' ? "平台级资源，不可修改" : undefined}>
+                          {processor.origin !== 'platform' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleStartEdit(index)}
+                                // 只有租户自身的或者演示模式才禁用
+                                disabled={isDemoMode}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(processor.name)}
+                                disabled={isDemoMode}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </CardHeader>

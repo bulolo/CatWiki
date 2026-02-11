@@ -34,5 +34,9 @@ export type SystemConfigResponse = {
      * 更新时间
      */
     updated_at: string;
+    /**
+     * 平台默认配置(参考用)
+     */
+    platform_defaults?: (Record<string, any> | null);
 };
 

@@ -1,0 +1,3 @@
+[
+  "tests/manual/test_tenants_api.py::test_list_tenants"
+]

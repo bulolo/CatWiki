@@ -20,7 +20,7 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-import { Settings, MessageSquare, Layers, RefreshCw, Eye } from "lucide-react"
+import { Settings, MessageSquare, Layers, RefreshCw, Eye, Globe } from "lucide-react"
 import { useSettings } from "@/contexts/SettingsContext"
 import { type ModelType } from "@/types/settings"
 
@@ -30,7 +30,7 @@ interface ManualModeConfigProps {
 }
 
 export function ManualModeConfig({ onSelectModel, activeTab }: ManualModeConfigProps) {
-  const { configs, isModelConfigured } = useSettings()
+  const { configs, isModelConfigured, platformFallback } = useSettings()
 
   const modelCards = [
     {
@@ -90,36 +90,42 @@ export function ManualModeConfig({ onSelectModel, activeTab }: ManualModeConfigP
             // @ts-ignore
             const conf = configs[item.id as "chat" | "embedding" | "rerank" | "vl"]
             const isConfigured = isModelConfigured(item.id as "chat" | "embedding" | "rerank" | "vl")
-            
+
             return (
               <button
                 key={item.id}
                 onClick={() => onSelectModel(item.id)}
-                className={`p-5 rounded-2xl border-2 transition-all text-left hover:shadow-lg bg-white ${
-                  activeTab === item.id 
-                    ? "border-primary ring-2 ring-primary/20" 
-                    : "border-slate-200 hover:border-slate-300"
-                }`}
+                className={`p-5 rounded-2xl border-2 transition-all text-left hover:shadow-lg bg-white ${activeTab === item.id
+                  ? "border-primary ring-2 ring-primary/20"
+                  : "border-slate-200 hover:border-slate-300"
+                  }`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className={`p-2.5 rounded-xl ${item.color} relative`}>
                       <item.icon className={`h-5 w-5 ${item.iconColor}`} />
                       {/* 状态指示器 */}
-                      <div className={`absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-white ${
-                        isConfigured ? "bg-emerald-500" : "bg-slate-300"
-                      }`} />
+                      <div className={`absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-white ${isConfigured ? "bg-emerald-500" : "bg-slate-300"
+                        }`} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-slate-900">{item.title}</h3>
-                        <Badge 
-                          variant={item.required ? "default" : "outline"} 
-                          className={`text-[9px] px-1.5 py-0 h-4 ${
-                            item.required 
-                              ? "bg-red-100 text-red-700 border-red-200" 
-                              : "bg-slate-100 text-slate-600 border-slate-200"
-                          }`}
+                        {platformFallback[item.id] && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[9px] px-1.5 py-0 h-4 bg-indigo-50 text-indigo-600 border-indigo-100 flex items-center gap-1"
+                          >
+                            <Globe className="h-2.5 w-2.5" />
+                            平台
+                          </Badge>
+                        )}
+                        <Badge
+                          variant={item.required ? "default" : "outline"}
+                          className={`text-[9px] px-1.5 py-0 h-4 ${item.required
+                            ? "bg-red-100 text-red-700 border-red-200"
+                            : "bg-slate-100 text-slate-600 border-slate-200"
+                            }`}
                         >
                           {item.required ? "必选" : "可选"}
                         </Badge>

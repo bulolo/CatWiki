@@ -46,7 +46,8 @@ import {
   Zap,
   Scan,
   BookOpen,
-  Pickaxe
+  Pickaxe,
+  Globe
 } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/api-client"
@@ -59,6 +60,7 @@ interface DocProcessor {
   type: string
   enabled: boolean
   config?: any
+  origin?: 'platform' | 'tenant'
 }
 
 interface DocumentUploadDialogProps {
@@ -383,6 +385,12 @@ export function DocumentUploadDialog({
                           )}
                           <span>{p.name}</span>
                           <span className="text-xs text-slate-400">({p.type})</span>
+                          {p.origin === 'platform' && (
+                            <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100">
+                              <Globe className="h-2.5 w-2.5 mr-1" />
+                              平台
+                            </span>
+                          )}
                         </div>
                       </SelectItem>
                     )
