@@ -20,8 +20,8 @@ import uuid
 import mimetypes
 from io import BytesIO
 
-from app.core.config import settings
-from app.core.rustfs import get_rustfs_service
+from app.core.infra.config import settings
+from app.core.infra.rustfs import get_rustfs_service
 
 logger = logging.getLogger(__name__)
 

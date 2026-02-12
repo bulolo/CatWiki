@@ -20,15 +20,15 @@ import logging
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user_with_tenant
-from app.core.exceptions import ForbiddenException
+from app.core.web.deps import get_current_user_with_tenant
+from app.core.web.exceptions import ForbiddenException
 from app.crud.tenant import crud_tenant
 from app.db.database import get_db
 from app.models.user import User, UserRole, UserStatus
 from app.schemas.response import ApiResponse, PaginatedResponse
 from app.schemas.tenant import TenantSchema, TenantCreate, TenantUpdate, TenantCreateRequest
-from app.core.utils import Paginator
-from app.core.exceptions import NotFoundException
+from app.core.common.utils import Paginator
+from app.core.web.exceptions import NotFoundException
 from app.crud.document import crud_document
 from app.crud.collection import crud_collection
 from app.crud.site import crud_site
@@ -156,7 +156,7 @@ async def delete_tenant(
         raise NotFoundException(detail="租户不存在")
 
     # 强制清除租户上下文，确保删除操作不受过滤影响
-    from app.core.tenant import set_current_tenant
+    from app.core.infra.tenant import set_current_tenant
 
     set_current_tenant(None)
 

@@ -12,7 +12,7 @@ from alembic import context
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app.core.config import settings
+from app.core.infra.config import settings
 from app.db.base import Base
 
 # 导入所有模型以确保它们被注册到 Base.metadata

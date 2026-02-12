@@ -28,8 +28,8 @@ from sqlalchemy import select
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # 配置日志
-from app.core.logger import setup_logging
-from app.core.reading_time import calculate_reading_time  # noqa: E402
+from app.core.common.logger import setup_logging
+from app.core.common.reading_time import calculate_reading_time  # noqa: E402
 from app.crud.collection import crud_collection  # noqa: E402
 from app.crud.document import crud_document  # noqa: E402
 from app.crud.site import crud_site  # noqa: E402
@@ -90,7 +90,7 @@ async def init_health_model_config(tenant_id: int):
                     "apiKey": "",
                     "baseUrl": "",
                     "dimension": None,
-                    "mode": "platform",
+                    "mode": "custom",
                 },
                 "embedding": {
                     "provider": "openai",
@@ -98,7 +98,7 @@ async def init_health_model_config(tenant_id: int):
                     "apiKey": "",
                     "baseUrl": "",
                     "dimension": None,
-                    "mode": "platform",
+                    "mode": "custom",
                 },
                 "rerank": {
                     "provider": "openai",
@@ -106,7 +106,7 @@ async def init_health_model_config(tenant_id: int):
                     "apiKey": "",
                     "baseUrl": "",
                     "dimension": None,
-                    "mode": "platform",
+                    "mode": "custom",
                 },
                 "vl": {
                     "provider": "openai",
@@ -114,7 +114,7 @@ async def init_health_model_config(tenant_id: int):
                     "apiKey": "",
                     "baseUrl": "",
                     "dimension": None,
-                    "mode": "platform",
+                    "mode": "custom",
                 },
             }
 

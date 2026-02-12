@@ -15,8 +15,8 @@
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundException
-from app.core.utils import Paginator, build_collection_map, enrich_document_dict
+from app.core.web.exceptions import NotFoundException
+from app.core.common.utils import Paginator, build_collection_map, enrich_document_dict
 from app.crud import crud_collection, crud_document
 from app.db.database import get_db
 from app.schemas import ApiResponse, PaginatedResponse

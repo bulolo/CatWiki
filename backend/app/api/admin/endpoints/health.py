@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.infra.config import settings
 from app.db.database import get_db
 from app.schemas.response import ApiResponse, HealthResponse
 
@@ -48,7 +48,7 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> ApiResponse[Health
     """
     from datetime import UTC, datetime
 
-    from app.core.rustfs import get_rustfs_service
+    from app.core.infra.rustfs import get_rustfs_service
 
     health_status = {
         "status": "healthy",

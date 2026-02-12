@@ -19,8 +19,8 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import check_demo_mode, get_current_user_with_tenant, get_valid_site
-from app.core.exceptions import BadRequestException, NotFoundException
+from app.core.web.deps import check_demo_mode, get_current_user_with_tenant, get_valid_site
+from app.core.web.exceptions import BadRequestException, NotFoundException
 from app.crud import crud_collection, crud_document, crud_site
 from app.db.database import get_db
 from app.models.site import Site

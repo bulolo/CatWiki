@@ -20,13 +20,13 @@ from fastapi.responses import JSONResponse
 
 from app.api.admin.api import api_router as admin_router
 from app.api.client.api import api_router as client_router
-from app.core.config import settings
-from app.core.exceptions import setup_exception_handlers
-from app.core.logger import setup_logging
-from app.core.middleware import setup_middleware
-from app.core.openapi_utils import filter_openapi_by_prefix
-from app.core.rustfs import init_rustfs
-from app.core.system_config_init import init_system_configs
+from app.core.infra.config import settings
+from app.core.web.exceptions import setup_exception_handlers
+from app.core.common.logger import setup_logging
+from app.core.web.middleware import setup_middleware
+from app.core.web.openapi_utils import filter_openapi_by_prefix
+from app.core.infra.rustfs import init_rustfs
+from app.core.infra.system_config_init import init_system_configs
 from app.db.database import engine
 
 # 配置日志

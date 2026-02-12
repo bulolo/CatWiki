@@ -12,7 +12,7 @@ import socket
 import base64
 from datetime import datetime
 from sqlalchemy import text
-from app.core.config import settings
+from app.core.infra.config import settings
 from app.db.database import AsyncSessionLocal
 from app.crud.system_config import crud_system_config
 from app.api.admin.endpoints.system_config import SYSTEM_INTEGRITY_KEY

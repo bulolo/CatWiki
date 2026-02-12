@@ -25,7 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # 配置日志和导入应用组件
-from app.core.logger import setup_logging
+from app.core.common.logger import setup_logging
 from app.crud.user import crud_user
 from app.db.database import AsyncSessionLocal
 from app.models.user import UserRole, UserStatus

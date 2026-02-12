@@ -1,9 +1,9 @@
 import logging
 import time
 
-from app.core.config import settings
-from app.core.reranker import reranker
-from app.core.vector_store import VectorStoreManager
+from app.core.infra.config import settings
+from app.core.ai.reranker import reranker
+from app.core.vector.vector_store import VectorStoreManager
 from app.schemas.document import VectorRetrieveFilter, VectorRetrieveResponse
 
 logger = logging.getLogger(__name__)
@@ -45,15 +45,16 @@ class VectorService:
                 if filter.source is not None:
                     filter_dict["source"] = filter.source
 
-            # 2. 决定检索数量
-            # 确保 Reranker 配置是最新的
-            await reranker._ensure_config()
+            # 2. 决定检索数量与重排序策略
+            # 获取当前租户上下文以获取正确的配置指纹
+            from app.core.infra.tenant import get_current_tenant
+            current_tenant_id = get_current_tenant()
 
-            # 确定是否使用重排序
+            # 确定是否使用重排序 (异步校验租户配置)
+            reranker_active = await reranker.is_enabled(tenant_id=current_tenant_id)
             env_rerank_enabled = settings.RAG_ENABLE_RERANK
-            reranker_active = reranker.is_enabled
 
-            # 只有在 reranker.is_enabled (有 API 配置) 且 do_rerank (业务逻辑启用) 时才真正执行
+            # 只有在 reranker 实例可用 (有配置) 且业务逻辑请求启用时才真正执行
             should_apply_rerank = env_rerank_enabled and reranker_active
             if enable_rerank is not None:
                 should_apply_rerank = enable_rerank and reranker_active
@@ -101,7 +102,10 @@ class VectorService:
             final_list = []
             if should_apply_rerank and candidate_list:
                 final_list = await reranker.rerank(
-                    query=query, documents=candidate_list, top_n=final_top_k
+                    query=query, 
+                    documents=candidate_list, 
+                    top_n=final_top_k,
+                    tenant_id=current_tenant_id
                 )
             else:
                 # 没启用 Rerank 则按分数排序取 top k

@@ -30,7 +30,7 @@ except ImportError:
     S3Error = None
     CopySource = None
 
-from app.core.config import settings
+from app.core.infra.config import settings
 
 logger = logging.getLogger(__name__)
 

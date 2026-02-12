@@ -181,7 +181,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
 
     async def create(self, db: AsyncSession, *, obj_in: UserCreate) -> User:
         """创建用户（自动处理密码哈希与租户 ID）"""
-        from app.core.tenant import get_current_tenant
+        from app.core.infra.tenant import get_current_tenant
 
         tenant_id = obj_in.tenant_id
         if tenant_id is None:
@@ -209,7 +209,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
 
     async def invite(self, db: AsyncSession, *, obj_in: UserInvite) -> tuple[User, str]:
         """邀请用户（支持租户 ID 自动填充）"""
-        from app.core.tenant import get_current_tenant
+        from app.core.infra.tenant import get_current_tenant
 
         tenant_id = obj_in.tenant_id
         if tenant_id is None:

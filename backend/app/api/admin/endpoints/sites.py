@@ -21,10 +21,10 @@ import logging
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.core.deps import check_demo_mode, get_current_user_with_tenant
-from app.core.exceptions import ConflictException, NotFoundException
-from app.core.utils import Paginator, mask_bot_config_inplace
+from app.core.infra.config import settings
+from app.core.web.deps import check_demo_mode, get_current_user_with_tenant
+from app.core.web.exceptions import ConflictException, NotFoundException
+from app.core.common.utils import Paginator, mask_bot_config_inplace
 from app.crud import crud_site, crud_user
 from app.crud.user import get_password_hash
 from app.db.database import get_db
@@ -211,7 +211,7 @@ async def delete_site(
 
     if document_ids:
         try:
-            from app.core.vector_store import VectorStoreManager
+            from app.core.vector.vector_store import VectorStoreManager
 
             vector_store = await VectorStoreManager.get_instance()
 

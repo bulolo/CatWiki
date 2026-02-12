@@ -22,11 +22,11 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.core.deps import check_demo_mode, get_current_user_with_tenant
-from app.core.exceptions import NotFoundException
-from app.core.tenant import get_current_tenant, temporary_tenant_context
-from app.core.utils import mask_variable, mask_bot_config_inplace, MASKED_VARIABLE
+from app.core.infra.config import settings
+from app.core.web.deps import check_demo_mode, get_current_user_with_tenant
+from app.core.web.exceptions import NotFoundException
+from app.core.infra.tenant import get_current_tenant, temporary_tenant_context
+from app.core.common.utils import mask_variable, mask_bot_config_inplace, MASKED_VARIABLE
 from app.crud.system_config import crud_system_config
 from app.db.database import get_db
 from app.models.user import User
@@ -265,16 +265,25 @@ async def update_ai_config(
             tenant_id=target_tenant_id,
         )
 
+    # 强制清除配置缓存，确保所有的 Manager 都能读取到最新写入数据库的值
+    try:
+        from app.core.ai.dynamic_config_manager import dynamic_config_manager
+        dynamic_config_manager.clear_cache(tenant_id=target_tenant_id)
+        logger.info(f"🧹 Cleared AI config cache for tenant: {target_tenant_id}")
+    except Exception as e:
+        logger.error(f"❌ Failed to clear config cache: {e}")
+
     # 触发 VectorStore 热更新
     try:
-        from app.core.vector_store import VectorStoreManager
+        from app.core.vector.vector_store import VectorStoreManager
 
+        # 注意：get_instance() 内部会尝试初始化。
+        # 如果当前配置有问题，可能会抛出异常。我们应该捕获它，但这不应阻断配置保存成功。
         manager = await VectorStoreManager.get_instance()
-        await manager.reload_credentials(config_value)
+        await manager.reload_credentials() 
     except Exception as e:
         import logging
-
-        logging.getLogger(__name__).error(f"❌ Failed to trigger vector store reload: {e}")
+        logging.getLogger(__name__).warning(f"⚠️ Vector store reload skipped or failed (safe to ignore if config is incomplete): {e}")
 
     # 返回处理
     response_data = SystemConfigResponse.model_validate(config)

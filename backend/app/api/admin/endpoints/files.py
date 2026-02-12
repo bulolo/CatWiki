@@ -25,15 +25,15 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import Response
 
-from app.core.config import settings
-from app.core.deps import get_current_user_with_tenant, get_rustfs
-from app.core.exceptions import (
+from app.core.infra.config import settings
+from app.core.web.deps import get_current_user_with_tenant, get_rustfs
+from app.core.web.exceptions import (
     BadRequestException,
     DatabaseException,
     NotFoundException,
     ServiceUnavailableException,
 )
-from app.core.rustfs import RustFSService
+from app.core.infra.rustfs import RustFSService
 from app.models.user import User
 from app.schemas import ApiResponse
 

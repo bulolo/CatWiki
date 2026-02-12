@@ -19,7 +19,7 @@
 import logging
 import sys
 
-from app.core.config import settings
+from app.core.infra.config import settings
 
 
 class ColorFormatter(logging.Formatter):

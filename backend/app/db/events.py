@@ -22,7 +22,7 @@ from sqlalchemy import event
 from sqlalchemy import true, literal
 from sqlalchemy.orm import with_loader_criteria, Session
 from app.db.base import Base
-from app.core.tenant import get_current_tenant
+from app.core.infra.tenant import get_current_tenant
 
 logger = logging.getLogger(__name__)
 

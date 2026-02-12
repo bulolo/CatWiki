@@ -20,8 +20,8 @@ import logging
 
 from fastapi import APIRouter, Depends
 
-from app.core.cache import get_cache
-from app.core.deps import get_current_user_with_tenant
+from app.core.infra.cache import get_cache
+from app.core.web.deps import get_current_user_with_tenant
 from app.models.user import User
 from app.schemas.response import ApiResponse
 

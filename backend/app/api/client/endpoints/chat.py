@@ -17,9 +17,9 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 
-from app.core.checkpointer import get_checkpointer
-from app.core.graph import create_agent_graph
-from app.core.rag_utils import convert_tool_call_chunk_to_openai, extract_sources_from_messages
+from app.core.infra.checkpointer import get_checkpointer
+from app.core.ai.graph import create_agent_graph
+from app.core.vector.rag_utils import convert_tool_call_chunk_to_openai, extract_sources_from_messages
 from app.db.database import AsyncSessionLocal
 from app.schemas.chat import (
     ChatCompletionChoice,
@@ -246,23 +246,14 @@ async def _process_chat_request(
             if site:
                 site_tenant_id = site.tenant_id
 
-    # 2. 获取动态配置 (通过缓存管理器)
-    from app.core.dynamic_config_manager import dynamic_config_manager
+    # 2. 从实例池获取模型 (支持指纹复用)
+    from app.core.ai.llm_manager import llm_manager
 
-    chat_config = await dynamic_config_manager.get_chat_config(tenant_id=site_tenant_id)
-
-    current_model = chat_config["model"]
-    current_api_key = chat_config["apiKey"]
-    current_base_url = chat_config["baseUrl"]
-
-    # 2. 初始化 ChatOpenAI
-    llm = ChatOpenAI(
-        model=current_model,
-        api_key=current_api_key,
-        base_url=current_base_url,
-        temperature=request.temperature or 0.7,
-        streaming=True,  # 启用流式
+    llm = await llm_manager.get_model(
+        tenant_id=site_tenant_id,
+        temperature=request.temperature or 0.7
     )
+    current_model = llm.model_name
 
     # 3. 记录日志
     msg_preview = request.message[:200] + "..." if len(request.message) > 200 else request.message

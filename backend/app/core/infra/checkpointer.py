@@ -25,7 +25,7 @@ from typing import AsyncGenerator
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg_pool import AsyncConnectionPool
 
-from app.core.config import settings
+from app.core.infra.config import settings
 
 logger = logging.getLogger(__name__)
 

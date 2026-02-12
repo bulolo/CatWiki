@@ -21,14 +21,14 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import check_demo_mode, get_current_user_with_tenant
-from app.core.exceptions import (
+from app.core.web.deps import check_demo_mode, get_current_user_with_tenant
+from app.core.web.exceptions import (
     BadRequestException,
     ConflictException,
     ForbiddenException,
     NotFoundException,
 )
-from app.core.utils import Paginator
+from app.core.common.utils import Paginator
 from app.crud.user import crud_user
 from app.db.database import get_db
 from app.models.user import User, UserRole, UserStatus
@@ -462,7 +462,7 @@ async def login(
         raise BadRequestException(detail="邮箱或密码错误")
 
     # 生成真实的 JWT token
-    from app.core.utils import create_access_token
+    from app.core.common.utils import create_access_token
 
     token_data = {
         "sub": str(user.id),  # subject (用户ID)

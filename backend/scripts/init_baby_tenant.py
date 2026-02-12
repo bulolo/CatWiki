@@ -28,8 +28,8 @@ from sqlalchemy import select
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # 配置日志和导入应用组件
-from app.core.logger import setup_logging
-from app.core.reading_time import calculate_reading_time
+from app.core.common.logger import setup_logging
+from app.core.common.reading_time import calculate_reading_time
 from app.crud.collection import crud_collection
 from app.crud.document import crud_document
 from app.crud.site import crud_site
@@ -97,6 +97,25 @@ async def create_baby_tenant_admin(tenant_id: int, managed_site_ids: list[int] =
             return user
         except Exception as e:
             logger.error(f"❌ 创建育儿租户管理员用户失败: {e}", exc_info=True)
+            raise
+
+
+async def init_baby_model_config(tenant_id: int):
+    """初始化育儿租户的 AI 模型配置 (Custom模式)"""
+    async with AsyncSessionLocal() as db:
+        try:
+            from app.crud.system_config import crud_system_config
+            config_key = "ai_config"
+            model_config = {
+                "chat": {"provider": "openai", "model": "", "apiKey": "", "baseUrl": "", "mode": "custom"},
+                "embedding": {"provider": "openai", "model": "", "apiKey": "", "baseUrl": "", "dimension": None, "mode": "custom"},
+                "rerank": {"provider": "openai", "model": "", "apiKey": "", "baseUrl": "", "mode": "custom"},
+                "vl": {"provider": "openai", "model": "", "apiKey": "", "baseUrl": "", "mode": "custom"},
+            }
+            await crud_system_config.update_by_key(db, config_key=config_key, config_value=model_config, tenant_id=tenant_id)
+            logger.info(f"✅ 初始化育儿租户 AI 模型配置完成 (Mode: Custom)")
+        except Exception as e:
+            logger.error(f"❌ 初始化育儿租户 AI 模型配置失败: {e}", exc_info=True)
             raise
 
 
@@ -304,6 +323,7 @@ async def main():
     tenant = await create_baby_tenant()
     site = await create_baby_site(tenant.id)
     await create_baby_tenant_admin(tenant.id, managed_site_ids=[site.id])
+    await init_baby_model_config(tenant.id)
     await init_baby_documents(tenant.id, site.id)
     logger.info("✨ 全部初始化工作已完成！")
 

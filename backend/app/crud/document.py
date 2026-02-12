@@ -30,8 +30,8 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
 
     async def create(self, db: AsyncSession, *, obj_in: DocumentCreate) -> Document:
         """创建文档（自动计算阅读时间与租户 ID）"""
-        from app.core.reading_time import calculate_reading_time
-        from app.core.tenant import get_current_tenant
+        from app.core.common.reading_time import calculate_reading_time
+        from app.core.infra.tenant import get_current_tenant
 
         # 转换为字典
         obj_in_data = obj_in.model_dump()
@@ -58,7 +58,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         self, db: AsyncSession, *, db_obj: Document, obj_in: DocumentUpdate | dict[str, any]
     ) -> Document:
         """更新文档（自动计算阅读时间）"""
-        from app.core.reading_time import calculate_reading_time
+        from app.core.common.reading_time import calculate_reading_time
 
         # 转换为字典
         if isinstance(obj_in, dict):
@@ -208,7 +208,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         同时记录浏览事件到 document_view_events 表，用于统计今日浏览和独立访客。
         """
         from app.crud.document_view_event import crud_document_view_event
-        from app.core.tenant import get_current_tenant
+        from app.core.infra.tenant import get_current_tenant
 
         tenant_id = get_current_tenant()
         tenant_filter = "AND tenant_id = :tid" if tenant_id is not None else ""
@@ -309,7 +309,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         Returns:
             更新的文档数量
         """
-        from app.core.tenant import get_current_tenant
+        from app.core.infra.tenant import get_current_tenant
 
         tenant_id = get_current_tenant()
         stmt = update(self.model).where(self.model.id.in_(document_ids))

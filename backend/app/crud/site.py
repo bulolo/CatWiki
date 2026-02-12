@@ -35,7 +35,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
 
     async def create(self, db: AsyncSession, *, obj_in: SiteCreate) -> Site:
         """创建站点（过滤掉非模型字段，并支持租户 ID 自动填充）"""
-        from app.core.tenant import get_current_tenant
+        from app.core.infra.tenant import get_current_tenant
 
         obj_in_data = obj_in.model_dump(exclude={"admin_email", "admin_name", "admin_password"})
 
@@ -65,7 +65,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
         """根据 API Token 获取站点 (查询 bot_config->apiBot->apiKey)"""
         # 1. 尝试从缓存获取
         # TODO: 未来考虑使用 Redis 替代内存缓存，以支持多实例部署和防止容器重启导致缓存失效
-        from app.core.cache import get_cache
+        from app.core.infra.cache import get_cache
 
         cache = get_cache()
         cache_key = f"site_by_token:{api_token}"
@@ -107,7 +107,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
         # 无论是 Key 变了，还是 Site 其他信息变了，都需要清除旧 Key 指向的缓存，
         # 也就是让下一次请求强制刷新
         if old_api_key:
-            from app.core.cache import get_cache
+            from app.core.infra.cache import get_cache
 
             cache = get_cache()
             cache_key = f"site_by_token:{old_api_key}"
@@ -119,7 +119,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
 
     async def increment_article_count(self, db: AsyncSession, *, site_id: int) -> None:
         """原子增加文章计数（支持租户隔离）"""
-        from app.core.tenant import get_current_tenant
+        from app.core.infra.tenant import get_current_tenant
 
         tenant_id = get_current_tenant()
         stmt = update(Site).where(Site.id == site_id)
@@ -131,7 +131,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
 
     async def decrement_article_count(self, db: AsyncSession, *, site_id: int) -> None:
         """原子减少文章计数（支持租户隔离）"""
-        from app.core.tenant import get_current_tenant
+        from app.core.infra.tenant import get_current_tenant
 
         tenant_id = get_current_tenant()
         stmt = update(Site).where(Site.id == site_id).where(Site.article_count > 0)
@@ -145,7 +145,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
         """删除站点及其所有关联数据（高性能批量删除，支持租户隔离）"""
         from app.models.collection import Collection
         from app.models.document import Document
-        from app.core.tenant import get_current_tenant
+        from app.core.infra.tenant import get_current_tenant
 
         tenant_id = get_current_tenant()
 

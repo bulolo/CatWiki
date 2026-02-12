@@ -27,7 +27,7 @@ import os
 import sys
 import time
 
-from app.core.logger import setup_logging
+from app.core.common.logger import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)

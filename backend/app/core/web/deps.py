@@ -22,10 +22,10 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.core.exceptions import ForbiddenException, NotFoundException, UnauthorizedException
-from app.core.rustfs import RustFSService, get_rustfs_service
-from app.core.utils import decode_access_token
+from app.core.infra.config import settings
+from app.core.web.exceptions import ForbiddenException, NotFoundException, UnauthorizedException
+from app.core.infra.rustfs import RustFSService, get_rustfs_service
+from app.core.common.utils import decode_access_token
 from app.crud import crud_site
 from app.crud.user import crud_user
 from app.db.database import get_db
@@ -167,7 +167,7 @@ async def set_tenant_context(
     """
     依赖项：在认证后设置当前请求的租户上下文
     """
-    from app.core.tenant import set_current_tenant
+    from app.core.infra.tenant import set_current_tenant
 
     set_current_tenant(tenant_id)
     return tenant_id
@@ -181,7 +181,7 @@ async def get_current_user_with_tenant(
     复合依赖项：获取当前用户并同时注入租户上下文。
     替代传统的 Depends(get_current_active_user)。
     """
-    from app.core.tenant import set_current_tenant
+    from app.core.infra.tenant import set_current_tenant
 
     set_current_tenant(tenant_id)
     return current_user

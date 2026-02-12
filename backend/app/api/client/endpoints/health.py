@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.infra.config import settings
 from app.db.database import get_db
 from app.schemas.response import ApiResponse, HealthResponse
 

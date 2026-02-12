@@ -14,11 +14,11 @@
 
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.config import settings
+from app.core.infra.config import settings
 from app.crud.system_config import crud_system_config
 from app.db.database import AsyncSessionLocal
 from app.api.admin.endpoints.system_config import AI_CONFIG_KEY, DOC_PROCESSOR_CONFIG_KEY
-from app.core.integrity import init_background_monitoring
+from app.core.infra.integrity import init_background_monitoring
 
 logger = logging.getLogger(__name__)
 

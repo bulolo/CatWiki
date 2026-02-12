@@ -21,8 +21,8 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 
-from app.core.prompts import FORCE_STOP_PROMPT, NO_RESULTS_MESSAGE, SUMMARIZE_PROMPT, SYSTEM_PROMPT
-from app.core.rag_utils import is_meaningful_message
+from app.core.ai.prompts import FORCE_STOP_PROMPT, NO_RESULTS_MESSAGE, SUMMARIZE_PROMPT, SYSTEM_PROMPT
+from app.core.vector.rag_utils import is_meaningful_message
 from app.schemas.document import VectorRetrieveFilter
 from app.schemas.graph_state import ChatGraphState
 from app.services.vector_service import VectorService
@@ -30,7 +30,7 @@ from app.services.vector_service import VectorService
 logger = logging.getLogger(__name__)
 
 # 最大迭代次数限制，防止 Agent 无限循环（从配置读取）
-from app.core.config import settings
+from app.core.infra.config import settings
 
 MAX_ITERATIONS = settings.AGENT_MAX_ITERATIONS
 

@@ -72,7 +72,7 @@ class CRUDCollection(CRUDBase[Collection, CollectionCreate, CollectionUpdate]):
     async def get_descendant_ids(self, db: AsyncSession, *, collection_id: int) -> list[int]:
         """递归获取合集及其所有子合集的ID列表（使用 CTE 优化，并支持租户隔离）"""
         from sqlalchemy import text
-        from app.core.tenant import get_current_tenant
+        from app.core.infra.tenant import get_current_tenant
 
         tenant_id = get_current_tenant()
         tenant_filter = "AND tenant_id = :tid" if tenant_id is not None else ""
@@ -99,7 +99,7 @@ class CRUDCollection(CRUDBase[Collection, CollectionCreate, CollectionUpdate]):
     async def get_path(self, db: AsyncSession, *, collection_id: int) -> str:
         """获取合集的完整路径（使用 CTE 优化，并支持租户隔离）"""
         from sqlalchemy import text
-        from app.core.tenant import get_current_tenant
+        from app.core.infra.tenant import get_current_tenant
 
         tenant_id = get_current_tenant()
         tenant_filter = "AND tenant_id = :tid" if tenant_id is not None else ""
@@ -128,7 +128,7 @@ class CRUDCollection(CRUDBase[Collection, CollectionCreate, CollectionUpdate]):
     async def get_ancestors(self, db: AsyncSession, *, collection_id: int) -> list[dict]:
         """获取合集的祖先链（使用 CTE 优化，并支持租户隔离）"""
         from sqlalchemy import text
-        from app.core.tenant import get_current_tenant
+        from app.core.infra.tenant import get_current_tenant
 
         # 先获取当前合集的 parent_id
         current = await self.get(db, id=collection_id)

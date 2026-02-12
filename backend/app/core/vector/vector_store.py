@@ -17,6 +17,8 @@
 使用 langchain-postgres 最佳实践实现
 """
 
+import json
+import hashlib
 import logging
 from typing import Optional
 from urllib.parse import quote_plus
@@ -26,7 +28,7 @@ from langchain_postgres import PGEngine, PGVectorStore
 from langchain_postgres.v2.engine import Column
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.core.config import settings
+from app.core.infra.config import settings
 from app.db.database import AsyncSessionLocal
 from app.crud.system_config import crud_system_config
 
@@ -48,77 +50,95 @@ class VectorStoreManager:
     def __init__(self, collection_name: str = "catwiki_documents"):
         """初始化向量存储管理器"""
         self.collection_name = collection_name
-        self._engine: PGEngine | None = None
-        self._sa_engine = None  # Underlying SQLAlchemy AsyncEngine
-        self._vector_store: PGVectorStore | None = None
+        self._sa_engine = None  # 底层 SQLAlchemy 异步引擎 (进程内共享)
+        self._engine: PGEngine | None = None  # PGEngine (进程内共享)
+        
+        # 核心缓存：基于配置哈希，实现多租户/多模型配置的实例隔离
+        # key: config_hash, value: PGVectorStore
+        self._vector_stores: dict[str, PGVectorStore] = {}
+        # key: config_hash, value: Embeddings
+        self._embeddings_cache: dict[str, any] = {}
+        
+        # 当前上下文选中的实例 (由 _ensure_initialized 动态指向)
+        self._current_store: PGVectorStore | None = None
+        self._current_embeddings = None
 
-        self.embeddings = None
 
-    async def _ensure_initialized(self):
-        """确保向量存储已初始化（懒加载）"""
-        if self._initialized:
-            return
-
+    async def _ensure_initialized(self, tenant_id: int | None = None, force: bool = False):
+        """确保向量存储已初始化（懒加载，支持多实例池）"""
         try:
-            # 1. 获取 AI 配置 (通过缓存管理器)
-            from app.core.dynamic_config_manager import dynamic_config_manager
+            from app.core.ai.dynamic_config_manager import dynamic_config_manager
+            from app.core.infra.tenant import get_current_tenant
 
-            embedding_conf = await dynamic_config_manager.get_embedding_config()
+            # 1. 获取目标租户配置
+            if tenant_id is None:
+                tenant_id = get_current_tenant()
 
-            # 校验配置
-            if not embedding_conf or not embedding_conf.get("apiKey"):
+            embedding_conf = await dynamic_config_manager.get_embedding_config(tenant_id, force=force)
+
+            # 2. 校验配置
+            api_key = embedding_conf.get("apiKey", "")
+            if not api_key:
+                mode = embedding_conf.get("_mode", "unknown")
+                source = embedding_conf.get("_source", "unknown")
+                # 增强的排错信息：打印配置中存在的所有 Key
+                available_keys = list(embedding_conf.keys())
                 logger.error(
-                    "❌ 未找到有效的 Embedding 配置，无法初始化向量存储。请在管理后台配置 AI 模型。"
+                    f"❌ [VectorStore] 未找到有效的 Embedding 配置 (租户: {tenant_id}, 模式: {mode}, 来源: {source})。 "
+                    f"当前配置包含的键: {available_keys}。请在管理后台检查 AI 模型配置。"
                 )
-                # 可以在这里抛出异常，或者设为不可用状态
-                raise ValueError("未找到有效的 Embedding 配置，请在管理后台配置 AI 模型")
+                raise ValueError(f"未找到有效的 Embedding 配置 (模式: {mode}, 来源: {source}, 包含键: {available_keys})")
 
             model = embedding_conf.get("model", "")
-            api_key = embedding_conf.get("apiKey", "")
             base_url = embedding_conf.get("baseUrl", "")
             dimension = int(embedding_conf.get("dimension") or 1024)
+            source = embedding_conf.get("_source", "platform")
+            mode = embedding_conf.get("_mode", "platform")
+
+            # 3. 使用配置管理器计算的统一指纹
+            conf_hash = embedding_conf.get("_hash")
+
+            # 4. 如果缓存中已有该配置的实例，直接指向它并返回
+            if conf_hash in self._vector_stores:
+                self._current_store = self._vector_stores[conf_hash]
+                self._current_embeddings = self._embeddings_cache[conf_hash]
+                return
+
+            # 5. 否则，初始化新实例
+            logger.info(
+                f"🔄 [VectorStore] 检测到新配置或实例缺失，开始初始化... (租户: {tenant_id}, 模式: {mode}, 来源: {source}, Model: {model})"
+            )
 
             # 初始化 Embeddings
-            from app.core.embeddings import OpenAICompatibleEmbeddings
-
-            self.embeddings = OpenAICompatibleEmbeddings(
+            from app.core.ai.embeddings import OpenAICompatibleEmbeddings
+            new_embeddings = OpenAICompatibleEmbeddings(
                 model=model,
                 api_key=api_key,
                 base_url=base_url,
                 embedding_batch_size=settings.AI_EMBEDDING_BATCH_SIZE,
             )
-            logger.info(f"向量存储配置: model={model}, dim={dimension}")
 
-            # 2. 检查数据库维度 (Safeguard)
-            # 在连接建立后检查
+            # 初始化 SQL Engine (单例共享，跨租户复用连接池)
+            if self._sa_engine is None:
+                encoded_user = quote_plus(settings.POSTGRES_USER)
+                encoded_password = quote_plus(settings.POSTGRES_PASSWORD)
+                async_conn_str = (
+                    f"postgresql+asyncpg://{encoded_user}:{encoded_password}"
+                    f"@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+                )
 
-            # 构建异步连接字符串
-            encoded_user = quote_plus(settings.POSTGRES_USER)
-            encoded_password = quote_plus(settings.POSTGRES_PASSWORD)
-            async_conn_str = (
-                f"postgresql+asyncpg://{encoded_user}:{encoded_password}"
-                f"@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
-            )
-
-            # 创建配置好的 AsyncEngine
-            logger.debug("创建数据库引擎...")
-            async_engine = create_async_engine(
-                async_conn_str,
-                pool_size=10,
-                max_overflow=20,
-                pool_timeout=30,
-                pool_recycle=1800,
-                pool_pre_ping=True,
-                pool_reset_on_return="commit",
-                echo=False,
-                future=True,
-            )
-
-            self._sa_engine = async_engine
-
-            # 使用 PGEngine.from_engine()（文档推荐）
-            logger.debug("创建 PGEngine...")
-            self._engine = PGEngine.from_engine(engine=async_engine)
+                self._sa_engine = create_async_engine(
+                    async_conn_str,
+                    pool_size=settings.DB_POOL_SIZE,
+                    max_overflow=settings.DB_MAX_OVERFLOW,
+                    pool_timeout=settings.DB_POOL_TIMEOUT,
+                    pool_recycle=settings.DB_POOL_RECYCLE,
+                    pool_pre_ping=True,
+                    pool_reset_on_return="commit",
+                    echo=False,
+                    future=True,
+                )
+                self._engine = PGEngine.from_engine(engine=self._sa_engine)
 
             # 定义元数据列
             metadata_columns = [
@@ -127,92 +147,78 @@ class VectorStoreManager:
                 Column(name="site_id", data_type="INTEGER", nullable=True),
             ]
 
-            # 初始化向量存储表
-            logger.debug(f"检查并初始化向量存储表: {self.collection_name}")
+            # 初始化表 (仅在第一次物理访问时执行，dim 由第一个配置决定)
             try:
                 from sqlalchemy import text
-
-                # 先检查表是否存在，避免 ainit_vectorstore_table 抛出 DuplicateTable 异常触发 Postgres 日志报错
-                check_sql = text(
-                    f"SELECT 1 FROM information_schema.tables WHERE table_name = :table"
-                )
+                check_sql = text("SELECT 1 FROM information_schema.tables WHERE table_name = :table")
                 async with self._sa_engine.connect() as conn:
                     result = await conn.execute(check_sql, {"table": self.collection_name})
                     exists = result.fetchone() is not None
 
                 if not exists:
-                    logger.info(f"创建向量存储表: {self.collection_name}")
+                    logger.info(f"✨ 创建向量存储表: {self.collection_name} (必选维度: {dimension})")
                     await self._engine.ainit_vectorstore_table(
                         table_name=self.collection_name,
                         vector_size=dimension,
                         metadata_columns=metadata_columns,
                     )
-                else:
-                    logger.debug(f"表 {self.collection_name} 已存在，跳过初始化")
             except Exception as e:
-                # 依然尝试捕获并发情况下的 "already exists"
                 if "already exists" not in str(e) and "DuplicateTable" not in str(e):
-                    logger.error(f"初始化向量存储表失败: {e}")
                     raise e
 
-            # --- 维度检查 (Start) ---
-            # 在表确认存在且创建后运行，避免 CAST(... AS regclass) 报错
+            # 维度匹配性检查
             await self._check_database_dimension(dimension)
-            # --- 维度检查 (End) ---
 
-            # 创建向量存储实例
-            logger.debug("创建 PGVectorStore 实例...")
+            # 创建 PGVectorStore 实例并存入缓存
             self.optimized_columns = ["source", "id", "site_id"]
-
-            self._vector_store = await PGVectorStore.create(
+            new_store = await PGVectorStore.create(
                 engine=self._engine,
                 table_name=self.collection_name,
-                embedding_service=self.embeddings,
+                embedding_service=new_embeddings,
                 metadata_columns=self.optimized_columns,
             )
 
-            self._initialized = True
-            logger.info(f"✅ [VectorStore] 初始化完成 (Model: {model})")
+            # 存入实例池
+            self._vector_stores[conf_hash] = new_store
+            self._embeddings_cache[conf_hash] = new_embeddings
+            
+            # 指向当前
+            self._current_store = new_store
+            self._current_embeddings = new_embeddings
+
+            logger.info(f"✅ [VectorStore] 实例初始化完成 (哈希: {conf_hash[:8]}, 租户: {tenant_id}, 来源: {source})")
 
         except Exception as e:
             logger.error(f"向量存储初始化失败: {e}", exc_info=True)
             raise
 
+    async def reload_credentials(self) -> None:
+        """热更新向量存储凭证 (强制刷新由于修改可能带来的配置变更)"""
+        # 注意：强制刷新配置缓存已经在 Manager 外部完成 (通过 clear_cache)
+        # 这里我们需要强制 _ensure_initialized 重新读取 Manager
+        try:
+            await self._ensure_initialized(force=True)
+        except Exception as e:
+             logger.warning(f"⚠️ [VectorStore] Reload credentials failed (possibly due to incomplete config): {e}")
+
+        # 如果初始化成功，则更新 Embeddings 实例（如果有必要）
+        # _ensure_initialized 内部已经重新指向了 _current_embeddings，这里无需额外操作
+        # 除非我们要处理跨请求的引用更新，但在单例模式下 _ensure_initialized 足矣。
+
     @classmethod
     async def get_instance(cls) -> "VectorStoreManager":
-        """获取向量存储管理器单例"""
+        """获取向量存储管理器单例（自动感知当前租户上下文并返回合法的实例）"""
         if cls._instance is None:
             cls._instance = cls()
-        await cls._instance._ensure_initialized()
+        
+        # 由于管理器内部通过 _current_store 代理了多实例，每次获取时需刷新指向
+        # 注意：这里我们捕获初始化错误，防止因配置暂不可用导致整个应用崩溃
+        try:
+            await cls._instance._ensure_initialized()
+        except Exception as e:
+            logger.warning(f"⚠️ [VectorStore] get_instance initialized with errors (possibly waiting for config): {e}")
+            
         return cls._instance
-
-    async def reload_credentials(self) -> None:
-        """热更新向量存储凭证 (强制刷新缓存后更新)"""
-        await self._ensure_initialized()
-
-        from app.core.dynamic_config_manager import dynamic_config_manager
-
-        # 注意：Manager 内部根据 TTL 自动刷新。
-        # 如果需要立即刷新，我们需要 manager 支持强制刷新，
-        # 或者仅仅是从 cache 获取最新值。
-        embedding_conf = await dynamic_config_manager.get_embedding_config()
-
-        if embedding_conf.get("apiKey") and embedding_conf.get("baseUrl"):
-            new_api_key = embedding_conf.get("apiKey")
-            new_base_url = embedding_conf.get("baseUrl")
-            new_model = embedding_conf.get("model", "")
-
-            logger.info(f"🔄 [VectorStore] Reloading credentials. Model: {new_model}")
-            if hasattr(self.embeddings, "update_credentials"):
-                self.embeddings.update_credentials(
-                    api_key=new_api_key,
-                    base_url=new_base_url,
-                    model=new_model,
-                    embedding_batch_size=settings.AI_EMBEDDING_BATCH_SIZE,
-                )
-        else:
-            logger.warning("⚠️ [VectorStore] Reload failed: config missing or incomplete.")
-
     async def add_documents(
         self, documents: list[LangChainDocument], ids: list[str], storage_batch_size: int = 100
     ) -> list[str]:
@@ -236,7 +242,7 @@ class VectorStoreManager:
                 batch_docs = documents[i : i + storage_batch_size]
                 batch_ids = ids[i : i + storage_batch_size]
 
-                await self._vector_store.aadd_documents(documents=batch_docs, ids=batch_ids)
+                await self._current_store.aadd_documents(documents=batch_docs, ids=batch_ids)
                 logger.debug(
                     f"已存储批次 {i // storage_batch_size + 1}/{(total + storage_batch_size - 1) // storage_batch_size}"
                 )
@@ -257,7 +263,7 @@ class VectorStoreManager:
             logger.info(f"开始删除 {len(ids)} 个文档")
 
             # 使用异步方法删除文档
-            await self._vector_store.adelete(ids=ids)
+            await self._current_store.adelete(ids=ids)
 
             logger.info("✅ 成功删除文档")
 
@@ -305,7 +311,7 @@ class VectorStoreManager:
         try:
             logger.info(f"执行相似度搜索: query='{query[:50]}...', k={k}")
 
-            results = await self._vector_store.asimilarity_search(query=query, k=k, filter=filter)
+            results = await self._current_store.asimilarity_search(query=query, k=k, filter=filter)
 
             logger.info(f"✅ 搜索完成，找到 {len(results)} 个结果")
             return results
@@ -321,7 +327,7 @@ class VectorStoreManager:
         await self._ensure_initialized()
 
         try:
-            results = await self._vector_store.asimilarity_search_with_score(
+            results = await self._current_store.asimilarity_search_with_score(
                 query=query, k=k, filter=filter
             )
             return results

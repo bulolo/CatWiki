@@ -26,14 +26,14 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import (
+from app.core.web.deps import (
     get_current_user_with_tenant,
     get_db,
     get_rustfs,
 )
-from app.core.tenant import get_current_tenant
-from app.core.exceptions import BadRequestException, NotFoundException
-from app.core.utils import Paginator, build_collection_map, enrich_document_dict, get_vector_id
+from app.core.infra.tenant import get_current_tenant
+from app.core.web.exceptions import BadRequestException, NotFoundException
+from app.core.common.utils import Paginator, build_collection_map, enrich_document_dict, get_vector_id
 from app.crud import crud_collection, crud_document, crud_site
 from app.db.database import AsyncSessionLocal
 from app.models.document import Document as DocumentModel
@@ -99,88 +99,87 @@ async def process_vectorization_task(document_id: int):
                 )
                 return
 
-            # 更新为 processing 状态
-            await crud_document.update_vector_status(
-                db, document_id=document_id, status=VectorStatus.PROCESSING
-            )
-
-            # 获取文档内容
-            if not document.content:
-                logger.warning(f"⚠️ 文档 {document_id} 内容为空，无法向量化")
+            # 使用租户上下文进行后续操作
+            from app.core.infra.tenant import temporary_tenant_context
+            with temporary_tenant_context(document.tenant_id):
+                # 更新为 processing 状态
                 await crud_document.update_vector_status(
-                    db, document_id=document_id, status=VectorStatus.FAILED, error="文档内容为空"
+                    db, document_id=document_id, status=VectorStatus.PROCESSING
                 )
-                return
 
-            # 准备 LangChain 文档对象
+                # 获取文档内容
+                if not document.content:
+                    logger.warning(f"⚠️ 文档 {document_id} 内容为空，无法向量化")
+                    await crud_document.update_vector_status(
+                        db, document_id=document_id, status=VectorStatus.FAILED, error="文档内容为空"
+                    )
+                    return
 
-            from app.core.vector_store import VectorStoreManager
+                # 准备 LangChain 文档对象
 
-            # 初始化向量存储管理器
-            # 初始化向量存储管理器
-            vector_store = await VectorStoreManager.get_instance()
+                from app.core.vector.vector_store import VectorStoreManager
 
-            # 1. 准备元数据
-            base_metadata = {
-                "source": "document",
-                "id": str(document.id),
-                "title": document.title,
-                "author": document.author,
-                "site_id": document.site_id,
-                "collection_id": document.collection_id,
-            }
+                # 初始化向量存储管理器 (此处会自动识别 tenant_id)
+                vector_store = await VectorStoreManager.get_instance()
 
-            # 2. 文本切片
-            from langchain_text_splitters import RecursiveCharacterTextSplitter
+                # 1. 准备元数据
+                base_metadata = {
+                    "source": "document",
+                    "id": str(document.id),
+                    "title": document.title,
+                    "author": document.author,
+                    "site_id": document.site_id,
+                    "collection_id": document.collection_id,
+                }
 
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000,
-                chunk_overlap=200,
-                length_function=len,
-            )
+                # 2. 文本切片
+                from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-            # 使用 create_documents 自动处理切片
-            chunks = text_splitter.create_documents(
-                texts=[document.content], metadatas=[base_metadata]
-            )
+                text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000,
+                    chunk_overlap=200,
+                    length_function=len,
+                )
 
-            logger.info(f"📄 文档 {document_id} 已切分为 {len(chunks)} 个片段")
+                # 使用 create_documents 自动处理切片
+                chunks = text_splitter.create_documents(
+                    texts=[document.content], metadatas=[base_metadata]
+                )
 
-            # 3. 生成确定性 ID (uuid5)
-            # 引入 uuid 和 NAMESPACE
-            import uuid
+                logger.info(f"📄 文档 {document_id} (租户: {document.tenant_id}) 已切分为 {len(chunks)} 个片段")
 
-            from app.core.vector_store import VectorStoreManager
-            from app.core.utils import NAMESPACE_CATWIKI
+                # 3. 生成确定性 ID (uuid5)
+                # 引入 uuid 和 NAMESPACE
+                import uuid
+                from app.core.common.utils import NAMESPACE_CATWIKI
 
-            chunk_ids = []
-            for i, chunk in enumerate(chunks):
-                # 为每个 chunk 生成唯一的确定性 ID: doc_{id}_chunk_{i}
-                chunk_id_str = f"{document.id}_chunk_{i}"
-                chunk_uuid = str(uuid.uuid5(NAMESPACE_CATWIKI, chunk_id_str))
-                chunk_ids.append(chunk_uuid)
+                chunk_ids = []
+                for i, chunk in enumerate(chunks):
+                    # 为每个 chunk 生成唯一的确定性 ID: doc_{id}_chunk_{i}
+                    chunk_id_str = f"{document.id}_chunk_{i}"
+                    chunk_uuid = str(uuid.uuid5(NAMESPACE_CATWIKI, chunk_id_str))
+                    chunk_ids.append(chunk_uuid)
 
-                # 确保 metadata 中包含 id (虽然 base_metadata 已包含，但 double check)
-                chunk.metadata["id"] = str(document.id)
-                chunk.metadata["chunk_index"] = i
+                    # 确保 metadata 中包含 id
+                    chunk.metadata["id"] = str(document.id)
+                    chunk.metadata["chunk_index"] = i
 
-            # 4. 清理旧数据 (使用 delete_by_metadata)
-            # 必须删除该文档 ID 关联的所有向量，因为切片数量可能变化
-            await vector_store.delete_by_metadata(key="id", value=str(document.id))
+                # 4. 清理旧数据 (使用 delete_by_metadata)
+                await vector_store.delete_by_metadata(key="id", value=str(document.id))
 
-            # 5. 添加新向量
-            if chunks:
-                await vector_store.add_documents(documents=chunks, ids=chunk_ids)
+                # 5. 添加新向量
+                if chunks:
+                    await vector_store.add_documents(documents=chunks, ids=chunk_ids)
 
-            # 更新为 completed 状态
-            await crud_document.update_vector_status(
-                db, document_id=document_id, status=VectorStatus.COMPLETED
-            )
+                # 更新为 completed 状态
+                await crud_document.update_vector_status(
+                    db, document_id=document_id, status=VectorStatus.COMPLETED
+                )
 
-            total_elapsed = time.time() - task_start_time
-            logger.info(
-                f"✨ [Task] 文档向量化完成! | ID: {document.id} | Chunks: {len(chunks)} | 总耗时: {total_elapsed:.3f}s"
-            )
+                total_elapsed = time.time() - task_start_time
+                logger.info(
+                    f"✨ [Task] 文档向量化完成! | ID: {document.id} | Chunks: {len(chunks)} | 总耗时: {total_elapsed:.3f}s"
+                )
 
         except Exception as e:
             logger.error(f"❌ 文档 {document_id} 向量化失败: {e}", exc_info=True)
@@ -512,7 +511,7 @@ async def delete_document(
 
     # 尝试删除向量数据（如果有）
     try:
-        from app.core.vector_store import VectorStoreManager
+        from app.core.vector.vector_store import VectorStoreManager
 
         vector_store = await VectorStoreManager.get_instance()
         await vector_store.delete_by_metadata(key="id", value=str(document_id))
@@ -570,9 +569,12 @@ async def vectorize_documents(
     if success_ids:
         # Check vector store availability (Synchronous check)
         try:
-            from app.core.vector_store import VectorStoreManager
+            from app.core.vector.vector_store import VectorStoreManager
 
-            await VectorStoreManager.get_instance()
+            # 获取实例并强制检查初始化状态（这会触发配置验证）
+            vector_store = await VectorStoreManager.get_instance()
+            await vector_store._ensure_initialized(force=True)
+            
         except ValueError as e:
             # Revert status to FAILED if config is missing
             await crud_document.batch_update_vector_status(
@@ -585,7 +587,8 @@ async def vectorize_documents(
             await crud_document.batch_update_vector_status(
                 db, document_ids=success_ids, status=VectorStatus.FAILED, error="向量服务暂不可用"
             )
-            raise BadRequestException(detail="向量服务暂不可用，请检查 AI 模型配置")
+            # 这里的 detail 会直接显示给前端用户
+            raise BadRequestException(detail=f"向量服务暂不可用: {str(e)}")
 
         for doc_id in success_ids:
             background_tasks.add_task(process_vectorization_task, doc_id)
@@ -625,9 +628,12 @@ async def vectorize_single_document(
 
     # Check vector store availability (Synchronous check)
     try:
-        from app.core.vector_store import VectorStoreManager
+        from app.core.vector.vector_store import VectorStoreManager
 
-        await VectorStoreManager.get_instance()
+        # 获取实例并强制检查初始化状态（这会触发配置验证）
+        vector_store = await VectorStoreManager.get_instance()
+        await vector_store._ensure_initialized(force=True)
+        
     except ValueError as e:
         # Revert status to FAILED if config is missing
         await crud_document.update_vector_status(
@@ -640,7 +646,8 @@ async def vectorize_single_document(
         await crud_document.update_vector_status(
             db, document_id=document_id, status=VectorStatus.FAILED, error="向量服务暂不可用"
         )
-        raise BadRequestException(detail="向量服务暂不可用，请检查 AI 模型配置")
+        # 这里的 detail 会直接显示给前端用户
+        raise BadRequestException(detail=f"向量服务暂不可用: {str(e)}")
 
     # 启动异步后台任务
     background_tasks.add_task(process_vectorization_task, document_id)
@@ -668,7 +675,7 @@ async def remove_document_vector(
 
     # 尝试从向量库删除数据
     try:
-        from app.core.vector_store import VectorStoreManager
+        from app.core.vector.vector_store import VectorStoreManager
 
         vector_store = await VectorStoreManager.get_instance()
         # 使用 delete_by_metadata 确保删除该文档关联的所有 chunk
@@ -705,7 +712,7 @@ async def get_document_chunks(
 
     chunks = []
     try:
-        from app.core.vector_store import VectorStoreManager
+        from app.core.vector.vector_store import VectorStoreManager
 
         vector_store = await VectorStoreManager.get_instance()
         chunks = await vector_store.get_chunks_by_metadata(key="id", value=str(document_id))

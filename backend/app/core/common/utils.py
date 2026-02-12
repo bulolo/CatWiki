@@ -27,7 +27,7 @@ from jose import jwt
 from jose.exceptions import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.infra.config import settings
 
 NAMESPACE_CATWIKI = uuid.uuid5(uuid.NAMESPACE_DNS, "catwiki.com")
 

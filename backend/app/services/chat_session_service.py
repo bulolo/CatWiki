@@ -23,7 +23,7 @@ from sqlalchemy import desc, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.rag_utils import extract_sources_from_messages
+from app.core.vector.rag_utils import extract_sources_from_messages
 from app.models.chat_message import ChatMessage
 from app.models.chat_session import ChatSession
 
