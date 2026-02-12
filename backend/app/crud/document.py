@@ -199,6 +199,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         *,
         document_id: int,
         site_id: int | None = None,  # 新增：用于记录事件
+        tenant_id: int | None = None,  # 新增：支持显式传递 tenant_id
         ip_address: str | None = None,
         user_agent: str | None = None,
         referer: str | None = None,
@@ -210,13 +211,14 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         from app.crud.document_view_event import crud_document_view_event
         from app.core.infra.tenant import get_current_tenant
 
-        tenant_id = get_current_tenant()
-        tenant_filter = "AND tenant_id = :tid" if tenant_id is not None else ""
+        # 优先使用传入的 tenant_id，否则尝试从上下文获取
+        current_tenant_id = tenant_id if tenant_id is not None else get_current_tenant()
+        tenant_filter = "AND tenant_id = :tid" if current_tenant_id is not None else ""
 
         # 1. 原逻辑：累加 views 字段（带租户过滤防止越权）
         params = {"id": document_id}
-        if tenant_id is not None:
-            params["tid"] = tenant_id
+        if current_tenant_id is not None:
+            params["tid"] = current_tenant_id
 
         await db.execute(
             text(f"UPDATE document SET views = views + 1 WHERE id = :id {tenant_filter}"),
@@ -229,6 +231,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
                 db,
                 document_id=document_id,
                 site_id=site_id,
+                tenant_id=current_tenant_id,  # 传递 tenant_id
                 ip_address=ip_address,
                 user_agent=user_agent,
                 referer=referer,

@@ -117,6 +117,7 @@ async def get_document(
         db,
         document_id=document_id,
         site_id=document.site_id,
+        tenant_id=document.tenant_id,
         ip_address=ip_address,
         user_agent=user_agent,
         referer=referer,
