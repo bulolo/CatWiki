@@ -33,7 +33,6 @@ class Settings(BaseSettings):
     # 环境配置
     ENVIRONMENT: str = Field(default="local", pattern="^(local|dev|prod)$")
     DEBUG: bool = Field(default=False)
-    DEMO_MODE: bool = Field(default=False, description="是否开启演示模式（限制高危操作）")
 
     # 数据库配置
     POSTGRES_SERVER: str = Field(default="localhost")

@@ -10,19 +10,12 @@ interface CustomConfigFormProps {
     baseUrl: string
     dimension?: number
   }
-  isDemoMode: boolean
   onUpdate: (type: ModelType, field: string, value: any) => void
 }
 
-export function CustomConfigForm({ type, config, isDemoMode, onUpdate }: CustomConfigFormProps) {
+export function CustomConfigForm({ type, config, onUpdate }: CustomConfigFormProps) {
   return (
     <>
-      {isDemoMode && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
-          <ShieldCheck className="h-5 w-5 shrink-0" />
-          <p className="text-sm font-medium">演示模式已开启：为了保护基础设施安全，部分配置项（如 API 地址和模型名称）已进行脱敏处理。</p>
-        </div>
-      )}
       {type === "embedding" && (
         <div className="bg-amber-50 border border-amber-200 rounded-md p-4 flex gap-3 text-amber-900 text-sm">
           <div className="shrink-0 mt-0.5">
@@ -63,7 +56,6 @@ export function CustomConfigForm({ type, config, isDemoMode, onUpdate }: CustomC
             onChange={(e) => onUpdate(type, "model", e.target.value)}
             placeholder="例如: gpt-4, claude-3-opus..."
             className="bg-white"
-            readOnly={isDemoMode && config.model === "********"}
             autoComplete="off"
           />
         </div>
@@ -77,7 +69,6 @@ export function CustomConfigForm({ type, config, isDemoMode, onUpdate }: CustomC
           onChange={(e) => onUpdate(type, "apiKey", e.target.value)}
           placeholder="sk-..."
           className="bg-white font-mono"
-          readOnly={isDemoMode && config.apiKey === "********"}
           autoComplete="new-password"
         />
       </div>
@@ -89,7 +80,6 @@ export function CustomConfigForm({ type, config, isDemoMode, onUpdate }: CustomC
           onChange={(e) => onUpdate(type, "baseUrl", e.target.value)}
           placeholder="https://api.openai.com/v1"
           className="bg-white font-mono"
-          readOnly={isDemoMode && config.baseUrl === "********"}
         />
       </div>
 

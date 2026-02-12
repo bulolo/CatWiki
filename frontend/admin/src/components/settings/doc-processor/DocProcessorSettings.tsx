@@ -54,7 +54,6 @@ import {
   DOC_PROCESSOR_TYPES,
   initialDocProcessorConfig
 } from "@/types/settings"
-import { useDemoMode } from '@/hooks/useHealth'
 import {
   useDocProcessorConfig,
   useUpdateDocProcessorConfig,
@@ -69,7 +68,6 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [formData, setFormData] = useState<DocProcessorConfig>(initialDocProcessorConfig)
-  const isDemoMode = useDemoMode()
 
   // 使用 React Query hooks
   const { data: configData, isLoading: loading } = useDocProcessorConfig(scope)
@@ -388,26 +386,13 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
             </div>
           </div>
           {!isAdding && editingIndex === null && (
-            <Button onClick={handleStartAdd} className="gap-2" disabled={isDemoMode}>
+            <Button onClick={handleStartAdd} className="gap-2">
               <Plus className="h-4 w-4" />
               添加解析器
             </Button>
           )}
         </div>
 
-        {isDemoMode && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-start gap-3 text-amber-800 animate-in fade-in slide-in-from-top-2">
-            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-medium text-sm">演示模式限制</p>
-              <p className="text-xs text-amber-700/80 leading-relaxed">
-                当前系统运行在演示模式下，为了安全起见，API Key 和关键配置（如 Base URL）已进行脱敏处理。
-                <br />
-                在此模式下，您无法添加、编辑、删除或测试文档解析服务。
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* 添加表单 */}
         {isAdding && renderForm()}
@@ -481,7 +466,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                           variant="ghost"
                           size="icon"
                           onClick={() => handleTest(processor)}
-                          disabled={testing === processor.name || isDemoMode}
+                          disabled={testing === processor.name}
                         >
                           {testing === processor.name ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -496,8 +481,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleStartEdit(index)}
-                                // 只有租户自身的或者演示模式才禁用
-                                disabled={isDemoMode}
+                                // 只有租户自身的才禁用
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -505,7 +489,6 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleDelete(processor.name)}
-                                disabled={isDemoMode}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

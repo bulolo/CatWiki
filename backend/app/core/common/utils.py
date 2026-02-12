@@ -306,38 +306,6 @@ async def enrich_document_dict(
 
 # ==================== 脱敏工具函数 ====================
 
-MASKED_VARIABLE = "********"
-
-
-def mask_variable(value: str) -> str:
-    """如果值存在且不为空，则返回掩码，否则返回原值"""
-    if value and len(str(value)) > 0:
-        return MASKED_VARIABLE
-    return value
-
-
-def mask_bot_config_inplace(config_value: dict) -> None:
-    """对机器人配置进行原地脱敏处理"""
-    if not config_value:
-        return
-
-    # 1. API Bot
-    api_bot = config_value.get("apiBot", {})
-    if api_bot:
-        if "apiEndpoint" in api_bot:
-            api_bot["apiEndpoint"] = mask_variable(api_bot["apiEndpoint"])
-        if "apiKey" in api_bot:
-            api_bot["apiKey"] = mask_variable(api_bot["apiKey"])
-
-    # 2. WeChat
-    wechat = config_value.get("wechat", {})
-    if wechat:
-        if "AppSecret" in wechat:
-            wechat["AppSecret"] = mask_variable(wechat["AppSecret"])
-        if "Token" in wechat:
-            wechat["Token"] = mask_variable(wechat["Token"])
-        if "EncodingAESKey" in wechat:
-            wechat["EncodingAESKey"] = mask_variable(wechat["EncodingAESKey"])
 
 
 def filter_client_site_data(site: Any) -> Any:

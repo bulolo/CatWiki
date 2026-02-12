@@ -191,20 +191,6 @@ function SettingsContent() {
           <Tabs value={activeTab} onValueChange={handleTabChange} orientation="vertical" className="flex-1 flex overflow-hidden">
             {/* Sidebar */}
             <TabsList className="w-64 h-full bg-slate-50/50 border-r border-slate-100 flex-col items-stretch justify-start p-4 space-y-1">
-              {(isAdmin || isTenantAdmin) && (
-                <TabsTrigger
-                  value="models"
-                  className={cn(
-                    "w-full justify-start px-3 py-2.5 h-auto text-sm font-medium rounded-lg transition-all",
-                    "data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-slate-200",
-                    "hover:bg-white/60 hover:text-slate-900 text-slate-500"
-                  )}
-                >
-                  <Settings className="h-4 w-4 mr-3 opacity-70" />
-                  模型配置
-                </TabsTrigger>
-              )}
-
               <TabsTrigger
                 value="sites"
                 className={cn(
@@ -233,6 +219,20 @@ function SettingsContent() {
 
               {(isAdmin || isTenantAdmin) && (
                 <TabsTrigger
+                  value="models"
+                  className={cn(
+                    "w-full justify-start px-3 py-2.5 h-auto text-sm font-medium rounded-lg transition-all",
+                    "data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-slate-200",
+                    "hover:bg-white/60 hover:text-slate-900 text-slate-500"
+                  )}
+                >
+                  <Settings className="h-4 w-4 mr-3 opacity-70" />
+                  模型配置
+                </TabsTrigger>
+              )}
+
+              {(isAdmin || isTenantAdmin) && (
+                <TabsTrigger
                   value="doc-processor"
                   className={cn(
                     "w-full justify-start px-3 py-2.5 h-auto text-sm font-medium rounded-lg transition-all",
@@ -249,6 +249,14 @@ function SettingsContent() {
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto bg-white relative">
               <div className="w-full h-full p-8">
+                <TabsContent value="sites" className="mt-0 h-full space-y-6 outline-none">
+                  <GlobalSites />
+                </TabsContent>
+
+                <TabsContent value="users" className="mt-0 h-full space-y-6 outline-none">
+                  <GlobalUsers />
+                </TabsContent>
+
                 <TabsContent value="models" className="mt-0 h-full space-y-6 outline-none">
                   {selectedModel && (selectedModel === "chat" || selectedModel === "embedding" || selectedModel === "rerank" || selectedModel === "vl") ? (
                     <div key="detail" className="animate-in fade-in slide-in-from-right-4 duration-300">
@@ -265,14 +273,6 @@ function SettingsContent() {
                       />
                     </div>
                   )}
-                </TabsContent>
-
-                <TabsContent value="sites" className="mt-0 h-full space-y-6 outline-none">
-                  <GlobalSites />
-                </TabsContent>
-
-                <TabsContent value="users" className="mt-0 h-full space-y-6 outline-none">
-                  <GlobalUsers />
                 </TabsContent>
 
                 <TabsContent value="doc-processor" className="mt-0 h-full space-y-6 outline-none">

@@ -35,7 +35,6 @@ export function SingleModelConfig({ type, onSuccess }: SingleModelConfigProps) {
     config,
     mode,
     hasPlatformResource,
-    isDemoMode,
     isTesting,
     handleModeChange,
     handleTest,
@@ -74,7 +73,6 @@ export function SingleModelConfig({ type, onSuccess }: SingleModelConfigProps) {
         <CustomConfigForm
           type={type}
           config={config}
-          isDemoMode={isDemoMode}
           onUpdate={handleUpdate}
         />
       )}
@@ -83,9 +81,9 @@ export function SingleModelConfig({ type, onSuccess }: SingleModelConfigProps) {
         <Button
           variant="outline"
           onClick={handleTest}
-          disabled={isTesting || (mode === "custom" && !config.apiKey) || (mode === "platform") || isDemoMode}
+          disabled={isTesting || (mode === "custom" && !config.apiKey) || (mode === "platform")}
           className="text-slate-600"
-          title={mode === "platform" ? "平台模式下无需测试连接" : (isDemoMode ? "演示模式下禁用连接测试" : "")}
+          title={mode === "platform" ? "平台模式下无需测试连接" : ""}
         >
           {isTesting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -97,9 +95,8 @@ export function SingleModelConfig({ type, onSuccess }: SingleModelConfigProps) {
 
         <Button
           onClick={handleSave}
-          disabled={isTesting || (mode === "custom" && !config.apiKey) || isDemoMode}
+          disabled={isTesting || (mode === "custom" && !config.apiKey)}
           className="bg-slate-900 hover:bg-slate-800 text-white min-w-[100px]"
-          title={isDemoMode ? "演示模式下禁止保存配置" : ""}
         >
           {isTesting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

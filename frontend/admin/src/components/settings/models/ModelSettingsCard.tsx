@@ -26,7 +26,6 @@ import { ShieldCheck } from "lucide-react"
 import { type ModelType } from "@/types/settings"
 import api from "@/lib/api-client"
 import { useState, useEffect } from "react"
-import { useDemoMode } from '@/hooks/useHealth'
 
 interface ModelSettingsCardProps {
   onSelectModel: (model: ModelType) => void
@@ -34,16 +33,9 @@ interface ModelSettingsCardProps {
 }
 
 export function ModelSettingsCard({ onSelectModel, activeTab }: ModelSettingsCardProps) {
-  const isDemoMode = useDemoMode()
 
   return (
     <div className="space-y-6">
-      {isDemoMode && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
-          <ShieldCheck className="h-5 w-5 shrink-0" />
-          <p className="text-sm font-medium">演示模式已开启：为了保护基础设施安全，部分配置项（如 API 地址和模型名称）已进行脱敏处理。</p>
-        </div>
-      )}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-5">
           <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm ring-1 ring-primary/20">

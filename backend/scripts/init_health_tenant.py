@@ -158,7 +158,7 @@ async def create_health_site(tenant_id: int):
     async with AsyncSessionLocal() as db:
         try:
             # 检查站点是否已存在
-            health_site = await crud_site.get_by_name(db, name="医学科普")
+            health_site = await crud_site.get_by_slug(db, slug="health")
             if not health_site:
                 # 创建新站点
                 site_create = SiteCreate(

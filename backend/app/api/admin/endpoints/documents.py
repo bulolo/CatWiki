@@ -648,9 +648,7 @@ async def vectorize_single_document(
 
     # 复用批量处理逻辑
     try:
-        success_ids, _ = await _dispatch_vectorization_tasks(
-            db, background_tasks, [document_id]
-        )
+        success_ids, _ = await _dispatch_vectorization_tasks(db, background_tasks, [document_id])
     except BadRequestException as e:
         # 捕获服务不可用异常，直接抛出
         raise e

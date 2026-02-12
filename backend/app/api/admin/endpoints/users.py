@@ -21,7 +21,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.web.deps import check_demo_mode, get_current_user_with_tenant
+from app.core.web.deps import get_current_user_with_tenant
 from app.core.web.exceptions import (
     BadRequestException,
     ConflictException,
@@ -175,7 +175,6 @@ async def create_user(
     user_in: UserCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[UserResponse]:
     """
     创建用户
@@ -221,7 +220,6 @@ async def invite_user(
     user_in: UserInvite,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ):
     """
     邀请用户（直接创建用户并返回临时密码）
@@ -269,7 +267,6 @@ async def update_user(
     user_in: UserUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[UserResponse]:
     """
     更新用户信息
@@ -329,7 +326,6 @@ async def update_user_password(
     password_in: UserUpdatePassword,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[dict]:
     """更新用户密码"""
     # 允许用户修改自己的密码，或者管理员修改他人密码
@@ -374,7 +370,6 @@ async def reset_user_password(
     user_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ):
     """
     Reset user password (generate random temporary password)
@@ -413,7 +408,6 @@ async def delete_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[dict]:
     """删除用户"""
     # get_current_user_with_tenant 已确保基本访问权

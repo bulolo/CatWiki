@@ -19,7 +19,7 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.web.deps import check_demo_mode, get_current_user_with_tenant, get_valid_site
+from app.core.web.deps import get_current_user_with_tenant, get_valid_site
 from app.core.web.exceptions import BadRequestException, NotFoundException
 from app.crud import crud_collection, crud_document, crud_site
 from app.db.database import get_db
@@ -148,7 +148,6 @@ async def create_collection(
     collection_in: CollectionCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[Collection]:
     """创建合集"""
     # 验证站点存在
@@ -176,7 +175,6 @@ async def update_collection(
     collection_in: CollectionUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[Collection]:
     """更新合集"""
     collection = await crud_collection.get(db, id=collection_id)
@@ -205,7 +203,6 @@ async def delete_collection(
     collection_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[None]:
     """删除合集"""
     collection = await crud_collection.get(db, id=collection_id)
@@ -242,7 +239,6 @@ async def move_collection(
     move_request: MoveCollectionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[Collection]:
     """
     移动合集到新位置

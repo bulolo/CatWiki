@@ -26,7 +26,3 @@ export function useHealth() {
   })
 }
 
-export function useDemoMode() {
-  const { data } = useHealth()
-  return !!data?.demo_mode
-}

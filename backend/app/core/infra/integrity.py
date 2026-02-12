@@ -92,7 +92,6 @@ async def _gather_integrity_data():
         "py_v": platform.python_version(),
         "v": settings.VERSION,
         "env": settings.ENVIRONMENT,
-        "d_m": settings.DEMO_MODE,
         "cpu": os.cpu_count() or 0,
         "b_o": _SYS_INIT_OK,
         "s_c": 0,

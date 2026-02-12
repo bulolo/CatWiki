@@ -19,10 +19,6 @@ export type HealthResponse = {
      */
     environment: string;
     /**
-     * 是否开启演示模式
-     */
-    demo_mode?: boolean;
-    /**
      * 检查时间戳
      */
     timestamp: string;

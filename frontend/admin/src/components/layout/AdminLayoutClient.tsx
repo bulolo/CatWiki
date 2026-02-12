@@ -31,7 +31,6 @@ import {
 } from "lucide-react"
 import { getUserInfo } from '@/lib/auth'
 import { useState, useEffect } from 'react'
-import { useDemoMode } from '@/hooks/useHealth'
 import { StatePersistence } from '@/components/layout/StatePersistence'
 
 // 动态导入侧边栏和站点切换器，禁用 SSR 以避免 hydration 错误
@@ -82,8 +81,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMounted(true)
   }, [])
-
-  const isDemoMode = useDemoMode()
 
   const userInfo = mounted ? getUserInfo() : null
   const welcomeName = userInfo?.name || "管理员"
@@ -148,12 +145,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
-            {isDemoMode && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 shadow-sm animate-in fade-in slide-in-from-right-4 duration-500">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                <span className="text-xs font-bold tracking-wide">演示模式，部分操作受限</span>
-              </div>
-            )}
 
             {/* 平台管理入口 - 仅 admin 可见 (常驻) */}
             {userInfo?.role === 'admin' && (

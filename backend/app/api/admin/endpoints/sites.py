@@ -21,10 +21,9 @@ import logging
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.infra.config import settings
-from app.core.web.deps import check_demo_mode, get_current_user_with_tenant
+from app.core.web.deps import get_current_user_with_tenant
 from app.core.web.exceptions import ConflictException, NotFoundException
-from app.core.common.utils import Paginator, mask_bot_config_inplace
+from app.core.common.utils import Paginator
 from app.crud import crud_site, crud_user
 from app.crud.user import get_password_hash
 from app.db.database import get_db
@@ -72,10 +71,6 @@ async def get_site(
     if not site:
         raise NotFoundException(detail=f"站点 {site_id} 不存在")
 
-    # 演示模式下脱敏 bot_config
-    if settings.DEMO_MODE and site.bot_config:
-        mask_bot_config_inplace(site.bot_config)
-
     return ApiResponse.ok(data=site, msg="获取成功")
 
 
@@ -90,10 +85,6 @@ async def get_site_by_slug(
     if not site:
         raise NotFoundException(detail=f"站点 {slug} 不存在")
 
-    # 演示模式下脱敏 bot_config
-    if settings.DEMO_MODE and site.bot_config:
-        mask_bot_config_inplace(site.bot_config)
-
     return ApiResponse.ok(data=site, msg="获取成功")
 
 
@@ -107,7 +98,6 @@ async def create_site(
     site_in: SiteCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[Site]:
     """创建站点"""
     # 检查名称是否已存在
@@ -167,7 +157,6 @@ async def update_site(
     site_in: SiteUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[Site]:
     """更新站点"""
     site = await crud_site.get(db, id=site_id)
@@ -195,7 +184,6 @@ async def delete_site(
     site_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[None]:
     """删除站点（级联删除关联数据）"""
     # 1. 清理向量数据库中的数据

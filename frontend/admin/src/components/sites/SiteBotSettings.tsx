@@ -39,7 +39,6 @@ import { useUpdateSite } from "@/hooks"
 import api from "@/lib/api-client"
 import { initialConfigs } from "@/types/settings"
 import { env } from "@/lib/env"
-import { useDemoMode } from '@/hooks/useHealth'
 
 interface SiteBotSettingsProps {
   siteId: number
@@ -68,7 +67,6 @@ interface SiteBotSettingsProps {
 export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsProps) {
   const [showPreview, setShowPreview] = useState(false)
   const [showKey, setShowKey] = useState(false)
-  const isDemoMode = useDemoMode()
 
   const { webWidget, apiBot, wechat } = config || { webWidget: {}, apiBot: {}, wechat: {} } as any
 
@@ -84,12 +82,6 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
 
   return (
     <div className="space-y-6">
-      {isDemoMode && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
-          <ShieldCheck className="h-5 w-5 shrink-0" />
-          <p className="text-sm font-medium">演示模式已开启：为了保护基础设施安全，部分配置项（如 API Key）已进行脱敏处理。</p>
-        </div>
-      )}
       {/* 网页挂件机器人 */}
       <Card className="border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
         <CardHeader className="border-b border-slate-50 pb-4">
@@ -120,16 +112,14 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                   {showPreview ? "关闭预览" : "预览效果"}
                 </Button>
               )}
-              <label className={`flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors ${isDemoMode ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors">
                 <input
                   type="checkbox"
                   checked={webWidget.enabled}
                   onChange={(e) => {
-                    if (isDemoMode) return
                     onChange("webWidget", "enabled", e.target.checked)
                     if (!e.target.checked) setShowPreview(false)
                   }}
-                  disabled={isDemoMode}
                   className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                 />
                 <span className="text-sm font-semibold text-slate-700">启用</span>
@@ -206,15 +196,13 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                 </CardDescription>
               </div>
             </div>
-            <label className={`flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors ${isDemoMode ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors">
               <input
                 type="checkbox"
                 checked={apiBot.enabled}
                 onChange={(e) => {
-                  if (isDemoMode) return
                   onChange("apiBot", "enabled", e.target.checked)
                 }}
-                disabled={isDemoMode}
                 className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
               />
               <span className="text-sm font-semibold text-slate-700">启用</span>
@@ -268,7 +256,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                     onChange("apiBot", "apiKey", result);
                     toast.success("已生成新 API Key");
                   }}
-                  disabled={!apiBot.enabled || isDemoMode}
+                  disabled={!apiBot.enabled}
                 >
                   <RefreshCw className="h-3 w-3" />
                   自动生成
@@ -281,7 +269,6 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                   onChange={(e) => onChange("apiBot", "apiKey", e.target.value)}
                   placeholder="在此设置访问该接口的密钥"
                   disabled={!apiBot.enabled}
-                  readOnly={isDemoMode && apiBot.apiKey === "********"}
                   className="bg-white font-mono rounded-xl pr-20"
                 />
                 <div className="absolute right-1 top-1 flex gap-1">
@@ -303,7 +290,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                       navigator.clipboard.writeText(apiBot.apiKey)
                       toast.success("API Key 已复制")
                     }}
-                    disabled={!apiBot.enabled || (isDemoMode && apiBot.apiKey === "********")}
+                    disabled={!apiBot.enabled}
                     type="button"
                   >
                     复制

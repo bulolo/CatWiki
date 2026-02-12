@@ -43,7 +43,6 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> ApiResponse[Health
         "status": "healthy",
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT,
-        "demo_mode": settings.DEMO_MODE,
         "timestamp": datetime.now(UTC).isoformat(),
         "checks": {},
     }

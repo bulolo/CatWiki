@@ -234,16 +234,3 @@ def get_rustfs() -> RustFSService:
         RustFS 服务实例
     """
     return get_rustfs_service()
-
-
-# ==================== 演示模式依赖 ====================
-
-
-async def check_demo_mode():
-    """
-    检查是否开启了演示模式
-
-    如果开启了演示模式，则抛出 ForbiddenException，禁止执行高危操作
-    """
-    if settings.DEMO_MODE:
-        raise ForbiddenException(detail="演示站点，禁止执行此高危操作")

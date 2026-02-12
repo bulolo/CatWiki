@@ -1,13 +1,11 @@
 import { useSettings } from "@/contexts/SettingsContext"
 import { useTestConnection } from "@/hooks/useSystemConfig"
-import { useDemoMode } from '@/hooks/useHealth'
 import { toast } from "sonner"
 import { ModelType, initialConfigs } from "@/types/settings"
 
 export function useModelConfigLogic(type: ModelType, onSuccess?: () => void) {
   const { configs, handleUpdate, handleSave, scope, platformDefaults } = useSettings()
   const testConnection = useTestConnection(scope)
-  const isDemoMode = useDemoMode()
 
   // @ts-ignore
   const config = configs[type] || initialConfigs[type]
@@ -67,7 +65,6 @@ export function useModelConfigLogic(type: ModelType, onSuccess?: () => void) {
     },
     mode,
     hasPlatformResource,
-    isDemoMode,
     isTesting: testConnection.isPending,
     handleModeChange,
     handleTest,

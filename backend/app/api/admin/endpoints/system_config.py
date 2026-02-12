@@ -23,10 +23,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.infra.config import settings
-from app.core.web.deps import check_demo_mode, get_current_user_with_tenant
+from app.core.web.deps import get_current_user_with_tenant
 from app.core.web.exceptions import NotFoundException
 from app.core.infra.tenant import get_current_tenant, temporary_tenant_context
-from app.core.common.utils import mask_variable, mask_bot_config_inplace, MASKED_VARIABLE
 from app.crud.system_config import crud_system_config
 from app.db.database import get_db
 from app.models.user import User
@@ -49,8 +48,6 @@ SYSTEM_INTEGRITY_KEY = "system_integrity"
 # 模型类型常量
 MODEL_TYPES = ["chat", "embedding", "rerank", "vl"]
 
-# 兼容旧代码的掩码常量
-MASKED_API_KEY = MASKED_VARIABLE
 
 
 def _format_openai_error(e: Exception) -> str:
@@ -82,22 +79,6 @@ def _create_openai_client(api_key: str, base_url: str, timeout: float = 10.0):
     return AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
 
 
-def _mask_ai_config_inplace(config_value: dict) -> None:
-    """对 AI 配置进行原地脱敏处理"""
-    for model_type in MODEL_TYPES:
-        if model_type in config_value:
-            model_conf = config_value[model_type]
-
-            # 始终脱敏 apiKey
-            if "apiKey" in model_conf:
-                model_conf["apiKey"] = mask_variable(model_conf["apiKey"])
-
-            # 演示模式下额外脱敏 baseUrl 和 model
-            if settings.DEMO_MODE:
-                if "baseUrl" in model_conf:
-                    model_conf["baseUrl"] = mask_variable(model_conf["baseUrl"])
-                if "model" in model_conf:
-                    model_conf["model"] = mask_variable(model_conf["model"])
 
 
 @router.get(
@@ -139,31 +120,13 @@ async def get_ai_config(
             )
             if platform_config:
                 platform_defaults = platform_config.config_value
-                # 平台配置也需要脱敏
-                _mask_ai_config_inplace(platform_defaults)
 
     if not config and not platform_defaults:
         # 返回默认配置
         return ApiResponse.ok(data=None, msg="暂无配置，将返回默认值")
 
-    # 3. 构造返回数据
-    # 不再强制合并，而是返回租户的原始配置 + 平台默认配置
+    # 构造返回数据
     tenant_config_value = config.config_value if config else {}
-
-    # 确保租户配置也是脱敏的
-    masked_tenant_value = copy.deepcopy(tenant_config_value)
-    _mask_ai_config_inplace(masked_tenant_value)
-
-    # 如果租户没有配置，但允许使用平台，可以在这里初始化一些默认结构，
-    # 或者留给前端处理。为了友好，我们可以为每个 model_type 塞一个默认结构
-    if not config:
-        for m_type in MODEL_TYPES:
-            if m_type not in masked_tenant_value:
-                # 默认 mode=custom 还是 platform?
-                # 如果完全没配过，且允许平台，推荐默认 mode=platform?
-                # 但这取决于 ModelConfig 的 default。
-                # 暂时保持为空或基础结构
-                pass
 
     config_response = (
         SystemConfigResponse.model_validate(config)
@@ -172,17 +135,17 @@ async def get_ai_config(
             id=0,
             tenant_id=target_tenant_id,
             config_key=AI_CONFIG_KEY,
-            config_value=masked_tenant_value,
+            config_value=tenant_config_value,
             is_active=True,
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
     )
 
-    # 显式设置 platform_defaults (Response 模型中新增的字段)
+    # 显式设置 platform_defaults
     config_response.platform_defaults = platform_defaults
-    # config_value 使用脱敏后的租户配置
-    config_response.config_value = masked_tenant_value
+    # config_value 使用租户配置
+    config_response.config_value = tenant_config_value
 
     return ApiResponse.ok(data=config_response, msg="获取成功")
 
@@ -197,7 +160,6 @@ async def update_ai_config(
     scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[SystemConfigResponse]:
     """
     更新 AI 模型配置 (扁平结构)
@@ -211,20 +173,6 @@ async def update_ai_config(
             db, config_key=AI_CONFIG_KEY, tenant_id=target_tenant_id
         )
 
-    if existing_config:
-        # 获取现有的真实值(未脱敏)
-        existing_value = existing_config.config_value
-
-        # 还原手动模式配置的 API Key
-        for model_type in MODEL_TYPES:
-            if (
-                model_type in config_value
-                and "apiKey" in config_value[model_type]
-                and config_value[model_type]["apiKey"] == MASKED_API_KEY
-                and model_type in existing_value
-                and "apiKey" in existing_value[model_type]
-            ):
-                config_value[model_type]["apiKey"] = existing_value[model_type]["apiKey"]
 
     # 自动探测 Embedding Dimension
     embedding_conf = config_value.get("embedding", {})
@@ -291,12 +239,7 @@ async def update_ai_config(
 
     # 返回处理
     response_data = SystemConfigResponse.model_validate(config)
-    # 此时 config_value 已经是新的扁平结构 (因为我们存的就是 config_value)
-    # 对返回数据进行脱敏
-    response_val = copy.deepcopy(response_data.config_value)
-    _mask_ai_config_inplace(response_val)
-    response_data.config_value = response_val
-
+    
     return ApiResponse.ok(data=response_data, msg="AI 配置更新成功")
 
 
@@ -306,7 +249,6 @@ async def delete_config(
     scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[dict]:
     """
     删除指定配置
@@ -337,7 +279,6 @@ async def test_model_connection(
     scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[dict]:
     """
     测试模型连接性
@@ -346,41 +287,7 @@ async def test_model_connection(
     config = request.config
     target_tenant_id = None if scope == "platform" else get_current_tenant()
 
-    # 0. 如果 API Key 是掩码，则从数据库读取真实 Key
-    if config.apiKey == MASKED_API_KEY:
-        # 先搜寻租户自身配置
-        with temporary_tenant_context(target_tenant_id):
-            existing_config = await crud_system_config.get_by_key(
-                db, config_key=AI_CONFIG_KEY, tenant_id=target_tenant_id
-            )
-
-        real_key = None
-        if existing_config:
-            existing_value = existing_config.config_value
-            real_key = existing_value.get(model_type, {}).get("apiKey", "")
-
-        # 如果没找到，且当前是租户作用域，尝试搜寻平台配置（如果允许）
-        if not real_key and scope == "tenant" and target_tenant_id:
-            from app.crud.tenant import crud_tenant
-
-            tenant = await crud_tenant.get(db, id=target_tenant_id)
-            if tenant and "models" in (tenant.platform_resources_allowed or []):
-                with temporary_tenant_context(None):
-                    platform_config = await crud_system_config.get_by_key(
-                        db, config_key=AI_CONFIG_KEY, tenant_id=None
-                    )
-                    if platform_config:
-                        real_key = platform_config.config_value.get(model_type, {}).get(
-                            "apiKey", ""
-                        )
-
-        if real_key:
-            config.apiKey = real_key
-        else:
-            return ApiResponse.error(msg="无法获取有效的 API Key，请检查配置或权限。")
-
-    if not config.apiKey:
-        return ApiResponse.error(msg="API Key 不能为空")
+    target_tenant_id = None if scope == "platform" else get_current_tenant()
 
     # 1. 对话/多模态/视觉测试 (使用 OpenAI Chat API)
     if model_type in ["chat", "vl"]:
@@ -468,16 +375,6 @@ async def test_model_connection(
 # ============ 文档处理服务配置端点 ============
 
 
-def _mask_doc_processor_config_inplace(config_value: dict) -> None:
-    """对文档处理服务配置进行原地脱敏处理"""
-    processors = config_value.get("processors", [])
-    for processor in processors:
-        if "apiKey" in processor and processor["apiKey"]:
-            processor["apiKey"] = mask_variable(processor["apiKey"])
-
-        # 演示模式下额外脱敏 baseUrl
-        if settings.DEMO_MODE and "baseUrl" in processor:
-            processor["baseUrl"] = mask_variable(processor["baseUrl"])
 
 
 @router.get(
@@ -533,14 +430,10 @@ async def get_doc_processor_config(
     if not tenant_processors and not platform_processors:
         return ApiResponse.ok(data={"processors": []}, msg="暂无配置")
 
-    # 3. 合并配置 (租户在前，平台在后)
+    # 合并配置 (租户在前，平台在后)
     merged_processors = tenant_processors + platform_processors
 
-    # 脱敏处理
-    masked_value = {"processors": copy.deepcopy(merged_processors)}
-    _mask_doc_processor_config_inplace(masked_value)
-
-    return ApiResponse.ok(data=masked_value, msg="获取成功")
+    return ApiResponse.ok(data={"processors": merged_processors}, msg="获取成功")
 
 
 @router.put(
@@ -551,7 +444,6 @@ async def update_doc_processor_config(
     scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[dict]:
     """
     更新文档处理服务配置
@@ -566,24 +458,6 @@ async def update_doc_processor_config(
         ]
 
     with temporary_tenant_context(target_tenant_id):
-        # 获取现有配置用于还原掩码的 API Key
-        existing_config = await crud_system_config.get_by_key(
-            db, config_key=DOC_PROCESSOR_CONFIG_KEY, tenant_id=target_tenant_id
-        )
-
-    if existing_config:
-        existing_processors = {
-            p.get("name"): p for p in existing_config.config_value.get("processors", [])
-        }
-
-        # 还原被掩码的 API Key
-        for processor in config_value.get("processors", []):
-            if processor.get("apiKey") == MASKED_API_KEY:
-                existing = existing_processors.get(processor.get("name"))
-                if existing and existing.get("apiKey"):
-                    processor["apiKey"] = existing["apiKey"]
-
-    with temporary_tenant_context(target_tenant_id):
         config = await crud_system_config.update_by_key(
             db,
             config_key=DOC_PROCESSOR_CONFIG_KEY,
@@ -591,9 +465,8 @@ async def update_doc_processor_config(
             tenant_id=target_tenant_id,
         )
 
-    # 返回脱敏后的数据
+    # 返回数据
     response_val = copy.deepcopy(config.config_value)
-    _mask_doc_processor_config_inplace(response_val)
 
     return ApiResponse.ok(data=response_val, msg="文档处理服务配置更新成功")
 
@@ -608,54 +481,12 @@ async def test_doc_processor_connection(
     scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
-    _: None = Depends(check_demo_mode),
 ) -> ApiResponse[dict]:
     """
     测试文档处理服务连接性
     """
     config = request.config
     target_tenant_id = None if scope == "platform" else get_current_tenant()
-
-    # 如果 API Key 是掩码，从数据库读取真实值
-    if config.apiKey == MASKED_API_KEY:
-        # 1. 搜寻租户自身配置
-        with temporary_tenant_context(target_tenant_id):
-            existing_config = await crud_system_config.get_by_key(
-                db, config_key=DOC_PROCESSOR_CONFIG_KEY, tenant_id=target_tenant_id
-            )
-
-        real_key = None
-        if existing_config:
-            existing_processors = {
-                p.get("name"): p for p in existing_config.config_value.get("processors", [])
-            }
-            existing = existing_processors.get(config.name)
-            if existing and existing.get("apiKey"):
-                real_key = existing["apiKey"]
-
-        # 2. 如果没找到，且当前是租户作用域，检查平台配置（如果允许）
-        if not real_key and scope == "tenant" and target_tenant_id:
-            from app.crud.tenant import crud_tenant
-
-            tenant = await crud_tenant.get(db, id=target_tenant_id)
-            if tenant and "doc_processors" in (tenant.platform_resources_allowed or []):
-                with temporary_tenant_context(None):
-                    platform_config = await crud_system_config.get_by_key(
-                        db, config_key=DOC_PROCESSOR_CONFIG_KEY, tenant_id=None
-                    )
-                    if platform_config:
-                        platform_processors = {
-                            p.get("name"): p
-                            for p in platform_config.config_value.get("processors", [])
-                        }
-                        platform_existing = platform_processors.get(config.name)
-                        if platform_existing and platform_existing.get("apiKey"):
-                            real_key = platform_existing["apiKey"]
-
-        if real_key:
-            config.apiKey = real_key
-        # 如果依然没有 real_key，则保持 MASKED_API_KEY (DocProcessorFactory.create 会用它，通常会导致失败)
-        # 或者直接报错
 
     try:
         from app.core.doc_processor import DocProcessorFactory
