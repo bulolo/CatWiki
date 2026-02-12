@@ -292,13 +292,19 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         return document
 
     async def batch_update_vector_status(
-        self, db: AsyncSession, *, document_ids: list[int], status: str
+        self,
+        db: AsyncSession,
+        *,
+        document_ids: list[int],
+        status: str,
+        error: str | None = None,
     ) -> int:
         """批量更新文档的向量化状态（支持租户隔离）
 
         Args:
             document_ids: 文档ID列表
             status: 新状态
+            error: 错误信息（仅在 failed 状态时有效）
 
         Returns:
             更新的文档数量
@@ -311,7 +317,14 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         if tenant_id is not None:
             stmt = stmt.where(self.model.tenant_id == tenant_id)
 
-        result = await db.execute(stmt.values(vector_status=status, vector_error=None))
+        # 准备更新的值
+        values = {"vector_status": status}
+        if status == VectorStatus.FAILED:
+            values["vector_error"] = error
+        else:
+            values["vector_error"] = None
+
+        result = await db.execute(stmt.values(**values))
         await db.commit()
         return result.rowcount
 
