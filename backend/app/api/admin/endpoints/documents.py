@@ -130,6 +130,7 @@ async def process_vectorization_task(document_id: int):
                     "author": document.author,
                     "site_id": document.site_id,
                     "collection_id": document.collection_id,
+                    "tenant_id": document.tenant_id,
                 }
 
                 # 2. 文本切片

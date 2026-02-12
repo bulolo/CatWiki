@@ -12,6 +12,7 @@ import time
 import uuid
 from collections.abc import AsyncGenerator
 
+import openai
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -166,6 +167,27 @@ async def stream_graph_events(
 
         background_tasks.add_task(save_history)
 
+        yield f"data: {error_chunk.model_dump_json()}\n\n"
+        yield "data: [DONE]\n\n"
+
+    except openai.AuthenticationError:
+        logger.error("❌ [Chat] Authentication Error: Missing or invalid API Key")
+        error_msg = "AI 服务配置异常：缺少有效的 API Key，请联系管理员检查模型配置。"
+        
+        error_chunk = ChatCompletionChunk(
+            id=f"error-{uuid.uuid4()}",
+            model=model_name,
+            choices=[
+                ChatCompletionChunkChoice(
+                    index=0,
+                    delta=ChatCompletionChunkDelta(content=f"\n\n[系统提示: {error_msg}]"),
+                    finish_reason="stop",
+                )
+            ],
+        )
+        yield f"data: {error_chunk.model_dump_json()}\n\n"
+        yield "data: [DONE]\n\n"
+
     except Exception as e:
         logger.error(f"❌ [Chat] Stream error: {e}", exc_info=True)
         # 发送错误信息给前端
@@ -266,6 +288,7 @@ async def _process_chat_request(
             site_id=site_id,
             user_message=request.message,
             member_id=request.user,
+            tenant_id=site_tenant_id,
         )
         # 对话轮次 = (消息总数 + 1) // 2
         round_count = (session.message_count + 1) // 2
@@ -281,8 +304,15 @@ async def _process_chat_request(
         "site_id": site_id,
         "iteration_count": 0,
         "consecutive_empty_count": 0,
+        "consecutive_empty_count": 0,
     }
-    config = {"configurable": {"thread_id": request.thread_id, "site_id": site_id}}
+    config = {
+        "configurable": {
+            "thread_id": request.thread_id,
+            "site_id": site_id,
+            "tenant_id": site_tenant_id,  # 关键修复: 显式传递租户ID供 Graph 内部使用
+        }
+    }
 
     try:
         # 7. 处理请求

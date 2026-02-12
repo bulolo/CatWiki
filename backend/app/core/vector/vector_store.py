@@ -17,8 +17,7 @@
 使用 langchain-postgres 最佳实践实现
 """
 
-import json
-import hashlib
+import asyncio
 import logging
 from typing import Optional
 from urllib.parse import quote_plus
@@ -45,6 +44,7 @@ class VectorStoreManager:
     """
 
     _instance: Optional["VectorStoreManager"] = None
+    _lock = asyncio.Lock()
     _initialized: bool = False
 
     def __init__(self, collection_name: str = "catwiki_documents"):
@@ -145,6 +145,8 @@ class VectorStoreManager:
                 Column(name="source", data_type="TEXT", nullable=True),
                 Column(name="id", data_type="TEXT", nullable=True),
                 Column(name="site_id", data_type="INTEGER", nullable=True),
+                Column(name="collection_id", data_type="INTEGER", nullable=True),
+                Column(name="tenant_id", data_type="INTEGER", nullable=True),
             ]
 
             # 初始化表 (仅在第一次物理访问时执行，dim 由第一个配置决定)
@@ -169,8 +171,14 @@ class VectorStoreManager:
             # 维度匹配性检查
             await self._check_database_dimension(dimension)
 
+            # Schema 检查与迁移（确保 optimized_columns 对应的物理列存在）
+            await self._ensure_columns()
+
+            # 索引检查与创建
+            await self._ensure_indexes()
+
             # 创建 PGVectorStore 实例并存入缓存
-            self.optimized_columns = ["source", "id", "site_id"]
+            self.optimized_columns = ["source", "id", "site_id", "collection_id", "tenant_id"]
             new_store = await PGVectorStore.create(
                 engine=self._engine,
                 table_name=self.collection_name,
@@ -209,7 +217,9 @@ class VectorStoreManager:
     async def get_instance(cls) -> "VectorStoreManager":
         """获取向量存储管理器单例（自动感知当前租户上下文并返回合法的实例）"""
         if cls._instance is None:
-            cls._instance = cls()
+            async with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         
         # 由于管理器内部通过 _current_store 代理了多实例，每次获取时需刷新指向
         # 注意：这里我们捕获初始化错误，防止因配置暂不可用导致整个应用崩溃
@@ -271,6 +281,13 @@ class VectorStoreManager:
             logger.error(f"删除文档失败: {e}", exc_info=True)
             raise
 
+    def _get_metadata_where_clause(self, key: str) -> str:
+        """生成元数据查询条件的 WHERE 子句部分"""
+        if key in self.optimized_columns:
+            return f"{key} = :value"
+        else:
+            return f"langchain_metadata->>'{key}' = :value"
+
     async def delete_by_metadata(self, key: str, value: str) -> None:
         """根据元数据删除文档"""
         await self._ensure_initialized()
@@ -280,17 +297,10 @@ class VectorStoreManager:
 
             from sqlalchemy import text
 
-            # 自动判断是否可以使用优化列
-            # 如果 key 是我们在 init 中定义的 optimized_columns 之一，直接使用 SQL 列查询
-            if key in self.optimized_columns:
-                sql = text(f"DELETE FROM {self.collection_name} WHERE {key} = :value")
-                logger.debug(f"使用优化列删除: {key}")
-            else:
-                # 否则使用 JSONB 查询
-                sql = text(
-                    f"DELETE FROM {self.collection_name} WHERE langchain_metadata->>'{key}' = :value"
-                )
-                logger.debug(f"使用 Metadata JSON 删除: {key}")
+            where_clause = self._get_metadata_where_clause(key)
+            sql = text(f"DELETE FROM {self.collection_name} WHERE {where_clause}")
+            
+            logger.debug(f"执行删除 SQL: {sql} with value={value}")
 
             async with self._sa_engine.connect() as conn:
                 await conn.execute(sql, {"value": value})
@@ -343,11 +353,7 @@ class VectorStoreManager:
             from sqlalchemy import text
 
             # 自动判断是否可以使用优化列
-            where_clause = ""
-            if key in self.optimized_columns:
-                where_clause = f"{key} = :value"
-            else:
-                where_clause = f"langchain_metadata->>'{key}' = :value"
+            where_clause = self._get_metadata_where_clause(key)
 
             sql = text(f"""
                 SELECT langchain_id, content, langchain_metadata 
@@ -420,6 +426,68 @@ class VectorStoreManager:
             if "does not exist" in str(e):
                 return
             raise e
+
+    async def _ensure_columns(self):
+        """确保所有优化列在数据库表中存在（Schema Evolution）"""
+        try:
+            from sqlalchemy import text
+            
+            # 需要检查的额外列 (id, source, site_id 是基础列，这里主要关注新增的优化列)
+            target_columns = ["collection_id", "tenant_id"]
+            
+            async with self._sa_engine.connect() as conn:
+                # 获取当前所有列名
+                result = await conn.execute(
+                    text(f"SELECT column_name FROM information_schema.columns WHERE table_name = '{self.collection_name}'")
+                )
+                existing_columns = [row[0] for row in result.fetchall()]
+                
+                for col in target_columns:
+                    if col not in existing_columns:
+                        logger.info(f"🔄 [Schema] 检测到缺少列 '{col}'，正在添加...")
+                        # 添加列
+                        await conn.execute(text(f"ALTER TABLE {self.collection_name} ADD COLUMN {col} INTEGER"))
+                        await conn.commit()
+                        logger.info(f"✅ [Schema] 成功添加列 '{col}'")
+                        
+        except Exception as e:
+             logger.error(f"❌ [Schema] 列检查/迁移失败: {e}", exc_info=True)
+             # 不抛出异常，允许应用继续启动（可能只需降级使用 JSON 查询）
+
+    async def _ensure_indexes(self):
+        """确保关键查询字段拥有索引"""
+        try:
+            from sqlalchemy import text
+            
+            # 需要索引的字段
+            # 注意: langchain_id 是主键，自动有索引
+            target_indexes = [
+                "id", 
+                "site_id", 
+                "collection_id", 
+                "tenant_id"
+            ]
+            
+            async with self._sa_engine.connect() as conn:
+                # 获取当前所有索引
+                result = await conn.execute(
+                    text(f"SELECT indexname FROM pg_indexes WHERE tablename = '{self.collection_name}'")
+                )
+                existing_indexes = [row[0] for row in result.fetchall()]
+                
+                for col in target_indexes:
+                    index_name = f"idx_{self.collection_name}_{col}"
+                    # 简单的命名约定检查，不严谨但够用
+                    if index_name not in existing_indexes:
+                        logger.info(f"🔄 [Index] 检测到缺少索引 '{index_name}'，正在创建...")
+                        await conn.execute(
+                            text(f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {index_name} ON {self.collection_name} ({col})")
+                        )
+                        await conn.commit()
+                        logger.info(f"✅ [Index] 成功创建索引 '{index_name}'")
+                        
+        except Exception as e:
+            logger.warning(f"⚠️ [Index] 索引维护失败 (可能是权限不足或已存在): {e}")
 
     async def close(self):
         """关闭数据库连接"""

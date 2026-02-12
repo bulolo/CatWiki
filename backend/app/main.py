@@ -71,6 +71,17 @@ async def lifespan(app: FastAPI):
 
     # 关闭时执行
     logger.info(f"正在关闭 {settings.PROJECT_NAME}...")
+    
+    # 关闭 VectorStoreManager 连接池
+    try:
+        from app.core.vector.vector_store import VectorStoreManager
+        # 注意: get_instance 本身是 async 的，但这里我们不需要它重新初始化，只需要获取实例
+        # 但既然是单例，我们直接访问类属性可能更安全，或者直接调用
+        if VectorStoreManager._instance:
+             await VectorStoreManager._instance.close()
+    except Exception as e:
+        logger.warning(f"关闭向量存储连接失败: {e}")
+
     await engine.dispose()
     logger.info(f"{settings.PROJECT_NAME} 已关闭")
 

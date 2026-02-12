@@ -76,14 +76,21 @@ async def search_knowledge_base(query: str, config: RunnableConfig) -> str:
     )
 
     try:
-        # 执行检索
-        retrieved_docs = await VectorService.retrieve(
-            query=query,
-            k=settings.RAG_RECALL_K,
-            filter=VectorRetrieveFilter(site_id=int(site_id)) if site_id else None,
-            enable_rerank=settings.RAG_ENABLE_RERANK,
-            rerank_k=settings.RAG_RERANK_TOP_K,
-        )
+        # 获取租户上下文 (适配公共访问)
+        tenant_id = config.get("configurable", {}).get("tenant_id")
+        
+        from app.core.infra.tenant import temporary_tenant_context
+        
+        # 使用临时租户上下文包裹检索调用，确保 VectorService 能够获取正确的配置和过滤条件
+        with temporary_tenant_context(tenant_id):
+            # 执行检索
+            retrieved_docs = await VectorService.retrieve(
+                query=query,
+                k=settings.RAG_RECALL_K,
+                filter=VectorRetrieveFilter(site_id=int(site_id)) if site_id else None,
+                enable_rerank=settings.RAG_ENABLE_RERANK,
+                rerank_k=settings.RAG_RERANK_TOP_K,
+            )
 
         if not retrieved_docs:
             return NO_RESULTS_MESSAGE

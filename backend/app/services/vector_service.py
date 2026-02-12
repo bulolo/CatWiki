@@ -49,6 +49,10 @@ class VectorService:
             # 获取当前租户上下文以获取正确的配置指纹
             from app.core.infra.tenant import get_current_tenant
             current_tenant_id = get_current_tenant()
+            
+            # 强制注入租户ID过滤（安全核心）
+            if current_tenant_id is not None:
+                filter_dict["tenant_id"] = current_tenant_id
 
             # 确定是否使用重排序 (异步校验租户配置)
             reranker_active = await reranker.is_enabled(tenant_id=current_tenant_id)

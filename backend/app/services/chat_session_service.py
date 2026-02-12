@@ -43,6 +43,7 @@ class ChatSessionService:
         site_id: int,
         user_message: str,
         member_id: str | None = None,
+        tenant_id: int | None = None,
     ) -> ChatSession:
         """创建或更新会话记录
 
@@ -76,6 +77,7 @@ class ChatSessionService:
                     last_message=user_message[:200],
                     last_message_role="user",
                     message_count=1,
+                    tenant_id=tenant_id,
                 )
                 db.add(session)
                 try:
@@ -91,7 +93,7 @@ class ChatSessionService:
                         f"⚠️ [ChatSession] Concurrent creation detected for {thread_id}, retrying as update."
                     )
                     return await ChatSessionService.create_or_update(
-                        db, thread_id, site_id, user_message, member_id
+                        db, thread_id, site_id, user_message, member_id, tenant_id
                     )
 
             return session
