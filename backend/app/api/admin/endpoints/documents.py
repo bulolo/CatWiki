@@ -571,6 +571,7 @@ async def vectorize_documents(
         # Check vector store availability (Synchronous check)
         try:
             from app.core.vector_store import VectorStoreManager
+
             await VectorStoreManager.get_instance()
         except ValueError as e:
             # Revert status to FAILED if config is missing
@@ -625,6 +626,7 @@ async def vectorize_single_document(
     # Check vector store availability (Synchronous check)
     try:
         from app.core.vector_store import VectorStoreManager
+
         await VectorStoreManager.get_instance()
     except ValueError as e:
         # Revert status to FAILED if config is missing
