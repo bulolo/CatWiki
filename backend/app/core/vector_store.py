@@ -71,7 +71,7 @@ class VectorStoreManager:
                     "❌ 未找到有效的 Embedding 配置，无法初始化向量存储。请在管理后台配置 AI 模型。"
                 )
                 # 可以在这里抛出异常，或者设为不可用状态
-                raise ValueError("Missing Embedding Configuration")
+                raise ValueError("未找到有效的 Embedding 配置，请在管理后台配置 AI 模型")
 
             model = embedding_conf.get("model", "")
             api_key = embedding_conf.get("apiKey", "")

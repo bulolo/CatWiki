@@ -531,8 +531,27 @@ async def vectorize_documents(
         )
 
     # 为每个成功的文档启动异步后台任务
-    for doc_id in success_ids:
-        background_tasks.add_task(process_vectorization_task, doc_id)
+    if success_ids:
+        # Check vector store availability (Synchronous check)
+        try:
+            from app.core.vector_store import VectorStoreManager
+            await VectorStoreManager.get_instance()
+        except ValueError as e:
+            # Revert status to FAILED if config is missing
+            await crud_document.batch_update_vector_status(
+                db, document_ids=success_ids, status=VectorStatus.FAILED, error=str(e)
+            )
+            raise BadRequestException(detail=str(e))
+        except Exception as e:
+            logger.error(f"Vector store check failed: {e}")
+            # Revert status
+            await crud_document.batch_update_vector_status(
+                db, document_ids=success_ids, status=VectorStatus.FAILED, error="向量服务暂不可用"
+            )
+            raise BadRequestException(detail="向量服务暂不可用，请检查 AI 模型配置")
+
+        for doc_id in success_ids:
+            background_tasks.add_task(process_vectorization_task, doc_id)
 
     return ApiResponse.ok(
         data=VectorizeResponse(
@@ -566,6 +585,24 @@ async def vectorize_single_document(
     document = await crud_document.update_vector_status(
         db, document_id=document_id, status=VectorStatus.PENDING
     )
+
+    # Check vector store availability (Synchronous check)
+    try:
+        from app.core.vector_store import VectorStoreManager
+        await VectorStoreManager.get_instance()
+    except ValueError as e:
+        # Revert status to FAILED if config is missing
+        await crud_document.update_vector_status(
+            db, document_id=document_id, status=VectorStatus.FAILED, error=str(e)
+        )
+        raise BadRequestException(detail=str(e))
+    except Exception as e:
+        logger.error(f"Vector store check failed: {e}")
+        # Revert status
+        await crud_document.update_vector_status(
+            db, document_id=document_id, status=VectorStatus.FAILED, error="向量服务暂不可用"
+        )
+        raise BadRequestException(detail="向量服务暂不可用，请检查 AI 模型配置")
 
     # 启动异步后台任务
     background_tasks.add_task(process_vectorization_task, document_id)
