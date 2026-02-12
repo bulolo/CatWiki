@@ -34,7 +34,7 @@ import {
 import { getUserInfo, logout } from "@/lib/auth"
 import { UserRole } from "@/lib/api-client"
 import { toast } from "sonner"
-import { ChangePasswordModal } from "@/components/settings/ChangePasswordModal"
+import { ChangePasswordModal } from "@/components/settings/users/ChangePasswordModal"
 
 export function UserMenu() {
   const router = useRouter()

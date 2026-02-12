@@ -14,13 +14,13 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { SettingsProvider, useSettings } from "@/contexts/SettingsContext"
-import { ModelSettingsCard } from "@/components/settings/ModelSettingsCard"
-import { ModelDetailCard } from "@/components/settings/ModelDetailCard"
-import { GlobalUsers } from "@/components/settings/GlobalUsers"
-import { GlobalSites } from "@/components/settings/GlobalSites"
+import { ModelSettingsCard } from "@/components/settings/models/ModelSettingsCard"
+import { ModelDetailCard } from "@/components/settings/models/ModelDetailCard"
+import { GlobalUsers } from "@/components/settings/users/GlobalUsers"
+import { GlobalSites } from "@/components/settings/sites/GlobalSites"
 import { type ModelType } from "@/types/settings"
 import {
   Settings,
@@ -35,8 +35,8 @@ import {
 import { getUserInfo } from "@/lib/auth"
 import { UserRole } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
-import { SiteSettings } from "./SiteSettings"
-import { DocProcessorSettings } from "./DocProcessorSettings"
+import { SiteSettings } from "./sites/SiteSettings"
+import { DocProcessorSettings } from "./doc-processor/DocProcessorSettings"
 import {
   Tabs,
   TabsContent,
@@ -116,12 +116,19 @@ function SettingsContent() {
     }
   }
 
-  const handleBackToModels = () => {
+  const handleBackToModels = useCallback(() => {
     if (selectedModel === "chat" || selectedModel === "embedding" || selectedModel === "rerank" || selectedModel === "vl") {
       revertToSavedConfig(selectedModel)
     }
     setSelectedModel(null)
-  }
+  }, [selectedModel, revertToSavedConfig])
+
+  // Auto-revert models when switching to other tabs
+  useEffect(() => {
+    if (activeTab !== "models" && selectedModel) {
+      handleBackToModels()
+    }
+  }, [activeTab, selectedModel, handleBackToModels])
 
   const handleBackToGlobal = () => {
     // If coming from global settings, go back to global list

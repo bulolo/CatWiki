@@ -20,9 +20,10 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-import { Settings, MessageSquare, Layers, RefreshCw, Eye, Globe } from "lucide-react"
+import { Settings, Globe } from "lucide-react"
 import { useSettings } from "@/contexts/SettingsContext"
 import { type ModelType } from "@/types/settings"
+import { MODEL_TYPES_LIST } from "@/constants/models"
 
 interface ManualModeConfigProps {
   onSelectModel: (model: ModelType) => void
@@ -31,49 +32,6 @@ interface ManualModeConfigProps {
 
 export function ManualModeConfig({ onSelectModel, activeTab }: ManualModeConfigProps) {
   const { savedConfigs, platformFallback } = useSettings()
-
-  const modelCards = [
-    {
-      id: "chat" as ModelType,
-      title: "对话模型",
-      subtitle: "Chat Model",
-      icon: MessageSquare,
-      color: "bg-blue-50",
-      iconColor: "text-blue-500",
-      desc: "用于 AI 对话和内容生成",
-      required: true
-    },
-    {
-      id: "embedding" as ModelType,
-      title: "向量模型",
-      subtitle: "Embedding Model",
-      icon: Layers,
-      color: "bg-emerald-50",
-      iconColor: "text-emerald-500",
-      desc: "用于文档向量化和语义检索",
-      required: true
-    },
-    {
-      id: "rerank" as ModelType,
-      title: "重排序模型",
-      subtitle: "Rerank Model",
-      icon: RefreshCw,
-      color: "bg-purple-50",
-      iconColor: "text-purple-500",
-      desc: "优化检索结果排序",
-      required: true
-    },
-    {
-      id: "vl" as ModelType,
-      title: "视觉模型",
-      subtitle: "Vision Model",
-      icon: Eye,
-      color: "bg-orange-50",
-      iconColor: "text-orange-500",
-      desc: "支持图片理解和多模态",
-      required: false
-    }
-  ]
 
   return (
     <div className="space-y-6">
@@ -86,7 +44,7 @@ export function ManualModeConfig({ onSelectModel, activeTab }: ManualModeConfigP
           点击下方卡片进入对应模型的详细配置页面
         </p>
         <div className="grid grid-cols-2 gap-4">
-          {modelCards.map((item) => {
+          {MODEL_TYPES_LIST.map((item) => {
             // @ts-ignore
             const conf = savedConfigs[item.id as "chat" | "embedding" | "rerank" | "vl"]
 
@@ -136,7 +94,7 @@ export function ManualModeConfig({ onSelectModel, activeTab }: ManualModeConfigP
                     </div>
                   </div>
                 </div>
-                <p className="text-xs text-slate-600 mb-3">{item.desc}</p>
+                <p className="text-xs text-slate-600 mb-3">{item.description}</p>
                 <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                   <div className="flex items-center gap-2">
                     <div className={`h-2 w-2 rounded-full ${isConfigured ? "bg-emerald-500" : "bg-slate-300"}`} />

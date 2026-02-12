@@ -22,9 +22,9 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MessageSquare, Layers, RefreshCw, Eye, ChevronRight, Cpu } from "lucide-react"
+import { ChevronRight, Cpu } from "lucide-react"
 import { SingleModelConfig } from "./SingleModelConfig"
-import { type ModelType } from "@/types/settings"
+import { MODEL_META } from "@/constants/models"
 
 interface ModelDetailCardProps {
   modelType: "chat" | "embedding" | "rerank" | "vl"
@@ -32,38 +32,7 @@ interface ModelDetailCardProps {
 }
 
 export function ModelDetailCard({ modelType, onBack }: ModelDetailCardProps) {
-  const modelInfo = {
-    chat: {
-      title: "对话模型配置",
-      icon: MessageSquare,
-      iconColor: "text-blue-500",
-      iconBg: "bg-blue-500/10",
-      description: "用于 AI 对话、内容生成和摘要提取的主模型。"
-    },
-    embedding: {
-      title: "向量模型配置",
-      icon: Layers,
-      iconColor: "text-emerald-500",
-      iconBg: "bg-emerald-500/10",
-      description: "用于将文档转化为向量，实现 AI 语义检索。"
-    },
-    rerank: {
-      title: "重排序模型配置",
-      icon: RefreshCw,
-      iconColor: "text-purple-500",
-      iconBg: "bg-purple-500/10",
-      description: "在检索完成后对结果进行精排，大幅提升回答准确度。"
-    },
-    vl: {
-      title: "多模态 (Vision) 模型配置",
-      icon: Eye,
-      iconColor: "text-orange-500",
-      iconBg: "bg-orange-500/10",
-      description: "支持图片理解和多模态交互的能力。"
-    }
-  }
-
-  const info = modelInfo[modelType]
+  const info = MODEL_META[modelType]
   const Icon = info.icon
 
   return (

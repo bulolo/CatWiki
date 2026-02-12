@@ -48,6 +48,7 @@ from app.models.user import UserRole, UserStatus
 setup_logging()
 logger = logging.getLogger(__name__)
 
+
 async def create_baby_tenant():
     """创建或获取育儿专家租户"""
     async with AsyncSessionLocal() as db:
@@ -61,7 +62,7 @@ async def create_baby_tenant():
                     description="专注 0-6 岁科学育儿知识平台",
                     plan="pro",
                     plan_expires_at=datetime.now(timezone.utc) + timedelta(days=365),
-                    status="active"
+                    status="active",
                 )
                 tenant = await crud_tenant.create(db, obj_in=tenant_in)
                 logger.info(f"✅ 创建育儿租户：{tenant.name} (Slug: {tenant.slug})")
@@ -71,6 +72,7 @@ async def create_baby_tenant():
         except Exception as e:
             logger.error(f"❌ 创建育儿租户失败: {e}", exc_info=True)
             raise
+
 
 async def create_baby_tenant_admin(tenant_id: int, managed_site_ids: list[int] = None):
     """创建育儿租户管理员"""
@@ -97,6 +99,7 @@ async def create_baby_tenant_admin(tenant_id: int, managed_site_ids: list[int] =
             logger.error(f"❌ 创建育儿租户管理员用户失败: {e}", exc_info=True)
             raise
 
+
 async def create_baby_site(tenant_id: int):
     """创建或获取育儿百科站点"""
     async with AsyncSessionLocal() as db:
@@ -122,21 +125,26 @@ async def create_baby_site(tenant_id: int):
                 demo_site = await crud_site.create(db, obj_in=site_create)
                 await db.commit()
                 await db.refresh(demo_site)
-                logger.info(f"✅ 创建育儿站点：{demo_site.name} (ID: {demo_site.id}, Slug: {demo_site.slug})")
+                logger.info(
+                    f"✅ 创建育儿站点：{demo_site.name} (ID: {demo_site.id}, Slug: {demo_site.slug})"
+                )
             else:
-                logger.info(f"✅ 育儿站点已存在：{demo_site.name} (ID: {demo_site.id}, Slug: {demo_site.slug})")
+                logger.info(
+                    f"✅ 育儿站点已存在：{demo_site.name} (ID: {demo_site.id}, Slug: {demo_site.slug})"
+                )
             return demo_site
         except Exception as e:
             await db.rollback()
             logger.error(f"❌ 创建育儿站点失败: {e}", exc_info=True)
             raise
 
+
 async def init_baby_documents(tenant_id: int, site_id: int):
     """初始化育儿知识文档"""
     async with AsyncSessionLocal() as db:
         try:
             baby_data = get_baby_data()
-            
+
             # 创建或获取合集
             collection_name = "成长指南"
             result = await db.execute(
@@ -147,7 +155,7 @@ async def init_baby_documents(tenant_id: int, site_id: int):
                 )
             )
             collection = result.scalar_one_or_none()
-            
+
             if not collection:
                 collection_create = CollectionCreate(
                     title=collection_name,
@@ -170,7 +178,7 @@ async def init_baby_documents(tenant_id: int, site_id: int):
                     select(Document).where(
                         Document.title == doc_data["title"],
                         Document.site_id == site_id,
-                        Document.collection_id == collection.id
+                        Document.collection_id == collection.id,
                     )
                 )
                 if doc_result.scalar_one_or_none():
@@ -204,6 +212,7 @@ async def init_baby_documents(tenant_id: int, site_id: int):
             logger.error(f"❌ 初始化文档失败: {e}", exc_info=True)
             raise
 
+
 def get_baby_data():
     """育儿知识数据"""
     return [
@@ -221,7 +230,7 @@ def get_baby_data():
 ## 3. 母乳喂养
 按需喂养，注意观察衔乳姿势，排气后再放下。""",
             "category": "日常护理",
-            "tags": ["新生儿", "护理", "母乳"]
+            "tags": ["新生儿", "护理", "母乳"],
         },
         {
             "title": "婴儿营养与辅食添加",
@@ -237,7 +246,7 @@ def get_baby_data():
 ## 3. 添加原则
 一种到多种，从稀到稠，从细到粗。""",
             "category": "营养指导",
-            "tags": ["辅食", "营养", "喂养"]
+            "tags": ["辅食", "营养", "喂养"],
         },
         {
             "title": "婴幼儿疫苗接种指南",
@@ -253,7 +262,7 @@ def get_baby_data():
 ## 3. 常见二类疫苗建议
 如五联疫苗、肺炎13价疫苗、流感疫苗等。""",
             "category": "成长发育",
-            "tags": ["疫苗", "健康", "防疫"]
+            "tags": ["疫苗", "健康", "防疫"],
         },
         {
             "title": "宝宝睡眠训练",
@@ -269,7 +278,7 @@ def get_baby_data():
 ## 3. 安全睡眠环境
 平卧、硬床垫、不放置毛绒玩具，防止窒息。""",
             "category": "成长发育",
-            "tags": ["睡眠", "节奏", "安全"]
+            "tags": ["睡眠", "节奏", "安全"],
         },
         {
             "title": "亲子启蒙与互动",
@@ -285,9 +294,10 @@ def get_baby_data():
 ## 3. 大运动发展
 Tummy Time（俯卧抬头）是增强颈椎力量的关键。""",
             "category": "亲子教育",
-            "tags": ["早教", "互动", "发育"]
-        }
+            "tags": ["早教", "互动", "发育"],
+        },
     ]
+
 
 async def main():
     logger.info("🚀 开始初始化育儿数据...")
@@ -296,6 +306,7 @@ async def main():
     await create_baby_tenant_admin(tenant.id, managed_site_ids=[site.id])
     await init_baby_documents(tenant.id, site.id)
     logger.info("✨ 全部初始化工作已完成！")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

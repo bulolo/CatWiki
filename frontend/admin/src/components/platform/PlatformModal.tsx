@@ -15,6 +15,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import Image from "next/image"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import {
   Building2,
@@ -46,9 +47,9 @@ import {
 import { api, Models, UserRole } from "@/lib/api-client" // Added UserRole for wrapper check
 import { getUserInfo, setSelectedTenantId } from "@/lib/auth" // For wrapper check and context switch
 import { SettingsProvider } from "@/contexts/SettingsContext"
-import { DocProcessorSettings } from "@/components/settings/DocProcessorSettings"
-import { ModelSettingsCard } from "@/components/settings/ModelSettingsCard"
-import { ModelDetailCard } from "@/components/settings/ModelDetailCard"
+import { DocProcessorSettings } from "@/components/settings/doc-processor/DocProcessorSettings"
+import { ModelSettingsCard } from "@/components/settings/models/ModelSettingsCard"
+import { ModelDetailCard } from "@/components/settings/models/ModelDetailCard"
 import { type ModelType } from "@/types/settings"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -484,12 +485,13 @@ function PlatformTenants() {
                     className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50/50 transition-colors group"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+                      <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden relative">
                         {(tenant as any).logo_url ? (
-                          <img
+                          <Image
                             src={(tenant as any).logo_url}
-                            alt={tenant.name}
-                            className="w-full h-full object-cover"
+                            alt={tenant.name || 'Tenant Logo'}
+                            fill
+                            className="object-cover"
                           />
                         ) : (
                           <Building2 className="h-4.5 w-4.5 text-slate-500" />
@@ -722,11 +724,14 @@ function PlatformTenants() {
 
               {/* 初始管理员 */}
               <div className="p-5 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-xl border border-amber-200/60 shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
+                <div className="flex items-start gap-2 mb-4">
+                  <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center mt-0.5">
                     <UserCog className="h-4 w-4 text-amber-600" />
                   </div>
-                  <h3 className="text-sm font-semibold text-slate-800">初始管理员</h3>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-800">初始管理员</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">设置该租户的初始管理员账户。</p>
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -1198,13 +1203,13 @@ export function PlatformModal() {
   const userInfo = getUserInfo()
   const isAdmin = userInfo?.role === UserRole.ADMIN
 
-  if (!isAdmin) return null
-
   // Ensure mount to avoid hydration mismatch
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  if (!isAdmin) return null
   if (!mounted) return null
 
   return (

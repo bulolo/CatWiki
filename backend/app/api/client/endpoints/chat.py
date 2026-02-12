@@ -241,6 +241,7 @@ async def _process_chat_request(
     if site_id > 0:
         async with AsyncSessionLocal() as db:
             from app.crud.site import crud_site
+
             site = await crud_site.get(db, id=site_id)
             if site:
                 site_tenant_id = site.tenant_id

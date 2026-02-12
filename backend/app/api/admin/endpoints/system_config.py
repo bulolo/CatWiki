@@ -87,7 +87,7 @@ def _mask_ai_config_inplace(config_value: dict) -> None:
     for model_type in MODEL_TYPES:
         if model_type in config_value:
             model_conf = config_value[model_type]
-            
+
             # 始终脱敏 apiKey
             if "apiKey" in model_conf:
                 model_conf["apiKey"] = mask_variable(model_conf["apiKey"])
@@ -149,7 +149,7 @@ async def get_ai_config(
     # 3. 构造返回数据
     # 不再强制合并，而是返回租户的原始配置 + 平台默认配置
     tenant_config_value = config.config_value if config else {}
-    
+
     # 确保租户配置也是脱敏的
     masked_tenant_value = copy.deepcopy(tenant_config_value)
     _mask_ai_config_inplace(masked_tenant_value)
@@ -178,12 +178,11 @@ async def get_ai_config(
             updated_at=datetime.now(),
         )
     )
-    
+
     # 显式设置 platform_defaults (Response 模型中新增的字段)
     config_response.platform_defaults = platform_defaults
     # config_value 使用脱敏后的租户配置
     config_response.config_value = masked_tenant_value
-
 
     return ApiResponse.ok(data=config_response, msg="获取成功")
 
@@ -255,9 +254,10 @@ async def update_ai_config(
 
     with temporary_tenant_context(target_tenant_id):
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info(f"💾 Saving AI Config to DB: {config_value}")
-        
+
         config = await crud_system_config.update_by_key(
             db,
             config_key=AI_CONFIG_KEY,
@@ -285,8 +285,6 @@ async def update_ai_config(
     response_data.config_value = response_val
 
     return ApiResponse.ok(data=response_data, msg="AI 配置更新成功")
-
-
 
 
 @router.delete("/{config_key}", response_model=ApiResponse[dict], operation_id="deleteAdminConfig")
@@ -342,15 +340,16 @@ async def test_model_connection(
             existing_config = await crud_system_config.get_by_key(
                 db, config_key=AI_CONFIG_KEY, tenant_id=target_tenant_id
             )
-        
+
         real_key = None
         if existing_config:
             existing_value = existing_config.config_value
             real_key = existing_value.get(model_type, {}).get("apiKey", "")
-        
+
         # 如果没找到，且当前是租户作用域，尝试搜寻平台配置（如果允许）
         if not real_key and scope == "tenant" and target_tenant_id:
             from app.crud.tenant import crud_tenant
+
             tenant = await crud_tenant.get(db, id=target_tenant_id)
             if tenant and "models" in (tenant.platform_resources_allowed or []):
                 with temporary_tenant_context(None):
@@ -358,8 +357,10 @@ async def test_model_connection(
                         db, config_key=AI_CONFIG_KEY, tenant_id=None
                     )
                     if platform_config:
-                        real_key = platform_config.config_value.get(model_type, {}).get("apiKey", "")
-        
+                        real_key = platform_config.config_value.get(model_type, {}).get(
+                            "apiKey", ""
+                        )
+
         if real_key:
             config.apiKey = real_key
         else:
@@ -609,7 +610,7 @@ async def test_doc_processor_connection(
             existing_config = await crud_system_config.get_by_key(
                 db, config_key=DOC_PROCESSOR_CONFIG_KEY, tenant_id=target_tenant_id
             )
-        
+
         real_key = None
         if existing_config:
             existing_processors = {
@@ -618,10 +619,11 @@ async def test_doc_processor_connection(
             existing = existing_processors.get(config.name)
             if existing and existing.get("apiKey"):
                 real_key = existing["apiKey"]
-        
+
         # 2. 如果没找到，且当前是租户作用域，检查平台配置（如果允许）
         if not real_key and scope == "tenant" and target_tenant_id:
             from app.crud.tenant import crud_tenant
+
             tenant = await crud_tenant.get(db, id=target_tenant_id)
             if tenant and "doc_processors" in (tenant.platform_resources_allowed or []):
                 with temporary_tenant_context(None):
@@ -630,12 +632,13 @@ async def test_doc_processor_connection(
                     )
                     if platform_config:
                         platform_processors = {
-                            p.get("name"): p for p in platform_config.config_value.get("processors", [])
+                            p.get("name"): p
+                            for p in platform_config.config_value.get("processors", [])
                         }
                         platform_existing = platform_processors.get(config.name)
                         if platform_existing and platform_existing.get("apiKey"):
                             real_key = platform_existing["apiKey"]
-        
+
         if real_key:
             config.apiKey = real_key
         # 如果依然没有 real_key，则保持 MASKED_API_KEY (DocProcessorFactory.create 会用它，通常会导致失败)

@@ -408,7 +408,9 @@ async def import_document(
                     target_processor_config = platform_config.config_value.get("processors")[0]
 
             if not target_processor_config:
-                raise BadRequestException(detail=f"未找到类型为 {processor_type} 的文档处理器配置，请联系管理员")
+                raise BadRequestException(
+                    detail=f"未找到类型为 {processor_type} 的文档处理器配置，请联系管理员"
+                )
 
         # 覆盖设置 (如果支持)
         if "config" not in target_processor_config:

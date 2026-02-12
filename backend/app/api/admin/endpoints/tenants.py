@@ -157,23 +157,24 @@ async def delete_tenant(
 
     # 强制清除租户上下文，确保删除操作不受过滤影响
     from app.core.tenant import set_current_tenant
+
     set_current_tenant(None)
 
     # 1. Delete Documents
     deleted_docs = await crud_document.delete_by_tenant(db, tenant_id=tenant_id)
     logger.info(f"Deleted {deleted_docs} documents for tenant {tenant_id}")
-    
+
     # 2. Delete Collections
     deleted_collections = await crud_collection.delete_by_tenant(db, tenant_id=tenant_id)
     logger.info(f"Deleted {deleted_collections} collections for tenant {tenant_id}")
-    
+
     # 3. Delete Sites
     deleted_sites = await crud_site.delete_by_tenant(db, tenant_id=tenant_id)
     logger.info(f"Deleted {deleted_sites} sites for tenant {tenant_id}")
-    
+
     # 4. Delete Users
     deleted_users = await crud_user.delete_by_tenant(db, tenant_id=tenant_id)
     logger.info(f"Deleted {deleted_users} users for tenant {tenant_id}")
-    
+
     await crud_tenant.delete(db, id=tenant_id)
     return ApiResponse.ok(msg="删除成功")

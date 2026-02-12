@@ -185,6 +185,7 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
       if (typeof obj !== 'object') return String(obj)
       if (Array.isArray(obj)) return obj.map(normalize).join(',')
       return Object.keys(obj)
+        .filter(k => obj[k] !== undefined && obj[k] !== null) // Filter out null/undefined keys
         .sort()
         .map(k => `${k}:${normalize(obj[k])}`)
         .join('|')

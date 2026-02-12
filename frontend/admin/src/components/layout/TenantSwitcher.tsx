@@ -13,6 +13,8 @@
 // limitations under the License.
 
 "use client"
+import Link from "next/link"
+import Image from "next/image"
 import { useState, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -82,14 +84,15 @@ export function TenantSwitcher() {
           className="flex items-center gap-2 px-3 py-2 h-auto hover:bg-slate-100 transition-colors rounded-xl border border-transparent hover:border-slate-200"
         >
           <div className={cn(
-            "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-amber-600",
+            "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-amber-600 relative",
             selectedTenant?.logo_url ? "bg-transparent" : "bg-amber-100"
           )}>
             {selectedTenant?.logo_url ? (
-              <img
+              <Image
                 src={selectedTenant.logo_url}
                 alt={selectedTenant.name}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
               />
             ) : (
               <Building2 className="h-4 w-4" />
@@ -131,14 +134,15 @@ export function TenantSwitcher() {
             className="flex items-center gap-3 py-2.5 cursor-pointer"
           >
             <div className={cn(
-              "p-1.5 rounded-lg transition-colors flex items-center justify-center overflow-hidden w-7 h-7",
+              "p-1.5 rounded-lg transition-colors flex items-center justify-center overflow-hidden w-7 h-7 relative",
               tenant.logo_url ? "bg-transparent p-0" : (selectedTenantId === tenant.id ? "bg-primary text-white" : "bg-slate-100 text-slate-500")
             )}>
               {tenant.logo_url ? (
-                <img
+                <Image
                   src={tenant.logo_url}
                   alt={tenant.name}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               ) : (
                 <Building2 className="h-4 w-4" />

@@ -50,8 +50,6 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-
-
 async def create_health_tenant():
     """创建或获取 health 租户"""
     async with AsyncSessionLocal() as db:

@@ -41,7 +41,7 @@ import {
   Plus
 } from "lucide-react"
 import { toast } from "sonner"
-import { CreateUserForm } from "../settings/CreateUserForm"
+import { CreateUserForm } from "@/components/settings/users/CreateUserForm"
 import {
   DropdownMenu,
   DropdownMenuContent,
