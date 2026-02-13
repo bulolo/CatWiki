@@ -3,12 +3,25 @@
 	prod-init prod-up prod-rebuild prod-down prod-restart prod-logs prod-clean
 
 # ==============================================================================
+# 跨平台配置 (Cross-Platform Config)
+# ==============================================================================
+# 检测操作系统，适配 sed 命令
+# macOS 使用 sed -i ''，Linux/WSL 使用 sed -i
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    SED_I := sed -i ''
+else
+    SED_I := sed -i
+endif
+
+# ==============================================================================
 # 默认目标 (Default Goal)
 # ==============================================================================
 help:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo " 🐱 CatWiki 项目管理命令 (Project Management Commands)"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo " 💻 系统检测: $(UNAME_S)"
 	@echo ""
 	@echo " 🛠️  [开发环境] (Development Environment)"
 	@echo "  make dev-init           - 初始化环境配置 (复制 .env.example)"
@@ -34,10 +47,10 @@ help:
 	@echo " 🧩  [通用命令] (Common Commands)"
 	@echo "  make gen-sdk            - 生成前端 TypeScript SDK"
 	@echo "  make license            - 为所有源文件自动注入 License Header"
-	@echo "  make lint               - 运行代码检查 (后端)"
-	@echo "  make lint-fix           - 运行代码检查并自动修复 (后端)"
+	@echo "  make format             - 运行代码格式化 (后端+前端)"
 	@echo "  make help               - 显示此帮助信息"
 	@echo ""
+	@echo " ⚠️  Windows 用户注意: 请使用 WSL2 或 Git Bash 运行 make 命令"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # ==============================================================================
@@ -56,8 +69,8 @@ dev-init:
 	@cp frontend/admin/.env.example frontend/admin/.env
 	@cp frontend/client/.env.example frontend/client/.env
 	@# 自动修正开发环境基础配置
-	@sed -i '' 's/^ENVIRONMENT=.*/ENVIRONMENT=dev/g' backend/.env
-	@sed -i '' 's/^DEBUG=.*/DEBUG=true/g' backend/.env
+	@$(SED_I) 's/^ENVIRONMENT=.*/ENVIRONMENT=dev/g' backend/.env
+	@$(SED_I) 's/^DEBUG=.*/DEBUG=true/g' backend/.env
 	@echo "✅ [CatWiki] 配置文件初始化完成！"
 
 # 启动服务 (前台运行，查看日志)
@@ -106,8 +119,8 @@ prod-init:
 	@cp frontend/admin/.env.example deploy/docker/.env.admin
 	@cp frontend/client/.env.example deploy/docker/.env.client
 	@# 自动修正生产环境基础配置
-	@sed -i '' 's/^ENVIRONMENT=.*/ENVIRONMENT=prod/g' deploy/docker/.env.backend
-	@sed -i '' 's/^DEBUG=.*/DEBUG=false/g' deploy/docker/.env.backend
+	@$(SED_I) 's/^ENVIRONMENT=.*/ENVIRONMENT=prod/g' deploy/docker/.env.backend
+	@$(SED_I) 's/^DEBUG=.*/DEBUG=false/g' deploy/docker/.env.backend
 	@echo "✅ 生产环境配置模板已生成在 deploy/docker/ 目录下。"
 	@echo "⚠️  请务必在运行 'make prod-up' 前修改这些 .env.* 文件中的敏感信息！"
 
