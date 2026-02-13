@@ -329,15 +329,13 @@ def mask_bot_config_inplace(config_value: dict) -> None:
         if "apiKey" in api_bot:
             api_bot["apiKey"] = mask_variable(api_bot["apiKey"])
 
-    # 2. WeChat
-    wechat = config_value.get("wechat", {})
-    if wechat:
-        if "AppSecret" in wechat:
-            wechat["AppSecret"] = mask_variable(wechat["AppSecret"])
-        if "Token" in wechat:
-            wechat["Token"] = mask_variable(wechat["Token"])
-        if "EncodingAESKey" in wechat:
-            wechat["EncodingAESKey"] = mask_variable(wechat["EncodingAESKey"])
+    # 2. WeCom Smart Robot
+    wecom = config_value.get("wecomSmartRobot", {})
+    if wecom:
+        if "token" in wecom:
+            wecom["token"] = mask_variable(wecom["token"])
+        if "encodingAesKey" in wecom:
+            wecom["encodingAesKey"] = mask_variable(wecom["encodingAesKey"])
 
 
 def filter_client_site_data(site: Any) -> Any:
@@ -351,7 +349,7 @@ def filter_client_site_data(site: Any) -> Any:
         bot_config = site.get("bot_config")
 
     if bot_config:
-        # 仅保留 webWidget 配置，彻底移除 apiBot 和 wechat 等包含密钥的配置
+        # 仅保留 webWidget 配置，彻底移除 apiBot, wechat 和 wecomSmartRobot 等包含密钥的配置
         filtered_config = {}
         if "webWidget" in bot_config:
             filtered_config["webWidget"] = bot_config["webWidget"]

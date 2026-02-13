@@ -91,6 +91,6 @@ export * from './VectorStatus';
 export * from './VectorizeRequest';
 export * from './VectorizeResponse';
 export * from './WebWidgetConfig';
-export * from './WechatBotConfig';
+export * from './WecomSmartRobotConfig';
 export * from './app__schemas__chat__ChatMessage';
 export * from './app__schemas__chat_session__ChatMessage';

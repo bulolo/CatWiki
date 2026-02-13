@@ -4,13 +4,13 @@
 /* eslint-disable */
 import type { ApiBotConfig } from './ApiBotConfig';
 import type { WebWidgetConfig } from './WebWidgetConfig';
-import type { WechatBotConfig } from './WechatBotConfig';
+import type { WecomSmartRobotConfig } from './WecomSmartRobotConfig';
 /**
  * 更新机器人配置
  */
 export type BotConfigUpdate = {
     webWidget: WebWidgetConfig;
     apiBot: ApiBotConfig;
-    wechat: WechatBotConfig;
+    wecomSmartRobot: WecomSmartRobotConfig;
 };
 

@@ -21,6 +21,7 @@ from app.api.client.endpoints import (
     sites,
     chat,
     chat_sessions,
+    bots,
     health,
 )
 
@@ -33,4 +34,5 @@ api_router.include_router(collections.router, prefix="/collections", tags=["coll
 api_router.include_router(files.router, prefix="/files", tags=["files"])
 api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
 api_router.include_router(chat_sessions.router, prefix="/chat", tags=["chat-sessions"])
+api_router.include_router(bots.router, prefix="/bot", tags=["bots"])
 api_router.include_router(health.router, prefix="/health", tags=["health"])

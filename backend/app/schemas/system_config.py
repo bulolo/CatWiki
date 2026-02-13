@@ -66,14 +66,15 @@ class ApiBotConfig(BaseModel):
     timeout: int = Field(default=30, ge=1, le=300, description="超时时间（秒）")
 
 
-class WechatBotConfig(BaseModel):
-    """微信公众号配置"""
+
+
+class WecomSmartRobotConfig(BaseModel):
+    """企业微信智能机器人配置"""
 
     enabled: bool = Field(default=False, description="是否启用")
-    appId: str = Field(default="", description="微信 AppID")
-    appSecret: str = Field(default="", description="微信 AppSecret")
-    token: str = Field(default="", description="微信 Token")
-    encodingAESKey: str = Field(default="", description="微信 EncodingAESKey")
+    callbackUrl: str = Field(default="", description="回调地址")
+    token: str = Field(default="", description="Token")
+    encodingAesKey: str = Field(default="", description="Encoding AES Key")
 
 
 class BotConfig(BaseModel):
@@ -81,7 +82,9 @@ class BotConfig(BaseModel):
 
     webWidget: WebWidgetConfig = Field(..., description="网页挂件配置")
     apiBot: ApiBotConfig = Field(..., description="API 机器人配置")
-    wechat: WechatBotConfig = Field(..., description="微信公众号配置")
+    wecomSmartRobot: WecomSmartRobotConfig = Field(
+        default_factory=WecomSmartRobotConfig, description="企业微信智能机器人配置"
+    )
 
 
 # ============ 系统配置 CRUD Schema ============
@@ -144,7 +147,7 @@ class BotConfigUpdate(BaseModel):
 
     webWidget: WebWidgetConfig = Field(..., description="网页挂件配置")
     apiBot: ApiBotConfig = Field(..., description="API 机器人配置")
-    wechat: WechatBotConfig = Field(..., description="微信公众号配置")
+    wecomSmartRobot: WecomSmartRobotConfig = Field(..., description="企业微信智能机器人配置")
 
 
 # ============ 文档处理服务配置相关 Schema ============

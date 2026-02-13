@@ -5,6 +5,7 @@
 import type { BaseHttpRequest } from './core/BaseHttpRequest';
 import type { OpenAPIConfig } from './core/OpenAPI';
 import { FetchHttpRequest } from './core/FetchHttpRequest';
+import { BotsService } from './services/BotsService';
 import { ChatService } from './services/ChatService';
 import { ChatSessionsService } from './services/ChatSessionsService';
 import { CollectionsService } from './services/CollectionsService';
@@ -14,6 +15,7 @@ import { HealthService } from './services/HealthService';
 import { SitesService } from './services/SitesService';
 type HttpRequestConstructor = new (config: OpenAPIConfig) => BaseHttpRequest;
 export class CatWikiClientSdk {
+    public readonly bots: BotsService;
     public readonly chat: ChatService;
     public readonly chatSessions: ChatSessionsService;
     public readonly collections: CollectionsService;
@@ -25,7 +27,7 @@ export class CatWikiClientSdk {
     constructor(config?: Partial<OpenAPIConfig>, HttpRequest: HttpRequestConstructor = FetchHttpRequest) {
         this.request = new HttpRequest({
             BASE: config?.BASE ?? '',
-            VERSION: config?.VERSION ?? '0.0.1',
+            VERSION: config?.VERSION ?? '0.0.4',
             WITH_CREDENTIALS: config?.WITH_CREDENTIALS ?? false,
             CREDENTIALS: config?.CREDENTIALS ?? 'include',
             TOKEN: config?.TOKEN,
@@ -34,6 +36,7 @@ export class CatWikiClientSdk {
             HEADERS: config?.HEADERS,
             ENCODE_PATH: config?.ENCODE_PATH,
         });
+        this.bots = new BotsService(this.request);
         this.chat = new ChatService(this.request);
         this.chatSessions = new ChatSessionsService(this.request);
         this.collections = new CollectionsService(this.request);

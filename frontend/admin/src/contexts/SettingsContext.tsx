@@ -80,7 +80,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (allConfigsData.aiConfig) {
         // [MODIFIED] 直接使用后端返回的扁平结构
         const aiData = allConfigsData.aiConfig as any
-        
+
         const chatConfig = aiData.chat
         const embeddingConfig = aiData.embedding
         const rerankConfig = aiData.rerank
@@ -134,10 +134,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const handleSave = async () => {
     // 构建完整的 AI 配置对象 (扁平结构)
     const aiConfig: AIModelConfig = {
-        chat: configs.chat,
-        embedding: configs.embedding,
-        rerank: configs.rerank,
-        vl: configs.vl
+      chat: configs.chat,
+      embedding: configs.embedding,
+      rerank: configs.rerank,
+      vl: configs.vl
     }
 
     updateAIConfigMutation.mutate(aiConfig, {
@@ -145,37 +145,37 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         // [MODIFIED] 直接使用后端返回的最新配置更新本地状态
         // 这样可以立即显示自动探测的 dimension，而无需等待 refetch
         if (data && data.config_value) {
-            const aiData = data.config_value;
-            // 直接使用扁平结构
-            const chatConfig = aiData.chat
-            const embeddingConfig = aiData.embedding
-            const rerankConfig = aiData.rerank
-            const vlConfig = aiData.vl
+          const aiData = data.config_value;
+          // 直接使用扁平结构
+          const chatConfig = aiData.chat
+          const embeddingConfig = aiData.embedding
+          const rerankConfig = aiData.rerank
+          const vlConfig = aiData.vl
 
-            setSavedConfigs(prev => ({
-                ...prev,
-                chat: deepMerge(initialConfigs.chat, chatConfig),
-                embedding: deepMerge(initialConfigs.embedding, embeddingConfig),
-                rerank: deepMerge(initialConfigs.rerank, rerankConfig),
-                vl: deepMerge(initialConfigs.vl, vlConfig),
-            }))
-            // 同时更新当前编辑状态，以显示最新值
-            setConfigs(prev => ({
-                ...prev,
-                chat: deepMerge(initialConfigs.chat, chatConfig),
-                embedding: deepMerge(initialConfigs.embedding, embeddingConfig),
-                rerank: deepMerge(initialConfigs.rerank, rerankConfig),
-                vl: deepMerge(initialConfigs.vl, vlConfig),
-            }))
+          setSavedConfigs(prev => ({
+            ...prev,
+            chat: deepMerge(initialConfigs.chat, chatConfig),
+            embedding: deepMerge(initialConfigs.embedding, embeddingConfig),
+            rerank: deepMerge(initialConfigs.rerank, rerankConfig),
+            vl: deepMerge(initialConfigs.vl, vlConfig),
+          }))
+          // 同时更新当前编辑状态，以显示最新值
+          setConfigs(prev => ({
+            ...prev,
+            chat: deepMerge(initialConfigs.chat, chatConfig),
+            embedding: deepMerge(initialConfigs.embedding, embeddingConfig),
+            rerank: deepMerge(initialConfigs.rerank, rerankConfig),
+            vl: deepMerge(initialConfigs.vl, vlConfig),
+          }))
         } else {
-             // Fallback logic if data missing
-             setSavedConfigs(prev => ({
-              ...prev,
-              chat: { ...configs.chat },
-              embedding: { ...configs.embedding },
-              rerank: { ...configs.rerank },
-              vl: { ...configs.vl }
-            }))
+          // Fallback logic if data missing
+          setSavedConfigs(prev => ({
+            ...prev,
+            chat: { ...configs.chat },
+            embedding: { ...configs.embedding },
+            rerank: { ...configs.rerank },
+            vl: { ...configs.vl }
+          }))
         }
 
         toast.success("AI 模型配置已保存")
@@ -199,8 +199,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         .map(k => `${k}:${normalize(obj[k])}`)
         .join('|')
     }
-    const currentStr = normalize({ chat: configs.chat, embedding: configs.embedding, rerank: configs.rerank, vl: configs.vl })
-    const savedStr = normalize({ chat: savedConfigs.chat, embedding: savedConfigs.embedding, rerank: savedConfigs.rerank, vl: savedConfigs.vl })
+    const currentStr = normalize({ chat: configs.chat, embedding: configs.embedding, rerank: configs.rerank, vl: configs.vl, botConfig: configs.botConfig })
+    const savedStr = normalize({ chat: savedConfigs.chat, embedding: savedConfigs.embedding, rerank: savedConfigs.rerank, vl: savedConfigs.vl, botConfig: savedConfigs.botConfig })
     return currentStr !== savedStr
   })()
 

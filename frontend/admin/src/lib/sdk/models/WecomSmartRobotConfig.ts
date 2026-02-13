@@ -3,28 +3,24 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * 微信公众号配置
+ * 企业微信智能机器人配置
  */
-export type WechatBotConfig = {
+export type WecomSmartRobotConfig = {
     /**
      * 是否启用
      */
     enabled?: boolean;
     /**
-     * 微信 AppID
+     * 回调地址
      */
-    appId?: string;
+    callbackUrl?: string;
     /**
-     * 微信 AppSecret
-     */
-    appSecret?: string;
-    /**
-     * 微信 Token
+     * Token
      */
     token?: string;
     /**
-     * 微信 EncodingAESKey
+     * Encoding AES Key
      */
-    encodingAESKey?: string;
+    encodingAesKey?: string;
 };
 
