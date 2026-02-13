@@ -12,23 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import base64
 import hashlib
 import logging
 import struct
 import time
 import xml.etree.ElementTree as ET
-from typing import Optional
 
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.database import get_db
+from app.db.database import get_db, AsyncSessionLocal
 from app.crud.site import crud_site
-from app.api.client.endpoints.chat import _process_chat_request
-from app.schemas.chat import ChatCompletionRequest
+from app.services.chat_service import ChatService
+from app.schemas.chat import ChatCompletionRequest, ChatCompletionResponse
+from app.schemas.document import VectorRetrieveFilter
 from app.core.config import settings
 
 router = APIRouter()
@@ -202,34 +204,29 @@ async def handle_message(
                 message=content,
                 thread_id=f"wecom-{from_user}",
                 user=from_user,
-                stream=False
+                stream=False,
+                filter=VectorRetrieveFilter(site_id=site.id)
             )
             
-            # 企业微信要求 5 秒内响应，AI 推理通常需要 10-30 秒
-            # 策略：立即返回确认消息，后台异步处理 AI 推理
+            # 企业微信要求 5 秒内响应，暂时改为同步等待，增加 4.5s 超时保护
+            try:
+                logger.info(f"WeCom synchronous AI starting for {from_user}...")
+                response = await asyncio.wait_for(
+                    ChatService.process_chat_request(chat_request, background_tasks),
+                    timeout=4.5
+                )
+                reply_text = ""
+                if hasattr(response, "choices") and response.choices:
+                    reply_text = response.choices[0].message.content or ""
+            except asyncio.TimeoutError:
+                logger.warning(f"WeCom AI timeout for {from_user}, returning fallback.")
+                reply_text = "AI 助手正在深度思考中，由于企业微信回复时间限制，请稍后再次提问或联系管理员。"
+            except Exception as e:
+                logger.error(f"WeCom AI error: {e}", exc_info=True)
+                reply_text = "抱歉，处理消息时遇到错误。"
             
-            async def _background_ai_inference():
-                """后台执行 AI 推理并记录结果"""
-                try:
-                    logger.info(f"WeCom background AI starting for {from_user}...")
-                    response = await _process_chat_request(
-                        chat_request, site.id, BackgroundTasks()
-                    )
-                    reply_text = ""
-                    if hasattr(response, "choices") and response.choices:
-                        reply_text = response.choices[0].message.content or ""
-                    logger.info(
-                        f"WeCom AI reply for {from_user}: {reply_text[:200]}..."
-                    )
-                except Exception as e:
-                    logger.error(f"WeCom background AI error: {e}", exc_info=True)
-            
-            import asyncio
-            asyncio.create_task(_background_ai_inference())
-            
-            # 立即返回确认消息
-            ack_text = "正在思考中，请稍候..."
-            reply_xml = _build_reply_xml(from_user, to_user, ack_text)
+            # 返回回复消息
+            reply_xml = _build_reply_xml(from_user, to_user, reply_text)
             encrypted_reply, signature, ts = crypt.encrypt(reply_xml, nonce)
             
             response_xml = f"""<xml>
@@ -244,6 +241,38 @@ async def handle_message(
     except Exception as e:
         logger.error(f"WeCom Message handling failed: {e}", exc_info=True)
         return Response(status_code=500)
+
+
+@router.post(
+    "/site-completions",
+    response_model=ChatCompletionResponse,
+    operation_id="createSiteChatCompletion",
+)
+async def create_site_chat_completion(
+    request: ChatCompletionRequest,
+    background_tasks: BackgroundTasks,
+    authorization: str = Header(..., description="Bearer <api_key>"),
+) -> ChatCompletionResponse | StreamingResponse:
+    """
+    创建聊天补全 (专用接口，兼容 OpenAI 格式)
+    """
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header format")
+
+    token = authorization.replace("Bearer ", "")
+
+    async with AsyncSessionLocal() as db:
+        site = await crud_site.get_by_api_token(db, api_token=token)
+        if not site:
+            raise HTTPException(status_code=401, detail="Invalid API Key")
+
+    # 统一将识别出的 site_id 注入 filter
+    if not request.filter:
+        request.filter = VectorRetrieveFilter(site_id=site.id)
+    else:
+        request.filter.site_id = site.id
+
+    return await ChatService.process_chat_request(request, background_tasks)
 
 
 def _build_reply_xml(to_user: str, from_user: str, content: str) -> str:

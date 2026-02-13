@@ -37,33 +37,4 @@ export class ChatService {
             },
         });
     }
-    /**
-     * Create Site Chat Completion
-     * 创建聊天补全 (专用接口)
-     * @returns ChatCompletionResponse Successful Response
-     * @throws ApiError
-     */
-    public createSiteChatCompletion({
-        authorization,
-        requestBody,
-    }: {
-        /**
-         * Bearer <api_key>
-         */
-        authorization: string,
-        requestBody: ChatCompletionRequest,
-    }): CancelablePromise<ChatCompletionResponse> {
-        return this.httpRequest.request({
-            method: 'POST',
-            url: '/v1/chat/site-completions',
-            headers: {
-                'authorization': authorization,
-            },
-            body: requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
 }

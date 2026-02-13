@@ -59,7 +59,6 @@ interface SiteBotSettingsProps {
       apiKey: string
       timeout: number
     }
-
     wecomSmartRobot: {
       enabled: boolean
       callbackUrl: string
@@ -92,7 +91,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
   // 自动同步 API 端点到 state
   useEffect(() => {
     if (config?.apiBot?.enabled && !config.apiBot.apiEndpoint) {
-      const endpoint = `${env.NEXT_PUBLIC_API_URL}/v1/chat/site-completions`
+      const endpoint = `${env.NEXT_PUBLIC_API_URL}/v1/chat/site-completions?site_id=${siteId}`
       onChange("apiBot", "apiEndpoint", endpoint)
     }
     // 自动同步 WeCom Smart Robot 回调地址
@@ -301,7 +300,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
               <div className="flex-1 space-y-2">
                 <div className="relative group">
                   <Input
-                    value={apiBot.apiEndpoint || `${env.NEXT_PUBLIC_API_URL}/v1/chat/site-completions`}
+                    value={apiBot.apiEndpoint || `${env.NEXT_PUBLIC_API_URL}/v1/chat/site-completions?site_id=${siteId}`}
                     readOnly
                     className="bg-slate-50 font-mono text-xs pr-20 border-slate-200 rounded-xl h-11"
                   />
@@ -310,7 +309,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                     size="sm"
                     className="absolute right-1 top-1.5 h-8 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg px-2"
                     onClick={() => {
-                      const endpoint = apiBot.apiEndpoint || `${env.NEXT_PUBLIC_API_URL}/v1/chat/site-completions`
+                      const endpoint = apiBot.apiEndpoint || `${env.NEXT_PUBLIC_API_URL}/v1/chat/site-completions?site_id=${siteId}`
                       navigator.clipboard.writeText(endpoint)
                       toast.success("端点地址已复制")
                     }}
@@ -411,15 +410,12 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                       size="sm"
                       className="h-6 text-[10px] text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 px-2 gap-1 font-semibold"
                       onClick={() => {
-                        const code = `curl -X POST "${apiBot.apiEndpoint || `${env.NEXT_PUBLIC_API_URL}/v1/chat/site-completions`}" \\
+                        const code = `curl -X POST "${apiBot.apiEndpoint || `${env.NEXT_PUBLIC_API_URL}/v1/chat/site-completions?site_id=${siteId}`}" \\
   -H "Authorization: Bearer ${apiBot.apiKey || 'YOUR_API_KEY'}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "message": "你好",
     "thread_id": "unique-conversation-id",
-    "filter": {
-      "site_id": ${siteId}
-    },
     "stream": true
   }'`
                         navigator.clipboard.writeText(code)
@@ -431,15 +427,12 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                     </Button>
                   </div>
                   <code className="block text-[10px] text-emerald-700 font-mono bg-white p-3 rounded-lg overflow-x-auto whitespace-pre border border-emerald-100">
-                    {`curl -X POST "${apiBot.apiEndpoint || `${env.NEXT_PUBLIC_API_URL}/v1/chat/site-completions`}" \\
+                    {`curl -X POST "${apiBot.apiEndpoint || `${env.NEXT_PUBLIC_API_URL}/v1/chat/site-completions?site_id=${siteId}`}" \\
   -H "Authorization: Bearer ${apiBot.apiKey || 'YOUR_API_KEY'}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "message": "你好",
     "thread_id": "unique-conversation-id",
-    "filter": {
-      "site_id": ${siteId}
-    },
     "stream": true
   }'`}
                   </code>
@@ -465,7 +458,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-xl font-bold">企业微信智能机器人 (API模式)</CardTitle>
+                  <CardTitle className="text-xl font-bold">企业微信智能机器人</CardTitle>
                   {expandedCards.wecomSmartRobot ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
                 </div>
                 <CardDescription>
