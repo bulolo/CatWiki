@@ -16,7 +16,13 @@ logger = logging.getLogger(__name__)
 # CatWiki Public Key for License Verification
 # In a real scenario, this would be a professional 2048-bit RSA public key.
 _PUBLIC_KEY = """-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvX7K6G5s... (Placeholder)
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqd5hUoxnXiDCPwItlUue
+3WCoPfSLDZ4MiNhA42k2pzx3D4Sw8gOaReBIegeM9ynN6uJKm2ohs4FMxo958mHo
+oSDtQaPjYcyESIOPainXQEqeU4bKkMGd7lCZX1deM9Y0ASUqqmv0CLdzV1sALiFp
+i/sFN3U3zr4hkEZ+Q/h0dyCZIeH/XYtTHDSsH9MJg6v5dYnyQAEzLFH8QYHMBv8e
+dPukT26EArGRrGNC+HLr/S2QtVnSNvrlRrwfT3B2rxombmkcerNfhTrTtvfRJXv4
+XeVo+CqkC1ERWyAi5FeO+mAhbPuEU+4pkElSS+KOLvDmvy9QtvHBSCH+bG1Ra9go
+2wIDAQAB
 -----END PUBLIC KEY-----"""
 
 
@@ -33,6 +39,7 @@ class LicensePayload(BaseModel):
 class LicenseService:
     _instance = None
     _license_info: Optional[LicensePayload] = None
+    _license_key: Optional[str] = None
     _is_valid: bool = False
 
     def __init__(self):
@@ -51,6 +58,7 @@ class LicenseService:
         """
         if not license_token:
             self._is_valid = False
+            self._license_key = None
             return False
 
         try:
@@ -82,6 +90,7 @@ class LicenseService:
 
             # 4. Store info
             self._license_info = payload
+            self._license_key = license_token
             self._is_valid = True
             return True
 
@@ -101,6 +110,10 @@ class LicenseService:
     @property
     def info(self) -> Optional[LicensePayload]:
         return self._license_info
+
+    @property
+    def license_key(self) -> Optional[str]:
+        return self._license_key
 
 
 license_service = LicenseService.get_instance()

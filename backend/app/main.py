@@ -111,6 +111,14 @@ def create_application() -> FastAPI:
     # 配置中间件
     setup_middleware(application)
 
+    # 注册 EE 诊断中间件 (必须在应用启动前注册)
+    try:
+        from app.ee.integrity import init_app_diagnostics
+
+        init_app_diagnostics(application)
+    except ImportError:
+        pass
+
     # 配置异常处理器
     setup_exception_handlers(application)
 

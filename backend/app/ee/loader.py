@@ -18,7 +18,7 @@ from fastapi import FastAPI
 logger = logging.getLogger(__name__)
 
 
-def init_ee_features(app: FastAPI):
+async def init_ee_features(app: FastAPI):
     """
     Initialize Enterprise Edition features.
     This includes dynamic routing, multi-tenant filters, and middleware.
@@ -56,7 +56,6 @@ def init_ee_features(app: FastAPI):
     try:
         from app.ee.integrity import init_app_diagnostics, init_background_monitoring
 
-        init_app_diagnostics(app)
         init_background_monitoring()
         logger.info("✅ [EE] Integrity & Monitoring Service initialized")
     except ImportError:

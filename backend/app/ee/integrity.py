@@ -168,9 +168,7 @@ class SystemIntegrityManager:
                         "installation_id": self.installation_id,
                         "timestamp": datetime.utcnow().isoformat(),
                         "telemetry": telemetry,
-                        "license_key": settings.CATWIKI_LICENSE_KEY
-                        if hasattr(settings, "CATWIKI_LICENSE_KEY")
-                        else None,
+                        "license_key": license_service.license_key,
                     },
                 )
         except Exception as e:
