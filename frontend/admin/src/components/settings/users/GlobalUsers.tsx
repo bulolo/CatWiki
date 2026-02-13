@@ -79,6 +79,7 @@ import {
   useUpdateUserSites
 } from "@/hooks"
 import { getUserInfo } from "@/lib/auth"
+import { env } from "@/lib/env"
 
 export function GlobalUsers() {
   const router = useRouter()
@@ -242,7 +243,9 @@ export function GlobalUsers() {
       >
         {user.role === UserRole.ADMIN || user.role === UserRole.TENANT_ADMIN ? (
           <div className="w-full h-full px-4 py-3 min-h-[50px] flex flex-wrap gap-1 items-center relative pr-8">
-            <span className="text-xs text-muted-foreground">{user.role === UserRole.ADMIN ? "全平台" : "全租户"}</span>
+            <span className="text-xs text-muted-foreground">
+              {user.role === UserRole.ADMIN ? "全平台" : (env.NEXT_PUBLIC_CATWIKI_EDITION === 'community' ? "全部站点" : "全租户")}
+            </span>
           </div>
         ) : (
           <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -419,7 +422,7 @@ export function GlobalUsers() {
                           )}
                         >
                           {user.role === UserRole.ADMIN ? "系统管理员" :
-                            user.role === UserRole.TENANT_ADMIN ? "租户管理员" :
+                            user.role === UserRole.TENANT_ADMIN ? (env.NEXT_PUBLIC_CATWIKI_EDITION === 'community' ? "超级管理员" : "租户管理员") :
                               user.role === UserRole.SITE_ADMIN ? "站点管理员" : "未知角色"}
                         </Badge>
                       </TableCell>
@@ -465,7 +468,7 @@ export function GlobalUsers() {
                                 </DropdownMenuSubTrigger>
                                 <DropdownMenuPortal>
                                   <DropdownMenuSubContent className="w-48 z-[200]">
-                                    {isSystemAdmin && (
+                                    {isSystemAdmin && env.NEXT_PUBLIC_CATWIKI_EDITION !== 'community' && (
                                       <DropdownMenuItem
                                         onSelect={() => updateRole(user.id, UserRole.ADMIN)}
                                         className="flex items-center justify-between"
@@ -477,7 +480,7 @@ export function GlobalUsers() {
                                       onSelect={() => updateRole(user.id, UserRole.TENANT_ADMIN)}
                                       className="flex items-center justify-between"
                                     >
-                                      <span>租户管理员</span>
+                                      <span>{env.NEXT_PUBLIC_CATWIKI_EDITION === 'community' ? '超级管理员' : '租户管理员'}</span>
                                       {user.role === UserRole.TENANT_ADMIN && <Check className="h-4 w-4 text-primary" />}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem

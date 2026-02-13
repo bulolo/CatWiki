@@ -29,7 +29,11 @@ import {
 import { toast } from "sonner"
 import { useInviteUser, useSitesList } from "@/hooks"
 import { getUserInfo } from "@/lib/auth"
-import { UserRole, type Site } from "@/lib/api-client"
+import { env } from "@/lib/env"
+import {
+  UserRole,
+  type Site
+} from "@/lib/api-client"
 import {
   Select,
   SelectContent,
@@ -53,6 +57,7 @@ export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName
   const userInfo = typeof window !== 'undefined' ? getUserInfo() : null
   const isPlatformAdmin = userInfo?.role === UserRole.ADMIN
   const isTenantAdmin = userInfo?.role === UserRole.TENANT_ADMIN
+  const edition = env.NEXT_PUBLIC_CATWIKI_EDITION
 
   const { data: sites } = useSitesList({ page: 1, size: 100 })
   const inviteUserMutation = useInviteUser()
@@ -196,22 +201,22 @@ export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName
                   </p>
                 </div>
 
-                {!fixedSiteId && (isPlatformAdmin || isTenantAdmin) && (
-                  <div
-                    className={`border rounded-xl p-4 cursor-pointer transition-all ${role === UserRole.TENANT_ADMIN ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 hover:border-slate-300'}`}
-                    onClick={() => setRole(UserRole.TENANT_ADMIN)}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="font-semibold text-sm">租户管理员</span>
-                      {role === UserRole.TENANT_ADMIN && <Check className="h-4 w-4 text-primary" />}
-                    </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      管理当前租户下的所有站点、用户和全局配置，不可跨租户。
-                    </p>
+                <div
+                  className={`border rounded-xl p-4 cursor-pointer transition-all ${role === UserRole.TENANT_ADMIN ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 hover:border-slate-300'}`}
+                  onClick={() => setRole(UserRole.TENANT_ADMIN)}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-semibold text-sm">租户管理员</span>
+                    {role === UserRole.TENANT_ADMIN && <Check className="h-4 w-4 text-primary" />}
                   </div>
-                )}
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    {edition === 'community'
+                      ? "拥有全平台管理权限，可管理所有站点、用户和全局配置。"
+                      : "管理当前租户下的所有站点、用户和全局配置，不可跨租户。"}
+                  </p>
+                </div>
 
-                {!fixedSiteId && isPlatformAdmin && (
+                {edition !== 'community' && !fixedSiteId && isPlatformAdmin && (
                   <div
                     className={`border rounded-xl p-4 cursor-pointer transition-all ${role === UserRole.ADMIN ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 hover:border-slate-300'}`}
                     onClick={() => setRole(UserRole.ADMIN)}

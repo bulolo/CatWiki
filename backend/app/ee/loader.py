@@ -39,6 +39,25 @@ def init_ee_features(app: FastAPI):
 
     # 2. EE logic is now plugged into core events via get_current_tenant()
     # No extra DB initialization needed here for now.
+    
+    # 3. Verify License (Enterprise Only)
+    from app.ee.license import license_service
+    is_licensed = license_service.verify_license(settings.CATWIKI_LICENSE_KEY)
+    
+    if not is_licensed:
+        logger.warning("🔒 [EE] License invalid or missing. Some premium features may be restricted.")
+    else:
+        logger.info(f"✅ [EE] License verified for {license_service.info.customer}")
+
+    # 4. Initialize Integrity Service
+    try:
+        from app.ee.integrity import init_app_diagnostics, init_background_monitoring
+        init_app_diagnostics(app)
+        init_background_monitoring()
+        logger.info("✅ [EE] Integrity & Monitoring Service initialized")
+    except ImportError:
+        logger.warning("⚠️ [EE] Integrity Service not found, skipping...")
+    
     pass
 
 def get_ee_tenant_id(current_user, request) -> int | None:

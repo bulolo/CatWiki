@@ -102,7 +102,7 @@ function AdminSidebarComponent() {
               <Settings className="text-primary-foreground h-5 w-5" />
             </div>
             <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/70 truncate">
-              {process.env.NEXT_PUBLIC_CATWIKI_EDITION === 'community' 
+              {env.NEXT_PUBLIC_CATWIKI_EDITION === 'community' 
                 ? '系统设置' 
                 : (userRole === 'admin' ? '系统管理' : '租户设置')}
             </span>

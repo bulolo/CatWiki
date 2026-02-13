@@ -64,7 +64,7 @@ async def create_health_tenant():
                     plan="pro",
                     plan_expires_at=datetime.now(timezone.utc) + timedelta(days=365),
                     status="active",
-                    platform_resources_allowed=["models", "doc_processors"],
+                    # platform_resources_allowed=["models", "doc_processors"],
                 )
                 tenant = await crud_tenant.create(db, obj_in=tenant_in)
                 logger.info(f"✅ 创建 Health 租户：{tenant.name} (Slug: {tenant.slug})")

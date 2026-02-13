@@ -30,6 +30,7 @@ import {
   User
 } from "lucide-react"
 import { getUserInfo } from '@/lib/auth'
+import { env } from '@/lib/env'
 import { useState, useEffect } from 'react'
 import { StatePersistence } from '@/components/layout/StatePersistence'
 
@@ -112,7 +113,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-slate-50/50">
       {/* Settings Modal Overlay */}
       {(searchParams.get('modal') === 'settings' || searchParams.get('modal') === 'site-settings') && <SettingsModal />}
-      {process.env.NEXT_PUBLIC_CATWIKI_EDITION !== 'community' && searchParams.get('modal') === 'platform' && <PlatformModal />}
+      {env.NEXT_PUBLIC_CATWIKI_EDITION !== 'community' && searchParams.get('modal') === 'platform' && <PlatformModal />}
 
       <ErrorBoundary
         fallback={
@@ -147,7 +148,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
 
             {/* 平台管理入口 - 仅 admin 可见 (仅 EE 版) */}
-            {process.env.NEXT_PUBLIC_CATWIKI_EDITION !== 'community' && userInfo?.role === 'admin' && (
+            {env.NEXT_PUBLIC_CATWIKI_EDITION !== 'community' && userInfo?.role === 'admin' && (
               <button
                 onClick={() => {
                   router.push('?modal=platform')

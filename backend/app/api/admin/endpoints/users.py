@@ -192,6 +192,10 @@ async def create_user(
         if user_in.role == UserRole.ADMIN:
             raise ForbiddenException(detail="租户管理员无法创建系统管理员")
 
+    # 社区版禁止创建系统管理员
+    if settings.CATWIKI_EDITION == "community" and user_in.role == UserRole.ADMIN:
+        raise ForbiddenException(detail="社区版无法创建系统管理员角色")
+
     if current_user.role == UserRole.SITE_ADMIN:
         if user_in.role != UserRole.SITE_ADMIN:
             # 原本是 EDITOR，由于 EDITOR 移除，现在站点管理员可以创建其他站点管理员（或默认站点管理员）
@@ -235,6 +239,10 @@ async def invite_user(
     if current_user.role == UserRole.TENANT_ADMIN:
         if user_in.role == UserRole.ADMIN:
             raise ForbiddenException(detail="无法邀请系统管理员")
+
+    # 社区版禁止邀请系统管理员
+    if settings.CATWIKI_EDITION == "community" and user_in.role == UserRole.ADMIN:
+        raise ForbiddenException(detail="社区版无法邀请系统管理员角色")
 
     if current_user.role == UserRole.SITE_ADMIN:
         # 站点管理员只能邀请站点管理员
@@ -290,6 +298,10 @@ async def update_user(
             raise ForbiddenException(detail="无权修改系统管理员")
         if user_in.role == UserRole.ADMIN:
             raise ForbiddenException(detail="无法提权为系统管理员")
+
+    # 社区版禁止提权为系统管理员
+    if settings.CATWIKI_EDITION == "community" and user_in.role == UserRole.ADMIN:
+        raise ForbiddenException(detail="社区版无法设置为系统管理员角色")
 
     if current_user.role == UserRole.SITE_ADMIN:
         # 不能修改管理员和租户管理员

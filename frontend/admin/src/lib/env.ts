@@ -78,6 +78,12 @@ const envSchema = z.object({
   NEXT_PUBLIC_CLIENT_URL: z.string().url({
     message: 'NEXT_PUBLIC_CLIENT_URL 必须是有效的 URL'
   }).default('http://localhost:8002'),
+
+  /**
+   * CatWiki 版本
+   * community | enterprise
+   */
+  NEXT_PUBLIC_CATWIKI_EDITION: z.enum(['community', 'enterprise']).default('community'),
 })
 
 /**
@@ -100,6 +106,7 @@ function validateEnv(): Env {
       NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
       NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
       NEXT_PUBLIC_CLIENT_URL: process.env.NEXT_PUBLIC_CLIENT_URL,
+      NEXT_PUBLIC_CATWIKI_EDITION: process.env.NEXT_PUBLIC_CATWIKI_EDITION,
     })
 
     return env

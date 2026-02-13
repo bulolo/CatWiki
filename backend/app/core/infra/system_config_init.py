@@ -18,7 +18,6 @@ from app.core.infra.config import settings
 from app.crud.system_config import crud_system_config
 from app.db.database import AsyncSessionLocal
 from app.api.admin.endpoints.system_config import AI_CONFIG_KEY, DOC_PROCESSOR_CONFIG_KEY
-from app.core.infra.integrity import init_background_monitoring
 
 logger = logging.getLogger(__name__)
 
@@ -179,5 +178,5 @@ async def init_system_configs():
     await sync_ai_config_to_db()
     await sync_doc_processor_config_to_db()
 
-    # 启动后台监控任务
-    init_background_monitoring()
+    # 启动后台监控任务 (moved to EE)
+    # init_background_monitoring()

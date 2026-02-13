@@ -27,7 +27,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.core.infra.config import settings
-from app.core.infra.integrity import init_app_diagnostics
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +103,7 @@ def setup_middleware(app):
     # 错误处理中间件
     app.add_middleware(ErrorHandlingMiddleware)
 
-    # 注册系统诊断模块
-    init_app_diagnostics(app)
+    # 注册系统诊断模块 (moved to EE)
+    # init_app_diagnostics(app)
 
     logger.info("中间件配置完成")
