@@ -149,16 +149,35 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
         bot_config: botConfig
       }
     }, {
-      onSuccess: () => {
+      onSuccess: (updatedSite) => {
+        // 使用服务器返回的数据更新本地状态和对比基准
+        const bConfig = updatedSite.bot_config ? {
+          ...initialConfigs.botConfig,
+          ...updatedSite.bot_config,
+          webWidget: { ...initialConfigs.botConfig.webWidget, ...updatedSite.bot_config.webWidget },
+          apiBot: { ...initialConfigs.botConfig.apiBot, ...updatedSite.bot_config.apiBot },
+          wechat: { ...initialConfigs.botConfig.wechat, ...updatedSite.bot_config.wechat },
+        } : initialConfigs.botConfig
+
+        // 更新本地状态，以便 UI 立即映射新生成的 Key 等
+        setBotConfig(bConfig)
+        setName(updatedSite.name)
+        setSlug(updatedSite.slug || "")
+        setDescription(updatedSite.description || "")
+        setIsActive(updatedSite.status === "active")
+        setThemeColor(updatedSite.theme_color || "blue")
+        setLayoutMode(updatedSite.layout_mode || "sidebar")
+        setQuickQuestions(updatedSite.quick_questions || [])
+
         initialDataRef.current = {
-          name: name.trim(),
-          slug: slug.trim(),
-          description: description.trim(),
-          isActive,
-          themeColor,
-          layoutMode,
-          quickQuestions: cleanedQuestions,
-          botConfig
+          name: updatedSite.name,
+          slug: updatedSite.slug || "",
+          description: updatedSite.description || "",
+          isActive: updatedSite.status === "active",
+          themeColor: updatedSite.theme_color || "blue",
+          layoutMode: updatedSite.layout_mode || "sidebar",
+          quickQuestions: updatedSite.quick_questions || [],
+          botConfig: bConfig
         }
         toast.success("站点配置已保存")
       }

@@ -19,6 +19,7 @@
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.infra.config import settings
@@ -122,7 +123,7 @@ def setup_exception_handlers(app: FastAPI):
             content={
                 "code": 422,
                 "msg": "请求参数验证失败",
-                "data": {"errors": exc.errors()} if settings.DEBUG else None,
+                "data": {"errors": jsonable_encoder(exc.errors())} if settings.DEBUG else None,
             },
         )
 
@@ -140,7 +141,7 @@ def setup_exception_handlers(app: FastAPI):
             content={
                 "code": 500,
                 "msg": "服务器内部错误，请联系管理员",
-                "data": {"detail": str(exc), "traceback": traceback.format_exc()}
+                "data": jsonable_encoder({"detail": str(exc), "traceback": traceback.format_exc()})
                 if settings.DEBUG
                 else None,
             },

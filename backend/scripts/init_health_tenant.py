@@ -54,7 +54,7 @@ async def create_health_tenant():
     """创建或获取 health 租户"""
     async with AsyncSessionLocal() as db:
         try:
-            tenant_slug = "health-team"
+            tenant_slug = "health"
             tenant = await crud_tenant.get_by_slug(db, slug=tenant_slug)
             if not tenant:
                 tenant_in = TenantCreate(

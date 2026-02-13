@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.web.deps import get_current_user_with_tenant
 from app.core.web.exceptions import ConflictException, NotFoundException
-from app.core.common.utils import Paginator
+from app.core.common.utils import Paginator, generate_token
 from app.crud import crud_site, crud_user
 from app.crud.user import get_password_hash
 from app.db.database import get_db
@@ -111,6 +111,12 @@ async def create_site(
         if existing_slug:
             raise ConflictException(detail=f"标识 '{site_in.slug}' 已存在")
 
+    # 处理机器人配置：如果启用 API Bot 且没填 Key，自动生成一个
+    if site_in.bot_config:
+        api_bot = site_in.bot_config.get("apiBot")
+        if api_bot and api_bot.get("enabled") and not api_bot.get("apiKey"):
+            api_bot["apiKey"] = f"sk-{generate_token(24)}"
+
     site = await crud_site.create(db, obj_in=site_in)
 
     # 如果提供了管理员信息，初始化站点管理员
@@ -174,6 +180,19 @@ async def update_site(
         existing_slug = await crud_site.get_by_slug(db, slug=site_in.slug)
         if existing_slug and existing_slug.id != site_id:
             raise ConflictException(detail=f"标识 '{site_in.slug}' 已存在")
+
+    # 处理机器人配置：如果启用 API Bot 且没填 Key，尝试沿用旧的或生成新的
+    if site_in.bot_config:
+        api_bot = site_in.bot_config.get("apiBot")
+        if api_bot and api_bot.get("enabled") and not api_bot.get("apiKey"):
+            # 尝试从原有配置中获取
+            old_bot_config = site.bot_config or {}
+            old_api_bot = old_bot_config.get("apiBot")
+            if old_api_bot and old_api_bot.get("apiKey"):
+                api_bot["apiKey"] = old_api_bot["apiKey"]
+            else:
+                # 原来也没有，生成一个新的
+                api_bot["apiKey"] = f"sk-{generate_token(24)}"
 
     site = await crud_site.update(db, db_obj=site, obj_in=site_in)
     return ApiResponse.ok(data=site, msg="更新成功")

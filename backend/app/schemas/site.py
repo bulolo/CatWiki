@@ -42,15 +42,6 @@ class SiteBase(BaseModel):
     @classmethod
     def validate_bot_config(cls, v: dict | None) -> dict | None:
         """验证机器人配置"""
-        if not v:
-            return v
-
-        # 验证 API Bot 配置
-        api_bot = v.get("apiBot")
-        if api_bot and api_bot.get("enabled"):
-            if not api_bot.get("apiKey"):
-                raise ValueError("启用 API 机器人时，API Key 不能为空")
-
         return v
 
 
@@ -79,15 +70,6 @@ class SiteUpdate(BaseModel):
     @classmethod
     def validate_bot_config(cls, v: dict | None) -> dict | None:
         """验证机器人配置"""
-        if not v:
-            return v
-
-        # 验证 API Bot 配置
-        api_bot = v.get("apiBot")
-        if api_bot and api_bot.get("enabled"):
-            if not api_bot.get("apiKey"):
-                raise ValueError("启用 API 机器人时，API Key 不能为空")
-
         return v
 
 
