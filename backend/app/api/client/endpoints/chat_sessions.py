@@ -27,7 +27,8 @@ from app.schemas.chat_session import (
     ChatSessionResponse,
     ChatSessionMessagesResponse,
 )
-from app.services.chat_session_service import ChatSessionService
+from app.services.chat.session_service import ChatSessionService
+from app.services.chat.history_service import ChatHistoryService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -106,7 +107,7 @@ async def get_session_messages(
 
     从数据库全量历史表中读取所有消息。
     """
-    result = await ChatSessionService.get_session_messages(db=db, thread_id=thread_id)
+    result = await ChatHistoryService.get_session_messages(db=db, thread_id=thread_id)
 
     return ApiResponse.ok(
         data=ChatSessionMessagesResponse(

@@ -17,10 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.infra.cache import cached_response
 from app.core.web.exceptions import NotFoundException
-from app.core.common.utils import Paginator, filter_client_site_data
+from app.core.common.utils import Paginator
+from app.core.common.masking import filter_client_site_data
 from app.crud import crud_site
 from app.db.database import get_db
-from app.schemas import ApiResponse, PaginatedResponse
+from app.schemas.response import ApiResponse, PaginatedResponse
 from app.schemas.site import Site
 
 router = APIRouter()

@@ -13,29 +13,24 @@
 # limitations under the License.
 
 """
-Pydantic Schemas
-
-为了减少耦合，请尽量直接从子模块导入所需的 Schema。
-此文件仅 re-export 最核心的基础类型。
+Pytest 配置和共享 fixtures
 """
 
-from app.schemas.base import BaseSchema, BaseSchemaWithTimestamps
-from app.schemas.response import (
-    ApiResponse,
-    ApiResponseModel,
-    HealthResponse,
-    PaginatedResponse,
-    PaginationInfo,
-    Response,  # 向后兼容别名
-)
+import os
 
-__all__ = [
-    "BaseSchema",
-    "BaseSchemaWithTimestamps",
-    "ApiResponse",
-    "ApiResponseModel",
-    "PaginationInfo",
-    "PaginatedResponse",
-    "HealthResponse",
-    "Response",
-]
+import pytest
+
+# 强制使用测试环境变量 (在任何应用导入之前)
+os.environ.setdefault("ENVIRONMENT", "dev")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-unit-tests-only")
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///")
+os.environ.setdefault("DB_HOST", "localhost")
+os.environ.setdefault("DB_PORT", "5432")
+os.environ.setdefault("DB_NAME", "test")
+os.environ.setdefault("DB_USER", "test")
+os.environ.setdefault("DB_PASSWORD", "test")
+
+
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"

@@ -28,7 +28,7 @@ from app.crud import crud_site, crud_user
 from app.crud.user import get_password_hash
 from app.db.database import get_db
 from app.models.user import User, UserRole
-from app.schemas import ApiResponse, PaginatedResponse
+from app.schemas.response import ApiResponse, PaginatedResponse
 from app.schemas.site import Site, SiteCreate, SiteUpdate
 from app.schemas.user import UserCreate, UserUpdate
 

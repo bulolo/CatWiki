@@ -13,29 +13,29 @@
 # limitations under the License.
 
 """
-Pydantic Schemas
-
-为了减少耦合，请尽量直接从子模块导入所需的 Schema。
-此文件仅 re-export 最核心的基础类型。
+Base Seeder - 数据播种基类
 """
 
-from app.schemas.base import BaseSchema, BaseSchemaWithTimestamps
-from app.schemas.response import (
-    ApiResponse,
-    ApiResponseModel,
-    HealthResponse,
-    PaginatedResponse,
-    PaginationInfo,
-    Response,  # 向后兼容别名
-)
+import logging
+from abc import ABC, abstractmethod
+from typing import Any
 
-__all__ = [
-    "BaseSchema",
-    "BaseSchemaWithTimestamps",
-    "ApiResponse",
-    "ApiResponseModel",
-    "PaginationInfo",
-    "PaginatedResponse",
-    "HealthResponse",
-    "Response",
-]
+from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
+
+
+class BaseSeeder(ABC):
+    """数据播种基类"""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    @abstractmethod
+    async def run(self, *args, **kwargs) -> Any:
+        """执行播种逻辑"""
+        pass
+
+    async def log(self, message: str):
+        """记录日志"""
+        logger.info(f"🌱 [Seeder] {message}")

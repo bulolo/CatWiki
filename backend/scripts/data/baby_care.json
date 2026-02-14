@@ -1,0 +1,136 @@
+{
+  "tenant": {
+    "name": "Baby Team",
+    "slug": "baby-care",
+    "description": "专注 0-6 岁科学育儿知识平台",
+    "plan": "pro",
+    "status": "active"
+  },
+  "admin": {
+    "name": "Baby Admin",
+    "email": "baby_admin@example.com",
+    "password": "admin123"
+  },
+  "site": {
+    "name": "育儿百科",
+    "slug": "baby-guide",
+    "description": "一站式育儿知识普及平台，涵盖日常护理、营养补给、心理成长等内容",
+    "icon": "baby",
+    "status": "active",
+    "theme_color": "pink",
+    "layout_mode": "sidebar",
+    "quick_questions": [
+      {
+        "text": "新生儿黄疸怎么观察？",
+        "category": "日常护理"
+      },
+      {
+        "text": "宝宝6个月了什么时候加辅食？",
+        "category": "营养指导"
+      },
+      {
+        "text": "如何建立宝宝的睡眠规律？",
+        "category": "成长发育"
+      }
+    ]
+  },
+  "model_config": {
+    "chat": {
+      "provider": "openai",
+      "model": "",
+      "apiKey": "",
+      "baseUrl": "",
+      "mode": "custom"
+    },
+    "embedding": {
+      "provider": "openai",
+      "model": "",
+      "apiKey": "",
+      "baseUrl": "",
+      "dimension": null,
+      "mode": "custom"
+    },
+    "rerank": {
+      "provider": "openai",
+      "model": "",
+      "apiKey": "",
+      "baseUrl": "",
+      "mode": "custom"
+    },
+    "vl": {
+      "provider": "openai",
+      "model": "",
+      "apiKey": "",
+      "baseUrl": "",
+      "mode": "custom"
+    }
+  },
+  "collections": [
+    {
+      "title": "成长指南",
+      "order": 1,
+      "documents": [
+        {
+          "title": "新生儿护理基础",
+          "summary": "为新手爸妈准备的新生儿日常护理核心要点。",
+          "content": "# 新生儿护理基础\n\n## 1. 脐带护理\n保持干燥是核心，每日用75%酒精轻拭。正常会在1-2周脱落。\n\n## 2. 洗澡技巧\n室温控制在26-28度，水温37-40度。坚持“头-身-脚”的顺序。\n\n## 3. 母乳喂养\n按需喂养，注意观察衔乳姿势，排气后再放下。",
+          "category": "日常护理",
+          "tags": [
+            "新生儿",
+            "护理",
+            "母乳"
+          ],
+          "author": "育儿专家团队"
+        },
+        {
+          "title": "婴儿营养与辅食添加",
+          "summary": "指导宝宝从6个月开始科学添加辅食。",
+          "content": "# 婴儿营养与辅食添加\n\n## 1. 最佳时机\n满6个月（180天）是开始添加的最佳时间。\n\n## 2. 第一口辅食\n推荐强化铁的婴儿米粉，稀糊状开始。\n\n## 3. 添加原则\n一种到多种，从稀到稠，从细到粗。",
+          "category": "营养指导",
+          "tags": [
+            "辅食",
+            "营养",
+            "喂养"
+          ],
+          "author": "育儿专家团队"
+        },
+        {
+          "title": "婴幼儿疫苗接种指南",
+          "summary": "详细列出宝宝出生后需要接种的关键疫苗及时间表。",
+          "content": "# 婴幼儿疫苗接种指南\n\n## 1. 必种疫苗（一类）\n出生即接种：乙肝疫苗第一针、卡介苗。\n\n## 2. 接种注意事项\n接种后留观30分钟，观察是否有发热、过敏反应。\n\n## 3. 常见二类疫苗建议\n如五联疫苗、肺炎13价疫苗、流感疫苗等。",
+          "category": "成长发育",
+          "tags": [
+            "疫苗",
+            "健康",
+            "防疫"
+          ],
+          "author": "育儿专家团队"
+        },
+        {
+          "title": "宝宝睡眠训练",
+          "summary": "如何通过建立睡眠仪式，让宝宝和家长都睡得更好。",
+          "content": "# 宝宝睡眠训练\n\n## 1. 建立昼夜节奏\n白天保持明亮和正常噪音，晚上保持安静黑暗。\n\n## 2. 睡眠仪式\n洗澡、换衣、讲故事/听音乐，固定流程暗示进入睡眠。\n\n## 3. 安全睡眠环境\n平卧、硬床垫、不放置毛绒玩具，防止窒息。",
+          "category": "成长发育",
+          "tags": [
+            "睡眠",
+            "节奏",
+            "安全"
+          ],
+          "author": "育儿专家团队"
+        },
+        {
+          "title": "亲子启蒙与互动",
+          "summary": "寓教于乐，在日常互动中促进宝宝大脑发育。",
+          "content": "# 亲子启蒙与互动\n\n## 1. 触觉游戏\n抚触大脑发育，使用不同材质的玩具刺激感官。\n\n## 2. 语言启蒙\n多跟宝宝“聊天”，即便他还不会写字，指读绘本非常重要。\n\n## 3. 大运动发展\nTummy Time（俯卧抬头）是增强颈椎力量的关键。",
+          "category": "亲子教育",
+          "tags": [
+            "早教",
+            "互动",
+            "发育"
+          ],
+          "author": "育儿专家团队"
+        }
+      ]
+    }
+  ]
+}

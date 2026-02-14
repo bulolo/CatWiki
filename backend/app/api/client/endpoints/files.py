@@ -27,7 +27,7 @@ from app.core.web.exceptions import (
     ServiceUnavailableException,
 )
 from app.core.infra.rustfs import RustFSService
-from app.schemas import ApiResponse
+from app.schemas.response import ApiResponse
 
 router = APIRouter()
 

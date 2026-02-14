@@ -21,7 +21,7 @@ from app.services.chat_service import ChatService
 from app.schemas.chat import ChatCompletionRequest, ChatCompletionResponse
 from app.schemas.document import VectorRetrieveFilter
 from app.core.infra.config import settings
-from app.core.security.wecom_robot_crypt import WXBizJsonMsgCrypt
+from app.core.integration.wecom.crypt import WXBizJsonMsgCrypt
 from app.services.wecom_robot_service import WeComRobotService
 
 router = APIRouter()

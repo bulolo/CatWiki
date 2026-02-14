@@ -35,7 +35,7 @@ from app.core.web.exceptions import (
 )
 from app.core.infra.rustfs import RustFSService
 from app.models.user import User
-from app.schemas import ApiResponse
+from app.schemas.response import ApiResponse
 
 router = APIRouter()
 

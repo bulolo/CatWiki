@@ -25,7 +25,7 @@ from app.crud import crud_collection, crud_document, crud_site
 from app.db.database import get_db
 from app.models.site import Site
 from app.models.user import User
-from app.schemas import ApiResponse
+from app.schemas.response import ApiResponse
 from app.schemas.collection import (
     Collection,
     CollectionCreate,

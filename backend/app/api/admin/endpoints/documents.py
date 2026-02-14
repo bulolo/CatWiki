@@ -35,16 +35,18 @@ from app.core.infra.tenant import get_current_tenant
 from app.core.web.exceptions import BadRequestException, NotFoundException
 from app.core.common.utils import (
     Paginator,
+    get_vector_id,
+)
+from app.core.common.document_utils import (
     build_collection_map,
     enrich_document_dict,
-    get_vector_id,
 )
 from app.crud import crud_collection, crud_document, crud_site
 from app.db.database import AsyncSessionLocal
 from app.models.document import Document as DocumentModel
 from app.models.document import VectorStatus, DocumentStatus
 from app.models.user import User
-from app.schemas import ApiResponse, PaginatedResponse
+from app.schemas.response import ApiResponse, PaginatedResponse
 from app.schemas.document import (
     Document,
     DocumentCreate,

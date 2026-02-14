@@ -468,7 +468,7 @@ async def login(
         raise BadRequestException(detail="邮箱或密码错误")
 
     # 生成真实的 JWT token
-    from app.core.common.utils import create_access_token
+    from app.core.common.auth import create_access_token
 
     token_data = {
         "sub": str(user.id),  # subject (用户ID)

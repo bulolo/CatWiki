@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.infra.config import settings
 from app.core.web.exceptions import ForbiddenException, NotFoundException, UnauthorizedException
 from app.core.infra.rustfs import RustFSService, get_rustfs_service
-from app.core.common.utils import decode_access_token
+from app.core.common.auth import decode_access_token
 from app.crud import crud_site
 from app.crud.user import crud_user
 from app.db.database import get_db

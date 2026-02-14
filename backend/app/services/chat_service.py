@@ -39,7 +39,8 @@ from app.schemas.chat import (
     ChatCompletionResponse,
     ChatMessage,
 )
-from app.services.chat_session_service import ChatSessionService
+from app.services.chat.session_service import ChatSessionService
+from app.services.chat.history_service import ChatHistoryService
 from app.services.configuration_service import configuration_service
 from app.core.ai.providers.llm_manager import llm_manager
 from app.crud.site import crud_site
@@ -157,7 +158,7 @@ class ChatService:
                             db=db, thread_id=thread_id, assistant_message=persistent_content
                         )
 
-                    await ChatSessionService.save_history_from_messages(
+                    await ChatHistoryService.save_history_from_messages(
                         db=db, thread_id=thread_id, messages=final_messages
                     )
 
@@ -210,7 +211,7 @@ class ChatService:
                     member_id=request.user,
                     tenant_id=tenant_id,
                 )
-                await ChatSessionService.save_message(
+                await ChatHistoryService.save_message(
                     db=db, thread_id=request.thread_id, role="user", content=request.message
                 )
             except Exception as e:
@@ -264,7 +265,7 @@ class ChatService:
                             await ChatSessionService.update_assistant_response(
                                 db=db, thread_id=request.thread_id, assistant_message=content
                             )
-                            await ChatSessionService.save_history_from_messages(
+                            await ChatHistoryService.save_history_from_messages(
                                 db=db, thread_id=request.thread_id, messages=messages
                             )
 

@@ -13,29 +13,18 @@
 # limitations under the License.
 
 """
-Pydantic Schemas
+chat 子包 - 聊天相关服务
 
-为了减少耦合，请尽量直接从子模块导入所需的 Schema。
-此文件仅 re-export 最核心的基础类型。
+提供以下服务:
+- ChatSessionService: 会话 CRUD 和统计
+- ChatHistoryService: 消息持久化
+- ChatService: 聊天核心逻辑 (仍在 app.services.chat_service 中，通过此包 re-export)
 """
 
-from app.schemas.base import BaseSchema, BaseSchemaWithTimestamps
-from app.schemas.response import (
-    ApiResponse,
-    ApiResponseModel,
-    HealthResponse,
-    PaginatedResponse,
-    PaginationInfo,
-    Response,  # 向后兼容别名
-)
+from app.services.chat.session_service import ChatSessionService  # noqa: F401
+from app.services.chat.history_service import ChatHistoryService  # noqa: F401
 
 __all__ = [
-    "BaseSchema",
-    "BaseSchemaWithTimestamps",
-    "ApiResponse",
-    "ApiResponseModel",
-    "PaginationInfo",
-    "PaginatedResponse",
-    "HealthResponse",
-    "Response",
+    "ChatSessionService",
+    "ChatHistoryService",
 ]
