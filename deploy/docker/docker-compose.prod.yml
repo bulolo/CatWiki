@@ -101,16 +101,12 @@ services:
         echo '✅ 数据库迁移完成' &&
         echo '' &&
         echo '🔐 初始化平台管理员...' &&
-        uv run python scripts/init_admin_data.py &&
         echo '✅ 平台管理员初始化完成' &&
         echo '' &&
         echo '📚 初始化 Health 站点和医学知识文档...' &&
         uv run python scripts/init_health_tenant.py &&
         echo '✅ Health 数据初始化完成' &&
         echo '' &&
-        echo '📚 初始化 Baby 站点和育儿知识文档...' &&
-        uv run python scripts/init_baby_tenant.py &&
-        echo '✅ Baby 数据初始化完成' &&
         echo '' &&
         echo '🗄️  初始化 RustFS 对象存储...' &&
         uv run python scripts/init_rustfs.py &&
@@ -127,8 +123,6 @@ services:
         echo '📚 Health 站点：' &&
         echo '   🌐 域名: health' &&
         echo '' &&
-        echo '📚 Baby 站点：' &&
-        echo '   🌐 域名: baby-guide' &&
         echo '' &&
         echo '==========================================' &&
         echo ''
@@ -198,7 +192,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.catwiki.ai}
         NEXT_PUBLIC_CLIENT_URL: ${NEXT_PUBLIC_CLIENT_URL:-https://catwiki.ai}
-        NEXT_PUBLIC_CATWIKI_EDITION: ${NEXT_PUBLIC_CATWIKI_EDITION:-enterprise}
+        NEXT_PUBLIC_CATWIKI_EDITION: ${NEXT_PUBLIC_CATWIKI_EDITION:-community}
     image: catwiki-admin:latest
     container_name: catwiki-admin
     env_file:
@@ -237,7 +231,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.catwiki.ai}
         NEXT_PUBLIC_DOCS_URL: ${NEXT_PUBLIC_DOCS_URL:-https://docs.catwiki.ai}
-        NEXT_PUBLIC_CATWIKI_EDITION: ${NEXT_PUBLIC_CATWIKI_EDITION:-enterprise}
+        NEXT_PUBLIC_CATWIKI_EDITION: ${NEXT_PUBLIC_CATWIKI_EDITION:-community}
     image: catwiki-client:latest
     container_name: catwiki-client
     env_file:
