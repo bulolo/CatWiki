@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Bot, Code, MessageCircle, ShieldCheck, Save, Eye, EyeOff, RefreshCw, Copy, ChevronDown, ChevronUp, MessageSquare } from "lucide-react"
+import { Bot, Code, MessageCircle, ShieldCheck, Save, Eye, EyeOff, RefreshCw, Copy, ChevronDown, ChevronUp, MessageSquare, Crown } from "lucide-react"
 import { useState, useEffect } from "react"
 import { ChatWidgetPreview } from "@/components/features/ChatWidgetPreview"
 import { cn } from "@/lib/utils"
@@ -41,7 +41,7 @@ import { useUpdateSite } from "@/hooks"
 import api from "@/lib/api-client"
 import { initialConfigs } from "@/types/settings"
 import { env } from "@/lib/env"
-import { useDemoMode } from '@/hooks/useHealth'
+import { useDemoMode, useHealth } from '@/hooks/useHealth'
 
 interface SiteBotSettingsProps {
   siteId: number
@@ -76,6 +76,8 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
   const [showWecomToken, setShowWecomToken] = useState(false)
   const [showWecomAESKey, setShowWecomAESKey] = useState(false)
   const isDemoMode = useDemoMode()
+  const { data: healthData } = useHealth()
+  const isCommunity = healthData?.edition === 'community'
 
   const { webWidget, apiBot, wecomSmartRobot } = config || { webWidget: {}, apiBot: {}, wecomSmartRobot: {} } as any
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({
@@ -249,19 +251,25 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
       </Card>
 
       {/* 问答机器人 API */}
-      <Card className="border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
+      <Card className={cn("border-slate-200/60 shadow-sm rounded-2xl overflow-hidden", isCommunity && "opacity-75")}>
         <CardHeader className="border-b border-slate-50 pb-4">
           <div className="flex items-center justify-between">
             <div
               className="flex items-center gap-3 cursor-pointer flex-1"
               onClick={() => toggleExpand("apiBot")}
             >
-              <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 border border-emerald-100">
+              <div className={cn("p-2 rounded-lg border", isCommunity ? "bg-slate-50 text-slate-400 border-slate-200" : "bg-emerald-50 text-emerald-600 border-emerald-100")}>
                 <Code className="h-5 w-5" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <CardTitle className="text-xl font-bold">问答机器人 API</CardTitle>
+                  {isCommunity && (
+                    <Badge className="bg-gradient-to-r from-violet-500 to-purple-600 text-white border-0 text-[10px] font-bold px-2 py-0.5 gap-1 shadow-sm">
+                      <Crown className="h-3 w-3" />
+                      企业版
+                    </Badge>
+                  )}
                   {expandedCards.apiBot ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
                 </div>
                 <CardDescription>
@@ -270,18 +278,19 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
               </div>
             </div>
             <label
-              className={`flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors ${isDemoMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors ${(isDemoMode || isCommunity) ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={(e) => e.stopPropagation()}
+              title={isCommunity ? '该功能仅企业版可用' : undefined}
             >
               <input
                 type="checkbox"
-                checked={apiBot?.enabled ?? false}
+                checked={isCommunity ? false : (apiBot?.enabled ?? false)}
                 onChange={(e) => {
-                  if (isDemoMode) return
+                  if (isDemoMode || isCommunity) return
                   onChange("apiBot", "enabled", e.target.checked)
                   if (e.target.checked) setExpandedCards(prev => ({ ...prev, apiBot: true }))
                 }}
-                disabled={isDemoMode}
+                disabled={isDemoMode || isCommunity}
                 className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
               />
               <span className="text-sm font-semibold text-slate-700">启用</span>
@@ -290,6 +299,12 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
         </CardHeader>
         {expandedCards.apiBot && (
           <CardContent className="space-y-6 pt-6 animate-in fade-in duration-300">
+            {isCommunity && (
+              <div className="flex items-center gap-3 px-4 py-3 bg-violet-50 text-violet-700 rounded-xl border border-violet-200 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
+                <Crown className="h-5 w-5 shrink-0" />
+                <p className="text-sm font-medium">此功能为企业版专属，升级到企业版以启用问答机器人 API 对接第三方系统。</p>
+              </div>
+            )}
             <div className="flex gap-4">
               <div className="min-w-[120px] pt-3 flex flex-col items-start justify-start">
                 <label className="text-sm font-semibold text-slate-700">API 端点地址</label>
@@ -330,7 +345,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                     value={apiBot.apiKey}
                     onChange={(e) => onChange("apiBot", "apiKey", e.target.value)}
                     placeholder="在此设置访问该接口的密钥"
-                    disabled={!apiBot.enabled}
+                    disabled={!apiBot.enabled || isCommunity}
                     readOnly={isDemoMode && apiBot.apiKey === "********"}
                     className="bg-white font-mono rounded-xl pr-28 h-11"
                   />
@@ -340,7 +355,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                       size="sm"
                       className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600 rounded-lg"
                       onClick={() => setShowKey(!showKey)}
-                      disabled={!apiBot.enabled}
+                      disabled={!apiBot.enabled || isCommunity}
                       type="button"
                       >
                       {showKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -353,7 +368,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                         navigator.clipboard.writeText(apiBot.apiKey)
                         toast.success("API Key 已复制")
                       }}
-                      disabled={!apiBot.enabled || (isDemoMode && apiBot.apiKey === "********")}
+                      disabled={!apiBot.enabled || isCommunity || (isDemoMode && apiBot.apiKey === "********")}
                       type="button"
                     >
                       复制
@@ -375,7 +390,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                       onChange("apiBot", "apiKey", result);
                       toast.success("已生成新 API Key");
                     }}
-                    disabled={!apiBot.enabled || isDemoMode}
+                    disabled={!apiBot.enabled || isDemoMode || isCommunity}
                   >
                     <RefreshCw className="h-3 w-3" />
                     重置/生成 API Key
@@ -391,7 +406,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                   type="number"
                   value={apiBot.timeout}
                   onChange={(e) => onChange("apiBot", "timeout", parseInt(e.target.value))}
-                  disabled={!apiBot.enabled}
+                  disabled={!apiBot.enabled || isCommunity}
                   className="bg-white rounded-xl h-11 max-w-[200px]"
                   min={1}
                   max={300}

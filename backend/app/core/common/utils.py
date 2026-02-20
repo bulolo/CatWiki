@@ -130,7 +130,3 @@ class Paginator:
             size=self.size,
             total=self.total,
         )
-
-
-
-

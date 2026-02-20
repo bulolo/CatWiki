@@ -52,6 +52,7 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> ApiResponse[Health
 
     try:
         from app.ee.license import license_service
+
         is_licensed = license_service.is_valid
     except ImportError:
         is_licensed = False

@@ -31,7 +31,9 @@ async def sync_ai_config_to_db():
     tenant_id = None if settings.CATWIKI_EDITION == "enterprise" else 1
     async with AsyncSessionLocal() as db:
         # 1. 检查数据库中是否已存在 AI 配置
-        existing_config = await crud_system_config.get_by_key(db, config_key=AI_CONFIG_KEY, tenant_id=tenant_id)
+        existing_config = await crud_system_config.get_by_key(
+            db, config_key=AI_CONFIG_KEY, tenant_id=tenant_id
+        )
 
         # 如果存在且未开启强制覆盖，则跳过
         if existing_config and not settings.FORCE_UPDATE_AI_CONFIG:
@@ -170,7 +172,10 @@ async def sync_doc_processor_config_to_db():
         # 4. 写入数据库
         try:
             await crud_system_config.update_by_key(
-                db, config_key=DOC_PROCESSOR_CONFIG_KEY, config_value=config_value, tenant_id=tenant_id
+                db,
+                config_key=DOC_PROCESSOR_CONFIG_KEY,
+                config_value=config_value,
+                tenant_id=tenant_id,
             )
             logger.info("📡 [同步] 已成功将环境变量中的文档解析配置加载到数据库。")
         except Exception as e:

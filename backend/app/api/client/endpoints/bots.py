@@ -6,20 +6,15 @@ from fastapi import (
     APIRouter,
     BackgroundTasks,
     Depends,
-    Header,
     HTTPException,
     Query,
     Request,
     Response,
 )
-from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.database import get_db, AsyncSessionLocal
+from app.db.database import get_db
 from app.crud.site import crud_site
-from app.services.chat_service import ChatService
-from app.schemas.chat import ChatCompletionRequest, ChatCompletionResponse
-from app.schemas.document import VectorRetrieveFilter
 from app.core.infra.config import settings
 from app.core.integration.wecom.crypt import WXBizJsonMsgCrypt
 from app.services.wecom_robot_service import WeComRobotService
@@ -127,35 +122,3 @@ async def handle_message(
         logger.error(f"企业微信消息加密失败: 错误码={ret}")
 
     return Response(content="success", media_type="text/plain")
-
-
-@router.post(
-    "/site-completions",
-    response_model=ChatCompletionResponse,
-    operation_id="createSiteChatCompletion",
-)
-async def create_site_chat_completion(
-    request: ChatCompletionRequest,
-    background_tasks: BackgroundTasks,
-    authorization: str = Header(..., description="Bearer <api_key>"),
-) -> ChatCompletionResponse | StreamingResponse:
-    """
-    创建聊天补全 (专用接口，兼容 OpenAI 格式)
-    """
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="认证头格式无效，须以 'Bearer ' 开头")
-
-    token = authorization.replace("Bearer ", "")
-
-    async with AsyncSessionLocal() as db:
-        site = await crud_site.get_by_api_token(db, api_token=token)
-        if not site:
-            raise HTTPException(status_code=401, detail="无效的 API 密钥")
-
-    # 统一将识别出的 site_id 注入 filter
-    if not request.filter:
-        request.filter = VectorRetrieveFilter(site_id=site.id)
-    else:
-        request.filter.site_id = site.id
-
-    return await ChatService.process_chat_request(request, background_tasks)

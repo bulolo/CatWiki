@@ -21,6 +21,7 @@ import logging
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.infra.config import settings
 from app.core.web.deps import get_current_user_with_tenant
 from app.core.web.exceptions import ConflictException, NotFoundException
 from app.core.common.utils import Paginator, generate_token
@@ -114,7 +115,10 @@ async def create_site(
     # 处理机器人配置：如果启用 API Bot 且没填 Key，自动生成一个
     if site_in.bot_config:
         api_bot = site_in.bot_config.get("apiBot")
-        if api_bot and api_bot.get("enabled") and not api_bot.get("apiKey"):
+        # CE 版本不支持 API Bot（企业版专属功能）
+        if api_bot and settings.CATWIKI_EDITION == "community":
+            api_bot["enabled"] = False
+        elif api_bot and api_bot.get("enabled") and not api_bot.get("apiKey"):
             api_bot["apiKey"] = f"sk-{generate_token(24)}"
 
     site = await crud_site.create(db, obj_in=site_in)
@@ -184,7 +188,10 @@ async def update_site(
     # 处理机器人配置：如果启用 API Bot 且没填 Key，尝试沿用旧的或生成新的
     if site_in.bot_config:
         api_bot = site_in.bot_config.get("apiBot")
-        if api_bot and api_bot.get("enabled") and not api_bot.get("apiKey"):
+        # CE 版本不支持 API Bot（企业版专属功能）
+        if api_bot and settings.CATWIKI_EDITION == "community":
+            api_bot["enabled"] = False
+        elif api_bot and api_bot.get("enabled") and not api_bot.get("apiKey"):
             # 尝试从原有配置中获取
             old_bot_config = site.bot_config or {}
             old_api_bot = old_bot_config.get("apiBot")

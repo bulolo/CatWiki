@@ -67,20 +67,20 @@ class TenantSeeder(BaseSeeder):
         """执行播种"""
         tenant_name = self.data["tenant"]["name"]
         await self.log(f"🚀 开始初始化 {tenant_name} 数据...")
-        
+
         tenant = await self.create_tenant()
         site = await self.create_site(tenant.id)
         await self.create_admin(tenant.id, [site.id])
         await self.init_model_config(tenant.id)
         await self.init_documents(tenant.id, site.id)
-        
+
         await self.log(f"✨ {tenant_name} 数据初始化完成！")
 
     async def create_tenant(self):
         """创建租户"""
         t_data = self.data["tenant"]
         tenant = await crud_tenant.get_by_slug(self.db, slug=t_data["slug"])
-        
+
         if not tenant:
             tenant_in = TenantCreate(
                 name=t_data["name"],
@@ -100,7 +100,7 @@ class TenantSeeder(BaseSeeder):
         """创建管理员"""
         u_data = self.data["admin"]
         user = await crud_user.get_by_email(self.db, email=u_data["email"])
-        
+
         if not user:
             user_in = UserCreate(
                 name=u_data["name"],
@@ -121,7 +121,7 @@ class TenantSeeder(BaseSeeder):
         """创建站点"""
         s_data = self.data["site"]
         site = await crud_site.get_by_slug(self.db, slug=s_data["slug"])
-        
+
         if not site:
             site_create = SiteCreate(
                 name=s_data["name"],
@@ -146,7 +146,7 @@ class TenantSeeder(BaseSeeder):
         """初始化模型配置"""
         config_key = "ai_config"
         model_config = self.data.get("model_config")
-        
+
         if model_config:
             await crud_system_config.update_by_key(
                 self.db, config_key=config_key, config_value=model_config, tenant_id=tenant_id
@@ -171,7 +171,7 @@ class TenantSeeder(BaseSeeder):
 
         total_collections = 0
         total_documents = 0
-        
+
         for c_data in collections_data:
             # 1. 创建合集
             result = await self.db.execute(
@@ -232,5 +232,7 @@ class TenantSeeder(BaseSeeder):
                 await crud_site.increment_article_count(self.db, site_id=site_id)
                 total_documents += 1
                 await self.log(f"    ✅ 创建文档：{doc_data['title']}")
-        
-        await self.log(f"📚 文档处理完成，新增合集 {total_collections} 个，新增文档 {total_documents} 篇")
+
+        await self.log(
+            f"📚 文档处理完成，新增合集 {total_collections} 个，新增文档 {total_documents} 篇"
+        )
