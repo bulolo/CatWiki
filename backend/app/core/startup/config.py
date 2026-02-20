@@ -27,9 +27,11 @@ async def sync_ai_config_to_db():
     将 .env 中的 AI 配置同步到数据库。
     规则：如果数据库中已存在 AI 配置，则跳过同步，以保护手动修改的配置。
     """
+    # 根据版本决定初始配置的归属：EE版作为平台全局配置(None)，CE版作为单租户配置(1)
+    tenant_id = None if settings.CATWIKI_EDITION == "enterprise" else 1
     async with AsyncSessionLocal() as db:
         # 1. 检查数据库中是否已存在 AI 配置
-        existing_config = await crud_system_config.get_by_key(db, config_key=AI_CONFIG_KEY)
+        existing_config = await crud_system_config.get_by_key(db, config_key=AI_CONFIG_KEY, tenant_id=tenant_id)
 
         # 如果存在且未开启强制覆盖，则跳过
         if existing_config and not settings.FORCE_UPDATE_AI_CONFIG:
@@ -86,7 +88,7 @@ async def sync_ai_config_to_db():
         # 3. 写入数据库
         try:
             await crud_system_config.update_by_key(
-                db, config_key=AI_CONFIG_KEY, config_value=ai_config
+                db, config_key=AI_CONFIG_KEY, config_value=ai_config, tenant_id=tenant_id
             )
             logger.info("📡 [同步] 已成功将环境变量中的 AI 配置加载到数据库。")
         except Exception as e:
@@ -97,10 +99,12 @@ async def sync_doc_processor_config_to_db():
     """
     将 .env 中的文档解析服务配置同步到数据库。
     """
+    # 根据版本决定初始配置的归属：EE版作为平台全局配置(None)，CE版作为单租户配置(1)
+    tenant_id = None if settings.CATWIKI_EDITION == "enterprise" else 1
     async with AsyncSessionLocal() as db:
         # 1. 检查数据库中是否已存在
         existing_config = await crud_system_config.get_by_key(
-            db, config_key=DOC_PROCESSOR_CONFIG_KEY
+            db, config_key=DOC_PROCESSOR_CONFIG_KEY, tenant_id=tenant_id
         )
 
         # 如果存在且未开启强制覆盖，则跳过
@@ -166,7 +170,7 @@ async def sync_doc_processor_config_to_db():
         # 4. 写入数据库
         try:
             await crud_system_config.update_by_key(
-                db, config_key=DOC_PROCESSOR_CONFIG_KEY, config_value=config_value
+                db, config_key=DOC_PROCESSOR_CONFIG_KEY, config_value=config_value, tenant_id=tenant_id
             )
             logger.info("📡 [同步] 已成功将环境变量中的文档解析配置加载到数据库。")
         except Exception as e:
