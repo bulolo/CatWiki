@@ -51,10 +51,21 @@ fi
 echo "[OK] 前置检查通过。"
 echo ""
 
-# ---- 创建/重置 ce 分支 ----
-echo "[1/6] 从 $SOURCE_BRANCH 创建 $CE_BRANCH 分支..."
-git branch -D "$CE_BRANCH" 2>/dev/null || true
-git checkout -b "$CE_BRANCH"
+# ---- 准备 ce 分支并应用最新代码 ----
+echo "[1/6] 在 $CE_BRANCH 分支上应用来自 $SOURCE_BRANCH 的最新更改..."
+
+# 检查本地或远程是否存在 CE_BRANCH，并切换
+if git show-ref --verify --quiet "refs/heads/$CE_BRANCH"; then
+    git checkout "$CE_BRANCH"
+elif git ls-remote --exit-code --heads "$ORIGIN_REMOTE" "$CE_BRANCH" > /dev/null 2>&1; then
+    git checkout -b "$CE_BRANCH" "$ORIGIN_REMOTE/$CE_BRANCH"
+else
+    git checkout --orphan "$CE_BRANCH"
+fi
+
+# 强行用源分支的文件状态覆盖当前的工作区和暂存区
+git rm -rf . >/dev/null 2>&1 || true
+git restore --source="$SOURCE_BRANCH" --staged --worktree .
 
 # ---- 删除 EE 专有文件 ----
 echo "[2/6] 删除 EE 专有文件..."
@@ -233,8 +244,9 @@ fi
 if [ "$SAFE" != "true" ]; then
     echo ""
     echo "ERROR: 安全检查失败，中止操作。"
+    # 如果失败了，重置当前分支工作区并切回源分支
+    git reset --hard HEAD
     git checkout "$SOURCE_BRANCH"
-    git branch -D "$CE_BRANCH" 2>/dev/null || true
     exit 1
 fi
 
@@ -255,11 +267,11 @@ echo ""
 if [ "$DRY_RUN" = "true" ]; then
     echo "[DRY RUN] 跳过推送。"
 else
-    echo "准备推送到 ${ORIGIN_REMOTE}/${CE_BRANCH} (force push)..."
+    echo "准备推送到 ${ORIGIN_REMOTE}/${CE_BRANCH} (线性提交)..."
     echo ""
     read -p "推送到 origin/ce？(y/N): " CONFIRM
     if [ "$CONFIRM" = "y" ] || [ "$CONFIRM" = "Y" ]; then
-        git push "$ORIGIN_REMOTE" "${CE_BRANCH}:${CE_BRANCH}" --force
+        git push "$ORIGIN_REMOTE" "${CE_BRANCH}:${CE_BRANCH}"
         echo "[OK] 已推送到 ${ORIGIN_REMOTE}/${CE_BRANCH}"
     else
         echo "[CANCELLED] 推送已取消。"
