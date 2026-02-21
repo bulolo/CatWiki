@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ from app.core.ai.prompts import (
 from app.core.vector.rag_utils import is_meaningful_message
 from app.schemas.document import VectorRetrieveFilter
 from app.schemas.graph_state import ChatGraphState
-from app.services.vector_service import VectorService
+from app.services.rag import RAGService
 
 logger = logging.getLogger(__name__)
 
@@ -100,10 +100,10 @@ async def search_knowledge_base(query: str, config: RunnableConfig) -> str:
 
         from app.core.infra.tenant import temporary_tenant_context
 
-        # 使用临时租户上下文包裹检索调用，确保 VectorService 能够获取正确的配置和过滤条件
+        # 使用临时租户上下文包裹检索调用，确保 RAGService 能够获取正确的配置和过滤条件
         with temporary_tenant_context(tenant_id):
             # 执行检索
-            retrieved_docs = await VectorService.retrieve(
+            retrieved_docs = await RAGService.retrieve(
                 query=query,
                 k=settings.RAG_RECALL_K,
                 filter=VectorRetrieveFilter(site_id=int(site_id)) if site_id else None,
@@ -211,8 +211,13 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
         else:
             messages[0] = SystemMessage(content=system_content)
 
-        response = await model_with_tools.ainvoke(messages)
-        return {"messages": [response]}
+        full_response = None
+        async for chunk in model_with_tools.astream(messages):
+            if full_response is None:
+                full_response = chunk
+            else:
+                full_response += chunk
+        return {"messages": [full_response]}
 
     async def summarize_conversation(state: ChatGraphState) -> dict:
         """对话摘要节点"""

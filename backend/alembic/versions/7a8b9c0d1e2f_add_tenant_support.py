@@ -175,7 +175,6 @@ def upgrade() -> None:
         pass
 
 
-
 def downgrade() -> None:
     # === 8. 回滚 document_view_events ===
     op.drop_index("idx_view_events_tenant_doc_date", table_name="document_view_events")

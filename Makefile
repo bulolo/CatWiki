@@ -32,6 +32,7 @@ help:
 	@echo "  make dev-logs           - 查看开发环境后端日志"
 	@echo "  make dev-clean          - 停止容器并删除数据卷 (重置数据库/存储)"
 	@echo "  make dev-db-migrate m=\"\"  - 创建数据库迁移脚本 (例如: make dev-db-migrate m=\"add user table\")"
+	@echo "  make dev-db-upgrade     - 执行数据库迁移升级到最新版本"
 	@echo "  make dev-db-psql        - 进入开发环境数据库终端"
 	@echo ""
 
@@ -107,9 +108,13 @@ dev-clean:
 	docker compose -f docker-compose.dev.yml down -v
 	@echo "✅ 开发环境深度清理完成"
 
-# 数据库迁移
+# 数据库迁移创建
 dev-db-migrate:
 	docker compose -f docker-compose.dev.yml exec backend uv run alembic revision --autogenerate -m "$(m)"
+
+# 数据库迁移升级
+dev-db-upgrade:
+	docker compose -f docker-compose.dev.yml exec backend uv run alembic upgrade head
 
 # 数据库终端
 dev-db-psql:

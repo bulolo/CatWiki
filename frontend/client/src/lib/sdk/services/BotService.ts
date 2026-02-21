@@ -43,12 +43,12 @@ export class BotService {
         });
     }
     /**
-     * Handle Message
+     * Handle Wecom Message
      * 处理企业微信智能机器人消息回调 (JSON 协议)
      * @returns any Successful Response
      * @throws ApiError
      */
-    public handleMessageV1BotWecomSmartRobotPost({
+    public handleWecomMessageV1BotWecomSmartRobotPost({
         msgSignature,
         timestamp,
         nonce,

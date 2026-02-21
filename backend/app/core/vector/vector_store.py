@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -64,160 +64,167 @@ class VectorStoreManager:
         self._current_embeddings = None
 
     async def _ensure_initialized(self, tenant_id: int | None = None, force: bool = False):
-        """确保向量存储已初始化（懒加载，支持多实例池）"""
-        try:
-            from app.services.configuration_service import configuration_service
-            from app.core.infra.tenant import get_current_tenant
-
-            # 1. 获取目标租户配置
-            if tenant_id is None:
-                tenant_id = get_current_tenant()
-
-            embedding_conf = await configuration_service.get_embedding_config(
-                tenant_id, force=force
-            )
-
-            # 2. 校验配置
-            api_key = embedding_conf.get("apiKey")
-            base_url = embedding_conf.get("baseUrl")
-            model = embedding_conf.get("model")
-            mode = embedding_conf.get("_mode", "platform")
-
-            if not api_key:
-                source = embedding_conf.get("_source", "unknown")
-                # 增强的排错信息
-                available_keys = list(embedding_conf.keys())
-                error_msg = (
-                    f"❌ [VectorStore] 未找到有效的 Embedding 配置 (租户: {tenant_id}, 模式: {mode})。 "
-                    f"请在管理后台检查 AI 模型配置。"
-                )
-                logger.error(error_msg)
-
-                if mode == "custom":
-                    from app.core.web.exceptions import BadRequestException
-
-                    raise BadRequestException(
-                        f"租户 {tenant_id} 已开启自定义向量化模式，但未配置 API Key。"
-                    )
-
-                raise ValueError(error_msg)
-
-            dimension = int(embedding_conf.get("dimension") or 1024)
-            source = embedding_conf.get("_source", "platform")
-            mode = embedding_conf.get("_mode", "platform")
-
-            # 3. 使用配置管理器计算的统一指纹
-            conf_hash = embedding_conf.get("_hash")
-
-            # 4. 如果缓存中已有该配置的实例，直接指向它并返回
-            if conf_hash in self._vector_stores:
-                self._current_store = self._vector_stores[conf_hash]
-                self._current_embeddings = self._embeddings_cache[conf_hash]
-                return
-
-            # 5. 否则，初始化新实例
-            logger.info(
-                f"🔄 [VectorStore] 检测到新配置或实例缺失，开始初始化... (租户: {tenant_id}, 模式: {mode}, 来源: {source}, Model: {model})"
-            )
-
-            # 初始化 Embeddings
-            from app.core.ai.providers.embeddings import OpenAICompatibleEmbeddings
-
-            new_embeddings = OpenAICompatibleEmbeddings(
-                model=model,
-                api_key=api_key,
-                base_url=base_url,
-                embedding_batch_size=settings.AI_EMBEDDING_BATCH_SIZE,
-            )
-
-            # 初始化 SQL Engine (单例共享，跨租户复用连接池)
-            if self._sa_engine is None:
-                encoded_user = quote_plus(settings.POSTGRES_USER)
-                encoded_password = quote_plus(settings.POSTGRES_PASSWORD)
-                async_conn_str = (
-                    f"postgresql+asyncpg://{encoded_user}:{encoded_password}"
-                    f"@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
-                )
-
-                self._sa_engine = create_async_engine(
-                    async_conn_str,
-                    pool_size=settings.DB_POOL_SIZE,
-                    max_overflow=settings.DB_MAX_OVERFLOW,
-                    pool_timeout=settings.DB_POOL_TIMEOUT,
-                    pool_recycle=settings.DB_POOL_RECYCLE,
-                    pool_pre_ping=True,
-                    pool_reset_on_return="commit",
-                    echo=False,
-                    future=True,
-                )
-                self._engine = PGEngine.from_engine(engine=self._sa_engine)
-
-            # 定义元数据列
-            metadata_columns = [
-                Column(name="source", data_type="TEXT", nullable=True),
-                Column(name="id", data_type="TEXT", nullable=True),
-                Column(name="site_id", data_type="INTEGER", nullable=True),
-                Column(name="collection_id", data_type="INTEGER", nullable=True),
-                Column(name="tenant_id", data_type="INTEGER", nullable=True),
-            ]
-
-            # 初始化表 (仅在第一次物理访问时执行，dim 由第一个配置决定)
+        """确保向量存储已初始化（线程安全，支持多实例池）"""
+        async with self._lock:
             try:
-                from sqlalchemy import text
+                from app.core.infra.tenant import get_current_tenant
+                from app.core.infra.config_resolver import ConfigResolver
 
-                check_sql = text(
-                    "SELECT 1 FROM information_schema.tables WHERE table_name = :table"
+                # 1. 获取目标租户配置
+                if tenant_id is None:
+                    tenant_id = get_current_tenant()
+
+                embedding_conf = await ConfigResolver.resolve_section(
+                    "embedding", tenant_id=tenant_id
                 )
-                async with self._sa_engine.connect() as conn:
-                    result = await conn.execute(check_sql, {"table": self.collection_name})
-                    exists = result.fetchone() is not None
 
-                if not exists:
-                    logger.info(
-                        f"✨ 创建向量存储表: {self.collection_name} (必选维度: {dimension})"
+                # 2. 校验配置
+                api_key = embedding_conf.get("apiKey")
+                base_url = embedding_conf.get("baseUrl")
+                model = embedding_conf.get("model")
+                mode = embedding_conf.get("_mode", "platform")
+
+                if not api_key:
+                    source = embedding_conf.get("_source", "unknown")
+                    # 增强的排错信息
+                    available_keys = list(embedding_conf.keys())
+                    error_msg = (
+                        f"❌ [VectorStore] 未找到有效的 Embedding 配置 (租户: {tenant_id}, 模式: {mode})。 "
+                        f"请在管理后台检查 AI 模型配置。"
                     )
-                    await self._engine.ainit_vectorstore_table(
-                        table_name=self.collection_name,
-                        vector_size=dimension,
-                        metadata_columns=metadata_columns,
+                    logger.error(error_msg)
+
+                    if mode == "custom":
+                        from app.core.web.exceptions import BadRequestException
+
+                        raise BadRequestException(
+                            f"租户 {tenant_id} 已开启自定义向量化模式，但未配置 API Key。"
+                        )
+
+                    raise ValueError(error_msg)
+
+                dimension = int(embedding_conf.get("dimension") or 1024)
+                source = embedding_conf.get("_source", "platform")
+                mode = embedding_conf.get("_mode", "platform")
+
+                # 3. 使用配置管理器计算的统一指纹
+                conf_hash = embedding_conf.get("_hash")
+
+                # 4. 如果缓存中已有该配置的实例，直接指向它并返回
+                if conf_hash in self._vector_stores:
+                    self._current_store = self._vector_stores[conf_hash]
+                    self._current_embeddings = self._embeddings_cache[conf_hash]
+                    return
+
+                # 5. 否则，初始化新实例
+                logger.info(
+                    f"🔄 [VectorStore] 检测到新配置或实例缺失，开始初始化... (租户: {tenant_id}, 模式: {mode}, 来源: {source}, Model: {model})"
+                )
+
+                # 初始化 Embeddings
+                from app.core.ai.providers.embeddings import OpenAICompatibleEmbeddings
+
+                new_embeddings = OpenAICompatibleEmbeddings(
+                    model=model,
+                    api_key=api_key,
+                    base_url=base_url,
+                    embedding_batch_size=settings.AI_EMBEDDING_BATCH_SIZE,
+                )
+
+                # 初始化 SQL Engine (单例共享，跨租户复用连接池)
+                if self._sa_engine is None:
+                    encoded_user = quote_plus(settings.POSTGRES_USER)
+                    encoded_password = quote_plus(settings.POSTGRES_PASSWORD)
+                    async_conn_str = (
+                        f"postgresql+asyncpg://{encoded_user}:{encoded_password}"
+                        f"@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
                     )
+
+                    self._sa_engine = create_async_engine(
+                        async_conn_str,
+                        pool_size=settings.DB_POOL_SIZE,
+                        max_overflow=settings.DB_MAX_OVERFLOW,
+                        pool_timeout=settings.DB_POOL_TIMEOUT,
+                        pool_recycle=settings.DB_POOL_RECYCLE,
+                        pool_pre_ping=True,
+                        pool_reset_on_return="commit",
+                        echo=False,
+                        future=True,
+                    )
+                    self._engine = PGEngine.from_engine(engine=self._sa_engine)
+
+                # 定义元数据列
+                metadata_columns = [
+                    Column(name="source", data_type="TEXT", nullable=True),
+                    Column(name="id", data_type="TEXT", nullable=True),
+                    Column(name="site_id", data_type="INTEGER", nullable=True),
+                    Column(name="collection_id", data_type="INTEGER", nullable=True),
+                    Column(name="tenant_id", data_type="INTEGER", nullable=True),
+                ]
+
+                # 初始化表 (仅在第一次物理访问时执行，dim 由第一个配置决定)
+                try:
+                    from sqlalchemy import text
+
+                    check_sql = text(
+                        "SELECT 1 FROM information_schema.tables WHERE table_name = :table"
+                    )
+                    async with self._sa_engine.connect() as conn:
+                        result = await conn.execute(check_sql, {"table": self.collection_name})
+                        exists = result.fetchone() is not None
+
+                    if not exists:
+                        logger.info(
+                            f"✨ 创建向量存储表: {self.collection_name} (必选维度: {dimension})"
+                        )
+                        await self._engine.ainit_vectorstore_table(
+                            table_name=self.collection_name,
+                            vector_size=dimension,
+                            metadata_columns=metadata_columns,
+                        )
+                except Exception as e:
+                    if "already exists" not in str(e) and "DuplicateTable" not in str(e):
+                        raise e
+
+                # 维度匹配性检查
+                await self._check_database_dimension(dimension)
+
+                # Schema 检查与迁移（确保 optimized_columns 对应的物理列存在）
+                await self._ensure_columns()
+
+                # 索引检查与创建
+                await self._ensure_indexes()
+
+                # 创建 PGVectorStore 实例并存入缓存
+                self.optimized_columns = [
+                    "source",
+                    "id",
+                    "site_id",
+                    "collection_id",
+                    "tenant_id",
+                ]
+                new_store = await PGVectorStore.create(
+                    engine=self._engine,
+                    table_name=self.collection_name,
+                    embedding_service=new_embeddings,
+                    metadata_columns=self.optimized_columns,
+                )
+
+                # 存入实例池
+                self._vector_stores[conf_hash] = new_store
+                self._embeddings_cache[conf_hash] = new_embeddings
+
+                # 指向当前
+                self._current_store = new_store
+                self._current_embeddings = new_embeddings
+
+                logger.info(
+                    f"✅ [VectorStore] 实例初始化完成 (哈希: {conf_hash[:8]}, 租户: {tenant_id}, 来源: {source})"
+                )
+
             except Exception as e:
-                if "already exists" not in str(e) and "DuplicateTable" not in str(e):
-                    raise e
-
-            # 维度匹配性检查
-            await self._check_database_dimension(dimension)
-
-            # Schema 检查与迁移（确保 optimized_columns 对应的物理列存在）
-            await self._ensure_columns()
-
-            # 索引检查与创建
-            await self._ensure_indexes()
-
-            # 创建 PGVectorStore 实例并存入缓存
-            self.optimized_columns = ["source", "id", "site_id", "collection_id", "tenant_id"]
-            new_store = await PGVectorStore.create(
-                engine=self._engine,
-                table_name=self.collection_name,
-                embedding_service=new_embeddings,
-                metadata_columns=self.optimized_columns,
-            )
-
-            # 存入实例池
-            self._vector_stores[conf_hash] = new_store
-            self._embeddings_cache[conf_hash] = new_embeddings
-
-            # 指向当前
-            self._current_store = new_store
-            self._current_embeddings = new_embeddings
-
-            logger.info(
-                f"✅ [VectorStore] 实例初始化完成 (哈希: {conf_hash[:8]}, 租户: {tenant_id}, 来源: {source})"
-            )
-
-        except Exception as e:
-            logger.error(f"向量存储初始化失败: {e}", exc_info=True)
-            raise
+                logger.error(f"向量存储初始化失败: {e}", exc_info=True)
+                raise
 
     async def reload_credentials(self) -> None:
         """热更新向量存储凭证 (强制刷新由于修改可能带来的配置变更)"""

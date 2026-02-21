@@ -291,7 +291,7 @@ export class AdminDocumentsService {
     }
     /**
      * Retrieve Vectors
-     * 语义检索向量数据库 (delegates to VectorService)
+     * 语义检索向量数据库 (delegates to RAGService)
      * @returns ApiResponse_VectorRetrieveResult_ Successful Response
      * @throws ApiError
      */

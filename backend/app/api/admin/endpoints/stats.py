@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -23,8 +23,9 @@ from app.core.web.deps import get_current_user_with_tenant
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.response import ApiResponse
+from app.crud.user import crud_user
 from app.schemas.stats import SiteStats
-from app.services.stats_service import StatsService
+from app.services.stats import StatsService
 
 router = APIRouter()
 

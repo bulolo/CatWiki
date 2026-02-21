@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -41,32 +41,30 @@ from app.schemas.chat import (
 )
 from app.services.chat.session_service import ChatSessionService
 from app.services.chat.history_service import ChatHistoryService
-from app.services.configuration_service import configuration_service
+from app.services.config import configuration_service
 from app.core.ai.providers.llm_manager import llm_manager
-from app.crud.site import crud_site
+from app.crud import crud_site
 
 logger = logging.getLogger(__name__)
 
 
 class ChatService:
-    @staticmethod
-    async def stream_graph_events(
+    @classmethod
+    async def generate_chat_chunks(
+        cls,
         graph,
         input_state: dict,
         config: dict,
         model_name: str,
         thread_id: str,
         background_tasks: BackgroundTasks,
-    ) -> AsyncGenerator[str, None]:
-        """流式响应生成器 - 适配 OpenAI SSE 格式（含 tool_calls 支持）"""
+    ) -> AsyncGenerator[ChatCompletionChunk | dict, None]:
+        """核心流式响应生成器 - 产出原始 Chunk 对象或状态 dict"""
         full_response = ""
         sources = []
-
-        # 生成唯一的 chunk ID 前缀
         chunk_id_prefix = f"chatcmpl-{uuid.uuid4()}"
 
         try:
-            # 使用 v1 event 格式
             async for event in graph.astream_events(input_state, config, version="v1"):
                 kind = event["event"]
 
@@ -75,12 +73,9 @@ class ChatService:
                     chunk_data = event["data"]["chunk"]
                     chunk_content = chunk_data.content
 
-                    # 处理文本内容
                     if chunk_content:
                         full_response += chunk_content
-
-                        # 构造 OpenAI 兼容 chunk
-                        chunk = ChatCompletionChunk(
+                        yield ChatCompletionChunk(
                             id=chunk_id_prefix,
                             object="chat.completion.chunk",
                             created=int(time.time()),
@@ -93,14 +88,11 @@ class ChatService:
                                 )
                             ],
                         )
-                        yield f"data: {chunk.model_dump_json()}\n\n"
 
-                    # 处理 tool_calls (如果存在)
                     if hasattr(chunk_data, "tool_call_chunks") and chunk_data.tool_call_chunks:
                         for tc_chunk in chunk_data.tool_call_chunks:
                             cleaned_tc = convert_tool_call_chunk_to_openai(tc_chunk)
-
-                            chunk = ChatCompletionChunk(
+                            yield ChatCompletionChunk(
                                 id=chunk_id_prefix,
                                 object="chat.completion.chunk",
                                 created=int(time.time()),
@@ -113,28 +105,21 @@ class ChatService:
                                     )
                                 ],
                             )
-                            yield f"data: {chunk.model_dump_json()}\n\n"
 
                 # 2. 工具开始调用 - 发送状态指示
                 elif kind == "on_tool_start":
                     tool_name = event.get("name", "unknown")
                     logger.debug(f"🔧 [Stream] Tool started: {tool_name}")
-                    status_chunk = {"status": "tool_calling", "tool": tool_name}
-                    yield f"data: {json.dumps(status_chunk)}\n\n"
+                    yield {"status": "tool_calling", "tool": tool_name}
 
-            # 从 Checkpoint 获取最终状态以提取引用
+            # 引用提取与善后
             state_snapshot = await graph.aget_state(config)
             if state_snapshot.values:
                 final_messages = state_snapshot.values.get("messages", [])
                 sources = extract_sources_from_messages(final_messages, from_last_turn=True)
 
-            # 发送 Sources (自定义协议)
             if sources:
-                source_chunk = {"sources": sources}
-                yield f"data: {json.dumps(source_chunk)}\n\n"
-
-            # 发送 [DONE]
-            yield "data: [DONE]\n\n"
+                yield {"sources": sources}
 
             # 3. 异步更新数据库记录
             async def save_history():
@@ -143,7 +128,6 @@ class ChatService:
                     final_messages = (
                         state_snapshot.values.get("messages", []) if state_snapshot.values else []
                     )
-
                     final_response = ""
                     if final_messages:
                         for msg in reversed(final_messages):
@@ -152,12 +136,10 @@ class ChatService:
                                 break
 
                     persistent_content = final_response or full_response
-
                     if persistent_content:
                         await ChatSessionService.update_assistant_response(
                             db=db, thread_id=thread_id, assistant_message=persistent_content
                         )
-
                     await ChatHistoryService.save_history_from_messages(
                         db=db, thread_id=thread_id, messages=final_messages
                     )
@@ -165,8 +147,8 @@ class ChatService:
             background_tasks.add_task(save_history)
 
         except Exception as e:
-            logger.error(f"❌ [ChatService] Stream error: {e}", exc_info=True)
-            error_chunk = ChatCompletionChunk(
+            logger.error(f"❌ [ChatService] Stream generator error: {e}", exc_info=True)
+            yield ChatCompletionChunk(
                 id=f"error-{uuid.uuid4()}",
                 model=model_name,
                 choices=[
@@ -177,8 +159,82 @@ class ChatService:
                     )
                 ],
             )
-            yield f"data: {error_chunk.model_dump_json()}\n\n"
-            yield "data: [DONE]\n\n"
+
+    @staticmethod
+    async def stream_graph_events(
+        graph,
+        input_state: dict,
+        config: dict,
+        model_name: str,
+        thread_id: str,
+        background_tasks: BackgroundTasks,
+    ) -> AsyncGenerator[str, None]:
+        """流式响应生成器 - 包装 generate_chat_chunks 并序列化为 SSE 格式"""
+        async for chunk in ChatService.generate_chat_chunks(
+            graph, input_state, config, model_name, thread_id, background_tasks
+        ):
+            if isinstance(chunk, ChatCompletionChunk):
+                yield f"data: {chunk.model_dump_json()}\n\n"
+            else:
+                yield f"data: {json.dumps(chunk)}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    @classmethod
+    async def initialize_chat_context(
+        cls,
+        thread_id: str,
+        site_id: int,
+        user_id: str,
+        message: str,
+        model_name: str | None = None,
+        temperature: float = 0.7,
+    ) -> tuple[ChatOpenAI, dict, dict, int | None]:
+        """
+        初始化聊天上下文：解析租户、构建 LLM、持久化首条消息并准备 Graph 状态。
+        供 process_chat_request 和 RobotOrchestrator 复用。
+        """
+        # 1. 解析 site_id 和 tenant_id
+        tenant_id = None
+        async with AsyncSessionLocal() as db:
+            site = await crud_site.get(db, id=site_id)
+            tenant_id = site.tenant_id if site else None
+
+        # 2. 初始化 LLM
+        llm = await llm_manager.get_model(
+            tenant_id=tenant_id,
+            model_name=model_name,
+            temperature=temperature,
+        )
+
+        # 3. 创建/更新数据库会话记录
+        async with AsyncSessionLocal() as db:
+            try:
+                await ChatSessionService.create_or_update(
+                    db=db,
+                    thread_id=thread_id,
+                    site_id=site_id,
+                    user_message=message,
+                    member_id=user_id,
+                    tenant_id=tenant_id,
+                )
+                await ChatHistoryService.save_message(
+                    db=db, thread_id=thread_id, role="user", content=message
+                )
+            except Exception as e:
+                logger.error(f"❌ [ChatService] Failed to persist chat session: {e}")
+                # 为了保证响应不中断，记录错误但继续
+
+        # 4. 准备 Graph 初始状态
+        initial_state = {
+            "messages": [HumanMessage(content=message)],
+            "site_id": site_id,
+            "iteration_count": 0,
+            "consecutive_empty_count": 0,
+        }
+        config = {"configurable": {"thread_id": thread_id, "site_id": site_id}}
+
+        return llm, initial_state, config, tenant_id
 
     @classmethod
     async def process_chat_request(
@@ -186,47 +242,16 @@ class ChatService:
     ) -> ChatCompletionResponse | StreamingResponse:
         """核心聊天处理逻辑 (ReAct Agent)"""
 
-        # 1. 解析 site_id 和 tenant_id
+        # 使用统一初始化逻辑
         site_id = request.filter.site_id if (request.filter and request.filter.site_id) else 0
-        tenant_id = None
-        async with AsyncSessionLocal() as db:
-            site = await crud_site.get(db, id=site_id)
-            tenant_id = site.tenant_id if site else None
-
-        # 4. 初始化 LLM
-        llm = await llm_manager.get_model(
-            tenant_id=tenant_id,
+        llm, initial_state, config, tenant_id = await cls.initialize_chat_context(
+            thread_id=request.thread_id,
+            site_id=site_id,
+            user_id=request.user,
+            message=request.message,
             model_name=request.model,
             temperature=request.temperature or 0.7,
         )
-
-        # 5. 创建/更新数据库会话记录
-        async with AsyncSessionLocal() as db:
-            try:
-                await ChatSessionService.create_or_update(
-                    db=db,
-                    thread_id=request.thread_id,
-                    site_id=site_id,
-                    user_message=request.message,
-                    member_id=request.user,
-                    tenant_id=tenant_id,
-                )
-                await ChatHistoryService.save_message(
-                    db=db, thread_id=request.thread_id, role="user", content=request.message
-                )
-            except Exception as e:
-                logger.error(f"❌ [ChatService] Failed to persist chat session: {e}")
-                # 为了保证响应不中断，记录错误但继续
-                pass
-
-        # 6. 准备 Graph 初始状态
-        initial_state = {
-            "messages": [HumanMessage(content=request.message)],
-            "site_id": site_id,
-            "iteration_count": 0,
-            "consecutive_empty_count": 0,
-        }
-        config = {"configurable": {"thread_id": request.thread_id, "site_id": site_id}}
 
         try:
             # 7. 执行推理
@@ -235,7 +260,8 @@ class ChatService:
                 async def protected_generator():
                     async with get_checkpointer() as cp:
                         graph = create_agent_graph(checkpointer=cp, model=llm)
-                        async for chunk in cls.stream_graph_events(
+                        # 调用 SSE 封装层
+                        async for sse_chunk in cls.stream_graph_events(
                             graph,
                             initial_state,
                             config,
@@ -243,7 +269,7 @@ class ChatService:
                             request.thread_id,
                             background_tasks,
                         ):
-                            yield chunk
+                            yield sse_chunk
 
                 return StreamingResponse(
                     protected_generator(),

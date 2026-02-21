@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -98,3 +98,27 @@ def filter_client_site_data(site: Any) -> Any:
             site["bot_config"] = filtered_config
 
     return site
+
+
+def mask_sensitive_data(config: dict[str, Any]) -> dict[str, Any]:
+    """对通用配置字典进行脱敏处理（深度拷贝）"""
+    import copy
+
+    masked = copy.deepcopy(config)
+
+    def _recursive_mask(data: Any):
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if any(
+                    x in key.lower() for x in ["apikey", "api_key", "password", "secret", "token"]
+                ):
+                    if isinstance(value, str):
+                        data[key] = mask_variable(value)
+                else:
+                    _recursive_mask(value)
+        elif isinstance(data, list):
+            for item in data:
+                _recursive_mask(item)
+
+    _recursive_mask(masked)
+    return masked

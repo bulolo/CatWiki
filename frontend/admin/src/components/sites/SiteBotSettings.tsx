@@ -1,4 +1,4 @@
-// Copyright 2024 CatWiki Authors
+// Copyright 2026 CatWiki Authors
 // 
 // Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 // you may not use this file except in compliance with the License.
@@ -24,22 +24,11 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Bot, Code, ShieldCheck, Save, Eye, EyeOff, RefreshCw, Copy, ChevronDown, ChevronUp, Crown } from "lucide-react"
+import { Bot, Code, ShieldCheck, Eye, EyeOff, RefreshCw, Copy, ChevronDown, ChevronUp, Crown } from "lucide-react"
 import { useState, useEffect } from "react"
 import { ChatWidgetPreview } from "@/components/features/ChatWidgetPreview"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { useUpdateSite } from "@/hooks"
-import api from "@/lib/api-client"
 import { initialConfigs } from "@/types/settings"
 import { env } from "@/lib/env"
 import { useDemoMode, useHealth } from '@/hooks/useHealth'
@@ -75,6 +64,7 @@ interface SiteBotSettingsProps {
       enabled: boolean
       clientId: string
       clientSecret: string
+      templateId: string
     }
   }
   onChange: (section: string, field: string, value: any) => void
@@ -905,6 +895,38 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                     </div>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-4">
+                  <label className="text-sm font-semibold text-slate-700 min-w-[120px]">
+                    模板 ID <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex-1 relative group">
+                    <Input
+                      placeholder="钉钉机器人模板 ID"
+                      value={dingtalkBot?.templateId || ""}
+                      onChange={(e) => onChange("dingtalkBot", "templateId", e.target.value)}
+                      readOnly={isDemoMode && dingtalkBot?.templateId === "********"}
+                      autoComplete="off"
+                      className="rounded-xl border-slate-200 h-11 pr-16 font-mono"
+                    />
+                    <div className="absolute right-1 top-1.5 flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-[10px] hover:bg-slate-200 rounded-lg font-semibold px-2 text-slate-500"
+                        onClick={() => {
+                          const val = dingtalkBot?.templateId || ""
+                          navigator.clipboard.writeText(val)
+                          toast.success("模板 ID 已复制")
+                        }}
+                        disabled={!dingtalkBot?.enabled || (isDemoMode && dingtalkBot?.templateId === "********")}
+                        type="button"
+                      >
+                        复制
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -916,9 +938,10 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                   <ol className="text-[11px] text-orange-700 space-y-1.5 list-decimal list-inside">
                     <li>在钉钉开放平台创建「企业内部应用」并开启机器人能力</li>
                     <li>在「凭证与基础信息」页获取 Client ID 和 Client Secret</li>
+                    <li>在机器人配置中创建或绑定消息模板并获取模板 ID</li>
                     <li>在「事件与回调」中配置 Stream 模式</li>
                     <li>添加消息接收相关权限</li>
-                    <li>发布应用后，将 Client ID 和 Client Secret 填入上方输入框</li>
+                    <li>发布应用后，将 Client ID、Client Secret、模板 ID 填入上方输入框</li>
                   </ol>
                 </div>
               </div>

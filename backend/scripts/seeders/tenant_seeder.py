@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -148,6 +148,14 @@ class TenantSeeder(BaseSeeder):
         model_config = self.data.get("model_config")
 
         if model_config:
+            # 检查是否已经存在配置，如果已存在则跳过初始化，保护用户手动修改的内容
+            existing = await crud_system_config.get_by_key(
+                self.db, config_key=config_key, tenant_id=tenant_id
+            )
+            if existing:
+                await self.log(f"📡 [跳过] {config_key} 已存在，跳过初始化播种")
+                return
+
             await crud_system_config.update_by_key(
                 self.db, config_key=config_key, config_value=model_config, tenant_id=tenant_id
             )

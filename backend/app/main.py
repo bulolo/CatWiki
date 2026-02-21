@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -20,14 +21,16 @@ from fastapi.responses import JSONResponse
 
 from app.api.admin.api import api_router as admin_router
 from app.api.client.api import api_router as client_router
-from app.core.infra.config import settings
-from app.core.web.exceptions import setup_exception_handlers
 from app.core.common.logger import setup_logging
+from app.core.infra.config import settings
+from app.core.infra.rustfs import init_rustfs
+from app.core.lifecycle.manager import LifecycleManager
+from app.core.web.exceptions import setup_exception_handlers
 from app.core.web.middleware import setup_middleware
 from app.core.web.openapi_utils import filter_openapi_by_prefix
-from app.core.infra.rustfs import init_rustfs
-from app.core.startup.config import init_system_configs
 from app.db.database import engine
+from app.core.integration.robot.dingtalk.service import DingTalkRobotService
+from app.core.integration.robot.feishu.service import FeishuRobotService
 
 # 配置日志
 setup_logging()
@@ -55,14 +58,20 @@ async def lifespan(app: FastAPI):
 
     logger.info("数据库由 Alembic 管理")
 
-    # 初始化 RustFS 服务
-    try:
-        init_rustfs()
-    except Exception as e:
-        logger.warning(f"RustFS 初始化失败: {e}")
+    # 1. 启动核心生命周期 (配置同步、管理器初始化、RustFS 等)
+    await LifecycleManager.startup()
 
-    # 同步系统配置到数据库
-    await init_system_configs()
+    # 启动飞书长连接服务（如启用）
+    try:
+        await FeishuRobotService.get_instance().startup(asyncio.get_running_loop())
+    except Exception as e:
+        logger.warning(f"飞书长连接启动失败: {e}")
+
+    # 启动钉钉 Stream 服务（如启用）
+    try:
+        await DingTalkRobotService.get_instance().startup(asyncio.get_running_loop())
+    except Exception as e:
+        logger.warning(f"钉钉 Stream 启动失败: {e}")
 
     # 初始化 EE 功能 (如果存在)
     try:
@@ -90,6 +99,16 @@ async def lifespan(app: FastAPI):
             await VectorStoreManager._instance.close()
     except Exception as e:
         logger.warning(f"关闭向量存储连接失败: {e}")
+
+    try:
+        await FeishuRobotService.get_instance().shutdown()
+    except Exception as e:
+        logger.warning(f"关闭飞书长连接服务失败: {e}")
+
+    try:
+        await DingTalkRobotService.get_instance().shutdown()
+    except Exception as e:
+        logger.warning(f"关闭钉钉 Stream 服务失败: {e}")
 
     await engine.dispose()
     logger.info(f"{settings.PROJECT_NAME} 已关闭")

@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -27,13 +27,12 @@ import time
 from typing import Dict, Any, Optional, Tuple
 
 from app.db.database import AsyncSessionLocal
-from app.crud.system_config import crud_system_config
+from app.crud import crud_system_config
 from app.core.infra.tenant import temporary_tenant_context
+from app.core.infra.config import AI_CONFIG_KEY
+from app.core.common.masking import mask_sensitive_data
 
 logger = logging.getLogger(__name__)
-
-# 数据库存储 AI 配置的 Key 标识
-AI_CONFIG_KEY = "ai_config"
 
 
 class ConfigurationService:
@@ -65,13 +64,7 @@ class ConfigurationService:
 
     def _mask_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """对敏感字段进行脱敏处理"""
-        masked = copy.deepcopy(config)
-        # 补全可能出现的密钥键名
-        for key in ["apiKey", "api_key", "password", "secret"]:
-            if key in masked and isinstance(masked[key], str) and len(masked[key]) > 8:
-                val = masked[key]
-                masked[key] = f"{val[:4]}***{val[-4:]}"
-        return masked
+        return mask_sensitive_data(config)
 
     def _compute_config_hash(self, config: Dict[str, Any]) -> str:
         """计算配置指纹 (Identity Hash)"""

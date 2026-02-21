@@ -31,6 +31,8 @@ dependencies = [
     "openai>=1.1.0",
     "httpx>=0.25.2",
     "pycryptodome>=3.19.0",
+    "lark-oapi>=1.4.14",
+    "dingtalk-stream>=0.24.3",
 ]
 
 [project.optional-dependencies]
@@ -67,4 +69,3 @@ ignore = [
     "UP046",  # 保持 Pydantic Generic 当前写法
     "N818",   # 允许 Exception 后缀（不强制使用 Error 后缀）
 ]
-

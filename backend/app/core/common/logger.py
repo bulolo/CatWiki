@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,11 @@
 
 import logging
 import sys
-
+from contextvars import ContextVar
 from app.core.infra.config import settings
+
+# 用于全链路追踪的 Request ID
+request_id_var: ContextVar[str] = ContextVar("request_id", default="system")
 
 
 class ColorFormatter(logging.Formatter):
@@ -34,8 +37,8 @@ class ColorFormatter(logging.Formatter):
     bold_red = "\x1b[31;1m"
     reset = "\x1b[0m"
 
-    # 格式: 时间 | 级别 | 模块:函数:行号 - 消息
-    format_str = "%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s"
+    # 格式: 时间 | 级别 | [RequestID] | 模块:函数:行号 - 消息
+    format_str = "%(asctime)s | %(levelname)-8s | [%(request_id)s] | %(name)s:%(funcName)s:%(lineno)d - %(message)s"
 
     FORMATS = {
         logging.DEBUG: grey + format_str + reset,
@@ -46,6 +49,8 @@ class ColorFormatter(logging.Formatter):
     }
 
     def format(self, record: logging.LogRecord) -> str:
+        # 强制注入 request_id 字段
+        record.request_id = request_id_var.get()
         log_fmt = self.FORMATS.get(record.levelno, self.format_str)
         formatter = logging.Formatter(log_fmt, datefmt="%Y-%m-%d %H:%M:%S")
         return formatter.format(record)

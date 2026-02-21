@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.core.infra.config import settings
+from app.core.common.logger import request_id_var
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +36,15 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """请求日志中间件"""
 
     async def dispatch(self, request: Request, call_next):
-        # 生成请求 ID
+        # 生成并设置请求 ID
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
+        token = request_id_var.set(request_id)
 
         # 记录请求开始
         start_time = time.time()
         logger.info(
-            f"[{request_id}] {request.method} {request.url.path} "
+            f"{request.method} {request.url.path} "
             f"- Client: {request.client.host if request.client else 'unknown'}"
         )
 
@@ -51,14 +53,15 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         # 记录请求结束
         process_time = time.time() - start_time
-        logger.info(
-            f"[{request_id}] Completed in {process_time:.3f}s - Status: {response.status_code}"
-        )
+        logger.info(f"Completed in {process_time:.3f}s - Status: {response.status_code}")
 
         # 添加请求 ID 到响应头
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Process-Time"] = str(process_time)
         response.headers["X-Powered-By"] = "CatWiki"
+
+        # 重置 ContextVar
+        request_id_var.reset(token)
 
         return response
 

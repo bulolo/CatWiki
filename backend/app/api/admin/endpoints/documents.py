@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -741,15 +741,15 @@ async def retrieve_vectors(
     current_user: User = Depends(get_current_user_with_tenant),
 ) -> ApiResponse[VectorRetrieveResult]:
     """
-    语义检索向量数据库 (delegates to VectorService)
+    语义检索向量数据库 (delegates to RAGService)
     """
     try:
-        from app.services.vector_service import VectorService
+        from app.services.rag import RAGService
 
         # 转换过滤器格式 (Schema 应该兼容，但为了保险起见，明确这里是 VectorRetrieveRequest.filter -> VectorRetrieveFilter)
         # 实际上 Pydantic 模型是一致的
 
-        results = await VectorService.retrieve(
+        results = await RAGService.retrieve(
             query=request.query,
             k=request.k,
             threshold=request.threshold,

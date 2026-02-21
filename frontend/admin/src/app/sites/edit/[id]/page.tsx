@@ -1,4 +1,4 @@
-// Copyright 2024 CatWiki Authors
+// Copyright 2026 CatWiki Authors
 // 
 // Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 // you may not use this file except in compliance with the License.
@@ -87,6 +87,8 @@ export default function EditSitePage() {
         webWidget: { ...initialConfigs.botConfig.webWidget, ...siteData.bot_config.webWidget },
         apiBot: { ...initialConfigs.botConfig.apiBot, ...siteData.bot_config.apiBot },
         wecomSmartRobot: { ...initialConfigs.botConfig.wecomSmartRobot, ...siteData.bot_config.wecomSmartRobot },
+        feishuBot: { ...initialConfigs.botConfig.feishuBot, ...siteData.bot_config.feishuBot },
+        dingtalkBot: { ...initialConfigs.botConfig.dingtalkBot, ...siteData.bot_config.dingtalkBot },
       } : initialConfigs.botConfig
 
       setName(siteData.name)

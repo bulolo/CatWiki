@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 import logging
 from typing import Dict, Optional
 from langchain_openai import ChatOpenAI
-from app.services.configuration_service import configuration_service
+from app.core.infra.config_resolver import ConfigResolver
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +50,8 @@ class LLMManager:
         """根据租户获取模型实例 (带缓存)"""
         from app.core.web.exceptions import BadRequestException
 
-        # 1. 获取配置
-        config = await configuration_service.get_chat_config(tenant_id=tenant_id, force=force)
+        # 1. 获取配置 (使用 Core 层的 Resolver 避免层级绕过)
+        config = await ConfigResolver.resolve_section("chat", tenant_id=tenant_id)
 
         # 严格校验：如果处于 custom 模式，必须提供有效的配置，不回退到系统环境变量
         api_key = config.get("apiKey")
@@ -93,6 +93,11 @@ class LLMManager:
 
         self._models[pool_key] = new_llm
         return new_llm
+
+    async def close(self):
+        """关闭所有模型连接"""
+        logger.info("🗑️ [LLMManager] Closing all LLM model instances...")
+        self._models.clear()
 
 
 llm_manager = LLMManager.get_instance()

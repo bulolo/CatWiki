@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,9 @@
 
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.infra.config import settings
+from app.core.infra.config import settings, AI_CONFIG_KEY, DOC_PROCESSOR_CONFIG_KEY
 from app.crud.system_config import crud_system_config
 from app.db.database import AsyncSessionLocal
-from app.api.admin.endpoints.system_config import AI_CONFIG_KEY, DOC_PROCESSOR_CONFIG_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +52,7 @@ async def sync_ai_config_to_db():
                 "model": settings.AI_CHAT_MODEL or "",
                 "apiKey": settings.AI_CHAT_API_KEY or "",
                 "baseUrl": settings.AI_CHAT_API_BASE or "",
+                "mode": "custom",
             },
             "embedding": {
                 "provider": "openai",
@@ -60,18 +60,21 @@ async def sync_ai_config_to_db():
                 "apiKey": settings.AI_EMBEDDING_API_KEY or "",
                 "baseUrl": settings.AI_EMBEDDING_API_BASE or "",
                 "dimension": settings.AI_EMBEDDING_DIMENSION,
+                "mode": "custom",
             },
             "rerank": {
                 "provider": "openai",
                 "model": settings.AI_RERANK_MODEL or "",
                 "apiKey": settings.AI_RERANK_API_KEY or "",
                 "baseUrl": settings.AI_RERANK_API_BASE or "",
+                "mode": "custom",
             },
             "vl": {
                 "provider": "openai",
                 "model": settings.AI_VL_MODEL or "",
                 "apiKey": settings.AI_VL_API_KEY or "",
                 "baseUrl": settings.AI_VL_API_BASE or "",
+                "mode": "custom",
             },
         }
 

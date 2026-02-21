@@ -37,54 +37,37 @@ make dev-up
 
 ### 访问服务
 
-等待 2-3 分钟，所有服务启动完成后，访问：
+等待所有服务启动完成（首次启动需构建镜像，可能需要 3-5 分钟），访问：
 
 | 服务 | 地址 | 说明 |
 |------|------|------|
-| 🎯 管理后台 | http://localhost:8001 | 使用 `admin@example.com` / `admin123` 登录 |
-| 💬 客户端 | http://localhost:8002/medical | Demo 医学科普，包含 5 篇医学文档 |
-| 📚 API 文档 | http://localhost:3000/docs | 交互式 API 文档 |
-| 📖 文档站点 | http://localhost:8003 | 项目完整文档 |
-
-### 开发环境命令
-
-| 命令 | 说明 |
-|------|------|
-| `make dev-init` | **初始化环境配置**：清理并重新从 `.env.example` 复制配置文件 |
-| `make dev-up` | **开发启动**：构建镜像并在前台启动，实时查看所有服务日志 |
-| `make dev-down` | **优雅停止**：停止并移除容器，保留数据库存储卷 |
-| `make dev-restart` | **快捷重启**：仅重启后端应用容器 |
-| `make dev-logs` | **实时日志**：查看后端核心服务的实时运行日志 |
-| `make dev-db-migrate m="msg"` | **生成迁移脚本**：生成新的数据库迁移脚本（需提供备注 `m`） |
-| `make dev-db-psql` | **数据库终端**：进入 PostgreSQL 交互式终端 |
-| `make dev-clean` | **深度重置**：停止容器并**删除所有数据卷**（⚠️ 危险操作） |
+| 🎯 管理后台 | http://localhost:8001 | 账号: `health_admin@example.com` / `admin123` |
+| 💬 客户端 | http://localhost:8002/medical | 默认医疗 Demo 站点 |
+| 📚 API 文档 | http://localhost:3000/docs | Swagger UI 交互式文档 |
+| 📖 文档中心 | http://localhost:8003 | 您现在正在阅读的文档 |
 
 ---
 
-## 🚀 生产环境
+## � 生产环境
 
 生产环境适合正式部署，使用 Nginx 反向代理，支持 HTTPS，性能优化。
 
-### 一键部署
+### 1. 一键部署
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/bulolo/CatWiki.git
-cd catWiki
-
-# 2. 初始化生产配置
+# 1. 初始化生产配置
 make prod-init
 
-# 3. 修改配置文件（必须！）
+# 2. 修改配置文件（必须！）
 vim deploy/docker/.env.backend    # 后端配置
 vim deploy/docker/.env.admin      # Admin 前端配置
 vim deploy/docker/.env.client     # Client 前端配置
 
-# 4. 后台启动生产环境
+# 3. 后台启动生产环境
 make prod-up
 ```
 
-### 必要配置项
+### 2. 必要配置项
 
 > [!IMPORTANT]
 > 生产环境**必须**修改以下配置，否则存在安全风险！
@@ -99,55 +82,58 @@ POSTGRES_PASSWORD=your_secure_password
 SECRET_KEY=your_random_secret_key_at_least_32_chars
 
 # CORS 允许的域名
-BACKEND_CORS_ORIGINS=["https://admin.your-domain.com","https://client.your-domain.com"]
+BACKEND_CORS_ORIGINS=["https://admin.catwiki.ai","https://demo.catwiki.ai","https://docs.catwiki.ai","https://catwiki.ai"]
 
 # RustFS 对象存储配置
 RUSTFS_ENDPOINT=rustfs:9000                    # 内部访问地址
 RUSTFS_ACCESS_KEY=rustfsadmin                  # 访问密钥（建议修改）
 RUSTFS_SECRET_KEY=rustfsadmin                  # 密钥（建议修改）
-RUSTFS_PUBLIC_URL=https://oss.your-domain.com  # 公网访问地址
+RUSTFS_PUBLIC_URL=https://files.catwiki.ai  # 公网访问地址
 ```
 
 #### 前端配置
 
-```bash
-# deploy/docker/.env.admin
-NEXT_PUBLIC_API_URL=https://api.your-domain.com
-NEXT_PUBLIC_CLIENT_URL=https://client.your-domain.com  # Client 前端地址，用于 AI 问答跳转
+- **Admin 后台**: 修改 `deploy/docker/.env.admin` 中的 `NEXT_PUBLIC_API_URL` 为您的 API 域名。
+- **Client 端**: 修改 `deploy/docker/.env.client` 中的 `NEXT_PUBLIC_API_URL`。
 
-# deploy/docker/.env.client
-NEXT_PUBLIC_API_URL=https://api.your-domain.com
-NEXT_PUBLIC_DOCS_URL=https://docs.your-domain.com
-```
+---
 
-### 访问服务
+## �🛠️ 常用命令 (CLI Reference)
 
-| 服务 | 默认端口 | 说明 |
-|------|----------|------|
-| 🎯 管理后台 | 8001 | 建议配置域名：`admin.your-domain.com` |
-| 💬 客户端 | 8002 | 建议配置域名：`app.your-domain.com` |
-| 📚 API | 3000 | 建议配置域名：`api.your-domain.com` |
-| 📖 文档 | 8003 | 建议配置域名：`docs.your-domain.com` |
+### 开发环境 (Development)
 
-### 生产环境命令
+| 命令 | 说明 |
+|------|------|
+| `make dev-init` | **环境初始化**：生成本地 `.env` 文件（仅首次执行或重置配置时使用） |
+| `make dev-up` | **一键启动**：构建并运行容器，展示实时日志 (Ctrl+C 停止) |
+| `make dev-rebuild` | **后台重启**：构建并以守护进程模式启动 (Background) |
+| `make dev-down` | **停止服务**：移除容器，保留数据 |
+| `make dev-restart` | **快捷重启**：仅重启 backend 容器，适用于修改代码后快速刷新 |
+| `make dev-logs` | **查看日志**：持续输出后端日志流 |
+| `make dev-db-migrate m="xxx"` | **创建迁移**：自动生成 Alembic 数据库迁移文件 |
+| `make dev-db-psql` | **DB 终端**：进入 PostgreSQL 交互式命令行 |
+| `make dev-clean` | **彻底重置**：删除所有容器及数据（含数据库数据，慎用） |
+
+### 生产环境 (Production)
 
 | 命令 | 说明 |
 |------|------|
 | `make prod-init` | **生产初始化**：初始化生产环境配置文件模板 |
 | `make prod-up` | **生产启动**：在后台启动生产环境所有服务 |
+| `make prod-rebuild` | **无损重建**：重新构建生产镜像并拉起服务 |
 | `make prod-down` | **生产停止**：停止并移除生产环境容器 |
 | `make prod-restart` | **重启后端**：仅重启生产环境后端应用容器 |
 | `make prod-logs` | **实时日志**：查看生产环境容器日志 |
-| `make prod-clean` | **深度重置**：停止容器并**删除生产所有数据卷**（⚠️ 危险操作） |
+| `make prod-clean` | **深度重置**：停止容器并删除生产所有数据卷（⚠️ 危险操作） |
 
----
-
-## 🔧 通用命令
+### 系统维护 (Maintenance)
 
 | 命令 | 说明 |
 |------|------|
-| `make gen-sdk` | **生成 SDK**：触发后端 API 自动生成前端 SDK |
-| `make help` | **预览命令**：显示所有可用指令及其说明 |
+| `make gen-sdk` | **同步 SDK**：根据后端接口刷新前端 TypeScript SDK |
+| `make format` | **自动格式化**：一键修复后端 (Ruff) 与前端 (Lint) 的代码格式 |
+| `make license` | **许可注入**：为源码文件自动添加 License 声明头 |
+| `make help` | **查看帮助**：显示所有可用 Makefile 指令 |
 
 ---
 

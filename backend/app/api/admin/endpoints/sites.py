@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -21,21 +21,58 @@ import logging
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.common.utils import Paginator, generate_token
 from app.core.infra.config import settings
 from app.core.web.deps import get_current_user_with_tenant
-from app.core.web.exceptions import ConflictException, NotFoundException
-from app.core.common.utils import Paginator, generate_token
+from app.core.web.exceptions import BadRequestException, ConflictException, NotFoundException
 from app.crud import crud_site, crud_user
-from app.crud.user import get_password_hash
 from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.schemas.response import ApiResponse, PaginatedResponse
 from app.schemas.site import Site, SiteCreate, SiteUpdate
 from app.schemas.user import UserCreate, UserUpdate
+from app.core.integration.robot.dingtalk.service import DingTalkRobotService
+from app.core.integration.robot.feishu.service import FeishuRobotService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def _refresh_bot_stream_services() -> None:
+    """站点机器人配置变更后，刷新飞书/钉钉长连接服务。"""
+    try:
+        await FeishuRobotService.get_instance().refresh()
+    except Exception as e:
+        logger.warning(f"刷新飞书长连接失败: {e}")
+    try:
+        await DingTalkRobotService.get_instance().refresh()
+    except Exception as e:
+        logger.warning(f"刷新钉钉 Stream 失败: {e}")
+
+
+def _validate_site_bot_config(bot_config: dict | None) -> None:
+    """校验站点机器人配置，避免启用后静默失效。"""
+    if not bot_config:
+        return
+
+    feishu = bot_config.get("feishuBot") or {}
+    if feishu.get("enabled"):
+        app_id = (feishu.get("appId") or "").strip()
+        app_secret = (feishu.get("appSecret") or "").strip()
+        if not app_id or not app_secret:
+            raise BadRequestException(detail="启用飞书机器人时，App ID 和 App Secret 均不能为空。")
+
+    dingtalk = bot_config.get("dingtalkBot") or {}
+    if not dingtalk.get("enabled"):
+        return
+    client_id = (dingtalk.get("clientId") or "").strip()
+    client_secret = (dingtalk.get("clientSecret") or "").strip()
+    template_id = (dingtalk.get("templateId") or "").strip()
+    if not client_id or not client_secret or not template_id:
+        raise BadRequestException(
+            detail="启用钉钉机器人时，Client ID、Client Secret、模板 ID 均不能为空。"
+        )
 
 
 @router.get("", response_model=ApiResponse[PaginatedResponse[Site]], operation_id="listAdminSites")
@@ -114,6 +151,7 @@ async def create_site(
 
     # 处理机器人配置：如果启用 API Bot 且没填 Key，自动生成一个
     if site_in.bot_config:
+        _validate_site_bot_config(site_in.bot_config)
         api_bot = site_in.bot_config.get("apiBot")
         # CE 版本不支持 API Bot（企业版专属功能）
         if api_bot and settings.CATWIKI_EDITION == "community":
@@ -158,6 +196,7 @@ async def create_site(
                 ),
             )
 
+    await _refresh_bot_stream_services()
     return ApiResponse.ok(data=site, msg="创建成功")
 
 
@@ -187,6 +226,7 @@ async def update_site(
 
     # 处理机器人配置：如果启用 API Bot 且没填 Key，尝试沿用旧的或生成新的
     if site_in.bot_config:
+        _validate_site_bot_config(site_in.bot_config)
         api_bot = site_in.bot_config.get("apiBot")
         # CE 版本不支持 API Bot（企业版专属功能）
         if api_bot and settings.CATWIKI_EDITION == "community":
@@ -202,6 +242,7 @@ async def update_site(
                 api_bot["apiKey"] = f"sk-{generate_token(24)}"
 
     site = await crud_site.update(db, db_obj=site, obj_in=site_in)
+    await _refresh_bot_stream_services()
     return ApiResponse.ok(data=site, msg="更新成功")
 
 
@@ -245,4 +286,5 @@ async def delete_site(
     if not success:
         raise NotFoundException(detail=f"站点 {site_id} 不存在")
 
+    await _refresh_bot_stream_services()
     return ApiResponse.ok(msg="删除成功")

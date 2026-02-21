@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -271,3 +271,8 @@ def get_env_files() -> list[str]:
 
 # 根据环境加载配置文件
 settings = Settings(_env_file=get_env_files())
+
+# 系统配置键常量 (Core Layer)
+AI_CONFIG_KEY = "ai_config"
+DOC_PROCESSOR_CONFIG_KEY = "doc_processor_config"
+SYSTEM_INTEGRITY_KEY = "system_integrity"

@@ -8,96 +8,90 @@ CatWiki 的 API 调用体系分为两层：底层的 **自动生成 SDK** 与上
 
 ### 底层：自动生成 SDK (`@/lib/sdk`)
 - **来源**：通过 `make gen-sdk` 工具基于后端的 OpenAPI (Swagger) 定义自动生成。
-- **职责**：提供所有原始接口的定义、请求参数类型以及响应模型。
-- **注意**：**不要手动修改此目录下的任何代码**，因为下次生成时会被覆盖。
+- **职责**：提供原始接口定义。Admin 端生成 `CatWikiAdminSdk`，Client 端生成 `CatWikiClientSdk`。
+- **注意**：**不要手动修改此目录下的任何代码**。
 
 ### 上层：封装客户端 (`@/lib/api-client`)
-- **来源**：手工维护的薄封装层。
 - **职责**：
-    - **单例化**：预配置 `BASE_URL` 和初始化 SDK 实例。
-    - **认证注入**：自动从本地存储获取 Token 并注入 Request Header。
-    - **全局拦截**：统一处理 401 (未授权) 自动跳转登录页等通用逻辑。
-    - **常用模型重导出**：为了方便开发，将最常用的 `Site`, `Document` 等类型集中在此处导出。
+    - **单例化**：预配置 `BASE_URL` 并初始化 SDK 实例。
+    - **认证注入**：Admin 端自动注入 Bearer Token。
+    - **统一拦截**：处理 401 自动跳转等逻辑。
+    - **类型重导出**：导出 `Models` 命名空间，提供完整的类型提示。
 
 ---
 
 ## 2. 引入与使用
 
-项目中 **严禁** 直接从 `@/lib/sdk` 引入方法，**必须** 统一使用封装好的 `api` 对象。
+**推荐方式**：统一使用封装好的 `api` 对象，并配合 `Models` 命名空间使用类型。
 
-### 统一引入方式
+### 示例代码
 ```typescript
-import { api } from '@/lib/api-client' 
-// 常用模型也可以直接从此处引入
-import type { Site, Document } from '@/lib/api-client'
+import { api, Models } from '@/lib/api-client' 
 
-// 使用示例
-const response = await api.site.list({ page: 1 })
+// 1. 调用接口
+const sites = await api.site.list({ page: 1 })
+
+// 2. 使用类型 (推荐 Models 命名空间)
+const newSite: Models.SiteCreate = {
+  name: '我的新站点',
+  slug: 'my-site'
+}
 ```
 
 ---
 
 ## 3. 分端说明 (Admin vs Client)
 
-项目包含两套 SDK，分别对应不同的使用场景：
+底层 SDK 在生成的服务命名上存在细微差别：
 
-### 管理端 (Admin)
-- **SDK**: `CatWikiAdminSdk`
-- **接口范围**: 包含所有管理功能（站点配置、用户权限、系统设置）。
-- **认证**: 必须提供有效 Token。
-
-### 展示端 (Client)
-- **SDK**: `CatWikiClientSdk`
-- **接口范围**: 仅包含公开数据接口（文档阅读、公开合集、搜索）。
-- **认证**: 通常不需要 Token（或仅限公开访问权限）。
+| 特性 | 管理端 (Admin) | 展示端 (Client) |
+| :--- | :--- | :--- |
+| **生成的类名** | `CatWikiAdminSdk` | `CatWikiClientSdk` |
+| **服务命名空间** | `adminSites`, `adminDocuments`... | `sites`, `documents`... |
+| **认证方式** | 必须携带 Token | 默认公开访问 |
 
 ---
 
 ## 4. 扩展指南：如何增加新的 API？
 
-如果你在后端新增了一个接口，请按照以下步骤同步到前端：
+如果你在后端新增了一个接口（例如 `GET /admin/sites/my-action`）：
 
-1.  **后端定义**：确保你的 FastAPI Endpoint 已定义 `operation_id`（建议遵循 `actionRoleNoun` 规范）。
-2.  **同步 SDK**：在项目根目录运行以下命令：
+1.  **同步 SDK**：
     ```bash
     make gen-sdk
     ```
-    这将更新 `frontend/admin/src/lib/sdk` 和 `frontend/client/src/lib/sdk`。
-3.  **完善封装**：打开对应的 `src/lib/api-client.ts`，在对应的 `xxxApi` 对象中添加新方法。
+2.  **完善封装**：在 `lib/api-client.ts` 中找到对应的模块进行封装。
     ```typescript
-    // 示例：在 admin/api-client.ts 中添加方法
+    // 以 Admin 端为例
     const siteApi = {
-      // ... 现有方法
-      myNewAction: (params: any) => client.adminSites.myNewAction(params),
+      // ...
+      myNewAction: (id: number) => 
+        wrapResponse<Models.ActionResult>(client.adminSites.myNewAction({ id })),
     }
     ```
-4.  **UI 调用**：在组件中使用：
+3.  **UI 调用**：
     ```typescript
-    const res = await api.site.myNewAction(...)
+    const res = await api.site.myNewAction(123)
     ```
 
 ---
 
-## 5. 核心区别参考
+## 5. 类型安全最佳实践
 
-| 特性 | 底层 SDK (`@/lib/sdk`) | 封装客户端 (`@/lib/api-client`) |
-| :--- | :--- | :--- |
-| **维护方式** | 机器自动生成 | 人工手动维护 |
-| **状态** | 裸类定义 | 已配置的单例对象 |
-| **认证处理** | 需手动传入 Token | **自动注入 Token** |
-| **错误拦截** | 无 | **全局 401 拦截与跳转** |
-| **使用建议** | 仅作为类型参考 | **开发首选调用方式** |
+**强烈建议** 使用 `Models` 命名空间，而不是从深层路径引入。
+
+```typescript
+// ✅ 推荐：由 api-client 统一导出的命名空间
+import { Models } from '@/lib/api-client'
+type Site = Models.Site
+
+// ❌ 不推荐：路径依赖过深且不可控
+import type { Site } from '@/lib/sdk/models/Site'
+```
 
 ---
 
-## 6. 类型安全建议
+## 6. 常见问题
 
-尽量不要直接引用 `lib/sdk/models` 下的深层路径。我们已经在 `api-client.ts` 中重导出了大部分常用类型。
-
-```typescript
-// ✅ 推荐：简洁明了
-import type { Site, Document } from '@/lib/api-client'
-
-// ❌ 不推荐：路径过深，且可能因 SDK 重新生成而变动
-import type { Site } from '@/lib/sdk/models/Site'
-```
+**Q: 运行 `make gen-sdk` 报错？**
+A: 请确保后端服务已启动（`make dev-up`），因为脚本需要访问 `http://localhost:3000/openapi-admin.json` 获取最新的接口定义。

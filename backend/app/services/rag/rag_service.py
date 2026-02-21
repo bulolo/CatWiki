@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ import logging
 import time
 
 from app.core.infra.config import settings
+from app.crud import crud_document, crud_collection
 from app.core.ai.providers.reranker import reranker
 from app.core.vector.vector_store import VectorStoreManager
 from app.schemas.document import VectorRetrieveFilter, VectorRetrieveResponse
@@ -23,8 +24,8 @@ from app.schemas.document import VectorRetrieveFilter, VectorRetrieveResponse
 logger = logging.getLogger(__name__)
 
 
-class VectorService:
-    """向量检索服务 (RAG的核心逻辑)"""
+class RAGService:
+    """RAG 检索增强服务 (召回 + 重排)"""
 
     @classmethod
     async def retrieve(
@@ -89,7 +90,7 @@ class VectorService:
             recall_k = min(recall_k, settings.RAG_RECALL_MAX)
 
             logger.info(
-                f"🚀 [Retrieve] Query: '{query}' | Site: {filter.site_id if filter else 'Global'} | "
+                f"🚀 [RAG] Query: '{query}' | Site: {filter.site_id if filter else 'Global'} | "
                 f"Recall K: {recall_k} | Top K: {final_top_k} | Rerank: {should_apply_rerank}"
             )
 
@@ -136,7 +137,7 @@ class VectorService:
 
             # 日志
             duration = time.time() - start_time
-            logger.info(f"✅ [Retrieve] Found {len(response_objects)} results in {duration:.3f}s")
+            logger.info(f"✅ [RAG] Found {len(response_objects)} results in {duration:.3f}s")
 
             return response_objects
 

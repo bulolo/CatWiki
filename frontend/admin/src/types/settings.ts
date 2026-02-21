@@ -1,4 +1,4 @@
-// Copyright 2024 CatWiki Authors
+// Copyright 2026 CatWiki Authors
 // 
 // Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 // you may not use this file except in compliance with the License.
@@ -54,6 +54,7 @@ export type BotConfig = {
     enabled: boolean
     clientId: string
     clientSecret: string
+    templateId: string
   }
 }
 
@@ -126,7 +127,8 @@ export const initialConfigs: AIConfigs = {
     dingtalkBot: {
       enabled: false,
       clientId: "",
-      clientSecret: ""
+      clientSecret: "",
+      templateId: ""
     }
   }
 }

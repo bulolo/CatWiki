@@ -1,4 +1,4 @@
-# Copyright 2024 CatWiki Authors
+# Copyright 2026 CatWiki Authors
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
@@ -17,14 +17,20 @@
 """
 
 import copy
+import logging
 from datetime import datetime
 from typing import Any, Literal
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.infra.config import settings
+from app.core.infra.config import (
+    settings,
+    AI_CONFIG_KEY,
+    DOC_PROCESSOR_CONFIG_KEY,
+    SYSTEM_INTEGRITY_KEY,
+)
 from app.core.web.deps import get_current_user_with_tenant
-from app.core.web.exceptions import NotFoundException
+from app.core.web.exceptions import BadRequestException, NotFoundException
 from app.core.infra.tenant import get_current_tenant, temporary_tenant_context
 from app.crud.system_config import crud_system_config
 from app.db.database import get_db
@@ -39,14 +45,21 @@ from app.schemas.system_config import (
 )
 
 router = APIRouter()
-
-# 配置键常量
-AI_CONFIG_KEY = "ai_config"
-DOC_PROCESSOR_CONFIG_KEY = "doc_processor_config"
-SYSTEM_INTEGRITY_KEY = "system_integrity"
+logger = logging.getLogger(__name__)
 
 # 模型类型常量
 MODEL_TYPES = ["chat", "embedding", "rerank", "vl"]
+
+
+def _resolve_target_tenant_id(scope: Literal["platform", "tenant"]) -> int | None:
+    """解析目标租户。tenant 作用域必须有有效租户上下文。"""
+    if scope == "platform":
+        return None
+
+    tenant_id = get_current_tenant()
+    if tenant_id is None:
+        raise BadRequestException(detail="当前为全平台视图，tenant 作用域操作前请先选择目标租户。")
+    return tenant_id
 
 
 def _format_openai_error(e: Exception) -> str:
@@ -91,7 +104,10 @@ async def get_ai_config(
     """
     获取 AI 模型配置
     """
-    target_tenant_id = None if scope == "platform" else get_current_tenant()
+    target_tenant_id = _resolve_target_tenant_id(scope)
+    logger.info(
+        "🧭 [SystemConfig] get_ai_config scope=%s target_tenant_id=%s", scope, target_tenant_id
+    )
 
     # 如果是租户级别，且不是平台管理员查看全局，需要检查是否允许使用平台资源
     platform_fallback_allowed = False
@@ -162,7 +178,12 @@ async def update_ai_config(
     更新 AI 模型配置 (扁平结构)
     """
     config_value = config_in.model_dump(mode="json")
-    target_tenant_id = None if scope == "platform" else get_current_tenant()
+    target_tenant_id = _resolve_target_tenant_id(scope)
+    logger.info(
+        "🧭 [SystemConfig] update_ai_config scope=%s target_tenant_id=%s",
+        scope,
+        target_tenant_id,
+    )
 
     with temporary_tenant_context(target_tenant_id):
         # 获取现有配置用于比对
@@ -177,9 +198,6 @@ async def update_ai_config(
         # 如果 dimension 为空 (None or 0)，尝试探测
         if not embedding_conf.get("dimension"):
             try:
-                import logging
-
-                logger = logging.getLogger(__name__)
                 logger.info("🔍 Auto-detecting embedding dimension...")
 
                 client = _create_openai_client(
@@ -192,14 +210,9 @@ async def update_ai_config(
                     logger.info(f"✅ Detected dimension: {dim}")
             except Exception as e:
                 # 探测失败不阻断保存，但记录错误
-                import logging
-
-                logging.getLogger(__name__).warning(f"⚠️ Failed to auto-detect dimension: {e}")
+                logger.warning(f"⚠️ Failed to auto-detect dimension: {e}")
 
     with temporary_tenant_context(target_tenant_id):
-        import logging
-
-        logger = logging.getLogger(__name__)
         logger.info(f"💾 Saving AI Config to DB: {config_value}")
 
         config = await crud_system_config.update_by_key(
@@ -211,7 +224,7 @@ async def update_ai_config(
 
     # 强制清除配置缓存，确保所有的 Manager 都能读取到最新写入数据库的值
     try:
-        from app.services.configuration_service import configuration_service
+        from app.services.config import configuration_service
 
         configuration_service.clear_cache(tenant_id=target_tenant_id)
         logger.info(f"🧹 Cleared AI config cache for tenant: {target_tenant_id}")
@@ -249,7 +262,13 @@ async def delete_config(
     """
     删除指定配置
     """
-    target_tenant_id = None if scope == "platform" else current_user.tenant_id
+    target_tenant_id = _resolve_target_tenant_id(scope)
+    logger.info(
+        "🧭 [SystemConfig] delete_config scope=%s target_tenant_id=%s key=%s",
+        scope,
+        target_tenant_id,
+        config_key,
+    )
 
     with temporary_tenant_context(target_tenant_id):
         db_config = await crud_system_config.get_by_key(
@@ -281,9 +300,13 @@ async def test_model_connection(
     """
     model_type = request.model_type
     config = request.config
-    target_tenant_id = None if scope == "platform" else get_current_tenant()
-
-    target_tenant_id = None if scope == "platform" else get_current_tenant()
+    target_tenant_id = _resolve_target_tenant_id(scope)
+    logger.info(
+        "🧭 [SystemConfig] test_model_connection scope=%s target_tenant_id=%s model_type=%s",
+        scope,
+        target_tenant_id,
+        model_type,
+    )
 
     # 1. 对话/多模态/视觉测试 (使用 OpenAI Chat API)
     if model_type in ["chat", "vl"]:
@@ -298,9 +321,6 @@ async def test_model_connection(
                 msg="连接成功",
             )
         except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.error(f"❌ [TestConnection] Chat/VL failed: {e}", exc_info=True)
             return ApiResponse.error(msg=_format_openai_error(e))
 
@@ -315,9 +335,6 @@ async def test_model_connection(
                 data={"dimension": dim}, msg=f"连接成功 (Detected Dimension: {dim})"
             )
         except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.error(f"❌ [TestConnection] Embedding failed: {e}", exc_info=True)
             return ApiResponse.error(msg=_format_openai_error(e))
 
@@ -358,9 +375,6 @@ async def test_model_connection(
                 return ApiResponse.ok(msg="连接成功")
 
         except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.error(f"❌ [TestConnection] Rerank failed: {e}", exc_info=True)
             # 统一错误格式
             return ApiResponse.error(msg=f"请求失败: {str(e)}")
@@ -384,7 +398,12 @@ async def get_doc_processor_config(
     """
     获取文档处理服务配置
     """
-    target_tenant_id = None if scope == "platform" else get_current_tenant()
+    target_tenant_id = _resolve_target_tenant_id(scope)
+    logger.info(
+        "🧭 [SystemConfig] get_doc_processor_config scope=%s target_tenant_id=%s",
+        scope,
+        target_tenant_id,
+    )
 
     # 如果是租户级别，检查是否允许使用平台资源
     platform_fallback_allowed = False
@@ -443,7 +462,12 @@ async def update_doc_processor_config(
     更新文档处理服务配置
     """
     config_value = config_in.model_dump(mode="json")
-    target_tenant_id = None if scope == "platform" else get_current_tenant()
+    target_tenant_id = _resolve_target_tenant_id(scope)
+    logger.info(
+        "🧭 [SystemConfig] update_doc_processor_config scope=%s target_tenant_id=%s",
+        scope,
+        target_tenant_id,
+    )
 
     # 过滤掉平台资源 (防止前端误传导致覆盖)
     if "processors" in config_value:
@@ -480,7 +504,12 @@ async def test_doc_processor_connection(
     测试文档处理服务连接性
     """
     config = request.config
-    target_tenant_id = None if scope == "platform" else get_current_tenant()
+    target_tenant_id = _resolve_target_tenant_id(scope)
+    logger.info(
+        "🧭 [SystemConfig] test_doc_processor_connection scope=%s target_tenant_id=%s",
+        scope,
+        target_tenant_id,
+    )
 
     try:
         from app.core.doc_processor import DocProcessorFactory
@@ -500,8 +529,5 @@ async def test_doc_processor_connection(
         # 工厂抛出的不支持类型错误
         return ApiResponse.error(msg=str(e))
     except Exception as e:
-        import logging
-
-        logger = logging.getLogger(__name__)
         logger.error(f"❌ [TestDocProcessor] Failed: {e}", exc_info=True)
         return ApiResponse.error(msg=f"连接失败: {str(e)}")
