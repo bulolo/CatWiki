@@ -52,6 +52,9 @@ help:
 	@echo "  make help               - 显示此帮助信息"
 	@echo ""
 
+	@echo " 📦  [CE 发布] (CE Release)"
+	@echo "  make sync-ce            - 从 ee 生成 CE 并推送到 origin/ce"
+	@echo "  make publish-ce         - 将 origin/ce 推送到 GitHub"
 	@echo ""
 	@echo " ⚠️  Windows 用户注意: 请使用 WSL2 或 Git Bash 运行 make 命令"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -193,5 +196,5 @@ license:
 	@echo "✅ License Header 注入完成！"
 
 # ==============================================================================
-# ==============================================================================
-
+# 从 ee 生成 CE 并推送到 origin/ce
+# 将 origin/ce 推送到 GitHub
