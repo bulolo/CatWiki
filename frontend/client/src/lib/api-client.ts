@@ -14,9 +14,11 @@
 
 import { CatWikiClientSdk } from './sdk/CatWikiClientSdk'
 import { Models } from './sdk'
-
-
 import { env } from './env'
+import { ApiError } from './sdk/core/ApiError'
+import type { ApiRequestOptions } from './sdk/core/ApiRequestOptions'
+import { CancelablePromise } from './sdk/core/CancelablePromise'
+import { FetchHttpRequest } from './sdk/core/FetchHttpRequest'
 
 // ==================== 配置 ====================
 
@@ -36,17 +38,26 @@ export interface ApiResponse<T = any> {
  * 通用响应处理器：自动校验 code === 0 并返回 data
  */
 async function wrapResponse<T>(promise: Promise<any>, defaultMsg = '操作失败'): Promise<T> {
-  const response = await promise
-  if (response.code === 0) {
-    return response.data as T
+  try {
+    const response = await promise
+    if (response.code === 0) {
+      return response.data as T
+    }
+    throw new Error(response.msg || defaultMsg)
+  } catch (error) {
+    if (error instanceof ApiError) {
+      const body = error.body
+      const msg =
+        body && typeof body === 'object' && body.msg
+          ? body.msg
+          : typeof body === 'string'
+            ? body
+            : error.message
+      throw new Error(msg || defaultMsg)
+    }
+    throw error
   }
-  throw new Error(response.msg || defaultMsg)
 }
-
-
-import { FetchHttpRequest } from './sdk/core/FetchHttpRequest'
-import type { ApiRequestOptions } from './sdk/core/ApiRequestOptions'
-import { CancelablePromise } from './sdk/core/CancelablePromise'
 
 class CustomHttpRequest extends FetchHttpRequest {
   public override request<T>(options: ApiRequestOptions): CancelablePromise<T> {
@@ -181,7 +192,7 @@ const chatSessionApi = {
   list: (params: { siteId?: number; memberId?: string; keyword?: string; page?: number; size?: number } = {}) => {
     return wrapResponse<Models.ChatSessionListResponse>(client.chatSessions.listChatSessions({
       siteId: params.siteId,
-      memberId: params.memberId as any,
+      memberId: params.memberId,
       keyword: params.keyword,
       page: params.page,
       size: params.size,
@@ -239,5 +250,4 @@ export * from './sdk/models'
 
 // 2. 导出 Models 命名空间 (推荐新用法)
 export { Models } from './sdk'
-
 

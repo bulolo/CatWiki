@@ -34,8 +34,9 @@ export function handleApiError(error: unknown, defaultMessage = "操作失败"):
  */
 export function logError(context: string, error: unknown): void {
   if (process.env.NODE_ENV === "development") {
-    console.error(`[${context}]`, error)
+    // 避免直接将 Error 对象传给 console.error 触发 Next.js 的全屏遮罩
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    console.warn(`[${context}] Error:`, errorMessage)
   }
   // 生产环境可以在这里集成错误监控服务（如 Sentry）
 }
-
