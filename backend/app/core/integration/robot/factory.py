@@ -1,8 +1,6 @@
-from typing import Any
-
 from app.core.integration.robot.base import BaseRobotAdapter
-from app.core.integration.robot.feishu.adapter import FeishuAdapter
 from app.core.integration.robot.dingtalk.adapter import DingTalkAdapter
+from app.core.integration.robot.feishu.adapter import FeishuAdapter
 from app.core.integration.robot.wecom.adapter import WeComAdapter
 
 

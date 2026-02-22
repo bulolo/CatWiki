@@ -15,7 +15,6 @@
 """Chat Session Schemas - 会话管理 API 数据模型"""
 
 from datetime import datetime
-from typing import Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -25,16 +24,16 @@ class ChatSessionBase(BaseModel):
 
     thread_id: str = Field(..., description="会话 thread_id")
     site_id: int = Field(..., description="站点ID")
-    member_id: Optional[str] = Field(None, description="会员ID或访客标识")
-    title: Optional[str] = Field(None, description="会话标题")
+    member_id: str | None = Field(None, description="会员ID或访客标识")
+    title: str | None = Field(None, description="会话标题")
 
 
 class ChatSessionResponse(ChatSessionBase):
     """会话响应模型"""
 
     id: int
-    last_message: Optional[str] = Field(None, description="最后消息预览")
-    last_message_role: Optional[str] = Field(None, description="最后消息角色")
+    last_message: str | None = Field(None, description="最后消息预览")
+    last_message_role: str | None = Field(None, description="最后消息角色")
     message_count: int = Field(0, description="消息数量")
     created_at: datetime
     updated_at: datetime
@@ -64,12 +63,12 @@ class ChatMessage(BaseModel):
     """单条消息模型（OpenAI 格式）"""
 
     role: str = Field(..., description="角色: user/assistant/system")
-    content: Optional[str] = Field(None, description="内容，tool_call 时可能为空")
-    id: Optional[str] = Field(None, description="消息ID")
+    content: str | None = Field(None, description="内容，tool_call 时可能为空")
+    id: str | None = Field(None, description="消息ID")
     tool_calls: list[dict] = Field(default_factory=list, description="工具调用列表")
-    tool_call_id: Optional[str] = Field(None, description="工具调用ID（role=tool时）")
-    sources: Optional[list[dict]] = Field(None, description="引用来源列表（每条消息专属）")
-    additional_kwargs: Optional[dict] = Field(None, description="其他元数据")
+    tool_call_id: str | None = Field(None, description="工具调用ID（role=tool时）")
+    sources: list[dict] | None = Field(None, description="引用来源列表（每条消息专属）")
+    additional_kwargs: dict | None = Field(None, description="其他元数据")
 
 
 class ChatSessionMessagesResponse(BaseModel):

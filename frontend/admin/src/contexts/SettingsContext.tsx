@@ -164,10 +164,6 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
         }
 
         toast.success("AI 模型配置已保存")
-      },
-      onError: (error) => {
-        logError("保存 AI 配置", error)
-        toast.error("保存失败，请重试")
       }
     })
   }

@@ -15,12 +15,11 @@
 
 import base64
 import logging
+import mimetypes
 import re
 import uuid
-import mimetypes
 from io import BytesIO
 
-from app.core.infra.config import settings
 from app.core.infra.rustfs import get_rustfs_service
 
 logger = logging.getLogger(__name__)
@@ -77,7 +76,6 @@ class ImageProcessor:
 
         def replace_match(match):
             alt_text = match.group(1)
-            full_data_uri = match.group(2)
             ext = match.group(3)
             base64_str = match.group(4)
 

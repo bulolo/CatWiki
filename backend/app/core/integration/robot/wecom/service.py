@@ -3,7 +3,6 @@ import json
 import logging
 import random
 import string
-import time
 from typing import Any
 
 import httpx
@@ -11,7 +10,7 @@ from Crypto.Cipher import AES
 
 from app.core.integration.robot.base import RobotInboundEvent, RobotSession
 from app.core.integration.robot.factory import RobotFactory
-from app.core.integration.robot.wecom.adapter import WeComAdapter, WeComBufferManager
+from app.core.integration.robot.wecom.adapter import WeComBufferManager
 from app.models.site import Site
 from app.services.robot import RobotOrchestrator
 

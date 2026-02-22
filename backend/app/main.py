@@ -23,14 +23,13 @@ from app.api.admin.api import api_router as admin_router
 from app.api.client.api import api_router as client_router
 from app.core.common.logger import setup_logging
 from app.core.infra.config import settings
-from app.core.infra.rustfs import init_rustfs
+from app.core.integration.robot.dingtalk.service import DingTalkRobotService
+from app.core.integration.robot.feishu.service import FeishuRobotService
 from app.core.lifecycle.manager import LifecycleManager
 from app.core.web.exceptions import setup_exception_handlers
 from app.core.web.middleware import setup_middleware
 from app.core.web.openapi_utils import filter_openapi_by_prefix
 from app.db.database import engine
-from app.core.integration.robot.dingtalk.service import DingTalkRobotService
-from app.core.integration.robot.feishu.service import FeishuRobotService
 
 # 配置日志
 setup_logging()

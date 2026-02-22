@@ -15,13 +15,13 @@
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.web.exceptions import NotFoundException
-from app.core.common.utils import Paginator
 from app.core.common.document_utils import build_collection_map, enrich_document_dict
+from app.core.common.utils import Paginator
+from app.core.web.exceptions import NotFoundException
 from app.crud import crud_collection, crud_document
 from app.db.database import get_db
-from app.schemas.response import ApiResponse, PaginatedResponse
 from app.schemas.document import Document
+from app.schemas.response import ApiResponse, PaginatedResponse
 
 router = APIRouter()
 

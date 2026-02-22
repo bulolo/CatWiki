@@ -19,7 +19,7 @@ CRUD 基类 - 简化数据库操作（异步版本）
 from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
-from sqlalchemy import exists, func, select, Select
+from sqlalchemy import Select, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import Base

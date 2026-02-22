@@ -14,7 +14,7 @@
 
 """Chat Message Model - 聊天记录全量存储表"""
 
-from sqlalchemy import Column, ForeignKey, Integer, String, Text, JSON
+from sqlalchemy import JSON, Column, ForeignKey, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel

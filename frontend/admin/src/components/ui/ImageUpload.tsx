@@ -147,7 +147,8 @@ export function ImageUpload({
 
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('图片上传失败:', error)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        console.warn('图片上传失败:', errorMessage)
       }
       toast.error(error instanceof Error ? error.message : '图片上传失败')
       setPreviewUrl(value || null)

@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { initialConfigs } from "@/types/settings"
 import { env } from "@/lib/env"
-import { useDemoMode, useHealth } from '@/hooks/useHealth'
+import { useHealth } from '@/hooks/useHealth'
 
 interface SiteBotSettingsProps {
   siteId: number
@@ -78,7 +78,6 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
   const [showWecomAESKey, setShowWecomAESKey] = useState(false)
   const [showFeishuAppSecret, setShowFeishuAppSecret] = useState(false)
   const [showDingtalkClientSecret, setShowDingtalkClientSecret] = useState(false)
-  const isDemoMode = useDemoMode()
   const { data: healthData } = useHealth()
   const isCommunity = healthData?.edition === 'community'
 
@@ -112,12 +111,6 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
 
   return (
     <div className="space-y-6">
-      {isDemoMode && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
-          <ShieldCheck className="h-5 w-5 shrink-0" />
-          <p className="text-sm font-medium">演示模式已开启：为了保护基础设施安全，部分配置项（如 API Key）已进行脱敏处理。</p>
-        </div>
-      )}
       {/* 网页挂件机器人 */}
       <Card className="border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
         <CardHeader className="border-b border-slate-50 pb-4">
@@ -158,19 +151,17 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                 </Button>
               )}
               <label
-                className={`flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors ${isDemoMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
                 <input
                   type="checkbox"
                   checked={webWidget?.enabled ?? false}
                   onChange={(e) => {
-                    if (isDemoMode) return
                     onChange("webWidget", "enabled", e.target.checked)
                     if (!e.target.checked) setShowPreview(false)
                     if (e.target.checked) setExpandedCards(prev => ({ ...prev, webWidget: true }))
                   }}
-                  disabled={isDemoMode}
                   className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                 />
                 <span className="text-sm font-semibold text-slate-700">启用</span>
@@ -283,7 +274,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
               </div>
             </div>
             <label
-              className={`flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors ${(isDemoMode || isCommunity) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors ${isCommunity ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={(e) => e.stopPropagation()}
               title={isCommunity ? '该功能仅企业版可用' : undefined}
             >
@@ -291,11 +282,11 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                 type="checkbox"
                 checked={isCommunity ? false : (apiBot?.enabled ?? false)}
                 onChange={(e) => {
-                  if (isDemoMode || isCommunity) return
+                  if (isCommunity) return
                   onChange("apiBot", "enabled", e.target.checked)
                   if (e.target.checked) setExpandedCards(prev => ({ ...prev, apiBot: true }))
                 }}
-                disabled={isDemoMode || isCommunity}
+                disabled={isCommunity}
                 className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
               />
               <span className="text-sm font-semibold text-slate-700">启用</span>
@@ -350,8 +341,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                     value={apiBot.apiKey}
                     onChange={(e) => onChange("apiBot", "apiKey", e.target.value)}
                     placeholder="在此设置访问该接口的密钥"
-                    disabled={!apiBot.enabled || isCommunity}
-                    readOnly={isDemoMode && apiBot.apiKey === "********"}
+                    disabled={!apiBot.enabled}
                     className="bg-white font-mono rounded-xl pr-28 h-11"
                   />
                   <div className="absolute right-1 top-1.5 flex gap-1">
@@ -373,7 +363,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                         navigator.clipboard.writeText(apiBot.apiKey)
                         toast.success("API Key 已复制")
                       }}
-                      disabled={!apiBot.enabled || isCommunity || (isDemoMode && apiBot.apiKey === "********")}
+                      disabled={!apiBot.enabled || isCommunity}
                       type="button"
                     >
                       复制
@@ -395,7 +385,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                       onChange("apiBot", "apiKey", result);
                       toast.success("已生成新 API Key");
                     }}
-                    disabled={!apiBot.enabled || isDemoMode || isCommunity}
+                    disabled={!apiBot.enabled || isCommunity}
                   >
                     <RefreshCw className="h-3 w-3" />
                     重置/生成 API Key
@@ -493,18 +483,16 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
               </div>
             </div>
             <label
-              className={`flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors ${isDemoMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               <input
                 type="checkbox"
                 checked={wecomSmartRobot?.enabled ?? false}
                 onChange={(e) => {
-                  if (isDemoMode) return
                   onChange("wecomSmartRobot", "enabled", e.target.checked)
                   if (e.target.checked) setExpandedCards(prev => ({ ...prev, wecomSmartRobot: true }))
                 }}
-                disabled={isDemoMode}
                 className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
               />
               <span className="text-sm font-semibold text-slate-700">启用</span>
@@ -558,7 +546,6 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                       placeholder="WeCom Robot Token"
                       value={wecomSmartRobot?.token || ""}
                       onChange={(e) => onChange("wecomSmartRobot", "token", e.target.value)}
-                      readOnly={isDemoMode && wecomSmartRobot?.token === "********"}
                       className="rounded-xl border-slate-200 h-11 pr-28 font-mono"
                     />
                     <div className="absolute right-1 top-1.5 flex gap-1">
@@ -581,7 +568,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                           navigator.clipboard.writeText(val)
                           toast.success("Token 已复制")
                         }}
-                        disabled={!wecomSmartRobot?.enabled || (isDemoMode && wecomSmartRobot?.token === "********")}
+                        disabled={!wecomSmartRobot?.enabled}
                         type="button"
                       >
                         复制
@@ -600,7 +587,6 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                       placeholder="EncodingAESKey"
                       value={wecomSmartRobot?.encodingAesKey || ""}
                       onChange={(e) => onChange("wecomSmartRobot", "encodingAesKey", e.target.value)}
-                      readOnly={isDemoMode && wecomSmartRobot?.encodingAesKey === "********"}
                       className="rounded-xl border-slate-200 h-11 pr-28 font-mono"
                     />
                     <div className="absolute right-1 top-1.5 flex gap-1">
@@ -623,7 +609,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                           navigator.clipboard.writeText(val)
                           toast.success("AES Key 已复制")
                         }}
-                        disabled={!wecomSmartRobot?.enabled || (isDemoMode && wecomSmartRobot?.encodingAesKey === "********")}
+                        disabled={!wecomSmartRobot?.enabled}
                         type="button"
                       >
                         复制
@@ -659,18 +645,16 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
               </div>
             </div>
             <label
-              className={`flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors ${isDemoMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               <input
                 type="checkbox"
                 checked={feishuBot?.enabled ?? false}
                 onChange={(e) => {
-                  if (isDemoMode) return
                   onChange("feishuBot", "enabled", e.target.checked)
                   if (e.target.checked) setExpandedCards(prev => ({ ...prev, feishuBot: true }))
                 }}
-                disabled={isDemoMode}
                 className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
               />
               <span className="text-sm font-semibold text-slate-700">启用</span>
@@ -690,7 +674,6 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                       placeholder="cli_xxxxxxxxxxxxxxxxxx"
                       value={feishuBot?.appId || ""}
                       onChange={(e) => onChange("feishuBot", "appId", e.target.value)}
-                      readOnly={isDemoMode && feishuBot?.appId === "********"}
                       autoComplete="off"
                       className="rounded-xl border-slate-200 h-11 pr-16 font-mono"
                     />
@@ -704,7 +687,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                           navigator.clipboard.writeText(val)
                           toast.success("App ID 已复制")
                         }}
-                        disabled={!feishuBot?.enabled || (isDemoMode && feishuBot?.appId === "********")}
+                        disabled={!feishuBot?.enabled}
                         type="button"
                       >
                         复制
@@ -723,7 +706,6 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                       placeholder="飞书应用 App Secret"
                       value={feishuBot?.appSecret || ""}
                       onChange={(e) => onChange("feishuBot", "appSecret", e.target.value)}
-                      readOnly={isDemoMode && feishuBot?.appSecret === "********"}
                       autoComplete="new-password"
                       className="rounded-xl border-slate-200 h-11 pr-28 font-mono"
                     />
@@ -747,7 +729,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                           navigator.clipboard.writeText(val)
                           toast.success("App Secret 已复制")
                         }}
-                        disabled={!feishuBot?.enabled || (isDemoMode && feishuBot?.appSecret === "********")}
+                        disabled={!feishuBot?.enabled}
                         type="button"
                       >
                         复制
@@ -799,18 +781,16 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
               </div>
             </div>
             <label
-              className={`flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors ${isDemoMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               <input
                 type="checkbox"
                 checked={dingtalkBot?.enabled ?? false}
                 onChange={(e) => {
-                  if (isDemoMode) return
                   onChange("dingtalkBot", "enabled", e.target.checked)
                   if (e.target.checked) setExpandedCards(prev => ({ ...prev, dingtalkBot: true }))
                 }}
-                disabled={isDemoMode}
                 className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
               />
               <span className="text-sm font-semibold text-slate-700">启用</span>
@@ -830,7 +810,6 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                       placeholder="dingxxxxxxxxxx"
                       value={dingtalkBot?.clientId || ""}
                       onChange={(e) => onChange("dingtalkBot", "clientId", e.target.value)}
-                      readOnly={isDemoMode && dingtalkBot?.clientId === "********"}
                       autoComplete="off"
                       className="rounded-xl border-slate-200 h-11 pr-16 font-mono"
                     />
@@ -844,7 +823,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                           navigator.clipboard.writeText(val)
                           toast.success("Client ID 已复制")
                         }}
-                        disabled={!dingtalkBot?.enabled || (isDemoMode && dingtalkBot?.clientId === "********")}
+                        disabled={!dingtalkBot?.enabled}
                         type="button"
                       >
                         复制
@@ -863,7 +842,6 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                       placeholder="钉钉应用 Client Secret"
                       value={dingtalkBot?.clientSecret || ""}
                       onChange={(e) => onChange("dingtalkBot", "clientSecret", e.target.value)}
-                      readOnly={isDemoMode && dingtalkBot?.clientSecret === "********"}
                       autoComplete="new-password"
                       className="rounded-xl border-slate-200 h-11 pr-28 font-mono"
                     />
@@ -887,7 +865,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                           navigator.clipboard.writeText(val)
                           toast.success("Client Secret 已复制")
                         }}
-                        disabled={!dingtalkBot?.enabled || (isDemoMode && dingtalkBot?.clientSecret === "********")}
+                        disabled={!dingtalkBot?.enabled}
                         type="button"
                       >
                         复制
@@ -898,14 +876,13 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
 
                 <div className="flex items-center gap-4">
                   <label className="text-sm font-semibold text-slate-700 min-w-[120px]">
-                    模板 ID <span className="text-red-500">*</span>
+                    Template ID <span className="text-red-500">*</span>
                   </label>
                   <div className="flex-1 relative group">
                     <Input
                       placeholder="钉钉机器人模板 ID"
                       value={dingtalkBot?.templateId || ""}
                       onChange={(e) => onChange("dingtalkBot", "templateId", e.target.value)}
-                      readOnly={isDemoMode && dingtalkBot?.templateId === "********"}
                       autoComplete="off"
                       className="rounded-xl border-slate-200 h-11 pr-16 font-mono"
                     />
@@ -919,7 +896,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
                           navigator.clipboard.writeText(val)
                           toast.success("模板 ID 已复制")
                         }}
-                        disabled={!dingtalkBot?.enabled || (isDemoMode && dingtalkBot?.templateId === "********")}
+                        disabled={!dingtalkBot?.enabled}
                         type="button"
                       >
                         复制

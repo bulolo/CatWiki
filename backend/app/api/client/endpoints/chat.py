@@ -40,6 +40,4 @@ async def create_chat_completion(
     创建聊天补全 (OpenAI 兼容接口)
     """
     # 统一通过 ChatService 处理，它已包含 Site/Tenant 路由、LLM 池化和流式支持
-    from app.services.chat.chat_service import ChatService
-
     return await ChatService.process_chat_request(request, background_tasks)

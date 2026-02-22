@@ -20,13 +20,13 @@
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 
+from app.core.infra.rustfs import RustFSService
 from app.core.web.deps import get_rustfs
 from app.core.web.exceptions import (
     DatabaseException,
     NotFoundException,
     ServiceUnavailableException,
 )
-from app.core.infra.rustfs import RustFSService
 from app.schemas.response import ApiResponse
 
 router = APIRouter()

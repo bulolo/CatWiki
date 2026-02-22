@@ -503,7 +503,6 @@ export default function DocumentsPage() {
       }
 
     } catch (error: any) {
-      console.error('❌ 移动合集出错:', error)
       toast.error(error.message || '移动合集失败')
     }
 

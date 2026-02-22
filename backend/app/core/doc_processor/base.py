@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any
+
 from pydantic import BaseModel
 
 from app.schemas.system_config import DocProcessorConfig
@@ -25,7 +26,7 @@ class ParsedResult(BaseModel):
     content: str
     markdown: str
     images: list[str] = []
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class BaseDocProcessor(ABC):

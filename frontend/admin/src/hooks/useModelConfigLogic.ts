@@ -49,11 +49,6 @@ export function useModelConfigLogic(type: ModelType, onSuccess?: () => void) {
   }
 
   const handleSaveWithCheck = async () => {
-    if (mode === "custom" && !config.apiKey) {
-      toast.error("请先填写 API Key")
-      return
-    }
-
     if (mode === "platform") {
       await handleSave()
       onSuccess?.()

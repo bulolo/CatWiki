@@ -19,6 +19,7 @@
 import logging
 import sys
 from contextvars import ContextVar
+
 from app.core.infra.config import settings
 
 # 用于全链路追踪的 Request ID

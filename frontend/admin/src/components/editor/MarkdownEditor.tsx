@@ -90,7 +90,6 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
           toast.success(`${file.name} 上传成功`)
 
         } catch (error) {
-          console.error('图片上传失败:', error)
           toast.error(`${file.name} 上传失败`)
         }
       }
@@ -98,7 +97,6 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
       // 调用回调函数，传入上传成功的 URL 数组
       callback(uploadedUrls)
     } catch (error) {
-      console.error('处理图片上传失败:', error)
       toast.error('图片上传失败')
       callback([])
     }

@@ -1,4 +1,7 @@
 {
+  "name": "catwiki-docs",
+  "private": true,
+  "packageManager": "pnpm@10.19.0",
   "scripts": {
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",

@@ -15,7 +15,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { ArrowRight, Code2, Database, Globe, Lock, Rocket, Zap, Check, Shield, Users, HardDrive, Terminal, Book, Lightbulb, FileText, Search, Github, ChevronRight, Star } from "lucide-react"
+import { ArrowRight, Code2, Globe, Lock, Rocket, Check, Book, FileText, Search, Github, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Container } from "@/components/ui/container"
@@ -376,14 +376,14 @@ export default function Home() {
                     <span className="text-sky-400 mr-2">~</span>
                     <span className="text-slate-300">git clone https://github.com/bulolo/CatWiki.git</span>
                   </div>
-                  <div className="text-slate-500 mb-4">Cloning into 'CatWiki'...</div>
+                  <div className="text-slate-500 mb-4">Cloning into &apos;CatWiki&apos;...</div>
 
                   <div className="flex mb-2">
                     <span className="text-green-400 mr-2">➜</span>
                     <span className="text-sky-400 mr-2">~</span>
                     <span className="text-slate-300">cd CatWiki && make prod-init && make prod-up</span>
                   </div>
-                  <div className="text-slate-500 mb-1">Creating network "catwiki_default" with the default driver</div>
+                  <div className="text-slate-500 mb-1">Creating network &quot;catwiki_default&quot; with the default driver</div>
                   <div className="text-slate-500 mb-1">Creating catwiki_db_1 ... <span className="text-green-400">done</span></div>
                   <div className="text-slate-500 mb-1">Creating catwiki_api_1 ... <span className="text-green-400">done</span></div>
                   <div className="text-slate-500 mb-4">Creating catwiki_web_1 ... <span className="text-green-400">done</span></div>

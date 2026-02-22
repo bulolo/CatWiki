@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional, Union, Dict, Any
-from pydantic import BaseModel, Field
 import time
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 from app.schemas.document import VectorRetrieveFilter
-
 
 # =============================================================================
 # Tool Calling Models (OpenAI Compatible)
@@ -42,17 +42,17 @@ class ToolCall(BaseModel):
 class FunctionCallDelta(BaseModel):
     """流式响应中的函数调用增量"""
 
-    name: Optional[str] = None
-    arguments: Optional[str] = None
+    name: str | None = None
+    arguments: str | None = None
 
 
 class ToolCallDelta(BaseModel):
     """流式响应中的工具调用增量"""
 
     index: int
-    id: Optional[str] = None
-    type: Optional[str] = None
-    function: Optional[FunctionCallDelta] = None
+    id: str | None = None
+    type: str | None = None
+    function: FunctionCallDelta | None = None
 
 
 # =============================================================================
@@ -64,34 +64,34 @@ class ChatMessage(BaseModel):
     """OpenAI 兼容的聊天消息"""
 
     role: str
-    content: Optional[str] = None  # 可能为 null（当只有 tool_calls 时）
-    name: Optional[str] = None
-    tool_calls: Optional[List[ToolCall]] = None  # assistant 角色可能包含
-    tool_call_id: Optional[str] = None  # tool 角色必须包含
-    additional_kwargs: Optional[Dict[str, Any]] = None  # 扩展元数据
+    content: str | None = None  # 可能为 null（当只有 tool_calls 时）
+    name: str | None = None
+    tool_calls: list[ToolCall] | None = None  # assistant 角色可能包含
+    tool_call_id: str | None = None  # tool 角色必须包含
+    additional_kwargs: dict[str, Any] | None = None  # 扩展元数据
 
 
 class ChatCompletionRequest(BaseModel):
-    model: Optional[str] = None
+    model: str | None = None
     message: str  # 单条消息（必填）
     thread_id: str  # 会话ID（必填），用于持久化
-    temperature: Optional[float] = 0.7
-    top_p: Optional[float] = 1.0
-    n: Optional[int] = 1
-    stream: Optional[bool] = False
-    stop: Optional[Union[str, List[str]]] = None
-    max_tokens: Optional[int] = None
-    presence_penalty: Optional[float] = 0.0
-    frequency_penalty: Optional[float] = 0.0
-    logit_bias: Optional[Dict[str, float]] = None
-    user: Optional[str] = None
-    filter: Optional[VectorRetrieveFilter] = None
+    temperature: float | None = 0.7
+    top_p: float | None = 1.0
+    n: int | None = 1
+    stream: bool | None = False
+    stop: str | list[str] | None = None
+    max_tokens: int | None = None
+    presence_penalty: float | None = 0.0
+    frequency_penalty: float | None = 0.0
+    logit_bias: dict[str, float] | None = None
+    user: str | None = None
+    filter: VectorRetrieveFilter | None = None
 
 
 class ChatCompletionChoice(BaseModel):
     index: int
     message: ChatMessage
-    finish_reason: Optional[str] = None
+    finish_reason: str | None = None
 
 
 class ChatCompletionUsage(BaseModel):
@@ -105,8 +105,8 @@ class ChatCompletionResponse(BaseModel):
     object: str = "chat.completion"
     created: int = Field(default_factory=lambda: int(time.time()))
     model: str
-    choices: List[ChatCompletionChoice]
-    usage: Optional[ChatCompletionUsage] = None
+    choices: list[ChatCompletionChoice]
+    usage: ChatCompletionUsage | None = None
 
 
 # =============================================================================
@@ -117,15 +117,15 @@ class ChatCompletionResponse(BaseModel):
 class ChatCompletionChunkDelta(BaseModel):
     """流式响应的增量内容"""
 
-    role: Optional[str] = None
-    content: Optional[str] = None
-    tool_calls: Optional[List[ToolCallDelta]] = None  # 工具调用增量
+    role: str | None = None
+    content: str | None = None
+    tool_calls: list[ToolCallDelta] | None = None  # 工具调用增量
 
 
 class ChatCompletionChunkChoice(BaseModel):
     index: int
     delta: ChatCompletionChunkDelta
-    finish_reason: Optional[str] = None
+    finish_reason: str | None = None
 
 
 class ChatCompletionChunk(BaseModel):
@@ -133,4 +133,4 @@ class ChatCompletionChunk(BaseModel):
     object: str = "chat.completion.chunk"
     created: int = Field(default_factory=lambda: int(time.time()))
     model: str
-    choices: List[ChatCompletionChunkChoice]
+    choices: list[ChatCompletionChunkChoice]

@@ -76,7 +76,6 @@ export function VectorRetrieveModal({ open, onOpenChange, siteId }: VectorRetrie
       }
 
     } catch (error) {
-      console.error("Retrieve failed", error)
       setResults([])
     } finally {
       setIsLoading(false)

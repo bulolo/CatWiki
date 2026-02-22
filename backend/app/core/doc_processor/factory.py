@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, Type
 
 from app.core.doc_processor.base import BaseDocProcessor
 from app.schemas.system_config import DocProcessorConfig, DocProcessorType
@@ -24,10 +23,10 @@ class DocProcessorFactory:
     负责注册和创建具体的解析器实例
     """
 
-    _registry: Dict[DocProcessorType, Type[BaseDocProcessor]] = {}
+    _registry: dict[DocProcessorType, type[BaseDocProcessor]] = {}
 
     @classmethod
-    def register(cls, processor_type: DocProcessorType, processor_cls: Type[BaseDocProcessor]):
+    def register(cls, processor_type: DocProcessorType, processor_cls: type[BaseDocProcessor]):
         """
         注册解析器类
         """

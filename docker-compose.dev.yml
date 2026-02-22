@@ -138,10 +138,13 @@ services:
         echo '   🔗 访问: http://localhost:8001' &&
         echo '' &&
         echo '📖 API 文档：' &&
-        echo '   🔗 访问: http://localhost:8000/docs' &&
+        echo '   🔗 访问: http://localhost:3000/docs' &&
         echo '' &&
         echo '📚 文档站点：' &&
         echo '   🔗 访问: http://localhost:8003' &&
+        echo '' &&
+        echo '🌐 Client 前端：' &&
+        echo '   🔗 访问: http://localhost:8002' &&
         echo '' &&
         echo '==========================================' &&
         echo ''

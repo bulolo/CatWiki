@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from datetime import datetime
-from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -56,7 +56,7 @@ class SiteStats(BaseModel):
     new_messages_today: int = Field(0, description="今日新增消息")
 
     # 增强统计
-    daily_trends: List[TrendData] = Field(default_factory=list, description="最近7天趋势")
-    recent_sessions: List[RecentSession] = Field(default_factory=list, description="最近对话记录")
+    daily_trends: list[TrendData] = Field(default_factory=list, description="最近7天趋势")
+    recent_sessions: list[RecentSession] = Field(default_factory=list, description="最近对话记录")
 
     model_config = {"from_attributes": True}

@@ -19,8 +19,8 @@
 """
 
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg_pool import AsyncConnectionPool
@@ -106,5 +106,5 @@ async def setup_checkpointer_tables() -> None:
 
     在应用启动时调用，确保表结构存在。
     """
-    async with get_checkpointer() as checkpointer:
+    async with get_checkpointer():
         logger.info("📦 [Checkpointer] Database tables ready")

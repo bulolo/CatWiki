@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import logging
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.infra.config import settings, AI_CONFIG_KEY, DOC_PROCESSOR_CONFIG_KEY
+
+from app.core.infra.config import AI_CONFIG_KEY, DOC_PROCESSOR_CONFIG_KEY, settings
 from app.crud.system_config import crud_system_config
 from app.db.database import AsyncSessionLocal
 

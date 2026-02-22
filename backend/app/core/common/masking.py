@@ -110,7 +110,19 @@ def mask_sensitive_data(config: dict[str, Any]) -> dict[str, Any]:
         if isinstance(data, dict):
             for key, value in data.items():
                 if any(
-                    x in key.lower() for x in ["apikey", "api_key", "password", "secret", "token"]
+                    x in key.lower()
+                    for x in [
+                        "apikey",
+                        "api_key",
+                        "key",
+                        "password",
+                        "secret",
+                        "token",
+                        "app_id",
+                        "client_id",
+                        "app_secret",
+                        "client_secret",
+                    ]
                 ):
                     if isinstance(value, str):
                         data[key] = mask_variable(value)

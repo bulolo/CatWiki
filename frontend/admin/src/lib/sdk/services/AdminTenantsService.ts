@@ -5,12 +5,25 @@
 import type { ApiResponse_NoneType_ } from '../models/ApiResponse_NoneType_';
 import type { ApiResponse_PaginatedResponse_TenantSchema__ } from '../models/ApiResponse_PaginatedResponse_TenantSchema__';
 import type { ApiResponse_TenantSchema_ } from '../models/ApiResponse_TenantSchema_';
+import type { ApiResponse_Union_TenantSchema__NoneType__ } from '../models/ApiResponse_Union_TenantSchema__NoneType__';
 import type { TenantCreateRequest } from '../models/TenantCreateRequest';
 import type { TenantUpdate } from '../models/TenantUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class AdminTenantsService {
     constructor(public readonly httpRequest: BaseHttpRequest) {}
+    /**
+     * 获取当前生效租户
+     * 根据 Token 和 X-Selected-Tenant-ID Header 获取当前生效的租户详情
+     * @returns ApiResponse_Union_TenantSchema__NoneType__ Successful Response
+     * @throws ApiError
+     */
+    public getAdminCurrentTenant(): CancelablePromise<ApiResponse_Union_TenantSchema__NoneType__> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/admin/v1/tenants/current',
+        });
+    }
     /**
      * List Tenants
      * 获取租户列表

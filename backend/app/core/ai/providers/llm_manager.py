@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import logging
-from typing import Dict, Optional
+from typing import Optional
+
 from langchain_openai import ChatOpenAI
+
 from app.core.infra.config_resolver import ConfigResolver
 
 logger = logging.getLogger(__name__)
@@ -27,11 +29,11 @@ class LLMManager:
     """
 
     _instance: Optional["LLMManager"] = None
-    _models: Dict[str, ChatOpenAI] = {}
+    _models: dict[str, ChatOpenAI] = {}
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(LLMManager, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     @classmethod
@@ -42,8 +44,8 @@ class LLMManager:
 
     async def get_model(
         self,
-        tenant_id: Optional[int] = None,
-        model_name: Optional[str] = None,
+        tenant_id: int | None = None,
+        model_name: str | None = None,
         temperature: float = 0.7,
         force: bool = False,
     ) -> ChatOpenAI:

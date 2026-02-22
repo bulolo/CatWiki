@@ -18,8 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.web.exceptions import BadRequestException
 from app.crud import crud_collection, crud_site
 from app.db.database import get_db
-from app.schemas.response import ApiResponse
 from app.schemas.collection import CollectionTree
+from app.schemas.response import ApiResponse
 
 router = APIRouter()
 

@@ -21,9 +21,9 @@ chat 子包 - 聊天相关服务
 - ChatService: 聊天核心逻辑 (现在已经移入 app.services.chat.chat_service 中)
 """
 
-from app.services.chat.session_service import ChatSessionService  # noqa: F401
-from app.services.chat.history_service import ChatHistoryService  # noqa: F401
 from app.services.chat.chat_service import ChatService  # noqa: F401
+from app.services.chat.history_service import ChatHistoryService  # noqa: F401
+from app.services.chat.session_service import ChatSessionService  # noqa: F401
 
 __all__ = [
     "ChatSessionService",

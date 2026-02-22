@@ -33,7 +33,9 @@ router = APIRouter()
     description="检查 API 服务、数据库连接和对象存储状态",
     operation_id="getAdminHealth",
 )
-async def health_check(db: AsyncSession = Depends(get_db)) -> ApiResponse[HealthResponse]:
+async def health_check(
+    db: AsyncSession = Depends(get_db),
+) -> ApiResponse[HealthResponse]:
     """
     增强的健康检查接口
     - 检查 API 服务状态
@@ -63,7 +65,6 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> ApiResponse[Health
         "environment": settings.ENVIRONMENT,
         "edition": settings.CATWIKI_EDITION,
         "is_licensed": is_licensed,
-        "is_demo": False,
         "timestamp": datetime.now(UTC).isoformat(),
         "checks": {},
     }

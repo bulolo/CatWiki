@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlalchemy import JSON, Column, String, Integer, Text, DateTime
+from sqlalchemy import JSON, Column, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel

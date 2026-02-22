@@ -17,36 +17,34 @@
 """
 
 import logging
-import time
-
 import shutil
 import tempfile
+import time
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, status, UploadFile, File, Form
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.web.deps import (
-    get_current_user_with_tenant,
-    get_db,
-    get_rustfs,
-)
-from app.core.infra.tenant import get_current_tenant
-from app.core.web.exceptions import BadRequestException, NotFoundException
-from app.core.common.utils import (
-    Paginator,
-    get_vector_id,
-)
 from app.core.common.document_utils import (
     build_collection_map,
     enrich_document_dict,
 )
+from app.core.common.utils import (
+    Paginator,
+)
+from app.core.doc_processor import DocProcessorFactory
+from app.core.infra.tenant import get_current_tenant
+from app.core.web.deps import (
+    get_current_user_with_tenant,
+    get_db,
+)
+from app.core.web.exceptions import BadRequestException, NotFoundException
 from app.crud import crud_collection, crud_document, crud_site
+from app.crud.system_config import crud_system_config
 from app.db.database import AsyncSessionLocal
 from app.models.document import Document as DocumentModel
-from app.models.document import VectorStatus, DocumentStatus
+from app.models.document import DocumentStatus, VectorStatus
 from app.models.user import User
-from app.schemas.response import ApiResponse, PaginatedResponse
 from app.schemas.document import (
     Document,
     DocumentCreate,
@@ -54,12 +52,10 @@ from app.schemas.document import (
     VectorizeRequest,
     VectorizeResponse,
     VectorRetrieveRequest,
-    VectorRetrieveResponse,
     VectorRetrieveResult,
 )
-from app.core.doc_processor import DocProcessorFactory
+from app.schemas.response import ApiResponse, PaginatedResponse
 from app.schemas.system_config import DocProcessorConfig
-from app.crud.system_config import crud_system_config
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -165,6 +161,7 @@ async def process_vectorization_task(document_id: int):
                 # 3. 生成确定性 ID (uuid5)
                 # 引入 uuid 和 NAMESPACE
                 import uuid
+
                 from app.core.common.utils import NAMESPACE_CATWIKI
 
                 chunk_ids = []

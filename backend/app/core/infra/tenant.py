@@ -17,14 +17,14 @@
 利用 ContextVar 实现异步请求生命周期内的租户隔离
 """
 
+from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Optional
 
 # 定义租户 ID 上下文变量，默认为 None (表示全局视角)
-_tenant_context: ContextVar[Optional[int]] = ContextVar("tenant_id", default=None)
+_tenant_context: ContextVar[int | None] = ContextVar("tenant_id", default=None)
 
 
-def set_current_tenant(tenant_id: Optional[int]) -> None:
+def set_current_tenant(tenant_id: int | None) -> None:
     """
     设置当前请求的租户 ID
     通常由 FastAPI 依赖项在认证后调用
@@ -32,7 +32,7 @@ def set_current_tenant(tenant_id: Optional[int]) -> None:
     _tenant_context.set(tenant_id)
 
 
-def get_current_tenant() -> Optional[int]:
+def get_current_tenant() -> int | None:
     """
     获取当前请求的租户 ID
     用于数据库拦截器或业务代码
@@ -58,11 +58,8 @@ def get_current_tenant() -> Optional[int]:
         return 1
 
 
-from contextlib import contextmanager
-
-
 @contextmanager
-def temporary_tenant_context(tenant_id: Optional[int]):
+def temporary_tenant_context(tenant_id: int | None):
     """
     临时切换租户上下文 (Context Manager)
     用于在特定代码块中临时使用不同的租户视角 (e.g. 访问全局配置)

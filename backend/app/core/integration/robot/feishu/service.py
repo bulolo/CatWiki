@@ -4,15 +4,14 @@ import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
-
-from sqlalchemy import select
 from typing import Any
 
-from app.core.integration.robot.feishu import FeishuLongConnConfig
-from app.core.integration.robot.feishu.longconn import start_longconn_client
+from sqlalchemy import select
+
 from app.core.integration.robot.base import RobotInboundEvent, RobotSession
 from app.core.integration.robot.factory import RobotFactory
-from app.crud.site import crud_site
+from app.core.integration.robot.feishu import FeishuLongConnConfig
+from app.core.integration.robot.feishu.longconn import start_longconn_client
 from app.db.database import AsyncSessionLocal
 from app.models.site import Site
 from app.services.robot import RobotOrchestrator

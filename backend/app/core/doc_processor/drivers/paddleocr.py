@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import httpx
-import logging
 import base64
+import logging
 from pathlib import Path
+
+import httpx
 
 from app.core.doc_processor.base import BaseDocProcessor, ParsedResult
 from app.core.doc_processor.factory import DocProcessorFactory

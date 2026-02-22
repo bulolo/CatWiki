@@ -33,7 +33,7 @@ import { getUserInfo } from '@/lib/auth'
 import { env } from '@/lib/env'
 import { useState, useEffect } from 'react'
 import { StatePersistence } from '@/components/layout/StatePersistence'
-import { useHealth } from '@/hooks/useHealth'
+import { useHealth, useDemoMode } from '@/hooks/useHealth'
 
 // 动态导入侧边栏和站点切换器，禁用 SSR 以避免 hydration 错误
 const AdminSidebar = dynamic(() => import('@/components/layout/AdminSidebar').then(mod => ({ default: mod.AdminSidebar })), {
@@ -81,6 +81,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
 
   const { data: healthData } = useHealth()
+  const isDemoMode = useDemoMode()
 
   /* eslint-disable-next-line react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -179,6 +180,18 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             <UserMenu />
           </div>
         </header>
+
+        {/* 演示模式全局提示横幅 */}
+        {isDemoMode && (
+          <div className="bg-amber-50 border-b border-amber-200 px-8 py-2 flex items-center gap-3 shrink-0">
+            <div className="flex-none p-1 bg-amber-100 rounded-lg text-amber-600">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <p className="text-sm font-medium text-amber-800">
+              当前处于<span className="font-bold">演示模式</span>：出于安全考虑，系统配置中的敏感信息（如 API Key）已自动脱敏，且部分修改操作可能受限。
+            </p>
+          </div>
+        )}
 
         <div className="p-8 flex-1">
           <ErrorBoundary>

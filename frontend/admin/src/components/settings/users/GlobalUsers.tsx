@@ -43,7 +43,8 @@ import {
   Loader2,
   Plus,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Slash
 } from "lucide-react"
 import { toast } from "sonner"
 import { CreateUserForm } from "./CreateUserForm"
@@ -350,9 +351,9 @@ export function GlobalUsers() {
           <Button
             className="flex items-center gap-2"
             size="sm"
-            onClick={handleStartCreate}
+            onClick={() => router.push(pathname + '?action=create')}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" />
             添加成员
           </Button>
 
@@ -500,37 +501,42 @@ export function GlobalUsers() {
 
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                                className="flex items-center gap-2"
-                                onSelect={() => handleResetPassword(user.id, user.name, user.email)}
-                              >
-                                <KeyRound className="h-4 w-4 text-blue-500" />
-                                <span>重置密码</span>
-                              </DropdownMenuItem>
-
-                              <DropdownMenuItem
-                                className="text-orange-600 flex items-center gap-2"
-                                onSelect={() => {
-                                  const newStatus = user.status === UserStatus.ACTIVE ? UserStatus.INACTIVE : UserStatus.ACTIVE
-                                  if (confirm(`确定要${newStatus === UserStatus.INACTIVE ? '禁用' : '启用'}该账户吗？`)) {
-                                    updateStatus(user.id, newStatus)
-                                  }
-
-                                }}
-                              >
-                                <div className="w-4 h-4 flex items-center justify-center">
-                                  <span className={cn("w-2 h-2 rounded-full", user.status === 'active' ? "bg-orange-500" : "bg-emerald-500")} />
-                                </div>
-                                {user.status === 'active' ? '禁用该账户' : '启用该账户'}
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-red-600 flex items-center gap-2"
-                                onSelect={() => handleDeleteUser(user.id, user.name)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span>永久删除用户</span>
-                              </DropdownMenuItem>
+                      onClick={() => handleResetPassword(user.id, user.name, user.email)}
+                      className="text-amber-600 focus:text-amber-600 focus:bg-amber-50"
+                    >
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      重置密码
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const newStatus = user.status === UserStatus.ACTIVE ? UserStatus.INACTIVE : UserStatus.ACTIVE
+                        if (confirm(`确定要${newStatus === UserStatus.INACTIVE ? '禁用' : '启用'}该账户吗？`)) {
+                          updateStatus(user.id, newStatus)
+                        }
+                      }}
+                      disabled={user.id === (getUserInfo()?.id as any)}
+                    >
+                      {user.status === UserStatus.ACTIVE ? (
+                        <>
+                          <Slash className="mr-2 h-4 w-4" />
+                          禁用账号
+                        </>
+                      ) : (
+                        <>
+                          <Check className="mr-2 h-4 w-4" />
+                          启用账号
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => handleDeleteUser(user.id, user.name)}
+                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                      disabled={user.id === (getUserInfo()?.id as any)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      删除用户
+                    </DropdownMenuItem>
 
                             </DropdownMenuContent>
                           </DropdownMenu>

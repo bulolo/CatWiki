@@ -19,7 +19,7 @@
 
 import asyncio
 import logging
-from typing import Optional, Any
+from typing import Any, Optional
 from urllib.parse import quote_plus
 
 from langchain_core.documents import Document as LangChainDocument
@@ -28,8 +28,6 @@ from langchain_postgres.v2.engine import Column
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.infra.config import settings
-from app.db.database import AsyncSessionLocal
-from app.crud.system_config import crud_system_config
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +65,8 @@ class VectorStoreManager:
         """确保向量存储已初始化（线程安全，支持多实例池）"""
         async with self._lock:
             try:
-                from app.core.infra.tenant import get_current_tenant
                 from app.core.infra.config_resolver import ConfigResolver
+                from app.core.infra.tenant import get_current_tenant
 
                 # 1. 获取目标租户配置
                 if tenant_id is None:
@@ -86,8 +84,6 @@ class VectorStoreManager:
 
                 if not api_key:
                     source = embedding_conf.get("_source", "unknown")
-                    # 增强的排错信息
-                    available_keys = list(embedding_conf.keys())
                     error_msg = (
                         f"❌ [VectorStore] 未找到有效的 Embedding 配置 (租户: {tenant_id}, 模式: {mode})。 "
                         f"请在管理后台检查 AI 模型配置。"
@@ -387,9 +383,9 @@ class VectorStoreManager:
             where_clause = self._get_metadata_where_clause(key)
 
             sql = text(f"""
-                SELECT langchain_id, content, langchain_metadata 
-                FROM {self.collection_name} 
-                WHERE {where_clause} 
+                SELECT langchain_id, content, langchain_metadata
+                FROM {self.collection_name}
+                WHERE {where_clause}
                 ORDER BY (langchain_metadata->>'chunk_index')::int ASC
             """)
 
@@ -417,7 +413,7 @@ class VectorStoreManager:
             # 查询列类型定义
             # format_type(atttypid, atttypmod) 会返回如 'vector(1024)' 的字符串
             sql = text(
-                f"SELECT format_type(atttypid, atttypmod) as type_def FROM pg_attribute WHERE attrelid = CAST(:table AS regclass) AND attname = 'embedding'"
+                "SELECT format_type(atttypid, atttypmod) as type_def FROM pg_attribute WHERE attrelid = CAST(:table AS regclass) AND attname = 'embedding'"
             )
 
             async with self._sa_engine.connect() as conn:
@@ -501,7 +497,7 @@ class VectorStoreManager:
             target_indexes = ["id", "site_id", "collection_id", "tenant_id"]
 
             async with self._sa_engine.connect() as conn:
-                # 关键：必须设置 isolation_level 为 AUTOCOMMIT 
+                # 关键：必须设置 isolation_level 为 AUTOCOMMIT
                 # 否则 CREATE INDEX CONCURRENTLY 会因为在事务块中执行而报错
                 conn = await conn.execution_options(isolation_level="AUTOCOMMIT")
 

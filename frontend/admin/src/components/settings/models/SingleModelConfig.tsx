@@ -81,7 +81,7 @@ export function SingleModelConfig({ type, onSuccess }: SingleModelConfigProps) {
         <Button
           variant="outline"
           onClick={handleTest}
-          disabled={isTesting || (mode === "custom" && !config.apiKey) || (mode === "platform")}
+          disabled={isTesting || (mode === "platform")}
           className="text-slate-600"
           title={mode === "platform" ? "平台模式下无需测试连接" : ""}
         >
@@ -95,7 +95,7 @@ export function SingleModelConfig({ type, onSuccess }: SingleModelConfigProps) {
 
         <Button
           onClick={handleSave}
-          disabled={isTesting || (mode === "custom" && !config.apiKey)}
+          disabled={isTesting}
           className="bg-slate-900 hover:bg-slate-800 text-white min-w-[100px]"
         >
           {isTesting ? (

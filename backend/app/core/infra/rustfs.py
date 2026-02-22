@@ -369,7 +369,6 @@ class RustFSService:
 
         try:
             effective_source = _get_effective_path(source_name)
-            effective_dest = _get_effective_path(dest_name)
             self.client.copy_object(
                 self.bucket_name,
                 dest_name,

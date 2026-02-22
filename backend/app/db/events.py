@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlalchemy import event, true, literal
-from sqlalchemy.orm import with_loader_criteria, Session
-from app.db.base import Base
+from sqlalchemy import event, literal, true
+from sqlalchemy.orm import Session, with_loader_criteria
+
 from app.core.infra.tenant import get_current_tenant
+from app.db.base import Base
 
 
 def register_core_db_events():

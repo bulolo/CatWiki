@@ -15,9 +15,8 @@
 import logging
 import time
 
-from app.core.infra.config import settings
-from app.crud import crud_document, crud_collection
 from app.core.ai.providers.reranker import reranker
+from app.core.infra.config import settings
 from app.core.vector.vector_store import VectorStoreManager
 from app.schemas.document import VectorRetrieveFilter, VectorRetrieveResponse
 

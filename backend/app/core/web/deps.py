@@ -22,10 +22,10 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.infra.config import settings
-from app.core.web.exceptions import ForbiddenException, NotFoundException, UnauthorizedException
-from app.core.infra.rustfs import RustFSService, get_rustfs_service
 from app.core.common.auth import decode_access_token
+from app.core.infra.config import settings
+from app.core.infra.rustfs import RustFSService, get_rustfs_service
+from app.core.web.exceptions import NotFoundException, UnauthorizedException
 from app.crud import crud_site
 from app.crud.user import crud_user
 from app.db.database import get_db
@@ -36,6 +36,17 @@ logger = logging.getLogger(__name__)
 
 # HTTP Bearer 安全方案
 security = HTTPBearer()
+
+# 演示模式下允许通过的写接口（仅限无状态探测类请求）
+DEMO_WRITE_EXEMPT_ENDPOINTS = {
+    ("POST", f"{settings.ADMIN_API_V1_STR}/system-configs/ai-config/test-connection"),
+    ("POST", f"{settings.ADMIN_API_V1_STR}/system-configs/doc-processor/test-connection"),
+    ("POST", f"{settings.ADMIN_API_V1_STR}/documents/retrieve"),
+}
+
+
+def _is_demo_write_exempt(method: str, path: str) -> bool:
+    return (method.upper(), path) in DEMO_WRITE_EXEMPT_ENDPOINTS
 
 
 def get_request_id(request: Request) -> str:
@@ -158,17 +169,65 @@ async def set_tenant_context(
 
 
 async def get_current_user_with_tenant(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     tenant_id: int | None = Depends(get_effective_tenant_id),
+    db: AsyncSession = Depends(get_db),
 ) -> User:
     """
     复合依赖项：获取当前用户并同时注入租户上下文。
-    替代传统的 Depends(get_current_active_user)。
+    同时自动处理演示模式拦截：如果是写操作且为演示租户，则抛出异常。
     """
     from app.core.infra.tenant import set_current_tenant
+    from app.core.web.exceptions import BadRequestException
+    from app.crud.tenant import crud_tenant
 
+    # 1. 设置租户上下文
     set_current_tenant(tenant_id)
+
+    # 2. 自动检测并拦截演示模式写操作
+    request.state.is_demo = False
+
+    if tenant_id:
+        tenant = await crud_tenant.get(db, id=tenant_id)
+        if tenant:
+            request.state.is_demo = tenant.is_demo
+
+            # 仅针对写方法且有租户目标的情况
+            if request.method in ["POST", "PUT", "PATCH", "DELETE"] and tenant.is_demo:
+                path = request.url.path
+                if not _is_demo_write_exempt(request.method, path):
+                    logger.warning(
+                        f"🚫 [DemoMode] Auto-blocked {request.method} {path} for tenant_id={tenant_id}"
+                    )
+                    raise BadRequestException(detail="当前处于演示模式，暂不支持此操作")
+
     return current_user
+
+
+async def is_demo_tenant(
+    request: Request,
+    tenant_id: int | None = Depends(get_effective_tenant_id),
+    db: AsyncSession = Depends(get_db),
+) -> bool:
+    """
+    检查当前请求对应的租户是否为演示租户。
+    优先使用 request.state 缓存；若缓存缺失则自动回查租户，避免依赖执行顺序。
+    """
+    cached = getattr(request.state, "is_demo", None)
+    if cached is not None:
+        return bool(cached)
+
+    if tenant_id is None:
+        request.state.is_demo = False
+        return False
+
+    from app.crud.tenant import crud_tenant
+
+    tenant = await crud_tenant.get(db, id=tenant_id)
+    is_demo = bool(tenant and tenant.is_demo)
+    request.state.is_demo = is_demo
+    return is_demo
 
 
 # ==================== 资源验证依赖 ====================

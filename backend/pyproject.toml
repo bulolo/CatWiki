@@ -13,7 +13,6 @@ dependencies = [
     "email-validator>=2.1.0",
     "sqlalchemy>=2.0.23",
     "asyncpg>=0.29.0",
-    "greenlet>=3.0.0",
     "alembic>=1.13.0",
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
@@ -22,9 +21,7 @@ dependencies = [
     "langchain-postgres>=0.0.16",
     "langchain-openai>=1.1.7",
     "langchain-core>=1.2.6",
-    "psycopg2-binary>=2.9.9",
     "langchain-text-splitters>=1.1.0",
-    "langchain>=1.0.0",
     "langgraph>=1.0.0",
     "langgraph-checkpoint-postgres>=3.0.0",
     "psycopg[binary]>=3.1.0",
@@ -33,13 +30,13 @@ dependencies = [
     "pycryptodome>=3.19.0",
     "lark-oapi>=1.4.14",
     "dingtalk-stream>=0.24.3",
+    "psutil>=5.9.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4.3",
     "pytest-asyncio>=0.21.1",
-    "httpx>=0.25.2",
     "black>=23.11.0",
     "ruff>=0.1.6",
 ]
@@ -69,3 +66,6 @@ ignore = [
     "UP046",  # 保持 Pydantic Generic 当前写法
     "N818",   # 允许 Exception 后缀（不强制使用 Error 后缀）
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"app/core/integration/robot/wecom/crypt.py" = ["N803", "N806"]

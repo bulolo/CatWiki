@@ -19,19 +19,19 @@
 import copy
 import logging
 from datetime import datetime
-from typing import Any, Literal
+from typing import Literal
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.common.masking import mask_sensitive_data
 from app.core.infra.config import (
-    settings,
     AI_CONFIG_KEY,
     DOC_PROCESSOR_CONFIG_KEY,
-    SYSTEM_INTEGRITY_KEY,
 )
-from app.core.web.deps import get_current_user_with_tenant
-from app.core.web.exceptions import BadRequestException, NotFoundException
 from app.core.infra.tenant import get_current_tenant, temporary_tenant_context
+from app.core.web.deps import get_current_user_with_tenant, is_demo_tenant
+from app.core.web.exceptions import BadRequestException, NotFoundException
 from app.crud.system_config import crud_system_config
 from app.db.database import get_db
 from app.models.user import User
@@ -81,7 +81,7 @@ def _format_openai_error(e: Exception) -> str:
                 return f"请求失败 ({code}): {msg}"
 
         return f"请求失败: {error_str}"
-    except:
+    except Exception:
         return f"发生未知错误: {str(e)}"
 
 
@@ -100,6 +100,7 @@ async def get_ai_config(
     scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
+    is_demo: bool = Depends(is_demo_tenant),
 ) -> ApiResponse[SystemConfigResponse | None]:
     """
     获取 AI 模型配置
@@ -160,6 +161,15 @@ async def get_ai_config(
     # config_value 使用租户配置
     config_response.config_value = tenant_config_value
 
+    # 如果是演示模式，则进行强制脱敏
+    if is_demo:
+        config_response.config_value = mask_sensitive_data(config_response.config_value)
+        if config_response.platform_defaults:
+            config_response.platform_defaults = mask_sensitive_data(
+                config_response.platform_defaults
+            )
+        logger.info("🔒 [SystemConfig] Demo Mode active, sensitive data masked in AI config")
+
     return ApiResponse.ok(data=config_response, msg="获取成功")
 
 
@@ -185,11 +195,7 @@ async def update_ai_config(
         target_tenant_id,
     )
 
-    with temporary_tenant_context(target_tenant_id):
-        # 获取现有配置用于比对
-        existing_config = await crud_system_config.get_by_key(
-            db, config_key=AI_CONFIG_KEY, tenant_id=target_tenant_id
-        )
+    # 不需要在这里手写 demo 检查，已被 Depends(get_current_user_with_tenant) 拦截
 
     # 自动探测 Embedding Dimension
     embedding_conf = config_value.get("embedding", {})
@@ -368,9 +374,8 @@ async def test_model_connection(
                         msg=f"请求失败 (Status {resp.status_code}): {resp.text[:100]}"
                     )
 
-                # 检查返回格式
-                data = resp.json()
-                # ...
+                # 检查返回格式（预留）
+                resp.json()
 
                 return ApiResponse.ok(msg="连接成功")
 
@@ -394,6 +399,7 @@ async def get_doc_processor_config(
     scope: Literal["platform", "tenant"] = "tenant",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
+    is_demo: bool = Depends(is_demo_tenant),
 ) -> ApiResponse[dict | None]:
     """
     获取文档处理服务配置
@@ -446,6 +452,11 @@ async def get_doc_processor_config(
     # 合并配置 (租户在前，平台在后)
     merged_processors = tenant_processors + platform_processors
 
+    # 检查是否为演示模式并脱敏
+    if is_demo:
+        merged_processors = mask_sensitive_data(merged_processors)
+        logger.info("🔒 [SystemConfig] Demo Mode active, sensitive data masked in doc processors")
+
     return ApiResponse.ok(data={"processors": merged_processors}, msg="获取成功")
 
 
@@ -468,6 +479,8 @@ async def update_doc_processor_config(
         scope,
         target_tenant_id,
     )
+
+    # 不需要在这里手写 demo 检查，已被 Depends(get_current_user_with_tenant) 拦截
 
     # 过滤掉平台资源 (防止前端误传导致覆盖)
     if "processors" in config_value:

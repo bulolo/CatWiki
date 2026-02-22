@@ -26,8 +26,8 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from app.core.infra.config import settings
 from app.core.common.logger import request_id_var
+from app.core.infra.config import settings
 
 logger = logging.getLogger(__name__)
 

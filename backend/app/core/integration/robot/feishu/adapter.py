@@ -1,8 +1,7 @@
-import time
 from typing import Any
 
-from app.core.integration.robot.feishu.client import FeishuClient
 from app.core.integration.robot.base import BaseRobotAdapter, RobotInboundEvent, RobotSession
+from app.core.integration.robot.feishu.client import FeishuClient
 
 
 class FeishuAdapter(BaseRobotAdapter):

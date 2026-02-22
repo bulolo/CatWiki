@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import datetime, timezone
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +24,7 @@ from app.schemas.tenant import TenantCreate, TenantUpdate
 class CRUDTenant(CRUDBase[Tenant, TenantCreate, TenantUpdate]):
     """租户 CRUD 操​​作"""
 
-    async def get_by_slug(self, db: AsyncSession, *, slug: str) -> Optional[Tenant]:
+    async def get_by_slug(self, db: AsyncSession, *, slug: str) -> Tenant | None:
         """根据 slug 获取租户"""
         result = await db.execute(select(Tenant).where(Tenant.slug == slug))
         return result.scalar_one_or_none()

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlalchemy import Column, String, Integer, Text, DateTime, UniqueConstraint, JSON
+from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -46,7 +46,7 @@ class Tenant(BaseModel):
         String(50),
         nullable=False,
         default="starter",
-        comment="订阅计划: starter/pro/custom",
+        comment="订阅计划: starter/pro/custom/demo",
     )
     plan_expires_at = Column(DateTime(timezone=True), nullable=False, comment="订阅到期时间")
     platform_resources_allowed = Column(
@@ -75,6 +75,11 @@ class Tenant(BaseModel):
         back_populates="tenant",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def is_demo(self) -> bool:
+        """是否为演示模式"""
+        return self.plan == "demo"
 
     def __repr__(self) -> str:
         return f"<Tenant(id={self.id}, name='{self.name}', slug='{self.slug}')>"

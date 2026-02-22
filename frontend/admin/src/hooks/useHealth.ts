@@ -19,6 +19,10 @@ export const healthKeys = {
   all: ['health'] as const,
 }
 
+export const tenantKeys = {
+  current: ['tenant', 'current'] as const,
+}
+
 export function useHealth() {
   return useQuery({
     queryKey: healthKeys.all,
@@ -26,8 +30,17 @@ export function useHealth() {
   })
 }
 
+export function useCurrentTenant() {
+  return useQuery({
+    queryKey: tenantKeys.current,
+    queryFn: () => api.tenant.getCurrent(),
+    // 调试期间设为 30 秒，方便观察变更
+    staleTime: 30 * 1000,
+  })
+}
+
 export function useDemoMode() {
-  const { data } = useHealth()
-  return data?.is_demo ?? false
+  const { data: tenant } = useCurrentTenant()
+  return (tenant as any)?.is_demo ?? false
 }
 

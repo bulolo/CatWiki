@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import func, or_, select, text, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, load_only
 
@@ -208,12 +208,11 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
 
         同时记录浏览事件到 document_view_events 表，用于统计今日浏览和独立访客。
         """
-        from app.crud.document_view_event import crud_document_view_event
         from app.core.infra.tenant import get_current_tenant
+        from app.crud.document_view_event import crud_document_view_event
 
         # 优先使用传入的 tenant_id，否则尝试从上下文获取
         current_tenant_id = tenant_id if tenant_id is not None else get_current_tenant()
-        tenant_filter = "AND tenant_id = :tid" if current_tenant_id is not None else ""
 
         # 1. ORM 逻辑：累加 views 字段（ORM 拦截器会自动追加 tenant_id 过滤）
         # 显式设置 updated_at=Document.updated_at 以绕过 onupdate=utc_now 自动更新

@@ -15,20 +15,19 @@
 """Chat Sessions API - 会话管理端点"""
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
-from app.schemas.response import ApiResponse
 from app.schemas.chat_session import (
     ChatSessionListResponse,
-    ChatSessionResponse,
     ChatSessionMessagesResponse,
+    ChatSessionResponse,
 )
-from app.services.chat.session_service import ChatSessionService
+from app.schemas.response import ApiResponse
 from app.services.chat.history_service import ChatHistoryService
+from app.services.chat.session_service import ChatSessionService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -40,9 +39,9 @@ logger = logging.getLogger(__name__)
     operation_id="listChatSessions",
 )
 async def list_sessions(
-    site_id: Optional[int] = Query(None, description="站点ID过滤"),
-    member_id: Optional[str] = Query(None, description="会员ID或访客ID过滤"),
-    keyword: Optional[str] = Query(None, description="搜索关键词（匹配标题或最后消息）"),
+    site_id: int | None = Query(None, description="站点ID过滤"),
+    member_id: str | None = Query(None, description="会员ID或访客ID过滤"),
+    keyword: str | None = Query(None, description="搜索关键词（匹配标题或最后消息）"),
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(20, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),

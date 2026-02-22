@@ -20,6 +20,7 @@ export * from './ApiResponse_Site_';
 export * from './ApiResponse_SystemConfigResponse_';
 export * from './ApiResponse_TenantSchema_';
 export * from './ApiResponse_Union_SystemConfigResponse__NoneType__';
+export * from './ApiResponse_Union_TenantSchema__NoneType__';
 export * from './ApiResponse_Union_dict__NoneType__';
 export * from './ApiResponse_UserLoginResponse_';
 export * from './ApiResponse_UserResponse_';

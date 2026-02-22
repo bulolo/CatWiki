@@ -14,7 +14,7 @@
 
 """系统配置模型"""
 
-from sqlalchemy import Boolean, Column, String, Integer, UniqueConstraint
+from sqlalchemy import Boolean, Column, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSON
 
 from app.models.base import BaseModel

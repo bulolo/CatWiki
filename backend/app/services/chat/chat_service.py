@@ -23,12 +23,14 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 
-from app.core.ai.graph.checkpointer import get_checkpointer
 from app.core.ai.graph import create_agent_graph
+from app.core.ai.graph.checkpointer import get_checkpointer
+from app.core.ai.providers.llm_manager import llm_manager
 from app.core.vector.rag_utils import (
     convert_tool_call_chunk_to_openai,
     extract_sources_from_messages,
 )
+from app.crud import crud_site
 from app.db.database import AsyncSessionLocal
 from app.schemas.chat import (
     ChatCompletionChoice,
@@ -39,11 +41,8 @@ from app.schemas.chat import (
     ChatCompletionResponse,
     ChatMessage,
 )
-from app.services.chat.session_service import ChatSessionService
 from app.services.chat.history_service import ChatHistoryService
-from app.services.config import configuration_service
-from app.core.ai.providers.llm_manager import llm_manager
-from app.crud import crud_site
+from app.services.chat.session_service import ChatSessionService
 
 logger = logging.getLogger(__name__)
 

@@ -235,7 +235,6 @@ export function DocumentUploadDialog({
           await api.document.importDocument(formData)
           successCount++
         } catch (err: any) {
-          console.error(`File ${file.name} upload failed:`, err)
           toast.error(`文件 ${file.name} 上传失败: ${err.message}`)
         } finally {
           clearInterval(interval)
@@ -259,14 +258,9 @@ export function DocumentUploadDialog({
           onSuccess();
         }
 
-        // 同时也尝试刷新 router，以防万一
-        router.refresh()
-      } else {
-        toast.error("所有文档导入失败")
       }
 
     } catch (error: any) {
-      console.error("Upload process error:", error)
       toast.error("批量上传过程出错")
     } finally {
       setIsUploading(false)

@@ -13,26 +13,25 @@
 # limitations under the License.
 
 from datetime import datetime
-from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, computed_field
 
 
 class TenantBase(BaseModel):
     name: str
     slug: str
-    domain: Optional[str] = None
-    logo_url: Optional[str] = None
-    description: Optional[str] = None
+    domain: str | None = None
+    logo_url: str | None = None
+    description: str | None = None
     status: str = "trial"
     max_sites: int = 3
     max_documents: int = 1000
     max_storage_mb: int = 5120
     max_users: int = 10
     plan: str = "starter"
-    platform_resources_allowed: List[str] = []
-    contact_email: Optional[EmailStr] = None
-    contact_phone: Optional[str] = None
+    platform_resources_allowed: list[str] = []
+    contact_email: EmailStr | None = None
+    contact_phone: str | None = None
 
 
 class TenantCreate(TenantBase):
@@ -42,13 +41,13 @@ class TenantCreate(TenantBase):
 class TenantCreateRequest(TenantCreate):
     admin_email: EmailStr
     admin_password: str
-    admin_name: Optional[str] = None
+    admin_name: str | None = None
 
 
 class TenantUpdate(TenantBase):
-    name: Optional[str] = None
-    slug: Optional[str] = None
-    plan_expires_at: Optional[datetime] = None
+    name: str | None = None
+    slug: str | None = None
+    plan_expires_at: datetime | None = None
 
 
 class TenantInDBBase(TenantBase):
@@ -58,6 +57,12 @@ class TenantInDBBase(TenantBase):
     plan_expires_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def is_demo(self) -> bool:
+        """是否为演示模式"""
+        return self.plan == "demo"
 
 
 class TenantSchema(TenantInDBBase):

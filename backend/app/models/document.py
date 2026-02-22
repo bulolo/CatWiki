@@ -14,7 +14,7 @@
 
 import enum
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel

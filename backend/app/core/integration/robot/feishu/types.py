@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from app.core.integration.robot.base import BaseRobotConfig
 
 

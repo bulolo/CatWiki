@@ -21,6 +21,8 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.common.utils import Paginator
+from app.core.infra.config import settings
 from app.core.web.deps import get_current_user_with_tenant
 from app.core.web.exceptions import (
     BadRequestException,
@@ -28,7 +30,6 @@ from app.core.web.exceptions import (
     ForbiddenException,
     NotFoundException,
 )
-from app.core.common.utils import Paginator
 from app.crud.user import crud_user
 from app.db.database import get_db
 from app.models.user import User, UserRole, UserStatus

@@ -15,14 +15,14 @@
 from fastapi import APIRouter
 
 from app.api.client.endpoints import (
+    bots,
+    chat,
+    chat_sessions,
     collections,
     documents,
     files,
-    chat_sessions,
     health,
     sites,
-    bots,
-    chat,
 )
 
 api_router = APIRouter()

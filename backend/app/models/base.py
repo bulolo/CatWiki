@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import Column, DateTime, Integer
@@ -23,7 +23,7 @@ from app.db.base import Base
 
 def utc_now():
     """返回带时区信息的 UTC 时间"""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class BaseModel(Base):

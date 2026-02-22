@@ -1,6 +1,6 @@
 .PHONY: help \
 	dev-init dev-up dev-down dev-restart dev-logs dev-clean dev-db-migrate dev-db-psql gen-sdk license \
-	prod-init prod-up prod-rebuild prod-down prod-restart prod-logs prod-clean \
+	prod-init prod-up prod-rebuild prod-down prod-restart prod-logs prod-clean clean-cache \
 	
 
 # ==============================================================================
@@ -47,6 +47,7 @@ help:
 	@echo ""
 
 	@echo " 🧩  [通用命令] (Common Commands)"
+	@echo "  make clean-cache        - 清理本地缓存 (node_modules/.next/.pnpm-store 等)"
 	@echo "  make gen-sdk            - 生成前端 TypeScript SDK"
 	@echo "  make license            - 为所有源文件自动注入 License Header"
 	@echo "  make format             - 运行代码格式化 (后端+前端)"
@@ -177,6 +178,19 @@ prod-clean:
 # ==============================================================================
 # [通用命令] Common Targets
 # ==============================================================================
+
+# 清理本地缓存/构建产物
+clean-cache:
+	@echo "🧹 [CatWiki] 清理本地缓存目录..."
+	@rm -rf .pnpm-store
+	@rm -rf frontend/admin/.pnpm-store frontend/client/.pnpm-store frontend/docs/.pnpm-store frontend/website/.pnpm-store
+	@rm -rf frontend/admin/node_modules frontend/client/node_modules frontend/docs/node_modules frontend/website/node_modules
+	@rm -rf frontend/admin/.next frontend/client/.next frontend/website/.next frontend/website/out
+	@rm -rf frontend/docs/.vitepress/cache frontend/docs/.vitepress/dist
+	@find backend scripts -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
+	@rm -rf backend/.pytest_cache backend/.ruff_cache
+	@rm -f frontend/admin/tsconfig.tsbuildinfo frontend/client/tsconfig.tsbuildinfo
+	@echo "✅ 本地缓存清理完成"
 
 # 生成 SDK
 gen-sdk:

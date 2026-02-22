@@ -17,8 +17,8 @@ from app.crud.document import crud_document
 from app.crud.document_view_event import crud_document_view_event
 from app.crud.site import crud_site  # noqa
 from app.crud.system_config import crud_system_config  # noqa
-from app.crud.user import crud_user  # noqa
 from app.crud.tenant import crud_tenant  # noqa
+from app.crud.user import crud_user  # noqa
 
 __all__ = [
     "crud_user",

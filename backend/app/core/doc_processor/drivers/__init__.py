@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .mineru import MinerUDocProcessor
 from .docling import DoclingDocProcessor
+from .mineru import MinerUDocProcessor
 from .paddleocr import PaddleOCRDocProcessor
 
 __all__ = ["MinerUDocProcessor", "DoclingDocProcessor", "PaddleOCRDocProcessor"]

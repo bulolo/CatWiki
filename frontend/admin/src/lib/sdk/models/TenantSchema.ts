@@ -21,5 +21,9 @@ export type TenantSchema = {
     created_at: string;
     updated_at: string;
     plan_expires_at: string;
+    /**
+     * 是否为演示模式
+     */
+    readonly is_demo: boolean;
 };
 

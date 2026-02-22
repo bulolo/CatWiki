@@ -1,4 +1,3 @@
-import json
 import logging
 
 from fastapi import (
@@ -13,9 +12,9 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.integration.robot.wecom.crypt import WXBizJsonMsgCrypt
+from app.core.integration.robot.wecom.service import WeComRobotService
 from app.crud.site import crud_site
 from app.db.database import get_db
-from app.core.integration.robot.wecom.service import WeComRobotService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

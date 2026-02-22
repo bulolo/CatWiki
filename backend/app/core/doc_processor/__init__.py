@@ -12,10 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from app.core.doc_processor.factory import DocProcessorFactory
 from app.core.doc_processor.base import BaseDocProcessor
 
 # 导入所有驱动以触发注册
-from app.core.doc_processor.drivers import *
+from app.core.doc_processor.drivers import (
+    DoclingDocProcessor,
+    MinerUDocProcessor,
+    PaddleOCRDocProcessor,
+)
+from app.core.doc_processor.factory import DocProcessorFactory
 
-__all__ = ["DocProcessorFactory", "BaseDocProcessor"]
+__all__ = [
+    "DocProcessorFactory",
+    "BaseDocProcessor",
+    "DoclingDocProcessor",
+    "MinerUDocProcessor",
+    "PaddleOCRDocProcessor",
+]

@@ -14,7 +14,7 @@
 
 """Chat Session Model - 会话元数据表"""
 
-from sqlalchemy import Column, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel

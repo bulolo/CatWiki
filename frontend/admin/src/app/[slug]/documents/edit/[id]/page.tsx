@@ -171,7 +171,8 @@ export default function EditDocumentPage() {
           } catch (error: any) {
             // 删除失败不影响主流程，静默处理
             if (process.env.NODE_ENV === 'development') {
-              console.error('删除旧封面图片失败:', error)
+              const errorMessage = error instanceof Error ? error.message : String(error)
+              console.warn('删除旧封面图片失败:', errorMessage)
             }
           }
         }

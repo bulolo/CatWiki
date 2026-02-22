@@ -96,7 +96,6 @@ class HealthResponse(BaseModel):
     environment: str = Field(description="运行环境")
     edition: str = Field(description="CatWiki 版本 (community | enterprise)")
     is_licensed: bool = Field(description="是否已获得企业级授权")
-    is_demo: bool = Field(default=False, description="是否为演示模式")
     timestamp: str = Field(description="检查时间戳")
     checks: dict[str, str] = Field(description="各组件检查状态")
 

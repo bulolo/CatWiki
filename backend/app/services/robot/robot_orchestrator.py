@@ -1,8 +1,8 @@
 import asyncio
-import json
 import logging
 import time
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from fastapi import BackgroundTasks
 
@@ -145,10 +145,8 @@ class RobotOrchestrator:
         background_tasks: BackgroundTasks | None = None,
     ) -> AsyncGenerator[str, None]:
         """流式获取消息内容（直接获取纯文本碎片，不再通过 SSE 解析）。"""
-        from app.crud import crud_site
         from app.core.ai.graph import create_agent_graph
         from app.core.ai.graph.checkpointer import get_checkpointer
-        from langchain_core.messages import HumanMessage
         from app.schemas.chat import ChatCompletionChunk
 
         background_tasks = background_tasks or BackgroundTasks()

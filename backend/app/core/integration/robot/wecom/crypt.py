@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- encoding:utf-8 -*-
 
 """企业微信发送给企业后台的消息加解密模块 (JSON 协议).
 @copyright: Copyright (c) 1998-2020 Tencent Inc.
@@ -7,16 +6,15 @@
 # ------------------------------------------------------------------------
 
 import base64
-import string
-import random
 import hashlib
-import time
-import struct
-import logging
-from Crypto.Cipher import AES
-import sys
-import socket
 import json
+import logging
+import random
+import socket
+import struct
+import time
+
+from Crypto.Cipher import AES
 
 from . import ierror
 
@@ -135,7 +133,7 @@ class PKCS7Encoder:
         return decrypted[:-pad]
 
 
-class Prpcrypt(object):
+class Prpcrypt:
     """提供接收和推送给企业微信消息的加解密接口"""
 
     def __init__(self, key):
@@ -204,7 +202,7 @@ class Prpcrypt(object):
         return str(random.randint(1000000000000000, 9999999999999999)).encode("utf-8")
 
 
-class WXBizJsonMsgCrypt(object):
+class WXBizJsonMsgCrypt:
     """企业微信 JSON 消息加解密封装"""
 
     def __init__(self, sToken, sEncodingAESKey, sReceiveId):
@@ -215,7 +213,7 @@ class WXBizJsonMsgCrypt(object):
                 sEncodingAESKey += "=" * (4 - missing_padding)
             self.key = base64.b64decode(sEncodingAESKey)
             assert len(self.key) == 32
-        except:
+        except Exception:
             throw_exception("[错误]: EncodingAESKey 无效!", FormatException)
         self.m_sToken = sToken
         self.m_sReceiveId = sReceiveId

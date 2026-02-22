@@ -15,6 +15,7 @@
 """统计服务"""
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.crud import crud_document
 from app.crud.document_view_event import crud_document_view_event
 from app.services.chat.session_service import ChatSessionService

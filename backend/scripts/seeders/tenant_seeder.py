@@ -17,7 +17,7 @@ Tenant Seeder - 通用租户数据播种器
 """
 
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from sqlalchemy import select
@@ -60,7 +60,7 @@ class TenantSeeder(BaseSeeder):
                     raise FileNotFoundError(f"Data file not found: {data_path}")
 
         # 加载数据
-        with open(self.data_path, "r", encoding="utf-8") as f:
+        with open(self.data_path, encoding="utf-8") as f:
             self.data = json.load(f)
 
     async def run(self):
@@ -87,7 +87,7 @@ class TenantSeeder(BaseSeeder):
                 slug=t_data["slug"],
                 description=t_data["description"],
                 plan=t_data["plan"],
-                plan_expires_at=datetime.now(timezone.utc) + timedelta(days=365),
+                plan_expires_at=datetime.now(UTC) + timedelta(days=365),
                 status=t_data["status"],
             )
             tenant = await crud_tenant.create(self.db, obj_in=tenant_in)
@@ -159,7 +159,7 @@ class TenantSeeder(BaseSeeder):
             await crud_system_config.update_by_key(
                 self.db, config_key=config_key, config_value=model_config, tenant_id=tenant_id
             )
-            await self.log(f"✅ 初始化模型配置完成")
+            await self.log("✅ 初始化模型配置完成")
 
     async def init_documents(self, tenant_id: int, site_id: int):
         """初始化文档 (支持多个合集)"""

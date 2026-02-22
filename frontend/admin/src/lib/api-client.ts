@@ -343,6 +343,9 @@ export const api = {
   stats: statsApi,
   file: fileApi,
   health: healthApi,
+  tenant: {
+    getCurrent: () => wrapResponse<Models.TenantSchema | null>(client.adminTenants.getAdminCurrentTenant()),
+  }
 }
 
 export default api

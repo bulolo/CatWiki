@@ -19,9 +19,10 @@
 
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
+
 from app.core.infra.config import settings
 
 logger = logging.getLogger(__name__)
@@ -32,9 +33,9 @@ class Reranker:
 
     def __init__(self):
         # 实例池: { hash: { "api_key": ..., "base_url": ..., "model": ... } }
-        self._instances: Dict[str, Dict[str, Any]] = {}
+        self._instances: dict[str, dict[str, Any]] = {}
 
-    async def _get_instance_config(self, tenant_id: int | None = None) -> Dict[str, Any]:
+    async def _get_instance_config(self, tenant_id: int | None = None) -> dict[str, Any]:
         """获取并确认为当前上下文准备的配置实例"""
         from app.services.configuration_service import configuration_service
 

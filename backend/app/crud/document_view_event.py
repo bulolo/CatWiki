@@ -14,7 +14,7 @@
 
 """文档浏览事件 CRUD 操作"""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,8 +54,8 @@ class CRUDDocumentViewEvent:
 
     async def get_views_today(self, db: AsyncSession, *, site_id: int) -> int:
         """获取今日浏览总量"""
-        now = datetime.now(timezone.utc)
-        start_of_day = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+        now = datetime.now(UTC)
+        start_of_day = datetime(now.year, now.month, now.day, tzinfo=UTC)
 
         result = await db.execute(
             select(func.count(DocumentViewEvent.id)).where(
@@ -67,8 +67,8 @@ class CRUDDocumentViewEvent:
 
     async def get_unique_ips_today(self, db: AsyncSession, *, site_id: int) -> int:
         """获取今日独立 IP 数"""
-        now = datetime.now(timezone.utc)
-        start_of_day = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+        now = datetime.now(UTC)
+        start_of_day = datetime(now.year, now.month, now.day, tzinfo=UTC)
 
         result = await db.execute(
             select(func.count(func.distinct(DocumentViewEvent.ip_address))).where(
@@ -95,12 +95,12 @@ class CRUDDocumentViewEvent:
         """获取最近 N 天的浏览趋势"""
         from datetime import timedelta
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         trends = []
 
         for i in range(days - 1, -1, -1):
             day = now - timedelta(days=i)
-            day_start = datetime(day.year, day.month, day.day, tzinfo=timezone.utc)
+            day_start = datetime(day.year, day.month, day.day, tzinfo=UTC)
             day_end = day_start + timedelta(days=1)
 
             # 当日浏览量

@@ -6,7 +6,7 @@
     "dev": "next dev --turbo -p 8002",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {

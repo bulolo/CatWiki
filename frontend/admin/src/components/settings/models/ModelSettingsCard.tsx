@@ -48,6 +48,7 @@ export function ModelSettingsCard({ onSelectModel, activeTab }: ModelSettingsCar
         </div>
       </div>
 
+
       <Card className="border-border/60 shadow-md rounded-2xl min-h-[500px] overflow-hidden">
         <CardContent className="pt-6">
           <ManualModeConfig onSelectModel={onSelectModel} activeTab={activeTab} />

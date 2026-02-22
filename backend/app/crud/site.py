@@ -13,10 +13,10 @@
 # limitations under the License.
 
 from __future__ import annotations
+
 from typing import Any
 
-from sqlalchemy import delete, select, update, func, cast, String
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.base import CRUDBase
@@ -143,9 +143,9 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
 
     async def remove_with_relationships(self, db: AsyncSession, *, id: int) -> bool:
         """删除站点及其所有关联数据（高性能批量删除，支持租户隔离）"""
+        from app.core.infra.tenant import get_current_tenant
         from app.models.collection import Collection
         from app.models.document import Document
-        from app.core.infra.tenant import get_current_tenant
 
         tenant_id = get_current_tenant()
 

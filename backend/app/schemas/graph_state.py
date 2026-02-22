@@ -17,7 +17,8 @@
 定义 RAG 聊天图的共享状态
 """
 
-from typing import TypedDict, Annotated, List, Optional
+from typing import Annotated, TypedDict
+
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
@@ -36,7 +37,7 @@ class ChatGraphState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     sources: list[dict]
     summary: str  # 对话摘要，用于长期记忆
-    site_id: Optional[int]  # 站点ID上下文 (0=全局)
+    site_id: int | None  # 站点ID上下文 (0=全局)
     iteration_count: int  # 工具调用迭代计数，用于限制最大循环次数
     consecutive_empty_count: int  # 连续空结果计数，用于智能终止
 
@@ -45,11 +46,11 @@ class RetrieveInput(TypedDict):
     """检索节点输入"""
 
     query: str
-    filter: Optional[dict]
+    filter: dict | None
 
 
 class GenerateInput(TypedDict):
     """生成节点输入"""
 
-    messages: List[BaseMessage]
+    messages: list[BaseMessage]
     context: str

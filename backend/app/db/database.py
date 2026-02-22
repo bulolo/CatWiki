@@ -18,6 +18,7 @@ from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.infra.config import settings
+from app.db.events import register_core_db_events
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +43,6 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,  # 提交后不过期对象
 )
 
-# 注册核心数据库事件 (跨版本通用)
-from app.db.events import register_core_db_events
-
 register_core_db_events()
 
 
@@ -61,7 +59,17 @@ async def get_db() -> AsyncGenerator[AsyncSession]:
         try:
             yield session
         except Exception as e:
-            logger.error(f"数据库会话错误: {e}")
+            # 忽略业务和验证异常，避免不必要的数据库错误日志
+            from fastapi import HTTPException
+            from fastapi.exceptions import RequestValidationError
+            from pydantic import ValidationError
+
+            from app.core.web.exceptions import CatWikiError
+
+            if not isinstance(
+                e, (HTTPException, RequestValidationError, ValidationError, CatWikiError)
+            ):
+                logger.error(f"数据库会话错误: {e}")
             await session.rollback()
             raise
         # async with 自动处理 session.close()

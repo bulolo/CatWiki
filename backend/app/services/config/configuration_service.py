@@ -20,17 +20,17 @@
 3. 安全审计：敏感信息脱敏与访问日志。
 """
 
-import logging
 import copy
 import json
+import logging
 import time
-from typing import Dict, Any, Optional, Tuple
+from typing import Any, Optional
 
-from app.db.database import AsyncSessionLocal
-from app.crud import crud_system_config
-from app.core.infra.tenant import temporary_tenant_context
-from app.core.infra.config import AI_CONFIG_KEY
 from app.core.common.masking import mask_sensitive_data
+from app.core.infra.config import AI_CONFIG_KEY
+from app.core.infra.tenant import temporary_tenant_context
+from app.crud import crud_system_config
+from app.db.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,8 @@ class ConfigurationService:
     _instance: Optional["ConfigurationService"] = None
 
     def __init__(self, cache_ttl: int = 60):
-        self._config_cache: Dict[str, Dict[str, Any]] = {}
-        self._last_update_map: Dict[str, float] = {}
+        self._config_cache: dict[str, dict[str, Any]] = {}
+        self._last_update_map: dict[str, float] = {}
         self._cache_ttl = cache_ttl
 
     @classmethod
@@ -62,11 +62,11 @@ class ConfigurationService:
             cls._instance = cls()
         return cls._instance
 
-    def _mask_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def _mask_config(self, config: dict[str, Any]) -> dict[str, Any]:
         """对敏感字段进行脱敏处理"""
         return mask_sensitive_data(config)
 
-    def _compute_config_hash(self, config: Dict[str, Any]) -> str:
+    def _compute_config_hash(self, config: dict[str, Any]) -> str:
         """计算配置指纹 (Identity Hash)"""
         import hashlib
 
@@ -81,12 +81,12 @@ class ConfigurationService:
         identity_str = json.dumps(identity_parts, sort_keys=True)
         return hashlib.md5(identity_str.encode()).hexdigest()
 
-    def _log_resolved_config(self, section: str, target: str, mode: str, config: Dict[str, Any]):
+    def _log_resolved_config(self, section: str, target: str, mode: str, config: dict[str, Any]):
         """打印全量可视化卡片 (🔍 模式)"""
         masked = self._mask_config(config)
         try:
             pretty_json = json.dumps(masked, indent=4, ensure_ascii=False)
-        except:
+        except Exception:
             pretty_json = str(masked)
 
         log_msg = (
@@ -103,7 +103,7 @@ class ConfigurationService:
 
     async def _get_raw_db_config(
         self, tenant_id: int | None = None, force: bool = False
-    ) -> Tuple[Dict[str, Any], bool]:
+    ) -> tuple[dict[str, Any], bool]:
         """
         获取原始配置，返回 (配置字典, 是否触发了数据库读取)
         """
@@ -158,7 +158,7 @@ class ConfigurationService:
 
     async def _resolve_config(
         self, section: str, tenant_id: int | None = None, force: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """核心路由逻辑 (严格模式)"""
         from app.core.web.exceptions import CatWikiError
         from app.crud.tenant import crud_tenant
@@ -234,25 +234,25 @@ class ConfigurationService:
 
     async def get_chat_config(
         self, tenant_id: int | None = None, force: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """获取 Chat 模型配置"""
         return await self._resolve_config("chat", tenant_id, force=force)
 
     async def get_embedding_config(
         self, tenant_id: int | None = None, force: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """获取 Embedding 模型配置"""
         return await self._resolve_config("embedding", tenant_id, force=force)
 
     async def get_rerank_config(
         self, tenant_id: int | None = None, force: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """获取 Rerank 模型配置"""
         return await self._resolve_config("rerank", tenant_id, force=force)
 
     async def get_vl_config(
         self, tenant_id: int | None = None, force: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """获取视觉语言模型配置"""
         return await self._resolve_config("vl", tenant_id, force=force)
 

@@ -21,9 +21,12 @@ import logging
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.common.masking import mask_bot_config_inplace
 from app.core.common.utils import Paginator, generate_token
 from app.core.infra.config import settings
-from app.core.web.deps import get_current_user_with_tenant
+from app.core.integration.robot.dingtalk.service import DingTalkRobotService
+from app.core.integration.robot.feishu.service import FeishuRobotService
+from app.core.web.deps import get_current_user_with_tenant, is_demo_tenant
 from app.core.web.exceptions import BadRequestException, ConflictException, NotFoundException
 from app.crud import crud_site, crud_user
 from app.db.database import get_db
@@ -31,8 +34,6 @@ from app.models.user import User, UserRole
 from app.schemas.response import ApiResponse, PaginatedResponse
 from app.schemas.site import Site, SiteCreate, SiteUpdate
 from app.schemas.user import UserCreate, UserUpdate
-from app.core.integration.robot.dingtalk.service import DingTalkRobotService
-from app.core.integration.robot.feishu.service import FeishuRobotService
 
 logger = logging.getLogger(__name__)
 
@@ -82,12 +83,20 @@ async def list_sites(
     status: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
+    is_demo: bool = Depends(is_demo_tenant),
 ) -> ApiResponse[PaginatedResponse[Site]]:
     """获取站点列表（分页）"""
     total = await crud_site.count(db, status=status)
     paginator = Paginator(page=page, size=size, total=total)
 
     sites = await crud_site.list(db, skip=paginator.skip, limit=paginator.size, status=status)
+
+    # 演示模式脱敏处理
+    if is_demo:
+        for s in sites:
+            if s.bot_config:
+                mask_bot_config_inplace(s.bot_config)
+        logger.info(f"🔒 [Sites] Demo Mode: Masked {len(sites)} sites' bot config")
 
     return ApiResponse.ok(
         data=PaginatedResponse(
@@ -103,11 +112,18 @@ async def get_site(
     site_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
+    is_demo: bool = Depends(is_demo_tenant),
 ) -> ApiResponse[Site]:
     """获取站点详情"""
     site = await crud_site.get(db, id=site_id)
     if not site:
         raise NotFoundException(detail=f"站点 {site_id} 不存在")
+
+    # 演示模式脱敏处理
+    if is_demo:
+        if site.bot_config:
+            mask_bot_config_inplace(site.bot_config)
+        logger.info(f"🔒 [Sites] Demo Mode: Masked bot config for site {site_id}")
 
     return ApiResponse.ok(data=site, msg="获取成功")
 
@@ -117,11 +133,18 @@ async def get_site_by_slug(
     slug: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_tenant),
+    is_demo: bool = Depends(is_demo_tenant),
 ) -> ApiResponse[Site]:
     """通过 slug 获取站点详情（管理后台）"""
     site = await crud_site.get_by_slug(db, slug=slug)
     if not site:
         raise NotFoundException(detail=f"站点 {slug} 不存在")
+
+    # 演示模式脱敏处理
+    if is_demo:
+        if site.bot_config:
+            mask_bot_config_inplace(site.bot_config)
+        logger.info(f"🔒 [Sites] Demo Mode: Masked bot config for site slug={slug}")
 
     return ApiResponse.ok(data=site, msg="获取成功")
 
@@ -138,6 +161,7 @@ async def create_site(
     current_user: User = Depends(get_current_user_with_tenant),
 ) -> ApiResponse[Site]:
     """创建站点"""
+
     # 检查名称是否已存在
     existing = await crud_site.get_by_name(db, name=site_in.name)
     if existing:
@@ -208,6 +232,7 @@ async def update_site(
     current_user: User = Depends(get_current_user_with_tenant),
 ) -> ApiResponse[Site]:
     """更新站点"""
+
     site = await crud_site.get(db, id=site_id)
     if not site:
         raise NotFoundException(detail=f"站点 {site_id} 不存在")
@@ -253,6 +278,7 @@ async def delete_site(
     current_user: User = Depends(get_current_user_with_tenant),
 ) -> ApiResponse[None]:
     """删除站点（级联删除关联数据）"""
+
     # 1. 清理向量数据库中的数据
     # 为了保证数据完整性，必须先查询出该站点下的所有文档ID
     from sqlalchemy import select

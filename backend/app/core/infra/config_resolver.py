@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import copy
-import json
 import hashlib
-from typing import Dict, Any
+import json
+import logging
+from typing import Any
 
-from app.db.database import AsyncSessionLocal
-from app.crud.system_config import crud_system_config
 from app.core.infra.tenant import temporary_tenant_context
+from app.crud.system_config import crud_system_config
+from app.db.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class ConfigResolver:
     """
 
     @staticmethod
-    def compute_config_hash(config: Dict[str, Any]) -> str:
+    def compute_config_hash(config: dict[str, Any]) -> str:
         """Compute Identity Hash for a configuration block."""
         identity_parts = {
             "model": config.get("model"),
@@ -48,7 +48,7 @@ class ConfigResolver:
         return hashlib.md5(identity_str.encode()).hexdigest()
 
     @staticmethod
-    async def get_raw_db_config(tenant_id: int | None = None) -> Dict[str, Any]:
+    async def get_raw_db_config(tenant_id: int | None = None) -> dict[str, Any]:
         """Fetch raw AI configuration from database without caching."""
         async with AsyncSessionLocal() as db:
             try:
@@ -62,12 +62,12 @@ class ConfigResolver:
                 return {}
 
     @classmethod
-    async def resolve_section(cls, section: str, tenant_id: int | None = None) -> Dict[str, Any]:
+    async def resolve_section(cls, section: str, tenant_id: int | None = None) -> dict[str, Any]:
         """Resolve a specific configuration section (e.g., 'chat', 'embedding')."""
         # 1. Tenant Level
         if tenant_id:
-            from app.crud.tenant import crud_tenant
             from app.core.web.exceptions import CatWikiError
+            from app.crud.tenant import crud_tenant
 
             async with AsyncSessionLocal() as db:
                 tenant = await crud_tenant.get(db, id=tenant_id)

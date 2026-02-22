@@ -1,7 +1,7 @@
 from typing import Any
 
-from app.core.integration.robot.dingtalk.client import DingTalkClient
 from app.core.integration.robot.base import BaseRobotAdapter, RobotInboundEvent, RobotSession
+from app.core.integration.robot.dingtalk.client import DingTalkClient
 
 
 class DingTalkAdapter(BaseRobotAdapter):

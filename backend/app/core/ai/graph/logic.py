@@ -41,15 +41,13 @@ from app.core.ai.prompts import (
     SUMMARIZE_PROMPT,
     SYSTEM_PROMPT,
 )
+from app.core.infra.config import settings
 from app.core.vector.rag_utils import is_meaningful_message
 from app.schemas.document import VectorRetrieveFilter
 from app.schemas.graph_state import ChatGraphState
 from app.services.rag import RAGService
 
 logger = logging.getLogger(__name__)
-
-# 最大迭代次数限制，防止 Agent 无限循环（从配置读取）
-from app.core.infra.config import settings
 
 MAX_ITERATIONS = settings.AGENT_MAX_ITERATIONS
 
@@ -87,7 +85,7 @@ async def search_knowledge_base(query: str, config: RunnableConfig) -> str:
                     prev_results = json.loads(msg.content)
                     if isinstance(prev_results, list):
                         offset += len(prev_results)
-                except:
+                except Exception:
                     continue
 
     logger.info(
@@ -245,10 +243,10 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
         logger.info(f"📝 [Summarize] New summary: {new_summary[:100]}...")
 
         # 删除旧消息，保留最近的 N 条交互
-        KEEP_LAST_N = 6
-        if len(conversation_messages) > KEEP_LAST_N:
+        keep_last_n = 6
+        if len(conversation_messages) > keep_last_n:
             # 计算需要删除的消息
-            messages_to_delete = conversation_messages[:-KEEP_LAST_N]
+            messages_to_delete = conversation_messages[:-keep_last_n]
             delete_messages = [RemoveMessage(id=m.id) for m in messages_to_delete if m.id]
             logger.info(f"🗑️ [Summarize] Pruning {len(delete_messages)} old messages")
             return {"summary": new_summary, "messages": delete_messages}
@@ -262,8 +260,8 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
     tool_node = ToolNode(tools)
 
     # 连续空结果终止阈值（从配置读取）
-    MAX_CONSECUTIVE_EMPTY = settings.AGENT_MAX_CONSECUTIVE_EMPTY
-    SUMMARY_TRIGGER_COUNT = settings.AGENT_SUMMARY_TRIGGER_MSG_COUNT
+    max_consecutive_empty = settings.AGENT_MAX_CONSECUTIVE_EMPTY
+    summary_trigger_count = settings.AGENT_SUMMARY_TRIGGER_MSG_COUNT
 
     async def tools_wrapper_node(state: ChatGraphState) -> dict:
         """工具节点包装器，执行工具并追踪迭代计数和空结果"""
@@ -271,7 +269,7 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
         consecutive_empty = state.get("consecutive_empty_count", 0)
 
         # 检查是否触及中止阈值
-        if current_count >= MAX_ITERATIONS or consecutive_empty >= MAX_CONSECUTIVE_EMPTY:
+        if current_count >= MAX_ITERATIONS or consecutive_empty >= max_consecutive_empty:
             logger.warning(
                 f"⚠️ [Graph] Force stopping tools. Iterations: {current_count}, Empty: {consecutive_empty}"
             )
@@ -311,7 +309,7 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
         if is_empty_result:
             result["consecutive_empty_count"] = consecutive_empty + 1
             logger.debug(
-                f"🔄 [Graph] Empty result, consecutive count: {result['consecutive_empty_count']}/{MAX_CONSECUTIVE_EMPTY}"
+                f"🔄 [Graph] Empty result, consecutive count: {result['consecutive_empty_count']}/{max_consecutive_empty}"
             )
         else:
             result["consecutive_empty_count"] = 0
@@ -347,9 +345,9 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
         non_system_msgs = [m for m in messages if not isinstance(m, SystemMessage)]
 
         # 实际生产中可以计算 Token 数
-        if len(non_system_msgs) > SUMMARY_TRIGGER_COUNT:
+        if len(non_system_msgs) > summary_trigger_count:
             logger.info(
-                f"📊 [Graph] Message count {len(non_system_msgs)} > {SUMMARY_TRIGGER_COUNT}, triggering summarization"
+                f"📊 [Graph] Message count {len(non_system_msgs)} > {summary_trigger_count}, triggering summarization"
             )
             return "summarize_conversation"
 

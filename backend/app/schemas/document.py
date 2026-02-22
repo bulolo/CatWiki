@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Any
 from datetime import datetime
-
+import builtins
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -144,4 +144,4 @@ class VectorRetrieveResponse(BaseModel):
 class VectorRetrieveResult(BaseModel):
     """向量检索结果集"""
 
-    list: List[VectorRetrieveResponse] = Field(..., description="检索结果列表")
+    list: builtins.list[VectorRetrieveResponse] = Field(..., description="检索结果列表")

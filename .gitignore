@@ -4,6 +4,10 @@ __pycache__/
 *$py.class
 *.so
 .Python
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
 env/
 venv/
 ENV/
@@ -28,12 +32,16 @@ yarn-error.log*
 
 # pnpm
 .pnpm-store/
+**/.pnpm-store/
 .pnpm-debug.log*
 
 # Next.js
 .next/
+**/.next/
 out/
 build/
+**/node_modules/
+**/*.tsbuildinfo
 
 # IDE
 .vscode/
@@ -45,4 +53,3 @@ build/
 # OS
 .DS_Store
 Thumbs.db
-

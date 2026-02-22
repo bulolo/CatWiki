@@ -4,16 +4,15 @@ import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy import select
 
-from typing import Any
-
+from app.core.integration.robot.base import RobotInboundEvent, RobotSession
 from app.core.integration.robot.dingtalk import (
     DingTalkStreamConfig,
 )
 from app.core.integration.robot.dingtalk.stream import start_stream_client
-from app.core.integration.robot.base import RobotInboundEvent, RobotSession
 from app.core.integration.robot.factory import RobotFactory
 from app.crud.site import crud_site
 from app.db.database import AsyncSessionLocal

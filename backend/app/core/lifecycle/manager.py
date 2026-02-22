@@ -14,10 +14,11 @@
 
 import logging
 from typing import Any
+
 from app.core.ai.providers.llm_manager import llm_manager
-from app.core.vector.vector_store import VectorStoreManager
-from app.core.lifecycle.config import init_system_configs
 from app.core.infra.rustfs import init_rustfs
+from app.core.lifecycle.config import init_system_configs
+from app.core.vector.vector_store import VectorStoreManager
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +68,10 @@ class LifecycleManager:
     @classmethod
     async def check_health(cls) -> dict[str, Any]:
         """系统健康检查诊断"""
-        from app.db.database import engine
         from sqlalchemy import text
+
         from app.core.infra.rustfs import get_rustfs_service
+        from app.db.database import engine
 
         results = {
             "database": "unknown",

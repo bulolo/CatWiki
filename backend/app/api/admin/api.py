@@ -23,6 +23,7 @@ from app.api.admin.endpoints import (
     sites,
     stats,
     system_config,
+    tenants,
     users,
 )
 
@@ -40,3 +41,4 @@ api_router.include_router(stats.router, prefix="/stats", tags=["admin-stats"])
 api_router.include_router(files.router, prefix="/files", tags=["admin-files"])
 api_router.include_router(cache.router, prefix="/cache", tags=["admin-cache"])
 api_router.include_router(health.router, prefix="/health", tags=["admin-health"])
+api_router.include_router(tenants.router, prefix="/tenants", tags=["admin-tenants"])

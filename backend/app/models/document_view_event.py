@@ -17,7 +17,7 @@
 from datetime import datetime
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 

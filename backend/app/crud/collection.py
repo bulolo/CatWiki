@@ -72,6 +72,7 @@ class CRUDCollection(CRUDBase[Collection, CollectionCreate, CollectionUpdate]):
     async def get_descendant_ids(self, db: AsyncSession, *, collection_id: int) -> list[int]:
         """递归获取合集及其所有子合集的ID列表（使用 CTE 优化，并支持租户隔离）"""
         from sqlalchemy import text
+
         from app.core.infra.tenant import get_current_tenant
 
         tenant_id = get_current_tenant()
@@ -99,6 +100,7 @@ class CRUDCollection(CRUDBase[Collection, CollectionCreate, CollectionUpdate]):
     async def get_path(self, db: AsyncSession, *, collection_id: int) -> str:
         """获取合集的完整路径（使用 CTE 优化，并支持租户隔离）"""
         from sqlalchemy import text
+
         from app.core.infra.tenant import get_current_tenant
 
         tenant_id = get_current_tenant()
@@ -107,7 +109,7 @@ class CRUDCollection(CRUDBase[Collection, CollectionCreate, CollectionUpdate]):
         # 使用 CTE 递归查询，一次 SQL 获取整个祖先链
         query = text(f"""
             WITH RECURSIVE ancestors AS (
-                SELECT id, title, parent_id, 0 as depth FROM collection 
+                SELECT id, title, parent_id, 0 as depth FROM collection
                 WHERE id = :collection_id {tenant_filter}
                 UNION ALL
                 SELECT c.id, c.title, c.parent_id, a.depth + 1 FROM collection c
@@ -128,6 +130,7 @@ class CRUDCollection(CRUDBase[Collection, CollectionCreate, CollectionUpdate]):
     async def get_ancestors(self, db: AsyncSession, *, collection_id: int) -> list[dict]:
         """获取合集的祖先链（使用 CTE 优化，并支持租户隔离）"""
         from sqlalchemy import text
+
         from app.core.infra.tenant import get_current_tenant
 
         # 先获取当前合集的 parent_id
@@ -141,7 +144,7 @@ class CRUDCollection(CRUDBase[Collection, CollectionCreate, CollectionUpdate]):
         # 使用 CTE 递归查询，一次 SQL 获取所有祖先
         query = text(f"""
             WITH RECURSIVE ancestors AS (
-                SELECT id, title, parent_id, 0 as depth FROM collection 
+                SELECT id, title, parent_id, 0 as depth FROM collection
                 WHERE id = :parent_id {tenant_filter}
                 UNION ALL
                 SELECT c.id, c.title, c.parent_id, a.depth + 1 FROM collection c

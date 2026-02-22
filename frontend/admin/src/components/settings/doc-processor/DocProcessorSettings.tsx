@@ -54,11 +54,7 @@ import {
   DOC_PROCESSOR_TYPES,
   initialDocProcessorConfig
 } from "@/types/settings"
-import {
-  useDocProcessorConfig,
-  useUpdateDocProcessorConfig,
-  useTestDocProcessorConnection
-} from "@/hooks"
+import { useDocProcessorConfig, useUpdateDocProcessorConfig, useTestDocProcessorConnection } from "@/hooks"
 
 export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' | 'tenant' }) {
   const [processors, setProcessors] = useState<DocProcessorConfig[]>([])
@@ -104,7 +100,6 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
         }
       },
       onError: (error: any) => {
-        console.error("Test connection failed:", error)
         toast.error("连接测试失败")
       },
       onSettled: () => {
@@ -386,12 +381,16 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
             </div>
           </div>
           {!isAdding && editingIndex === null && (
-            <Button onClick={handleStartAdd} className="gap-2">
+            <Button
+                onClick={handleStartAdd}
+                className="gap-2"
+            >
               <Plus className="h-4 w-4" />
               添加解析器
             </Button>
           )}
         </div>
+
 
 
         {/* 添加表单 */}
@@ -403,7 +402,11 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Server className="h-12 w-12 text-slate-300 mb-4" />
               <p className="text-slate-500 mb-4">暂无配置的文档解析服务</p>
-              <Button variant="outline" onClick={handleStartAdd} className="gap-2">
+              <Button
+                variant="outline"
+                onClick={handleStartAdd}
+                className="gap-2"
+              >
                 <Plus className="h-4 w-4" />
                 添加第一个解析器
               </Button>
@@ -481,7 +484,6 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleStartEdit(index)}
-                                // 只有租户自身的才禁用
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
