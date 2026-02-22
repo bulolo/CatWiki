@@ -38,9 +38,6 @@ export function StatePersistence() {
       "color: #3b82f6; font-size: 12px; text-decoration: underline;",
       ""
     )
-
-    // 防篡改提醒 (可选，这里仅作演示)
-    // console.log("%cSystem Initialization Notice: Environment tags verified.", "color: gray;");
   }, [])
 
   return null

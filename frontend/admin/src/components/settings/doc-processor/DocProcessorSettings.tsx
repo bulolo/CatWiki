@@ -47,6 +47,7 @@ import {
   AlertTriangle,
   Globe
 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { toast } from "sonner"
 import {
   type DocProcessorConfig,
@@ -55,6 +56,11 @@ import {
   initialDocProcessorConfig
 } from "@/types/settings"
 import { useDocProcessorConfig, useUpdateDocProcessorConfig, useTestDocProcessorConnection } from "@/hooks"
+
+const getConfigFlag = (config: DocProcessorConfig["config"], key: string, fallback = false): boolean => {
+  const value = config?.[key]
+  return typeof value === "boolean" ? value : fallback
+}
 
 export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' | 'tenant' }) {
   const [processors, setProcessors] = useState<DocProcessorConfig[]>([])
@@ -92,14 +98,21 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
   const handleTest = async (processor: DocProcessorConfig) => {
     setTesting(processor.name)
     testMutation.mutate(processor, {
-      onSuccess: (response: any) => {
-        if (response?.status === "healthy") {
+      onSuccess: (response: unknown) => {
+        const status =
+          response &&
+          typeof response === "object" &&
+          "status" in response &&
+          typeof (response as { status?: unknown }).status === "string"
+            ? (response as { status: string }).status
+            : undefined
+        if (status === "healthy") {
           toast.success(`${processor.name} 连接成功`)
         } else {
           toast.error("连接失败")
         }
       },
-      onError: (error: any) => {
+      onError: () => {
         toast.error("连接测试失败")
       },
       onSettled: () => {
@@ -214,7 +227,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                 </SelectTrigger>
                 <SelectContent>
                   {DOC_PROCESSOR_TYPES.map((type) => {
-                    const icons: Record<string, any> = { Bird, Zap, Scan, BookOpen, Pickaxe, FileText }
+                    const icons: Record<string, LucideIcon> = { Bird, Zap, Scan, BookOpen, Pickaxe, FileText }
                     const Icon = icons[type.icon] || FileText
                     return (
                       <SelectItem
@@ -305,7 +318,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                 <div className="flex items-center gap-2">
                   <Switch
                     id="is_ocr"
-                    checked={formData.config?.is_ocr || false}
+                    checked={getConfigFlag(formData.config, "is_ocr")}
                     onCheckedChange={(checked: boolean) =>
                       setFormData({
                         ...formData,
@@ -321,7 +334,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                 <div className="flex items-center gap-2">
                   <Switch
                     id="extract_images"
-                    checked={formData.config?.extract_images ?? false}
+                    checked={getConfigFlag(formData.config, "extract_images")}
                     onCheckedChange={(checked: boolean) =>
                       setFormData({
                         ...formData,
@@ -336,7 +349,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                   <div className="flex items-center gap-2">
                     <Switch
                       id="extract_tables"
-                      checked={formData.config?.extract_tables ?? false}
+                      checked={getConfigFlag(formData.config, "extract_tables")}
                       onCheckedChange={(checked: boolean) =>
                         setFormData({
                           ...formData,
@@ -424,7 +437,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                       <div className="flex items-center gap-3">
                         {(() => {
                           const typeInfo = DOC_PROCESSOR_TYPES.find(t => t.value === processor.type)
-                          const icons: Record<string, any> = { Bird, Zap, Scan, BookOpen, Pickaxe, FileText }
+                          const icons: Record<string, LucideIcon> = { Bird, Zap, Scan, BookOpen, Pickaxe, FileText }
 
                           if (typeInfo?.icon.startsWith('/')) {
                             return (

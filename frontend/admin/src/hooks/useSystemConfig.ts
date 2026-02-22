@@ -76,7 +76,8 @@ export function useDeleteConfig(scope: 'platform' | 'tenant' = 'tenant') {
  */
 export function useTestConnection(scope: 'platform' | 'tenant' = 'tenant') {
   return useMutation({
-    mutationFn: (data: { modelType: string; config: any }) => api.systemConfig.testConnection(data.modelType, data.config, scope),
+    mutationFn: (data: { modelType: string; config: unknown }) =>
+      api.systemConfig.testConnection(data.modelType, data.config, scope),
   })
 }
 
@@ -100,7 +101,8 @@ export function useDocProcessorConfig(scope: 'platform' | 'tenant' = 'tenant') {
 export function useUpdateDocProcessorConfig(scope: 'platform' | 'tenant' = 'tenant') {
   const tenantId = scope === 'platform' ? 'platform' : getSelectedTenantId()
   return useAdminMutation({
-    mutationFn: (data: { processors: any[] }) => api.systemConfig.updateDocProcessorConfig(data, scope),
+    mutationFn: (data: { processors: Array<Record<string, unknown>> }) =>
+      api.systemConfig.updateDocProcessorConfig(data, scope),
     invalidateKeys: [systemConfigKeys.docProcessor(tenantId, scope)],
   })
 }
@@ -110,11 +112,10 @@ export function useUpdateDocProcessorConfig(scope: 'platform' | 'tenant' = 'tena
  */
 export function useTestDocProcessorConnection(scope: 'platform' | 'tenant' = 'tenant') {
   return useMutation({
-    mutationFn: (config: any) => api.systemConfig.testDocProcessorConnection(config, scope),
+    mutationFn: (config: Record<string, unknown>) =>
+      api.systemConfig.testDocProcessorConnection(config, scope),
   })
 }
-
-
 
 
 

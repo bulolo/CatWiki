@@ -19,37 +19,69 @@
 
 "use client"
 
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { toast } from "sonner"
 import { useAIConfig, useUpdateAIConfig } from "@/hooks"
-import { type AIModelConfig, AIConfigUpdate } from "@/lib/api-client"
-import { logError } from "@/lib/error-handler"
-import { type AIConfigs, type ModelType, type BotConfig, initialConfigs, MODEL_TYPES } from "@/types/settings"
+import type { AIConfigUpdate } from "@/lib/api-client"
+import { ModelConfig } from "@/lib/api-client"
+import { type AIConfigs, initialConfigs, MODEL_TYPES } from "@/types/settings"
+
+type RuntimeModelType = typeof MODEL_TYPES[number]
+type PrimitiveConfigValue = string | number | boolean
+const EMPTY_RECORD: Record<string, unknown> = {}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
 
 // 深度合并函数
-const deepMerge = (target: any, source: any): any => {
+const deepMerge = (target: Record<string, unknown>, source: unknown): Record<string, unknown> => {
   if (!source) return target
-  if (typeof source !== 'object' || typeof target !== 'object') return source || target
+  if (!isRecord(source)) return target
 
   const result = { ...target }
   for (const key in source) {
-    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-      result[key] = deepMerge(target[key] || {}, source[key])
+    const sourceValue = source[key]
+    const targetValue = target[key]
+    if (isRecord(sourceValue) && !Array.isArray(sourceValue)) {
+      result[key] = deepMerge(isRecord(targetValue) ? targetValue : EMPTY_RECORD, sourceValue)
     } else {
-      result[key] = source[key] !== undefined && source[key] !== null ? source[key] : target[key]
+      result[key] = sourceValue !== undefined && sourceValue !== null ? sourceValue : targetValue
     }
   }
   return result
 }
 
 // 统一配置合并逻辑
-const mergeAIConfigs = (backendData: any, initial: AIConfigs): AIConfigs => {
+const mergeAIConfigs = (backendData: unknown, initial: AIConfigs): AIConfigs => {
+  if (!isRecord(backendData)) return initial
+  
+  const parseSection = <T extends Record<string, unknown>>(section: unknown, initialSection: T): T => {
+    if (!isRecord(section)) return initialSection
+    return deepMerge(initialSection, section) as T
+  }
+
   return {
     ...initial,
-    chat: deepMerge(initial.chat, backendData?.chat),
-    embedding: deepMerge(initial.embedding, backendData?.embedding),
-    rerank: deepMerge(initial.rerank, backendData?.rerank),
-    vl: deepMerge(initial.vl, backendData?.vl),
+    chat: parseSection(backendData.chat, initial.chat),
+    embedding: parseSection(backendData.embedding, initial.embedding),
+    rerank: parseSection(backendData.rerank, initial.rerank),
+    vl: parseSection(backendData.vl, initial.vl),
+  }
+}
+
+function toApiModelConfig(config: AIConfigs[RuntimeModelType]): AIConfigUpdate["chat"] {
+  return {
+    provider: config.provider,
+    model: config.model,
+    apiKey: config.apiKey,
+    baseUrl: config.baseUrl,
+    dimension: typeof config.dimension === "number" ? config.dimension : null,
+    mode: config.mode === "platform"
+      ? ModelConfig.mode.PLATFORM
+      : config.mode === "custom"
+        ? ModelConfig.mode.CUSTOM
+        : undefined
   }
 }
 
@@ -62,12 +94,12 @@ interface SettingsContextType {
   scope: 'platform' | 'tenant'
 
   // 更新函数
-  handleUpdate: (type: string, field: string, value: string | boolean | number) => void
+  handleUpdate: (type: RuntimeModelType, field: string, value: PrimitiveConfigValue) => void
   handleSave: () => Promise<void>
-  revertToSavedConfig: (modelType: "chat" | "embedding" | "rerank" | "vl") => void
+  revertToSavedConfig: (modelType: RuntimeModelType) => void
 
   // 工具函数
-  isModelConfigured: (modelType: "chat" | "embedding" | "rerank" | "vl") => boolean
+  isModelConfigured: (modelType: RuntimeModelType) => boolean
   platformFallback: Record<string, boolean>
   platformDefaults: AIConfigs | null
 }
@@ -79,7 +111,6 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
   const [savedConfigs, setSavedConfigs] = useState<AIConfigs>(initialConfigs)
   const [platformFallback, setPlatformFallback] = useState<Record<string, boolean>>({})
   const [platformDefaults, setPlatformDefaults] = useState<AIConfigs | null>(null)
-  const isSwitchingMode = useRef(false)
 
   // 使用 React Query hooks
   const { data: aiConfigData, isLoading } = useAIConfig(scope)
@@ -92,22 +123,28 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
 
       // aiConfigData is SystemConfigResponse
       if (aiConfigData.config_value) {
-        const aiData = aiConfigData.config_value as any
+        const aiData = aiConfigData.config_value
         loadedConfigs = mergeAIConfigs(aiData, initialConfigs)
 
         // 提取元数据
-        if (aiData._meta?.is_platform_fallback) {
-          setPlatformFallback(aiData._meta.is_platform_fallback)
+        const meta = isRecord(aiData) && isRecord(aiData._meta) ? aiData._meta : undefined
+        const fallback = meta?.is_platform_fallback
+        if (isRecord(fallback)) {
+          const parsed = Object.entries(fallback).reduce<Record<string, boolean>>((acc, [key, value]) => {
+            if (typeof value === "boolean") {
+              acc[key] = value
+            }
+            return acc
+          }, {})
+          setPlatformFallback(parsed)
         } else {
           setPlatformFallback({})
         }
       }
 
       // 提取平台默认配置
-      // @ts-ignore
       if (aiConfigData.platform_defaults) {
-        // @ts-ignore
-        setPlatformDefaults(aiConfigData.platform_defaults as AIConfigs)
+        setPlatformDefaults(mergeAIConfigs(aiConfigData.platform_defaults, initialConfigs))
       } else {
         setPlatformDefaults(null)
       }
@@ -117,73 +154,79 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
     }
   }, [aiConfigData])
 
-  const handleUpdate = (type: string, field: string, value: string | boolean | number) => {
+  const handleUpdate = (type: RuntimeModelType, field: string, value: PrimitiveConfigValue) => {
     setConfigs(prev => {
       const newConfigs = { ...prev }
-
-      // 处理 AI 模型配置 (chat, embedding, rerank, vl)
-      if (MODEL_TYPES.includes(type as any)) {
-        const modelType = type as (typeof MODEL_TYPES)[number]
-        const modelConfig = prev[modelType]
-        const updatedConfig = { ...modelConfig, [field]: value }
-        newConfigs[modelType] = updatedConfig
-      }
-
+      const modelConfig = prev[type]
+      const updatedConfig = { ...modelConfig, [field]: value }
+      newConfigs[type] = updatedConfig
       return newConfigs
     })
   }
 
   const handleSave = async () => {
     // 构建完整的 AI 配置对象 (扁平结构)
-    const aiConfig = {
-      chat: configs.chat,
-      embedding: configs.embedding,
-      rerank: configs.rerank,
-      vl: configs.vl
+    const aiConfig: AIConfigUpdate = {
+      chat: toApiModelConfig(configs.chat),
+      embedding: toApiModelConfig(configs.embedding),
+      rerank: toApiModelConfig(configs.rerank),
+      vl: toApiModelConfig(configs.vl)
     }
 
-    updateAIConfigMutation.mutate(aiConfig as any, {
-      onSuccess: (data: any) => {
-        if (data && data.config_value) {
-          const aiData = data.config_value;
-          const updated = mergeAIConfigs(aiData, initialConfigs)
+    try {
+      const data = await updateAIConfigMutation.mutateAsync(aiConfig)
 
-          setSavedConfigs(updated)
-          setConfigs(updated)
+      if (data && data.config_value) {
+        const aiData = data.config_value
+        const updated = mergeAIConfigs(aiData, initialConfigs)
 
-          if (aiData._meta?.is_platform_fallback) {
-            setPlatformFallback(aiData._meta.is_platform_fallback)
-          }
+        setSavedConfigs(updated)
+        setConfigs(updated)
 
-          // 更新平台默认配置 (虽然通常不变，但为了数据一致性)
-          if (data.platform_defaults) {
-            setPlatformDefaults(data.platform_defaults as AIConfigs)
-          }
-        } else {
-          setSavedConfigs({ ...configs })
+        const meta = isRecord(aiData) && isRecord(aiData._meta) ? aiData._meta : undefined
+        const fallback = meta?.is_platform_fallback
+        if (isRecord(fallback)) {
+          const parsed = Object.entries(fallback).reduce<Record<string, boolean>>((acc, [key, value]) => {
+            if (typeof value === "boolean") {
+              acc[key] = value
+            }
+            return acc
+          }, {})
+          setPlatformFallback(parsed)
         }
 
-        toast.success("AI 模型配置已保存")
+        // 更新平台默认配置 (虽然通常不变，但为了数据一致性)
+        if (data.platform_defaults) {
+          setPlatformDefaults(mergeAIConfigs(data.platform_defaults, initialConfigs))
+        }
+      } else {
+        setSavedConfigs({ ...configs })
       }
-    })
+
+      toast.success("AI 模型配置已保存")
+    } catch (error) {
+      // 错误由 useAdminMutation 处理，但我们需要 rethrow 以便调用者知道失败了
+      throw error
+    }
   }
 
-  const revertToSavedConfig = (modelType: "chat" | "embedding" | "rerank" | "vl") => {
+  const revertToSavedConfig = (modelType: RuntimeModelType) => {
     setConfigs(prev => ({
       ...prev,
-      [modelType]: deepMerge({}, savedConfigs[modelType])
+      [modelType]: deepMerge({}, savedConfigs[modelType] as Record<string, unknown>) as AIConfigs[RuntimeModelType]
     }))
   }
 
   const isAiDirty = (() => {
-    const normalize = (obj: any): string => {
+    const normalize = (obj: unknown): string => {
       if (obj === null || obj === undefined) return ''
       if (typeof obj !== 'object') return String(obj)
       if (Array.isArray(obj)) return obj.map(normalize).join(',')
+      const record = obj as Record<string, unknown>
       return Object.keys(obj)
-        .filter(k => obj[k] !== undefined && obj[k] !== null) // Filter out null/undefined keys
+        .filter(k => record[k] !== undefined && record[k] !== null) // Filter out null/undefined keys
         .sort()
-        .map(k => `${k}:${normalize(obj[k])}`)
+        .map(k => `${k}:${normalize(record[k])}`)
         .join('|')
     }
     const currentStr = normalize({ chat: configs.chat, embedding: configs.embedding, rerank: configs.rerank, vl: configs.vl })
@@ -191,7 +234,7 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
     return currentStr !== savedStr
   })()
 
-  const isModelConfigured = (modelType: "chat" | "embedding" | "rerank" | "vl") => {
+  const isModelConfigured = (modelType: RuntimeModelType) => {
     const config = configs[modelType]
 
     // 如果使用了平台资源，则视为已配置
@@ -231,4 +274,3 @@ export function useSettings() {
   }
   return context
 }
-

@@ -73,7 +73,7 @@ make prod-up
 
 ### 默认账户
 部署完成后，请使用初始账号登录并立即修改密码：
-- **账号**: `health_admin@example.com`
+- **账号**: `admin@example.com`
 - **密码**: `admin123`
 
 ### 自动备份脚本建议

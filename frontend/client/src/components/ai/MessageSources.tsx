@@ -13,8 +13,9 @@
 // limitations under the License.
 
 import { Link, FileText, ExternalLink } from "lucide-react"
+import { useParams } from "next/navigation"
 import { Source } from "@/types"
-import { Site } from "@/lib/sdk/models/Site"
+import type { Site } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 
 interface MessageSourcesProps {
@@ -23,6 +24,9 @@ interface MessageSourcesProps {
 }
 
 export function MessageSources({ sources, allSites }: MessageSourcesProps) {
+  const params = useParams()
+  const tenantSlug = params.tenantSlug as string
+  
   if (!sources || sources.length === 0) return null
 
   return (
@@ -43,10 +47,15 @@ export function MessageSources({ sources, allSites }: MessageSourcesProps) {
           const siteSlug = source.siteSlug || matchedSite?.slug
           const documentId = source.documentId || source.id
 
+          // 生成多租户链接
+          const href = siteSlug && documentId 
+            ? (tenantSlug ? `/${tenantSlug}/${siteSlug}?documentId=${documentId}` : `/${siteSlug}?documentId=${documentId}`)
+            : "#"
+
           return (
             <a
               key={`${source.id}-${index}`}
-              href={siteSlug && documentId ? `/${siteSlug}?documentId=${documentId}` : "#"}
+              href={href}
               target="_blank"
               rel="noopener noreferrer"
               className={cn(

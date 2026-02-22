@@ -21,6 +21,7 @@ export class DocumentsService {
         collectionId,
         keyword,
         excludeContent = true,
+        xTenantSlug,
     }: {
         page?: number,
         size?: number,
@@ -40,10 +41,14 @@ export class DocumentsService {
          * 是否排除文档内容（用于列表展示，提升性能）
          */
         excludeContent?: boolean,
+        xTenantSlug?: (string | null),
     }): CancelablePromise<ApiResponse_PaginatedResponse_Document__> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/v1/documents',
+            headers: {
+                'X-Tenant-Slug': xTenantSlug,
+            },
             query: {
                 'page': page,
                 'size': size,
@@ -65,14 +70,19 @@ export class DocumentsService {
      */
     public getClientDocument({
         documentId,
+        xTenantSlug,
     }: {
         documentId: number,
+        xTenantSlug?: (string | null),
     }): CancelablePromise<ApiResponse_Document_> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/v1/documents/{document_id}',
             path: {
                 'document_id': documentId,
+            },
+            headers: {
+                'X-Tenant-Slug': xTenantSlug,
             },
             errors: {
                 422: `Validation Error`,

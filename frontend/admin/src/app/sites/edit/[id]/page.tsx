@@ -40,8 +40,9 @@ import { QuickQuestionsConfig } from "@/components/features/QuickQuestionsConfig
 import type { QuickQuestion } from "@/lib/api-client"
 import { SiteBotSettings } from "@/components/sites/SiteBotSettings"
 import { SiteUsers } from "@/components/sites/SiteUsers"
-import { initialConfigs } from "@/types/settings"
+import { initialConfigs, type BotConfig } from "@/types/settings"
 import { env } from "@/lib/env"
+import { mergeSiteBotConfig } from "@/lib/site-bot-config"
 
 // 主题色配置
 const THEME_COLORS = [
@@ -67,7 +68,16 @@ export default function EditSitePage() {
   const [botConfig, setBotConfig] = useState(initialConfigs.botConfig)
   const [mounted, setMounted] = useState(false)
 
-  const initialDataRef = useRef<any>(null)
+  const initialDataRef = useRef<{
+    name: string
+    slug: string
+    description: string
+    isActive: boolean
+    themeColor: string
+    layoutMode: string
+    quickQuestions: QuickQuestion[]
+    botConfig: BotConfig
+  } | null>(null)
 
   // 确保水合一致性
   useEffect(() => {
@@ -81,15 +91,7 @@ export default function EditSitePage() {
   // 加载站点数据
   useEffect(() => {
     if (siteData && !initialDataRef.current) {
-      const bConfig = siteData.bot_config ? {
-        ...initialConfigs.botConfig,
-        ...siteData.bot_config,
-        webWidget: { ...initialConfigs.botConfig.webWidget, ...siteData.bot_config.webWidget },
-        apiBot: { ...initialConfigs.botConfig.apiBot, ...siteData.bot_config.apiBot },
-        wecomSmartRobot: { ...initialConfigs.botConfig.wecomSmartRobot, ...siteData.bot_config.wecomSmartRobot },
-        feishuBot: { ...initialConfigs.botConfig.feishuBot, ...siteData.bot_config.feishuBot },
-        dingtalkBot: { ...initialConfigs.botConfig.dingtalkBot, ...siteData.bot_config.dingtalkBot },
-      } : initialConfigs.botConfig
+      const bConfig = mergeSiteBotConfig(siteData.bot_config)
 
       setName(siteData.name)
       setSlug(siteData.slug || "")
@@ -169,13 +171,17 @@ export default function EditSitePage() {
     })
   }
 
-  const handleBotConfigChange = (section: string, field: string, value: any) => {
-    setBotConfig((prev: any) => ({
+  const handleBotConfigChange = <S extends keyof BotConfig>(
+    section: S,
+    field: keyof BotConfig[S],
+    value: BotConfig[S][keyof BotConfig[S]]
+  ) => {
+    setBotConfig((prev) => ({
       ...prev,
       [section]: {
         ...prev[section],
         [field]: value
-      }
+      } as BotConfig[S]
     }))
   }
 

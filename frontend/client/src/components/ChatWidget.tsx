@@ -21,7 +21,7 @@ import { useAIChat } from "@/hooks"
 import { Streamdown } from "streamdown"
 import { MessageSources } from "@/components/ai/MessageSources"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Site } from "@/lib/sdk/models/Site"
+import type { Site } from "@/lib/api-client"
 
 interface ChatWidgetProps {
   title: string
@@ -139,7 +139,7 @@ export function ChatWidget({
                     <Streamdown isAnimating={isLoading && msg.role === "assistant"}>
                       {msg.content}
                     </Streamdown>
-                    <MessageSources sources={(msg as any).sources} allSites={allSites} />
+                    <MessageSources sources={msg.sources} allSites={allSites} />
                   </div>
                 </div>
               ))}

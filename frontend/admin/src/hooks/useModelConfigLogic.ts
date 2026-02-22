@@ -15,15 +15,15 @@
 import { useSettings } from "@/contexts/SettingsContext"
 import { useTestConnection } from "@/hooks/useSystemConfig"
 import { toast } from "sonner"
-import { ModelType, initialConfigs } from "@/types/settings"
+import { MODEL_TYPES, initialConfigs } from "@/types/settings"
 
-export function useModelConfigLogic(type: ModelType, onSuccess?: () => void) {
+type RuntimeModelType = typeof MODEL_TYPES[number]
+
+export function useModelConfigLogic(type: RuntimeModelType, onSuccess?: () => void) {
   const { configs, handleUpdate, handleSave, scope, platformDefaults } = useSettings()
   const testConnection = useTestConnection(scope)
 
-  // @ts-ignore
   const config = configs[type] || initialConfigs[type]
-  // @ts-ignore
   const hasPlatformResource = !!(platformDefaults && platformDefaults[type] && platformDefaults[type].apiKey)
   const mode = config.mode || "custom"
 
@@ -35,10 +35,15 @@ export function useModelConfigLogic(type: ModelType, onSuccess?: () => void) {
     testConnection.mutate(
       { modelType: type, config },
       {
-        onSuccess: (data: any) => {
+        onSuccess: (data: unknown) => {
           toast.success("连接测试成功")
-          if (data && data.dimension) {
-            handleUpdate(type, "dimension", data.dimension)
+          if (
+            data &&
+            typeof data === 'object' &&
+            'dimension' in data &&
+            typeof (data as { dimension?: unknown }).dimension === 'number'
+          ) {
+            handleUpdate(type, "dimension", (data as { dimension: number }).dimension)
           }
         },
         onError: (err) => {
@@ -59,8 +64,8 @@ export function useModelConfigLogic(type: ModelType, onSuccess?: () => void) {
       await testConnection.mutateAsync({ modelType: type, config })
       await handleSave()
       onSuccess?.()
-    } catch (e: any) {
-      toast.error(e.message || "连接测试发生错误，无法保存")
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "连接测试发生错误，无法保存")
     }
   }
 

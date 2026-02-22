@@ -91,6 +91,14 @@ interface SiteUsersProps {
   siteName: string
 }
 
+function parsePasswordResponse(data: unknown): { password: string } | null {
+  if (!data || typeof data !== "object") {
+    return null
+  }
+  const password = (data as { password?: unknown }).password
+  return typeof password === "string" ? { password } : null
+}
+
 export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
   const [page, setPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
@@ -160,8 +168,9 @@ export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
 
     resetPasswordMutation.mutate(userId, {
       onSuccess: (data) => {
-        if (data && 'password' in data) {
-          const password = (data as any).password
+        const parsed = parsePasswordResponse(data)
+        if (parsed) {
+          const { password } = parsed
           toast.success(
             <div className="space-y-2">
               <div className="font-semibold">密码重置成功！</div>

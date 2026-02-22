@@ -84,9 +84,9 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
 
       // 重置并关闭
       handleClose()
-    } catch (error: any) {
+    } catch (error: unknown) {
       logError("修改密码", error)
-      toast.error(error.message || "密码修改失败")
+      toast.error(error instanceof Error ? error.message : "密码修改失败")
     } finally {
 
       setLoading(false)

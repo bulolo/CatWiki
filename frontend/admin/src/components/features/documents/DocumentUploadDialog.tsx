@@ -14,8 +14,7 @@
 
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import {
   Dialog,
@@ -36,11 +35,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  type LucideIcon,
   Loader2,
   Upload,
   FileText,
-  AlertCircle,
-  File,
   X,
   Bird,
   Zap,
@@ -51,16 +49,46 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/api-client"
-import { DOC_PROCESSOR_TYPES, type DocProcessorType } from "@/types/settings"
-import { getRoutePath, useRouteContext } from "@/lib/routing"
+import { DOC_PROCESSOR_TYPES, type DocProcessorConfig, DocProcessorType } from "@/types/settings"
 import { CollectionItem } from "@/types"
 
-interface DocProcessor {
-  name: string
-  type: string
-  enabled: boolean
-  config?: any
-  origin?: 'platform' | 'tenant'
+interface ProcessorExtraConfig {
+  is_ocr?: boolean
+  extract_images?: boolean
+  extract_tables?: boolean
+}
+
+type DocProcessor = Omit<DocProcessorConfig, "config"> & {
+  config?: ProcessorExtraConfig
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function parseProcessorConfig(config: unknown): ProcessorExtraConfig {
+  if (!isRecord(config)) {
+    return {}
+  }
+  return {
+    is_ocr: typeof config.is_ocr === "boolean" ? config.is_ocr : undefined,
+    extract_images: typeof config.extract_images === "boolean" ? config.extract_images : undefined,
+    extract_tables: typeof config.extract_tables === "boolean" ? config.extract_tables : undefined,
+  }
+}
+
+function parseDocProcessorType(value: unknown): DocProcessorType {
+  if (value === DocProcessorType.DOCLING || value === DocProcessorType.MINER_U || value === DocProcessorType.PADDLE_OCR) {
+    return value
+  }
+  return DocProcessorType.MINER_U
+}
+
+function parseProcessorOrigin(value: unknown): "platform" | "tenant" | undefined {
+  if (value === "platform" || value === "tenant") {
+    return value
+  }
+  return undefined
 }
 
 interface DocumentUploadDialogProps {
@@ -78,9 +106,6 @@ export function DocumentUploadDialog({
   collections,
   onSuccess
 }: DocumentUploadDialogProps) {
-  const router = useRouter()
-  const routeContext = useRouteContext()
-
   const [files, setFiles] = useState<File[]>([])
   const [processor, setProcessor] = useState<string>("")
   const [processors, setProcessors] = useState<DocProcessor[]>([])
@@ -100,7 +125,19 @@ export function DocumentUploadDialog({
         try {
           setIsLoadingProcessors(true)
           const res = await api.systemConfig.getDocProcessorConfig()
-          const list = (res?.processors || []) as DocProcessor[]
+          const list = Array.isArray(res?.processors)
+            ? res.processors
+              .filter((item): item is Record<string, unknown> => isRecord(item))
+              .map((item) => ({
+                name: typeof item.name === "string" ? item.name : "",
+                type: parseDocProcessorType(item.type),
+                enabled: Boolean(item.enabled),
+                config: parseProcessorConfig(item.config),
+                origin: parseProcessorOrigin(item.origin),
+                baseUrl: typeof item.baseUrl === "string" ? item.baseUrl : "",
+                apiKey: typeof item.apiKey === "string" ? item.apiKey : "",
+              }))
+            : []
           const activeProcessors = list.filter(p => p.enabled)
 
           // 按指定顺序排序: MinerU -> Docling -> PaddleOCR
@@ -189,9 +226,10 @@ export function DocumentUploadDialog({
     setProcessor(name)
     const selected = processors.find(p => p.name === name)
     if (selected && selected.config) {
-      setOcrEnabled(selected.config.is_ocr ?? false)
-      setExtractImages(selected.config.extract_images ?? false)
-      setExtractTables(selected.config.extract_tables ?? false)
+      const cfg = parseProcessorConfig(selected.config)
+      setOcrEnabled(cfg.is_ocr ?? false)
+      setExtractImages(cfg.extract_images ?? false)
+      setExtractTables(cfg.extract_tables ?? false)
     }
   }
 
@@ -223,19 +261,23 @@ export function DocumentUploadDialog({
         }, 300)
 
         try {
+          const selectedProcessor = processors.find(p => p.name === processor)
+          const type = selectedProcessor?.type || "MinerU"
+
           const formData = new FormData()
           formData.append("file", file)
           formData.append("site_id", siteId.toString())
           formData.append("collection_id", collectionId)
-          formData.append("processor_type", processor)
+          formData.append("processor_type", type)
           formData.append("ocr_enabled", ocrEnabled.toString())
           formData.append("extract_images", extractImages.toString())
           formData.append("extract_tables", extractTables.toString())
 
           await api.document.importDocument(formData)
           successCount++
-        } catch (err: any) {
-          toast.error(`文件 ${file.name} 上传失败: ${err.message}`)
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : "未知错误"
+          toast.error(`文件 ${file.name} 上传失败: ${errMsg}`)
         } finally {
           clearInterval(interval)
           setUploadProgress(100)
@@ -260,7 +302,7 @@ export function DocumentUploadDialog({
 
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("批量上传过程出错")
     } finally {
       setIsUploading(false)
@@ -367,7 +409,7 @@ export function DocumentUploadDialog({
                 <SelectContent>
                   {processors.map(p => {
                     const typeInfo = DOC_PROCESSOR_TYPES.find(t => t.value === p.type)
-                    const icons: Record<string, any> = { Bird, Zap, Scan, BookOpen, Pickaxe, FileText }
+                    const icons: Record<string, LucideIcon> = { Bird, Zap, Scan, BookOpen, Pickaxe, FileText }
                     const Icon = typeInfo ? icons[typeInfo.icon] || FileText : FileText
                     return (
                       <SelectItem key={p.name} value={p.name} disabled={typeInfo?.disabled}>

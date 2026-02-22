@@ -29,45 +29,18 @@ import { useState, useEffect } from "react"
 import { ChatWidgetPreview } from "@/components/features/ChatWidgetPreview"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { initialConfigs } from "@/types/settings"
+import type { BotConfig } from "@/types/settings"
 import { env } from "@/lib/env"
 import { useHealth } from '@/hooks/useHealth'
 
 interface SiteBotSettingsProps {
   siteId: number
-  config: {
-    webWidget: {
-      enabled: boolean
-      title: string
-      welcomeMessage: string
-      primaryColor: string
-      position: string
-    }
-    apiBot: {
-      enabled: boolean
-      apiEndpoint: string
-      apiKey: string
-      timeout: number
-    }
-    wecomSmartRobot: {
-      enabled: boolean
-      callbackUrl: string
-      token: string
-      encodingAesKey: string
-    }
-    feishuBot: {
-      enabled: boolean
-      appId: string
-      appSecret: string
-    }
-    dingtalkBot: {
-      enabled: boolean
-      clientId: string
-      clientSecret: string
-      templateId: string
-    }
-  }
-  onChange: (section: string, field: string, value: any) => void
+  config: BotConfig
+  onChange: <S extends keyof BotConfig>(
+    section: S,
+    field: keyof BotConfig[S],
+    value: BotConfig[S][keyof BotConfig[S]]
+  ) => void
 }
 
 
@@ -81,7 +54,7 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
   const { data: healthData } = useHealth()
   const isCommunity = healthData?.edition === 'community'
 
-  const { webWidget, apiBot, wecomSmartRobot, feishuBot, dingtalkBot } = config || { webWidget: {}, apiBot: {}, wecomSmartRobot: {}, feishuBot: {}, dingtalkBot: {} } as any
+  const { webWidget, apiBot, wecomSmartRobot, feishuBot, dingtalkBot } = config
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({
     webWidget: webWidget?.enabled || false,
     apiBot: apiBot?.enabled || false,
@@ -106,8 +79,6 @@ export function SiteBotSettings({ siteId, config, onChange }: SiteBotSettingsPro
       onChange("wecomSmartRobot", "callbackUrl", endpoint)
     }
   }, [config?.apiBot?.enabled, config?.apiBot?.apiEndpoint, config?.wecomSmartRobot?.enabled, config?.wecomSmartRobot?.callbackUrl, onChange, siteId])
-
-  if (!config) return null
 
   return (
     <div className="space-y-6">

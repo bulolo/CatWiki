@@ -21,7 +21,7 @@ import { FileText, Users, MessageSquare, Eye, Network, Flame, ChevronRight, Cloc
 import { useSiteData, useDocuments, useSiteStats } from "@/hooks"
 import { getRoutePath, useRouteContext } from "@/lib/routing"
 import { cn } from "@/lib/utils"
-import type { Document } from "@/lib/api-client"
+import type { Document, RecentSession, TrendData } from "@/lib/api-client"
 
 
 // 统计图标映射
@@ -182,13 +182,13 @@ export default function AdminHome() {
             <div className="flex-1 w-full min-h-[200px] px-2">
               {statsError ? (
                 <div className="w-full h-full flex items-center justify-center text-rose-500 text-xs text-center p-4">
-                  加载趋势失败: {(statsError as any)?.message || "未知错误"}
+                  加载趋势失败: {statsError instanceof Error ? statsError.message : "未知错误"}
                 </div>
               ) : statsLoading ? (
                 <div className="w-full h-full flex items-center justify-center text-slate-300 animate-pulse text-sm">正在加载统计数据...</div>
               ) : (stats.dailyTrends && stats.dailyTrends.length > 0) ? (
                 <AISessionChart
-                  data={stats.dailyTrends.map((d: any) => ({
+                  data={stats.dailyTrends.map((d: TrendData) => ({
                     date: d.date,
                     value: Number(d.sessions) || 0,
                     subValue: d.messages || 0
@@ -214,7 +214,7 @@ export default function AdminHome() {
           <CardContent className="p-0">
             <div className="divide-y divide-border/30">
               {stats.recentSessions.length > 0 ? (
-                stats.recentSessions.map((session: any) => (
+                stats.recentSessions.map((session: RecentSession) => (
                   <div key={session.thread_id} className="p-4 hover:bg-muted/30 transition-colors cursor-default group">
                     <div className="flex items-center justify-between mb-1">
                       <h4 className="text-xs font-bold text-slate-700 truncate max-w-[150px]">{session.title || '新对话'}</h4>

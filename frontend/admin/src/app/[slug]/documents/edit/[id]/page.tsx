@@ -168,7 +168,7 @@ export default function EditDocumentPage() {
 
             // 调用删除 API
             await api.file.deleteFile(objectName)
-          } catch (error: any) {
+          } catch (error: unknown) {
             // 删除失败不影响主流程，静默处理
             if (process.env.NODE_ENV === 'development') {
               const errorMessage = error instanceof Error ? error.message : String(error)

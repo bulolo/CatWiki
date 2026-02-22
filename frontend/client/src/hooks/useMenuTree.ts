@@ -23,7 +23,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { queryKeys } from '@/lib/react-query'
 import type { MenuItem } from '@/types'
-import type { CollectionTree } from '@/lib/sdk/models/CollectionTree'
+import type { CollectionTree } from '@/lib/api-client'
 import { logError } from '@/lib/error-handler'
 
 /**

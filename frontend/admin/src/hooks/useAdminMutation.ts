@@ -25,10 +25,10 @@ interface UseAdminMutationOptions<TData, TError, TVariables, TContext>
   extends UseMutationOptions<TData, TError, TVariables, TContext> {
   successMsg?: string | ((data: TData, variables: TVariables) => string | undefined)
   errorMsg?: string | ((error: TError, variables: TVariables) => string | undefined)
-  invalidateKeys?: ReadonlyArray<ReadonlyArray<any>> // 支持 as const 数组
+  invalidateKeys?: ReadonlyArray<ReadonlyArray<unknown>> // 支持 as const 数组
 }
 
-export function useAdminMutation<TData = any, TError = Error, TVariables = any, TContext = any>(
+export function useAdminMutation<TData = unknown, TError = Error, TVariables = unknown, TContext = unknown>(
   options: UseAdminMutationOptions<TData, TError, TVariables, TContext>
 ) {
   const queryClient = useQueryClient()
@@ -47,7 +47,7 @@ export function useAdminMutation<TData = any, TError = Error, TVariables = any, 
       // 执行失效逻辑
       if (invalidateKeys && invalidateKeys.length > 0) {
         await Promise.all(
-          invalidateKeys.map(key => queryClient.invalidateQueries({ queryKey: key as any }))
+          invalidateKeys.map(key => queryClient.invalidateQueries({ queryKey: key }))
         )
       }
 

@@ -100,7 +100,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { type Document, type CollectionTree as APICollectionTree, DocumentStatus } from "@/lib/api-client"
+import {
+  type Collection as APICollection,
+  type CollectionCreate,
+  type Document,
+  type CollectionTree as APICollectionTree,
+  type DocumentChunk,
+  DocumentStatus
+} from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { OptimizedImage } from "@/components/ui/OptimizedImage"
@@ -161,7 +168,7 @@ export default function DocumentsPage() {
 
   // 查看分片状态
   const [viewChunksId, setViewChunksId] = useState<number | null>(null)
-  const [focusedChunk, setFocusedChunk] = useState<any | null>(null)
+  const [focusedChunk, setFocusedChunk] = useState<DocumentChunk | null>(null)
   const [isVectorRetrieveOpen, setIsVectorRetrieveOpen] = useState(false)
 
   // 删除确认弹窗状态
@@ -209,12 +216,13 @@ export default function DocumentsPage() {
   const { data: chunksData, isLoading: chunksLoading } = useQuery({
     queryKey: ['document-chunks', viewChunksId],
     queryFn: async () => {
-      if (!viewChunksId) return null
+      if (!viewChunksId) return []
       return api.document.listChunks(viewChunksId)
     },
 
     enabled: !!viewChunksId
   })
+  const chunkList = chunksData ?? []
 
   // 处理文档数据
   const documents = useMemo(() => {
@@ -393,11 +401,12 @@ export default function DocumentsPage() {
   const handleCreateCollection = async () => {
     if (!newCollectionName.trim()) return
 
-    createCollectionMutation.mutate({
+    const payload: CollectionCreate = {
       site_id: siteId,
       title: newCollectionName.trim(),
       parent_id: targetParentId
-    } as any, {
+    }
+    createCollectionMutation.mutate(payload, {
       onSuccess: () => {
         setIsCreateCollectionOpen(false)
         setNewCollectionName("")
@@ -408,10 +417,11 @@ export default function DocumentsPage() {
   }
 
   const handleRenameCollection = async (id: string, newName: string) => {
+    const payload: Partial<APICollection> = { title: newName }
     updateCollectionMutation.mutate({
       id: parseInt(id),
-      data: { title: newName }
-    } as any, {
+      data: payload
+    }, {
       onSuccess: () => {
         refetchCollections()
       }
@@ -429,11 +439,9 @@ export default function DocumentsPage() {
     targetParentId: string | null,
     insertBeforeId?: string | null
   ) => {
-    console.log('==================== 开始移动合集 ====================')
-    console.log('🔄 移动合集:', { collectionId, targetParentId, insertBeforeId })
+
 
     if (!collectionId) {
-      console.error('❌ 没有 collectionId！')
       return
     }
 
@@ -451,8 +459,8 @@ export default function DocumentsPage() {
 
       // 过滤掉当前拖拽的合集，按 order 排序
       const siblings = siblingsRaw
-        .filter((c: any) => c.id !== collectionIdNum)
-        .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+        .filter((c: APICollection) => c.id !== collectionIdNum)
+        .sort((a: APICollection, b: APICollection) => (a.order || 0) - (b.order || 0))
 
 
       // 计算目标位置索引
@@ -502,11 +510,12 @@ export default function DocumentsPage() {
         }, 50)
       }
 
-    } catch (error: any) {
-      toast.error(error.message || '移动合集失败')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '移动合集失败'
+      toast.error(message)
     }
 
-    console.log('==================== 结束移动合集 ====================')
+
   }
 
   const handleDeleteCollection = async (id: string, name: string) => {
@@ -683,9 +692,6 @@ export default function DocumentsPage() {
     batchUpdateMutation.mutate({
       documentIds: selectedDocIds,
       data: { status: DocumentStatus.DRAFT }
-    }, {
-      onSuccess: () => {
-      }
     })
   }
 
@@ -990,8 +996,8 @@ export default function DocumentsPage() {
                   {/* 学习状态筛选器 */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-500 whitespace-nowrap">学习:</span>
-                    <Select value={vectorStatus} onValueChange={(value: any) => {
-                      setVectorStatus(value)
+                    <Select value={vectorStatus} onValueChange={(value: string) => {
+                      setVectorStatus(value as typeof vectorStatus)
                       setCurrentPage(1)
                     }}>
                       <SelectTrigger className="w-[90px] md:w-[100px] bg-white border-slate-200 shadow-sm h-8 md:h-9 rounded-lg text-xs md:text-sm">
@@ -1544,7 +1550,7 @@ export default function DocumentsPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
                 <p className="text-sm">正在加载分片数据...</p>
               </div>
-            ) : !chunksData || chunksData.length === 0 ? (
+            ) : chunkList.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-400">
                 <FileText className="h-10 w-10 opacity-20" />
                 <p className="text-sm">暂无分片数据</p>
@@ -1554,7 +1560,7 @@ export default function DocumentsPage() {
                 <div className="space-y-4 pb-4">
                   <div className="flex items-center justify-between px-1 pb-2">
                     <Badge variant="outline" className="bg-white">
-                      共 {chunksData.length} 个分片
+                      共 {chunkList.length} 个分片
                     </Badge>
                     <div className="text-xs text-slate-400">
                       点击卡片查看完整内容
@@ -1562,7 +1568,7 @@ export default function DocumentsPage() {
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {chunksData.map((chunk: any, index: number) => (
+                    {chunkList.map((chunk: DocumentChunk, index: number) => (
                       <div
                         key={chunk.id || index}
                         className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group hover:border-primary/50 hover:shadow-md transition-all cursor-pointer flex flex-col h-40"

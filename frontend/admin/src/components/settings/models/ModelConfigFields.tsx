@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Save, ShieldCheck } from "lucide-react"
-import type { ModelConfig } from "@/types"
+import type { ModelConfig } from "@/lib/api-client"
 
 interface ModelConfigFieldsProps {
   type: "chat" | "embedding" | "rerank" | "vl"

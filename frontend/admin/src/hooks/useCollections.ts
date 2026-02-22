@@ -18,7 +18,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-import type { Collection, CollectionTree } from '@/lib/api-client'
+import type { Collection, CollectionCreate, CollectionTree, CollectionUpdate } from '@/lib/api-client'
 import { isAuthenticated } from '@/lib/auth'
 import { useAdminMutation } from './useAdminMutation'
 
@@ -90,7 +90,7 @@ export function useCollection(id: number | undefined) {
  */
 export function useCreateCollection(siteId: number) {
   return useAdminMutation({
-    mutationFn: (data: Partial<Collection> & { title: string }) => api.collection.create(data as any),
+    mutationFn: (data: CollectionCreate) => api.collection.create(data),
     invalidateKeys: [collectionKeys.treeSite(siteId), collectionKeys.lists()],
     successMsg: '目录创建成功',
   })
@@ -101,10 +101,10 @@ export function useCreateCollection(siteId: number) {
  */
 export function useUpdateCollection(siteId: number) {
   return useAdminMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Collection> }) =>
-      api.collection.update(id, data) as any,
+    mutationFn: ({ id, data }: { id: number; data: CollectionUpdate }) =>
+      api.collection.update(id, data),
     invalidateKeys: [collectionKeys.trees(), collectionKeys.lists(), collectionKeys.all],
-    successMsg: (res: Collection, vars: { id: number; data: Partial<Collection> }) => {
+    successMsg: (res: Collection, vars: { id: number; data: CollectionUpdate }) => {
       const isSort = 'order' in (vars.data || {}) || 'parent_id' in (vars.data || {})
       return isSort ? undefined : '合集更新成功'
     },
@@ -158,5 +158,3 @@ export function useUpdateCollectionSort(siteId: number) {
     successMsg: '排序更新成功',
   })
 }
-
-

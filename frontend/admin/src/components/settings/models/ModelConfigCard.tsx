@@ -20,7 +20,7 @@
 
 import { Badge } from "@/components/ui/badge"
 import { LucideIcon } from "lucide-react"
-import type { ModelConfig } from "@/types"
+import type { ModelConfig } from "@/lib/api-client"
 
 interface ModelConfigCardProps {
   id: string

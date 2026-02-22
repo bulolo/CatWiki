@@ -16,7 +16,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react"
 import { api } from "@/lib/api-client"
-import type { Models } from "@/lib/sdk"
+import type { ChatSessionResponse } from "@/lib/api-client"
 import { getVisitorId } from "@/lib/visitor"
 
 interface UseChatSessionsOptions {
@@ -25,7 +25,7 @@ interface UseChatSessionsOptions {
 
 export function useChatSessions(options: UseChatSessionsOptions = {}) {
   const { siteId } = options
-  const [sessions, setSessions] = useState<Models.ChatSessionResponse[]>([])
+  const [sessions, setSessions] = useState<ChatSessionResponse[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -41,12 +41,13 @@ export function useChatSessions(options: UseChatSessionsOptions = {}) {
   }, [keyword])
 
   const fetchSessions = useCallback(async (pageNum = 1, append = false, searchKeyword?: string) => {
-    if (!siteId) {
-      // siteId 为空时清空数据
-      setSessions([])
-      setTotal(0)
-      return
-    }
+    // 理由：多租户模式下，如果没有 siteId，后端应返回当前租户下的所有会话
+    // if (!siteId) {
+    //   // siteId 为空时清空数据
+    //   setSessions([])
+    //   setTotal(0)
+    //   return
+    // }
 
     // 如果未传入 searchKeyword，则使用当前 ref 中的值
     const currentKeyword = searchKeyword !== undefined ? searchKeyword : keywordRef.current
@@ -54,7 +55,7 @@ export function useChatSessions(options: UseChatSessionsOptions = {}) {
     setIsLoading(true)
     try {
       const response = await api.chatSession.list({
-        siteId,
+        siteId: siteId || undefined,
         memberId: getVisitorId(),
         keyword: currentKeyword || undefined,
         page: pageNum,

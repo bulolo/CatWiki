@@ -28,7 +28,7 @@ const BASE_URL = env.NEXT_PUBLIC_API_URL
  * 通用 API 响应基类 (泛型包装器)
  * 理由：SDK 缺少统一泛型，此处手动定义以提升 DX。
  */
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   code: number
   msg: string
   data: T
@@ -37,9 +37,13 @@ export interface ApiResponse<T = any> {
 /**
  * 通用响应处理器：自动校验 code === 0 并返回 data
  */
-async function wrapResponse<T>(promise: Promise<any>, defaultMsg = '操作失败'): Promise<T> {
+async function wrapResponse<T>(promise: Promise<unknown>, defaultMsg = '操作失败'): Promise<T> {
   try {
-    const response = await promise
+    const response = await promise as {
+      code?: number
+      msg?: string
+      data?: T | null
+    }
     if (response.code === 0) {
       return response.data as T
     }
@@ -77,9 +81,17 @@ class CustomHttpRequest extends FetchHttpRequest {
     const stateCode = isInitialized ? "0x4f4b" : "0x4b4f"
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
 
-    const headers = { ...(options.headers || {}) } as any
+    const headers: Record<string, string> = { ...(options.headers as Record<string, string> || {}) }
     headers['X-App-State'] = stateCode
     headers['X-Client-Origin'] = origin
+
+    // 提取 tenantSlug：假设路径格式为 /[tenantSlug]/...
+    if (typeof window !== 'undefined') {
+      const pathParts = window.location.pathname.split('/').filter(Boolean)
+      if (pathParts.length > 0) {
+        headers['X-Tenant-Slug'] = pathParts[0]
+      }
+    }
 
     return super.request<T>({
       ...options,
@@ -212,7 +224,7 @@ const chatSessionApi = {
    * 删除会话
    */
   delete: (threadId: string) => {
-    return wrapResponse<Record<string, any>>(client.chatSessions.deleteChatSession({
+    return wrapResponse<unknown>(client.chatSessions.deleteChatSession({
       threadId
     }))
   }
@@ -245,9 +257,5 @@ export const api = {
 
 export default api
 
-// 1. 导出所有模型到顶层 (保持向后兼容)
+// ==================== SDK 类型统一导出 ====================
 export * from './sdk/models'
-
-// 2. 导出 Models 命名空间 (推荐新用法)
-export { Models } from './sdk'
-

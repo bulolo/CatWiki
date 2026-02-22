@@ -22,14 +22,19 @@ export class FilesService {
      */
     public downloadClientFile({
         objectName,
+        xTenantSlug,
     }: {
         objectName: string,
+        xTenantSlug?: (string | null),
     }): CancelablePromise<any> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/v1/files/{object_name}:download',
             path: {
                 'object_name': objectName,
+            },
+            headers: {
+                'X-Tenant-Slug': xTenantSlug,
             },
             errors: {
                 422: `Validation Error`,
@@ -51,14 +56,19 @@ export class FilesService {
      */
     public getClientFileInfo({
         objectName,
+        xTenantSlug,
     }: {
         objectName: string,
+        xTenantSlug?: (string | null),
     }): CancelablePromise<ApiResponse_dict_> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/v1/files/{object_name}:info',
             path: {
                 'object_name': objectName,
+            },
+            headers: {
+                'X-Tenant-Slug': xTenantSlug,
             },
             errors: {
                 422: `Validation Error`,
@@ -84,18 +94,23 @@ export class FilesService {
     public getClientPresignedUrl({
         objectName,
         expiresHours = 1,
+        xTenantSlug,
     }: {
         objectName: string,
         /**
          * URL 有效期（小时，最长 24 小时）
          */
         expiresHours?: number,
+        xTenantSlug?: (string | null),
     }): CancelablePromise<ApiResponse_dict_> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/v1/files/{object_name}:presignedUrl',
             path: {
                 'object_name': objectName,
+            },
+            headers: {
+                'X-Tenant-Slug': xTenantSlug,
             },
             query: {
                 'expires_hours': expiresHours,

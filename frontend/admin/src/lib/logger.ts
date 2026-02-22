@@ -28,7 +28,7 @@ export const logger = {
   /**
    * 调试日志（仅开发环境）
    */
-  debug: (...args: any[]) => {
+  debug: (...args: unknown[]) => {
     if (isDevelopment) {
       console.log('[DEBUG]', ...args)
     }
@@ -37,7 +37,7 @@ export const logger = {
   /**
    * 信息日志（仅开发环境）
    */
-  info: (...args: any[]) => {
+  info: (...args: unknown[]) => {
     if (isDevelopment) {
       console.info('[INFO]', ...args)
     }
@@ -46,14 +46,14 @@ export const logger = {
   /**
    * 警告日志（总是输出）
    */
-  warn: (...args: any[]) => {
+  warn: (...args: unknown[]) => {
     console.warn('[WARN]', ...args)
   },
 
   /**
    * 错误日志（总是输出）
    */
-  error: (...args: any[]) => {
+  error: (...args: unknown[]) => {
     console.error('[ERROR]', ...args)
     // 未来可以在这里集成错误监控服务（如 Sentry）
   },
@@ -61,13 +61,12 @@ export const logger = {
   /**
    * 成功日志（仅开发环境）
    */
-  success: (...args: any[]) => {
+  success: (...args: unknown[]) => {
     if (isDevelopment) {
       console.log('[SUCCESS]', ...args)
     }
   }
 }
-
 
 
 

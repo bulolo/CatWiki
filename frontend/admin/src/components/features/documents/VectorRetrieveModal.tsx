@@ -21,6 +21,7 @@ import { Search, Loader2, FileText, Brain, Info } from "lucide-react"
 import { api } from "@/lib/api-client"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import type { VectorRetrieveResponse } from "@/lib/api-client"
 
 interface VectorRetrieveModalProps {
   open: boolean
@@ -34,7 +35,15 @@ interface RetrieveResult {
   document_id: number | string
   document_title?: string | null
   original_score?: number | null
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
+}
+
+function getChunkIndex(metadata?: Record<string, unknown>): string {
+  const value = metadata?.chunk_index
+  if (typeof value === 'number' || typeof value === 'string') {
+    return String(value)
+  }
+  return 'N/A'
 }
 
 export function VectorRetrieveModal({ open, onOpenChange, siteId }: VectorRetrieveModalProps) {
@@ -65,15 +74,9 @@ export function VectorRetrieveModal({ open, onOpenChange, siteId }: VectorRetrie
         },
         enable_rerank: enableRerank,
         rerank_k: rerankK || limit
-      }) as any
-      // Now result is already the data part (likely { list: [...] })
-      if (res && res.list && Array.isArray(res.list)) {
-        setResults(res.list)
-      } else if (Array.isArray(res)) {
-        setResults(res)
-      } else {
-        setResults([])
-      }
+      })
+      const resultList = Array.isArray(res?.list) ? (res.list as VectorRetrieveResponse[]) : []
+      setResults(resultList)
 
     } catch (error) {
       setResults([])
@@ -232,7 +235,9 @@ export function VectorRetrieveModal({ open, onOpenChange, siteId }: VectorRetrie
                   <div className="mt-2 text-xs text-slate-400 pt-2 flex flex-col gap-1 border-t shrink-0">
                     <div className="flex justify-between items-center">
                       <span>Doc ID: {result.document_id}</span>
-                      <span className="font-mono bg-slate-100 px-1 rounded text-[10px]">Chunk: {result.metadata?.chunk_index ?? 'N/A'}</span>
+                      <span className="font-mono bg-slate-100 px-1 rounded text-[10px]">
+                        Chunk: {getChunkIndex(result.metadata)}
+                      </span>
                     </div>
                     <details className="group/meta">
                       <summary className="cursor-pointer hover:text-indigo-500 transition-colors list-none flex items-center gap-1 w-fit">

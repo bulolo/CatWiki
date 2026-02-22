@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useCreateCollection } from "@/hooks"
-import type { CollectionTree } from "@/lib/api-client"
+import type { CollectionTree, CollectionCreate } from "@/lib/api-client"
 
 interface CreateCollectionDialogProps {
   siteId: number
@@ -58,11 +58,12 @@ export function CreateCollectionDialog({
   const handleCreate = () => {
     if (!name.trim()) return
 
-    createCollectionMutation.mutate({
+    const payload: CollectionCreate = {
       site_id: siteId,
       title: name.trim(),
       parent_id: parentId === "root" ? undefined : parseInt(parentId)
-    } as any, {
+    }
+    createCollectionMutation.mutate(payload, {
       onSuccess: (data) => {
         setName("")
         setParentId("root")

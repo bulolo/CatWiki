@@ -39,13 +39,13 @@ export function ToolCallCard({ toolCalls, className }: ToolCallCardProps) {
       {toolCalls.map((tc) => {
         // 按照 OpenAI 标准结构提取信息
         const func = tc.function
-        const name = func?.name || (tc as any).name || "unknown"
+        const name = func?.name || tc.name || "unknown"
         const displayName = TOOL_DISPLAY_NAMES[name] || name
 
         // 解析查询参数
         let query = ""
         try {
-          const argsRaw = func?.arguments || (tc as any).args || "{}"
+          const argsRaw = func?.arguments || tc.args || "{}"
           const args = typeof argsRaw === 'string' ? JSON.parse(argsRaw) : argsRaw
           query = args?.query || ""
         } catch {

@@ -31,7 +31,7 @@
  * - 添加 SameSite 保护
  */
 
-import type { UserInfo } from '@/types/auth'
+import type { UserResponse } from '@/lib/api-client'
 
 // ==================== 类型定义 ====================
 
@@ -191,14 +191,14 @@ export function clearAuthCookie() {
 /**
  * 获取用户信息
  */
-export function getUserInfo(): UserInfo | null {
+export function getUserInfo(): UserResponse | null {
   if (typeof window === 'undefined') return null
 
   const userInfo = localStorage.getItem(USER_INFO_KEY)
   if (!userInfo) return null
 
   try {
-    return JSON.parse(userInfo) as UserInfo
+    return JSON.parse(userInfo) as UserResponse
   } catch (error) {
     console.error('Failed to parse user info:', error)
     return null
@@ -208,7 +208,7 @@ export function getUserInfo(): UserInfo | null {
 /**
  * 设置用户信息
  */
-export function setUserInfo(user: UserInfo) {
+export function setUserInfo(user: UserResponse) {
   if (typeof window === 'undefined') return
 
   try {
@@ -319,7 +319,7 @@ export function logout() {
  * @param userInfo - 用户信息
  * @param remember - 是否记住登录状态（影响过期时间）
  */
-export function login(token: string, userInfo: UserInfo, remember: boolean = true) {
+export function login(token: string, userInfo: UserResponse, remember: boolean = true) {
   const expiresInMs = remember ? TOKEN_EXPIRES_MS : 24 * 60 * 60 * 1000 // 不记住则 1 天
 
   setToken(token, expiresInMs)

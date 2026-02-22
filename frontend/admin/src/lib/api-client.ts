@@ -20,18 +20,11 @@ import type { ApiRequestOptions } from './sdk/core/ApiRequestOptions'
 import { CancelablePromise } from './sdk/core/CancelablePromise'
 import { env } from './env'
 
-// ==================== 集中导入常用模型 ====================
-// 1. 导出所有模型到顶层 (保持向后兼容)
+// ==================== SDK 类型统一导出 ====================
 export * from './sdk/models'
 
-// 2. 导出 Models 命名空间 (推荐新用法)
-export { Models } from './sdk'
-
-// 3. 内部使用
+// 内部使用
 import { Models } from './sdk'
-
-
-
 
 // ==================== 配置 ====================
 
@@ -42,22 +35,25 @@ const BASE_URL = env.NEXT_PUBLIC_API_URL
 /**
  * 通用 API 响应基类
  */
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   code: number
   msg: string
   data: T
 }
 
-/**
- * 分页数据包装格式
- */
-export interface PaginatedData<T> {
-  list: T[]
-  pagination?: {
-    total: number
-    page: number
-    size: number
+export interface DocumentChunk {
+  id?: string | number
+  content: string
+  metadata?: Record<string, unknown> & {
+    chunk_index?: number
   }
+}
+
+export interface UploadedFileInfo {
+  url?: string
+  object_name?: string
+  size?: number
+  [key: string]: unknown
 }
 
 // ==================== 认证与错误处理 ====================
@@ -90,7 +86,9 @@ class CustomHttpRequest extends FetchHttpRequest {
     const stateCode = isInitialized ? "0x4f4b" : "0x4b4f"
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
 
-    const headers = { ...(options.headers || {}) } as any
+    const headers = {
+      ...((options.headers as Record<string, string> | undefined) || {}),
+    }
     headers['X-App-State'] = stateCode
     headers['X-Admin-Origin'] = origin
 
@@ -134,9 +132,23 @@ const client = new CatWikiAdminSdk(
 /**
  * 通用响应处理器：自动校验 code === 0 并返回 data
  */
-async function wrapResponse<T>(promise: CancelablePromise<any>, defaultMsg = '操作失败'): Promise<T> {
+async function wrapResponse<
+  T,
+  R extends { code?: number; msg?: string; data?: unknown } = {
+    code?: number
+    msg?: string
+    data?: unknown
+  }
+>(
+  promise: PromiseLike<R>,
+  defaultMsg = '操作失败'
+): Promise<T> {
   try {
-    const response = await promise
+    const response = await promise as {
+      code?: number
+      msg?: string
+      data?: T | null
+    }
     if (response.code === 0) {
       return response.data as T
     }
@@ -149,6 +161,110 @@ async function wrapResponse<T>(promise: CancelablePromise<any>, defaultMsg = '�
       throw new Error(msg || defaultMsg)
     }
     throw error
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function normalizeChunks(value: unknown): DocumentChunk[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+  return value
+    .filter((item): item is Record<string, unknown> => isRecord(item))
+    .map((item) => ({
+      ...item,
+      id: typeof item.id === 'string' || typeof item.id === 'number' ? item.id : undefined,
+      content: typeof item.content === 'string' ? item.content : '',
+      metadata: isRecord(item.metadata) ? item.metadata : undefined,
+    }))
+}
+
+const MODEL_TYPES = new Set<string>(
+  Object.values(Models.TestConnectionRequest.model_type)
+)
+
+function isModelType(value: string): value is Models.TestConnectionRequest.model_type {
+  return MODEL_TYPES.has(value)
+}
+
+function parseBooleanField(value: FormDataEntryValue | null): boolean | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  if (value === 'true') {
+    return true
+  }
+  if (value === 'false') {
+    return false
+  }
+  return undefined
+}
+
+function parseRequiredIntField(fieldName: string, value: FormDataEntryValue | null): number {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(`导入参数缺失: ${fieldName}`)
+  }
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`导入参数非法: ${fieldName}`)
+  }
+  return parsed
+}
+
+function toImportDocumentBody(
+  payload: Models.Body_importDocument | FormData
+): Models.Body_importDocument {
+  if (!(payload instanceof FormData)) {
+    return payload
+  }
+
+  const file = payload.get('file')
+  if (!(file instanceof Blob)) {
+    throw new Error('导入参数缺失: file')
+  }
+
+  const body: Models.Body_importDocument = {
+    file,
+    site_id: parseRequiredIntField('site_id', payload.get('site_id')),
+    collection_id: parseRequiredIntField('collection_id', payload.get('collection_id')),
+  }
+
+  const processorType = payload.get('processor_type')
+  if (typeof processorType === 'string' && processorType.trim() !== '') {
+    body.processor_type = processorType
+  }
+
+  const ocrEnabled = parseBooleanField(payload.get('ocr_enabled'))
+  if (ocrEnabled !== undefined) {
+    body.ocr_enabled = ocrEnabled
+  }
+
+  const extractImages = parseBooleanField(payload.get('extract_images'))
+  if (extractImages !== undefined) {
+    body.extract_images = extractImages
+  }
+
+  const extractTables = parseBooleanField(payload.get('extract_tables'))
+  if (extractTables !== undefined) {
+    body.extract_tables = extractTables
+  }
+
+  return body
+}
+
+function toUploadedFileInfo(value: unknown): UploadedFileInfo {
+  if (!isRecord(value)) {
+    return {}
+  }
+  const sizeValue = value.size
+  return {
+    ...value,
+    url: typeof value.url === 'string' ? value.url : undefined,
+    object_name: typeof value.object_name === 'string' ? value.object_name : undefined,
+    size: typeof sizeValue === 'number' ? sizeValue : undefined,
   }
 }
 
@@ -239,14 +355,16 @@ const documentApi = {
   removeVector: (documentId: number) =>
     wrapResponse<Models.Document>(client.adminDocuments.removeAdminDocumentVector({ documentId })),
 
-  listChunks: (documentId: number) =>
-    wrapResponse<any>(client.adminDocuments.getAdminDocumentChunks({ documentId })),
+  listChunks: async (documentId: number) => {
+    const chunks = await wrapResponse<unknown>(client.adminDocuments.getAdminDocumentChunks({ documentId }))
+    return normalizeChunks(chunks)
+  },
 
   retrieveVectors: (params: {
     query: string; k?: number; threshold?: number;
     filter?: { site_id?: number; id?: string; source?: string };
     enable_rerank?: boolean; rerank_k?: number;
-  }) => wrapResponse<any>(client.adminDocuments.retrieveDocuments({
+  }) => wrapResponse<Models.VectorRetrieveResult>(client.adminDocuments.retrieveDocuments({
     requestBody: {
       ...params,
       k: params.k ?? 5,
@@ -257,19 +375,34 @@ const documentApi = {
   /**
    * 导入文档 (上传 -> 解析 -> 创建)
    */
-  importDocument: (formData: any) =>
-    wrapResponse<Models.Document>(client.adminDocuments.importDocument({ formData })),
+  importDocument: (formData: Models.Body_importDocument | FormData) => {
+    const requestBody = toImportDocumentBody(formData)
+    return wrapResponse<Models.Document>(client.adminDocuments.importDocument({ formData: requestBody }))
+  },
 }
 
 
 const userApi = {
-  list: (params: any = {}) => wrapResponse<Models.PaginatedResponse_UserListItem_>(client.adminUsers.listAdminUsers(params)),
+  list: (params: {
+    page?: number
+    size?: number
+    role?: Models.UserRole | string
+    status?: Models.UserStatus | string
+    search?: string
+    siteId?: number
+    orderBy?: string
+    orderDir?: 'asc' | 'desc'
+  } = {}) => wrapResponse<Models.PaginatedResponse_UserListItem_>(client.adminUsers.listAdminUsers({
+    ...params,
+    role: params.role as Models.UserRole | undefined,
+    status: params.status as Models.UserStatus | undefined,
+  })),
   get: (userId: number) => wrapResponse<Models.UserResponse>(client.adminUsers.getAdminUser({ userId })),
   create: (data: Models.UserCreate) => wrapResponse<Models.UserResponse>(client.adminUsers.createAdminUser({ requestBody: data })),
   invite: (data: Models.UserInvite) => wrapResponse<Models.UserLoginResponse>(client.adminUsers.inviteAdminUser({ requestBody: data })),
   update: (userId: number, data: Models.UserUpdate) => wrapResponse<Models.UserResponse>(client.adminUsers.updateAdminUser({ userId, requestBody: data })),
-  updatePassword: (userId: number, data: any) => wrapResponse<void>(client.adminUsers.updateAdminUserPassword({ userId, requestBody: data })),
-  resetPassword: (userId: number) => wrapResponse<any>(client.adminUsers.resetAdminUserPassword({ userId })),
+  updatePassword: (userId: number, data: Models.UserUpdatePassword) => wrapResponse<void>(client.adminUsers.updateAdminUserPassword({ userId, requestBody: data })),
+  resetPassword: (userId: number) => wrapResponse<Models.ApiResponse_dict_['data']>(client.adminUsers.resetAdminUserPassword({ userId })),
 
   delete: (userId: number) => wrapResponse<void>(client.adminUsers.deleteAdminUser({ userId })),
   login: (data: Models.UserLogin) => wrapResponse<Models.UserLoginResponse>(client.adminUsers.loginAdmin({ requestBody: data })),
@@ -287,25 +420,42 @@ const systemConfigApi = {
   deleteConfig: (configKey: string, scope: 'platform' | 'tenant' = 'tenant') =>
     wrapResponse<void>(client.adminSystemConfigs.deleteAdminConfig({ configKey, scope })),
 
-  testConnection: (modelType: string, config: any, scope: 'platform' | 'tenant' = 'tenant') =>
-    wrapResponse<Record<string, any>>(client.adminSystemConfigs.testModelConnection({
-      requestBody: { model_type: modelType as any, config },
+  testConnection: (
+    modelType: string,
+    config: unknown,
+    scope: 'platform' | 'tenant' = 'tenant'
+  ) => {
+    if (!isModelType(modelType)) {
+      throw new Error(`不支持的模型类型: ${modelType}`)
+    }
+    return wrapResponse<Models.ApiResponse_dict_['data']>(client.adminSystemConfigs.testModelConnection({
+      requestBody: {
+        model_type: modelType,
+        config: config as Models.ModelConfig
+      },
       scope
-    })),
+    }))
+  },
 
   // 文档处理服务配置
   getDocProcessorConfig: (scope: 'platform' | 'tenant' = 'tenant') =>
-    wrapResponse<{ processors: any[] } | null>(client.adminSystemConfigs.getAdminDocProcessorConfig({ scope })),
+    wrapResponse<Models.ApiResponse_Union_dict__NoneType__['data']>(client.adminSystemConfigs.getAdminDocProcessorConfig({ scope })),
 
-  updateDocProcessorConfig: (data: { processors: any[] }, scope: 'platform' | 'tenant' = 'tenant') =>
-    wrapResponse<Record<string, any>>(client.adminSystemConfigs.updateAdminDocProcessorConfig({
+  updateDocProcessorConfig: (
+    data: { processors: Array<Record<string, unknown>> } | Models.DocProcessorsUpdate,
+    scope: 'platform' | 'tenant' = 'tenant'
+  ) =>
+    wrapResponse<Models.ApiResponse_dict_['data']>(client.adminSystemConfigs.updateAdminDocProcessorConfig({
       requestBody: data as Models.DocProcessorsUpdate,
       scope
     })),
 
-  testDocProcessorConnection: (config: any, scope: 'platform' | 'tenant' = 'tenant') =>
-    wrapResponse<Record<string, any>>(client.adminSystemConfigs.testDocProcessorConnection({
-      requestBody: { config },
+  testDocProcessorConnection: (
+    config: Record<string, unknown> | Models.DocProcessorConfig,
+    scope: 'platform' | 'tenant' = 'tenant'
+  ) =>
+    wrapResponse<Models.ApiResponse_dict_['data']>(client.adminSystemConfigs.testDocProcessorConnection({
+      requestBody: { config: config as Models.DocProcessorConfig },
       scope
     })),
 }
@@ -318,11 +468,18 @@ const statsApi = {
 
 
 const fileApi = {
-  uploadFile: (params: { formData: any; folder?: string }) => wrapResponse<any>(client.adminFiles.uploadAdminFile(params)),
-  uploadMultipleFiles: (params: { formData: any; folder?: string }) => wrapResponse<any>(client.adminFiles.batchUploadAdminFiles(params)),
-  listFiles: (params: any = {}) => wrapResponse<any>(client.adminFiles.listAdminFiles(params)),
-  getFileInfo: (object_name: string) => wrapResponse<any>(client.adminFiles.getAdminFileInfo({ objectName: object_name })),
-  getPresignedUrl: (object_name: string, expires_hours?: number) => wrapResponse<any>(client.adminFiles.getAdminPresignedUrl({ objectName: object_name, expiresHours: expires_hours })),
+  uploadFile: async (params: { formData: Models.Body_uploadAdminFile; folder?: string }) => {
+    const data = await wrapResponse<Models.ApiResponse_dict_['data']>(client.adminFiles.uploadAdminFile(params))
+    return toUploadedFileInfo(data)
+  },
+  uploadMultipleFiles: (params: { formData: Models.Body_batchUploadAdminFiles; folder?: string }) =>
+    wrapResponse<Models.ApiResponse_dict_['data']>(client.adminFiles.batchUploadAdminFiles(params)),
+  listFiles: (params: { prefix?: string; recursive?: boolean } = {}) =>
+    wrapResponse<Models.ApiResponse_dict_['data']>(client.adminFiles.listAdminFiles(params)),
+  getFileInfo: (object_name: string) =>
+    wrapResponse<Models.ApiResponse_dict_['data']>(client.adminFiles.getAdminFileInfo({ objectName: object_name })),
+  getPresignedUrl: (object_name: string, expires_hours?: number) =>
+    wrapResponse<Models.ApiResponse_dict_['data']>(client.adminFiles.getAdminPresignedUrl({ objectName: object_name, expiresHours: expires_hours })),
   deleteFile: (object_name: string) => wrapResponse<void>(client.adminFiles.deleteAdminFile({ objectName: object_name })),
 }
 
@@ -349,7 +506,3 @@ export const api = {
 }
 
 export default api
-
-// 别名兼容
-export type AIModelConfig = Models.AIConfigUpdate
-

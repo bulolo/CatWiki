@@ -18,7 +18,7 @@
 
 import logging
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Request, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -165,6 +165,33 @@ async def set_tenant_context(
     from app.core.infra.tenant import set_current_tenant
 
     set_current_tenant(tenant_id)
+    return tenant_id
+
+
+async def set_client_tenant_context(
+    request: Request,
+    x_tenant_slug: str | None = Header(None, alias="X-Tenant-Slug"),
+    db: AsyncSession = Depends(get_db),
+) -> int | None:
+    """
+    依赖项：在客户端未认证请求中，通过 X-Tenant-Slug 头设置当前请求的租户上下文
+    """
+    from app.core.infra.tenant import set_current_tenant
+
+    tenant_id = None
+    if x_tenant_slug:
+        from app.crud.tenant import crud_tenant
+
+        tenant = await crud_tenant.get_by_slug(db, slug=x_tenant_slug)
+        if tenant:
+            tenant_id = tenant.id
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+
+    # 如果找到了特定的 tenant_id，则设置
+    if tenant_id is not None:
+        set_current_tenant(tenant_id)
+
     return tenant_id
 
 

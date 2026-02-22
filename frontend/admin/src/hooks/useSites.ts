@@ -24,12 +24,18 @@ import type { Site, SiteCreate, SiteUpdate } from '@/lib/api-client'
 import { isAuthenticated } from '@/lib/auth'
 import { useAdminMutation } from './useAdminMutation'
 
+type SiteListFilters = {
+  page?: number
+  size?: number
+  status?: string
+}
+
 // ==================== Query Keys ====================
 
 export const siteKeys = {
   all: ['sites'] as const,
   lists: () => [...siteKeys.all, 'list'] as const,
-  list: (filters?: any) => [...siteKeys.lists(), filters] as const,
+  list: (filters?: SiteListFilters) => [...siteKeys.lists(), filters] as const,
   details: () => [...siteKeys.all, 'detail'] as const,
   detail: (id: number) => [...siteKeys.details(), id] as const,
   bySlug: (slug: string) => [...siteKeys.all, 'slug', slug] as const,
@@ -47,7 +53,7 @@ export function useSitesList(params: { page?: number; size?: number; status?: st
 
   return useQuery({
     queryKey: siteKeys.list({ page, size, status }),
-    queryFn: () => api.site.list({ page, size, status }).then((res: any) => res.list || []),
+    queryFn: () => api.site.list({ page, size, status }).then((res) => res.list || []),
 
     enabled: isAuth,
     staleTime: 10 * 60 * 1000, // 10分钟 - 站点列表变化不频繁

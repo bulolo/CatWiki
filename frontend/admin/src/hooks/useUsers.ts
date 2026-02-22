@@ -22,18 +22,6 @@ import type { UserResponse, UserRole, UserStatus, UserCreate, UserInvite, UserUp
 import { isAuthenticated } from '@/lib/auth'
 import { useAdminMutation } from './useAdminMutation'
 
-// ==================== Query Keys ====================
-
-export const userKeys = {
-  all: ['users'] as const,
-  lists: () => [...userKeys.all, 'list'] as const,
-  list: (filters?: any) => [...userKeys.lists(), filters] as const,
-  details: () => [...userKeys.all, 'detail'] as const,
-  detail: (id: number) => [...userKeys.details(), id] as const,
-}
-
-// ==================== Hooks ====================
-
 interface UseUsersParams {
   page?: number
   size?: number
@@ -45,6 +33,18 @@ interface UseUsersParams {
   orderDir?: 'asc' | 'desc'
 }
 
+// ==================== Query Keys ====================
+
+export const userKeys = {
+  all: ['users'] as const,
+  lists: () => [...userKeys.all, 'list'] as const,
+  list: (filters?: UseUsersParams) => [...userKeys.lists(), filters] as const,
+  details: () => [...userKeys.all, 'detail'] as const,
+  detail: (id: number) => [...userKeys.details(), id] as const,
+}
+
+// ==================== Hooks ====================
+
 /**
  * 获取用户列表
  */
@@ -53,7 +53,7 @@ export function useUsers(params: UseUsersParams = {}) {
 
   return useQuery({
     queryKey: userKeys.list(params),
-    queryFn: () => api.user.list(params).then((res: any) => ({
+    queryFn: () => api.user.list(params).then((res) => ({
       users: res.list || [],
       total: res.pagination?.total || 0,
     })),
@@ -106,7 +106,7 @@ export function useInviteUser() {
 export function useUpdateUser() {
   return useAdminMutation({
     mutationFn: ({ userId, data }: { userId: number; data: UserUpdate }) =>
-      api.user.update(userId, data) as any,
+      api.user.update(userId, data),
     invalidateKeys: [userKeys.all],
     successMsg: '用户更新成功',
   })
@@ -143,7 +143,7 @@ export function useUpdateUserSites() {
 export function useUpdateUserStatus() {
   return useAdminMutation({
     mutationFn: ({ userId, status }: { userId: number; status: UserStatus }) =>
-      api.user.update(userId, { status }) as any,
+      api.user.update(userId, { status }),
 
     invalidateKeys: [userKeys.all],
     successMsg: (res: UserResponse) => res.status === 'inactive' ? '用户已禁用' : '用户已启用',
@@ -180,5 +180,4 @@ export function useLogin() {
     // 登录通常不显示通用 successMsg，由 caller 处理跳转
   })
 }
-
 

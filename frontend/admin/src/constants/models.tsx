@@ -14,12 +14,13 @@
 
 import { MessageSquare, Layers, RefreshCw, Eye } from "lucide-react"
 import { ModelType } from "@/types/settings"
+import type { LucideIcon } from "lucide-react"
 
 export interface ModelMeta {
   id: ModelType
   title: string
   subtitle: string
-  icon: any
+  icon: LucideIcon
   color: string
   iconColor: string
   iconBg: string

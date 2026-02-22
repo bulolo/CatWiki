@@ -97,7 +97,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     abortControllerRef.current = new AbortController()
 
     // 构建请求体 - 只传 thread_id 和 message
-    const requestBody: any = {
+    const requestBody: Record<string, unknown> = {
       thread_id: threadId,
       message: content.trim(),
       stream: true,
@@ -112,10 +112,20 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     }
 
     try {
+      // 提取 tenantSlug 用于多租户隔离
+      let tenantSlug = ""
+      if (typeof window !== 'undefined') {
+        const pathParts = window.location.pathname.split('/').filter(Boolean)
+        if (pathParts.length > 0) {
+          tenantSlug = pathParts[0]
+        }
+      }
+
       const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/v1/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(tenantSlug ? { "X-Tenant-Slug": tenantSlug } : {}),
         },
         body: JSON.stringify(requestBody),
         signal: abortControllerRef.current.signal,
@@ -299,8 +309,8 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
         )
       )
 
-    } catch (error: any) {
-      if (error.name === "AbortError") {
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === "AbortError") {
         console.log("Chat aborted")
       } else {
         console.error("Chat error:", error)
@@ -343,10 +353,10 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       // 我们需要把 tool_calls 从第一个 assistant 消息移到最后一个 assistant 消息
 
       const formattedMessages: Message[] = []
-      let pendingToolCalls: any[] = [] // 暂存工具调用信息
+      let pendingToolCalls: Array<{ id: string; function?: { name?: string; arguments?: unknown }; name?: string }> = [] // 暂存工具调用信息
 
       for (let i = 0; i < historyMessages.length; i++) {
-        const m = historyMessages[i] as any
+        const m = historyMessages[i] as Record<string, unknown>
 
         // 跳过 tool 角色的消息（工具返回结果）
         if (m.role === "tool") {
@@ -356,34 +366,33 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
         // 处理 assistant 消息
         if (m.role === "assistant") {
           // 如果是 content 为空但有 tool_calls 的消息，暂存 tool_calls
-          if ((!m.content || m.content === "") && m.tool_calls?.length) {
-            pendingToolCalls = [...pendingToolCalls, ...m.tool_calls]
+          const toolCallsArr = m.tool_calls as Array<{ id: string; function?: { name?: string; arguments?: unknown }; name?: string }> | undefined
+          if ((!m.content || m.content === "") && toolCallsArr?.length) {
+            pendingToolCalls = [...pendingToolCalls, ...toolCallsArr]
             continue
           }
 
           // 提取消息自带的引用
-          const backendSources = m.sources || []
-          const mappedSources = backendSources.map((c: any) => ({
-            id: c.id?.toString(),
-            title: c.title,
-            siteId: c.siteId,
-            documentId: c.documentId,
-            score: c.score,
-            sourceIndex: c.sourceIndex
+          const backendSources = (m.sources || []) as Array<Record<string, unknown>>
+          const mappedSources = backendSources.map((c) => ({
+            id: String(c.id ?? ''),
+            title: c.title as string,
+            siteId: c.siteId as number | undefined,
+            documentId: c.documentId as number | undefined,
           }))
 
           // 如果有实际内容，创建消息并附加之前暂存的 tool_calls 和 引用
           formattedMessages.push({
-            id: m.id || `${targetThreadId}-${i}`,
+            id: (m.id as string) || `${targetThreadId}-${i}`,
             role: "assistant" as const,
-            content: m.content || "",
+            content: (m.content as string) || "",
             // 合并所有暂存的 tool_calls
             ...(pendingToolCalls.length > 0 ? {
-              toolCalls: pendingToolCalls.map((tc: any) => ({
+              toolCalls: pendingToolCalls.map((tc) => ({
                 id: tc.id,
                 type: "function" as const,
                 function: {
-                  name: tc.function?.name || "unknown",
+                  name: tc.function?.name || tc.name || "unknown",
                   arguments: typeof tc.function?.arguments === 'string'
                     ? tc.function.arguments
                     : JSON.stringify(tc.function?.arguments || "{}")
@@ -393,7 +402,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
             } : {}),
             // 附加该消息对应的引用来源
             ...(mappedSources.length > 0 ? { sources: mappedSources } : {}),
-            additional_kwargs: m.additional_kwargs
+            additional_kwargs: m.additional_kwargs as Record<string, unknown> | undefined
           })
           // 清空暂存
           pendingToolCalls = []
@@ -403,9 +412,9 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
         // 处理 user 消息
         if (m.role === "user") {
           formattedMessages.push({
-            id: m.id || `${targetThreadId}-${i}`,
+            id: (m.id as string) || `${targetThreadId}-${i}`,
             role: "user" as const,
-            content: m.content || "",
+            content: (m.content as string) || "",
           })
         }
       }

@@ -16,6 +16,7 @@ export class CollectionsService {
     public getClientCollectionTree({
         siteId,
         includeDocuments = false,
+        xTenantSlug,
     }: {
         /**
          * 站点ID
@@ -25,10 +26,14 @@ export class CollectionsService {
          * 是否包含文档节点
          */
         includeDocuments?: boolean,
+        xTenantSlug?: (string | null),
     }): CancelablePromise<ApiResponse_list_CollectionTree__> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/v1/collections:tree',
+            headers: {
+                'X-Tenant-Slug': xTenantSlug,
+            },
             query: {
                 'site_id': siteId,
                 'include_documents': includeDocuments,

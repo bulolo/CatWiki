@@ -83,6 +83,18 @@ import { getUserInfo } from "@/lib/auth"
 import { env } from "@/lib/env"
 import { useHealth } from "@/hooks/useHealth"
 
+type PasswordResponse = {
+  password: string
+}
+
+function parsePasswordResponse(data: unknown): PasswordResponse | null {
+  if (!data || typeof data !== "object") {
+    return null
+  }
+  const password = (data as { password?: unknown }).password
+  return typeof password === "string" ? { password } : null
+}
+
 export function GlobalUsers() {
   const router = useRouter()
   const pathname = usePathname()
@@ -121,6 +133,7 @@ export function GlobalUsers() {
 
   const currentUser = getUserInfo()
   const isSystemAdmin = currentUser?.role === UserRole.ADMIN
+  const currentUserId = currentUser?.id
 
   const handleStartCreate = () => {
     const params = new URLSearchParams(searchParams.toString())
@@ -184,8 +197,9 @@ export function GlobalUsers() {
 
     resetPasswordMutation.mutate(userId, {
       onSuccess: (data) => {
-        if (data && 'password' in data) {
-          const password = (data as any).password
+        const parsed = parsePasswordResponse(data)
+        if (parsed) {
+          const { password } = parsed
           toast.success(
             <div className="space-y-2">
               <div className="font-semibold">密码重置成功！</div>
@@ -514,7 +528,7 @@ export function GlobalUsers() {
                           updateStatus(user.id, newStatus)
                         }
                       }}
-                      disabled={user.id === (getUserInfo()?.id as any)}
+                      disabled={user.id === currentUserId}
                     >
                       {user.status === UserStatus.ACTIVE ? (
                         <>
@@ -532,7 +546,7 @@ export function GlobalUsers() {
                     <DropdownMenuItem
                       onClick={() => handleDeleteUser(user.id, user.name)}
                       className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                      disabled={user.id === (getUserInfo()?.id as any)}
+                      disabled={user.id === currentUserId}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
                       删除用户

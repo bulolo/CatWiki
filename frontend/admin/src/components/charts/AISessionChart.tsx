@@ -24,6 +24,16 @@ interface ChartData {
   subValue?: number; // e.g. messages count
 }
 
+interface ChartPoint extends ChartData {
+  x: number
+  y: number
+  leftPercent: number
+  topPercent: number
+  hitWidth: number
+  hitLeft: number
+  isToday: boolean
+}
+
 interface AISessionChartProps {
   data: ChartData[];
   color?: string; // Hex color
@@ -89,7 +99,7 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
     });
 
     // Fluid Monotone Spline algorithm
-    const generateSmoothPath = (pts: any[]) => {
+    const generateSmoothPath = (pts: ChartPoint[]) => {
       if (pts.length < 2) return "";
       let path = `M ${pts[0].x} ${pts[0].y}`;
 
@@ -260,7 +270,7 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
           );
         })}
 
-        {points.map((p: any, i: number) => {
+        {points.map((p: ChartPoint, i: number) => {
           const isHovered = hoverIndex === i;
 
           return (

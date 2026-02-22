@@ -1,14 +1,14 @@
 {
   "tenant": {
-    "name": "Health Team",
-    "slug": "health",
-    "description": "health 官方演示团队",
+    "name": "CatWiki Team",
+    "slug": "default",
+    "description": "CatWiki 官方团队",
     "plan": "pro",
     "status": "active"
   },
   "admin": {
-    "name": "Health Admin",
-    "email": "health_admin@example.com",
+    "name": "CatWiki Admin",
+    "email": "admin@example.com",
     "password": "admin123",
     "role": "admin",
     "status": "active"

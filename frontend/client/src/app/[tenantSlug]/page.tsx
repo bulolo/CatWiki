@@ -15,40 +15,50 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { api } from "@/lib/api-client"
 import { logError } from "@/lib/error-handler"
 import { PageLoading } from "@/components/ui/loading"
 import { BookOpen, ChevronDown, ExternalLink, Github, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AIChatLanding } from "@/components/ai"
+import { NotFoundState } from "@/components/ui/not-found"
 import type { Site } from "@/lib/api-client"
 
-export default function HomePage() {
+export default function TenantPortalPage() {
   const router = useRouter()
+  const { tenantSlug } = useParams()
   const [sites, setSites] = useState<Site[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSite, setSelectedSite] = useState<Site | null>(null)
   const [isSiteSelectorOpen, setIsSiteSelectorOpen] = useState(false)
   const selectorRef = useRef<HTMLDivElement>(null)
+  const [error, setError] = useState<any>(null)
 
   useEffect(() => {
     const loadSites = async () => {
       try {
+        setLoading(true)
+        setError(null)
+        // api-client 会自动注入 X-Tenant-Slug header
         const response = await api.site.list({ page: 1, size: 100 })
         const availableSites = (response.list || []).filter((site) => site.slug)
         setSites(availableSites)
-        // 初始状态不选择任何站点，允许跨站点提问
-      } catch (error) {
-
-        logError("加载站点", error)
+        
+        // 如果没有站点且不是加载中，也视为租户配置问题或不存在
+        if (availableSites.length === 0) {
+          setError({ status: 404, message: "暂时无该租户" })
+        }
+      } catch (err: any) {
+        logError("加载站点", err)
+        setError(err)
       } finally {
         setLoading(false)
       }
     }
 
     loadSites()
-  }, [])
+  }, [tenantSlug])
 
   // 点击外部关闭选择器
   useEffect(() => {
@@ -69,6 +79,18 @@ export default function HomePage() {
 
   if (loading) {
     return <PageLoading text="正在加载..." />
+  }
+
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-white">
+        <NotFoundState 
+          title="暂时无该租户" 
+          description={`抱歉，标识为 "${tenantSlug}" 的租户不存在或未配置任何公开站点。`}
+          showHome={true}
+        />
+      </div>
+    )
   }
 
   return (
@@ -206,12 +228,12 @@ export default function HomePage() {
                         )}
                         <div className="flex items-center gap-2 mt-2">
                           <a
-                            href={`/${site.slug}`}
+                            href={`/${tenantSlug}/${site.slug}`}
                             onClick={(e) => {
                               e.stopPropagation()
                               if (site.slug) {
                                 e.preventDefault()
-                                router.push(`/${site.slug}`)
+                                router.push(`/${tenantSlug}/${site.slug}`)
                               }
                             }}
                             className="text-xs text-primary hover:text-primary/80 flex items-center gap-1"

@@ -23,8 +23,8 @@ import { useAIChat } from "@/hooks"
 import { MessageSources } from "./MessageSources"
 import { ToolCallCard } from "./ToolCallCard"
 import { ChatHistorySidebar } from "./ChatHistorySidebar"
-import { Site } from "@/lib/sdk/models/Site"
-import type { QuickQuestion } from "@/lib/sdk/models/QuickQuestion"
+import type { Site } from "@/lib/api-client"
+import type { QuickQuestion } from "@/lib/api-client"
 
 interface AIChatLandingProps {
   siteName?: string

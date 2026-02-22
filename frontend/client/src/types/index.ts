@@ -60,6 +60,9 @@ export interface ToolCall {
   // 前端扩展字段
   status?: "pending" | "running" | "completed" | "error"
   result?: string
+  // 后端兼容字段（部分场景 name/args 直接在顶层）
+  name?: string
+  args?: string
 }
 
 // 消息状态类型
@@ -75,5 +78,5 @@ export interface Message {
   toolCalls?: ToolCall[]
   status?: MessageStatus
   activeToolName?: string // 当前正在调用的工具名称
-  additional_kwargs?: Record<string, any> // [NEW] 扩展元数据 (Token 统计等)
+  additional_kwargs?: Record<string, unknown> // [NEW] 扩展元数据 (Token 统计等)
 }

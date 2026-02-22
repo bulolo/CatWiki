@@ -1,3 +1,18 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "@/lib/sdk/models/*"
+            ],
+            "message": "请从 @/lib/api-client 导入 SDK Model 类型，而非直接引用 SDK 内部路径。例如: import type { Site } from '@/lib/api-client'"
+          }
+        ]
+      }
+    ]
+  }
 }

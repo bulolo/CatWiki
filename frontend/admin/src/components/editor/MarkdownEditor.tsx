@@ -78,7 +78,10 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
             formData: {
               file: fileToUpload,
             },
-          }) as any
+          })
+          if (!uploadRes.url) {
+            throw new Error('上传响应缺少 URL')
+          }
 
           const imageUrl = uploadRes.url
           uploadedUrls.push(imageUrl)
@@ -119,4 +122,3 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
     </div>
   )
 }
-

@@ -19,13 +19,25 @@ import { useState, useEffect, Suspense } from "react"
 import { ChatWidget } from "@/components/ChatWidget"
 
 import { api } from "@/lib/api-client"
+import type { Site } from "@/lib/api-client"
+
+interface WebWidgetConfig {
+  title?: string
+  position?: "left" | "right"
+  primaryColor?: string
+  welcomeMessage?: string
+}
+
+interface BotConfig {
+  webWidget?: WebWidgetConfig
+}
 
 function WidgetContent() {
   const searchParams = useSearchParams()
   const [isOpen, setIsOpen] = useState(false)
-  const [siteConfig, setSiteConfig] = useState<any>(null)
+  const [siteConfig, setSiteConfig] = useState<BotConfig | null>(null)
   const [isReady, setIsReady] = useState(false)
-  const [site, setSite] = useState<any>(null)
+  const [site, setSite] = useState<Site | null>(null)
 
   const siteId = searchParams.get("siteId")
   const queryTitle = searchParams.get("title")
@@ -40,7 +52,7 @@ function WidgetContent() {
         api.site.get(sid).then((res) => {
           setSite(res)
           if (res.bot_config) {
-            setSiteConfig(res.bot_config)
+            setSiteConfig(res.bot_config as BotConfig)
           }
         }).catch(err => {
           console.error("Failed to fetch site config:", err);

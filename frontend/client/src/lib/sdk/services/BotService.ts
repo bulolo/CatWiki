@@ -20,16 +20,21 @@ export class BotService {
         nonce,
         echostr,
         siteId,
+        xTenantSlug,
     }: {
         msgSignature: string,
         timestamp: string,
         nonce: string,
         echostr: string,
         siteId: number,
+        xTenantSlug?: (string | null),
     }): CancelablePromise<any> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/v1/bot/wecom-smart-robot',
+            headers: {
+                'X-Tenant-Slug': xTenantSlug,
+            },
             query: {
                 'msg_signature': msgSignature,
                 'timestamp': timestamp,
@@ -53,15 +58,20 @@ export class BotService {
         timestamp,
         nonce,
         siteId,
+        xTenantSlug,
     }: {
         msgSignature: string,
         timestamp: string,
         nonce: string,
         siteId: number,
+        xTenantSlug?: (string | null),
     }): CancelablePromise<any> {
         return this.httpRequest.request({
             method: 'POST',
             url: '/v1/bot/wecom-smart-robot',
+            headers: {
+                'X-Tenant-Slug': xTenantSlug,
+            },
             query: {
                 'msg_signature': msgSignature,
                 'timestamp': timestamp,

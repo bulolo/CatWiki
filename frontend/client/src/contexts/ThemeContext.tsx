@@ -75,7 +75,7 @@ export function ThemeProvider({
 
   // 应用主题色到 CSS 变量
   useEffect(() => {
-    const colors = THEME_COLORS[themeColor]
+    const colors = THEME_COLORS[themeColor] || THEME_COLORS.blue
     const root = document.documentElement
     
     // 更新 CSS 变量

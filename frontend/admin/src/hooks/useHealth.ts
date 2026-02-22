@@ -41,6 +41,5 @@ export function useCurrentTenant() {
 
 export function useDemoMode() {
   const { data: tenant } = useCurrentTenant()
-  return (tenant as any)?.is_demo ?? false
+  return tenant?.is_demo ?? false
 }
-

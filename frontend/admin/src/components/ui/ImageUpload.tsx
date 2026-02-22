@@ -133,9 +133,11 @@ export function ImageUpload({
       const uploadedData = await api.file.uploadFile({
         formData: { file: fileToUpload },
         folder: 'covers' // 封面图专用文件夹
-      }) as any
-
+      })
       const uploadedUrl = uploadedData.url || uploadedData.object_name
+      if (!uploadedUrl) {
+        throw new Error('上传响应缺少文件 URL')
+      }
       onChange(uploadedUrl)
       toast.success('图片上传成功')
 
@@ -309,4 +311,3 @@ export function ImageUpload({
     </div>
   )
 }
-

@@ -18,7 +18,12 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, VectorStatus } from '@/lib/api-client'
-import type { Document } from '@/lib/api-client'
+import type {
+  Document,
+  DocumentCreate,
+  DocumentUpdate,
+  VectorizeResponse
+} from '@/lib/api-client'
 import { isAuthenticated } from '@/lib/auth'
 import { useAdminMutation } from './useAdminMutation'
 
@@ -27,7 +32,8 @@ import { useAdminMutation } from './useAdminMutation'
 export const documentKeys = {
   all: ['documents'] as const,
   lists: () => [...documentKeys.all, 'list'] as const,
-  list: (siteId: number, filters?: any) => [...documentKeys.lists(), siteId, filters] as const,
+  list: (siteId: number, filters?: Omit<UseDocumentsParams, 'siteId'> & { page?: number; size?: number }) =>
+    [...documentKeys.lists(), siteId, filters] as const,
   details: () => [...documentKeys.all, 'detail'] as const,
   detail: (id: number) => [...documentKeys.details(), id] as const,
 }
@@ -57,20 +63,39 @@ export function useDocuments(params: UseDocumentsParams) {
   return useQuery({
     queryKey: documentKeys.list(siteId, { page, size, ...filters }),
     queryFn: async () => {
-      const apiParams: any = {
+      const apiParams: {
+        siteId: number
+        page: number
+        size: number
+        orderBy?: 'views' | 'updated_at'
+        orderDir?: UseDocumentsParams['orderDir']
+        keyword?: string
+        collectionId?: number
+        status?: 'published' | 'draft'
+        vectorStatus?: 'none' | 'pending' | 'processing' | 'completed' | 'failed'
+      } = {
         siteId,
         page,
         size,
-        orderBy: filters.orderBy,
         orderDir: filters.orderDir,
         keyword: filters.searchTerm,
-        collectionId: filters.collectionId,
+      }
+
+      if (filters.orderBy === 'views' || filters.orderBy === 'updated_at') {
+        apiParams.orderBy = filters.orderBy
+      }
+
+      if (filters.collectionId !== undefined && filters.collectionId !== null) {
+        const parsedCollectionId = Number(filters.collectionId)
+        if (!Number.isNaN(parsedCollectionId)) {
+          apiParams.collectionId = parsedCollectionId
+        }
       }
 
       if (filters.status && filters.status !== 'all') apiParams.status = filters.status
       if (filters.vectorStatus && filters.vectorStatus !== 'all') apiParams.vectorStatus = filters.vectorStatus
 
-      const data = await api.document.list(apiParams) as any
+      const data = await api.document.list(apiParams)
       return {
         documents: data.list || [],
         total: data.pagination?.total || 0,
@@ -109,7 +134,7 @@ export function useDocument(id: number | undefined) {
  */
 export function useCreateDocument(siteId: number) {
   return useAdminMutation({
-    mutationFn: (data: Partial<Document>) => api.document.create(data as any),
+    mutationFn: (data: DocumentCreate) => api.document.create(data),
     invalidateKeys: [documentKeys.lists()],
     successMsg: '文档创建成功',
   })
@@ -120,7 +145,7 @@ export function useCreateDocument(siteId: number) {
  */
 export function useUpdateDocument() {
   return useAdminMutation({
-    mutationFn: ({ documentId, data }: { documentId: number; data: Partial<Document> }) =>
+    mutationFn: ({ documentId, data }: { documentId: number; data: DocumentUpdate }) =>
       api.document.update(documentId, data),
     successMsg: '文档更新成功',
     onSuccess: (updatedDoc, variables, context, mutation) => {
@@ -160,7 +185,9 @@ export function useDeleteDocument(siteId: number) {
       await queryClient.cancelQueries({ queryKey: documentKeys.lists() })
       const previousData = queryClient.getQueriesData({ queryKey: documentKeys.lists() })
 
-      queryClient.setQueriesData({ queryKey: documentKeys.lists() }, (old: any) => {
+      queryClient.setQueriesData(
+        { queryKey: documentKeys.lists() },
+        (old: { documents?: Document[]; total?: number } | undefined) => {
         if (!old) return old
         return {
           ...old,
@@ -172,7 +199,7 @@ export function useDeleteDocument(siteId: number) {
     },
     onError: (error, deletedId, context) => {
       if (context?.previousData) {
-        context.previousData.forEach(([queryKey, data]: any) => {
+        context.previousData.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data)
         })
       }
@@ -186,7 +213,7 @@ export function useDeleteDocument(siteId: number) {
  */
 export function useBatchUpdateDocuments() {
   return useAdminMutation({
-    mutationFn: async ({ documentIds, data }: { documentIds: number[]; data: Partial<Document> }) => {
+    mutationFn: async ({ documentIds, data }: { documentIds: number[]; data: DocumentUpdate }) => {
       await Promise.all(documentIds.map(id => api.document.update(id, data)))
       return { documentIds, data }
     },
@@ -218,7 +245,7 @@ export function useVectorizeDocument() {
 export function useBatchVectorizeDocuments() {
   return useAdminMutation({
     mutationFn: (documentIds: number[]) => api.document.vectorize(documentIds),
-    successMsg: (result: any) => `成功加入 ${result.success_count} 个文档到学习队列`,
+    successMsg: (result: VectorizeResponse) => `成功加入 ${result.success_count} 个文档到学习队列`,
     invalidateKeys: [documentKeys.lists()],
 
   })

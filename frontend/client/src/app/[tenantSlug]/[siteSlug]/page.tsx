@@ -15,7 +15,7 @@
 "use client"
 
 import { useState, useEffect, Suspense, useMemo } from "react"
-import { useParams, useSearchParams, useRouter } from "next/navigation"
+import { useParams, useSearchParams, useRouter, notFound } from "next/navigation"
 import { Sidebar } from "@/layout/Sidebar"
 import { SearchBar } from "@/components/search/SearchBar"
 import { AIChat } from "@/components/ai/AIChat"
@@ -25,6 +25,7 @@ import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSiteBySlug, useMenuTree, useDocument } from "@/hooks"
 import { PageLoading } from "@/components/ui/loading"
+import { NotFoundState } from "@/components/ui/not-found"
 import type { MenuItem } from "@/types"
 import { ThemeProvider, type ThemeColor } from "@/contexts"
 
@@ -32,11 +33,12 @@ function SlugPageContent() {
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const slug = params.slug as string
+  const tenantSlug = params.tenantSlug as string
+  const siteSlug = params.siteSlug as string
   const documentIdFromUrl = searchParams.get("documentId")
 
   // 使用 React Query 获取站点信息（自动缓存）
-  const { data: site, isLoading: siteLoading } = useSiteBySlug(slug)
+  const { data: site, isLoading: siteLoading } = useSiteBySlug(siteSlug)
 
   // 从站点信息中提取配置
   const siteName = site?.name || "知识库"
@@ -75,11 +77,11 @@ function SlugPageContent() {
 
   const handleSelectItem = (item: MenuItem | { id: string, type: 'special' }) => {
     if ('type' in item && item.type === 'special' && item.id === 'ai-home') {
-      router.push(`/${slug}`, { scroll: false })
+      router.push(`/${tenantSlug}/${siteSlug}`, { scroll: false })
     } else {
       const menuItem = item as MenuItem
       if (menuItem.type === "article") {
-        router.push(`/${slug}?documentId=${menuItem.id}`, { scroll: false })
+        router.push(`/${tenantSlug}/${siteSlug}?documentId=${menuItem.id}`, { scroll: false })
       }
     }
     setIsMobileSidebarOpen(false)
@@ -102,14 +104,8 @@ function SlugPageContent() {
   }
 
   if (!site) {
-    return (
-      <div className="h-screen flex items-center justify-center text-slate-400">
-        <div className="text-center">
-          <p className="text-lg mb-2">站点不存在</p>
-          <p className="text-sm">标识: {slug}</p>
-        </div>
-      </div>
-    )
+    // 触发 not-found.tsx
+    notFound()
   }
 
   return (

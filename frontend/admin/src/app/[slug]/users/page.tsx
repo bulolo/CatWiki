@@ -88,6 +88,35 @@ import { useSite } from "@/contexts/SiteContext"
 import { getUserInfo } from "@/lib/auth"
 import { useEffect } from "react"
 
+type InviteResponseWithPassword = {
+  user: { email: string }
+  password: string
+}
+
+function parseInviteResponse(data: unknown): InviteResponseWithPassword | null {
+  if (!data || typeof data !== "object") {
+    return null
+  }
+  const user = (data as { user?: unknown }).user
+  const password = (data as { password?: unknown }).password
+  if (!user || typeof user !== "object" || typeof password !== "string") {
+    return null
+  }
+  const email = (user as { email?: unknown }).email
+  if (typeof email !== "string") {
+    return null
+  }
+  return { user: { email }, password }
+}
+
+function parsePasswordResponse(data: unknown): { password: string } | null {
+  if (!data || typeof data !== "object") {
+    return null
+  }
+  const password = (data as { password?: unknown }).password
+  return typeof password === "string" ? { password } : null
+}
+
 export default function UsersPage() {
   const [page, setPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
@@ -200,8 +229,9 @@ export default function UsersPage() {
 
     resetPasswordMutation.mutate(userId, {
       onSuccess: (data) => {
-        if (data && 'password' in data) {
-          const password = (data as any).password
+        const parsed = parsePasswordResponse(data)
+        if (parsed) {
+          const { password } = parsed
           toast.success(
             <div className="space-y-2">
               <div className="font-semibold">密码重置成功！</div>
@@ -235,10 +265,11 @@ export default function UsersPage() {
       email: inviteEmail,
       role: inviteRole,
       managed_site_ids: selectedSites,
-    } as any, {
+    }, {
       onSuccess: (data) => {
-        if (data && 'user' in data && 'password' in data) {
-          const { user, password } = data as any
+        const parsed = parseInviteResponse(data)
+        if (parsed) {
+          const { user, password } = parsed
 
           toast.success(
             <div className="space-y-2">
@@ -562,4 +593,3 @@ export default function UsersPage() {
     </div >
   )
 }
-

@@ -14,17 +14,15 @@
 
 import { Input } from "@/components/ui/input"
 import { ShieldCheck } from "lucide-react"
-import { ModelType } from "@/types/settings"
-
 interface CustomConfigFormProps {
-  type: ModelType
+  type: "chat" | "embedding" | "rerank" | "vl"
   config: {
     model: string
     apiKey: string
     baseUrl: string
-    dimension?: number
+    dimension?: number | null
   }
-  onUpdate: (type: ModelType, field: string, value: any) => void
+  onUpdate: (type: "chat" | "embedding" | "rerank" | "vl", field: string, value: string | number | boolean) => void
 }
 
 export function CustomConfigForm({ type, config, onUpdate }: CustomConfigFormProps) {

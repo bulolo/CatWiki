@@ -50,6 +50,27 @@ interface CreateUserFormProps {
   fixedSiteName?: string
 }
 
+type InviteResponseWithPassword = {
+  user: { email: string }
+  password: string
+}
+
+function parseInviteResponse(data: unknown): InviteResponseWithPassword | null {
+  if (!data || typeof data !== "object") {
+    return null
+  }
+  const user = (data as { user?: unknown }).user
+  const password = (data as { password?: unknown }).password
+  if (!user || typeof user !== "object" || typeof password !== "string") {
+    return null
+  }
+  const email = (user as { email?: unknown }).email
+  if (typeof email !== "string") {
+    return null
+  }
+  return { user: { email }, password }
+}
+
 export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName }: CreateUserFormProps) {
   const [email, setEmail] = useState("")
   const [role, setRole] = useState<UserRole>(UserRole.SITE_ADMIN)
@@ -82,10 +103,11 @@ export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName
       email: email.trim(),
       role: role,
       managed_site_ids: (role === UserRole.ADMIN || role === UserRole.TENANT_ADMIN) ? [] : selectedSites,
-    } as any, {
+    }, {
       onSuccess: (data) => {
-        if (data && 'user' in data && 'password' in data) {
-          const { user, password } = data as any
+        const parsed = parseInviteResponse(data)
+        if (parsed) {
+          const { user, password } = parsed
 
           toast.success(
             <div className="space-y-2">
@@ -109,9 +131,10 @@ export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName
           onSuccess()
         }
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
+        const apiLike = error as { status?: number; body?: { code?: number; msg?: string }; message?: string }
         // Handle 409 Conflict (Email already exists)
-        if (error?.status === 409 || error?.body?.code === 409) {
+        if (apiLike?.status === 409 || apiLike?.body?.code === 409) {
           toast.error("该邮箱已被注册", {
             description: "请使用其他邮箱，或联系管理员重置现有账号。"
           })
@@ -119,7 +142,7 @@ export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName
         }
 
         // Handle other errors
-        const msg = error?.body?.msg || error?.message || "创建用户失败"
+        const msg = apiLike?.body?.msg || apiLike?.message || "创建用户失败"
         toast.error(msg)
       }
     })
