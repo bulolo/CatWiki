@@ -180,11 +180,11 @@ prod-clean:
 
 # 启动官网服务
 prod-website:
-	docker compose -f deploy/docker/docker-compose.prod.yml --profile website up -d website
+	docker compose -f deploy/docker/docker-compose.prod.yml --profile website up -d --build website
 
 # 启动文档服务
 prod-docs:
-	docker compose -f deploy/docker/docker-compose.prod.yml --profile docs up -d docs-frontend
+	docker compose -f deploy/docker/docker-compose.prod.yml --profile docs up -d --build docs-frontend
 
 # ==============================================================================
 # [通用命令] Common Targets

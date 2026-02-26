@@ -40,8 +40,8 @@ make prod-init
 | `POSTGRES_PASSWORD` | 数据库密码 | **务必修改** |
 | `SECRET_KEY` | JWT 签名密钥 | **务必修改** (至少 32 位随机字符) |
 | `RUSTFS_ROOT_PASSWORD` | 对象存储超级密码 | **务必修改** |
-| `BACKEND_CORS_ORIGINS=["https://admin.catwiki.ai","https://demo.catwiki.ai","https://docs.catwiki.ai","https://catwiki.ai"]
-| `RUSTFS_PUBLIC_URL` | 文件对外访问链接 | 指向您的 OSS 域名 (如 https://files.catwiki.ai) |
+| `BACKEND_CORS_ORIGINS=["https://admin.catwiki.cn","https://catwiki.cn","https://docs.catwiki.cn","https://catwiki.ai"]
+| `RUSTFS_PUBLIC_URL` | 文件对外访问链接 | 指向您的 OSS 域名 (如 https://files.catwiki.cn) |
 
 #### 前端配置 (`.env.admin` / `.env.client`)
 确保 `NEXT_PUBLIC_API_URL` 指向您的生产 API 域名。

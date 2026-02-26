@@ -49,7 +49,7 @@ gzip_comp_level 6;
 # ------------------------------------------------------------------------------
 server {
     listen 80;
-    server_name admin.catwiki.ai demo.catwiki.ai docs.catwiki.ai api.catwiki.ai files.catwiki.ai;
+    server_name admin.catwiki.cn catwiki.cn docs.catwiki.cn api.catwiki.cn files.catwiki.cn;
     return 301 https://$host$request_uri;
 }
 
@@ -63,7 +63,7 @@ server {
 # [Admin Dashboard]
 server {
     listen 443 ssl http2;
-    server_name admin.catwiki.ai;
+    server_name admin.catwiki.cn;
 
     ssl_certificate     /etc/nginx/ssl/fullchain.pem; # 需替换为实际证书路径
     ssl_certificate_key /etc/nginx/ssl/privkey.key;
@@ -78,7 +78,7 @@ server {
 # [Client App / Demo]
 server {
     listen 443 ssl http2;
-    server_name demo.catwiki.ai;
+    server_name catwiki.cn;
 
     ssl_certificate     /etc/nginx/ssl/fullchain.pem;
     ssl_certificate_key /etc/nginx/ssl/privkey.key;
@@ -91,7 +91,7 @@ server {
 # [Documentation]
 server {
     listen 443 ssl http2;
-    server_name docs.catwiki.ai;
+    server_name docs.catwiki.cn;
 
     ssl_certificate     /etc/nginx/ssl/fullchain.pem;
     ssl_certificate_key /etc/nginx/ssl/privkey.key;
@@ -104,7 +104,7 @@ server {
 # [Backend API]
 server {
     listen 443 ssl http2;
-    server_name api.catwiki.ai;
+    server_name api.catwiki.cn;
 
     ssl_certificate     /etc/nginx/ssl/fullchain.pem;
     ssl_certificate_key /etc/nginx/ssl/privkey.key;
@@ -127,7 +127,7 @@ server {
 # [OSS / RustFS Storage]
 server {
     listen 443 ssl http2;
-    server_name files.catwiki.ai;
+    server_name files.catwiki.cn;
 
     ssl_certificate     /etc/nginx/ssl/fullchain.pem;
     ssl_certificate_key /etc/nginx/ssl/privkey.key;

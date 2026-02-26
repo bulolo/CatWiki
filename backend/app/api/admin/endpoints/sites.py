@@ -19,7 +19,9 @@
 import logging
 
 from fastapi import APIRouter, Depends, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.core.common.masking import mask_bot_config_inplace
 from app.core.common.utils import Paginator, generate_token
@@ -89,7 +91,13 @@ async def list_sites(
     total = await crud_site.count(db, status=status)
     paginator = Paginator(page=page, size=size, total=total)
 
-    sites = await crud_site.list(db, skip=paginator.skip, limit=paginator.size, status=status)
+    from app.models.site import Site as SiteModel
+    stmt = select(SiteModel).options(joinedload(SiteModel.tenant))
+    if status:
+        stmt = stmt.where(SiteModel.status == status)
+    
+    result = await db.execute(stmt.offset(paginator.skip).limit(paginator.size))
+    sites = list(result.scalars())
 
     # 演示模式脱敏处理
     if is_demo:
@@ -115,7 +123,10 @@ async def get_site(
     is_demo: bool = Depends(is_demo_tenant),
 ) -> ApiResponse[Site]:
     """获取站点详情"""
-    site = await crud_site.get(db, id=site_id)
+    from app.models.site import Site as SiteModel
+    stmt = select(SiteModel).where(SiteModel.id == site_id).options(joinedload(SiteModel.tenant))
+    result = await db.execute(stmt)
+    site = result.scalar_one_or_none()
     if not site:
         raise NotFoundException(detail=f"站点 {site_id} 不存在")
 
@@ -136,7 +147,10 @@ async def get_site_by_slug(
     is_demo: bool = Depends(is_demo_tenant),
 ) -> ApiResponse[Site]:
     """通过 slug 获取站点详情（管理后台）"""
-    site = await crud_site.get_by_slug(db, slug=slug)
+    from app.models.site import Site as SiteModel
+    stmt = select(SiteModel).where(SiteModel.slug == slug).options(joinedload(SiteModel.tenant))
+    result = await db.execute(stmt)
+    site = result.scalar_one_or_none()
     if not site:
         raise NotFoundException(detail=f"站点 {slug} 不存在")
 
@@ -184,6 +198,8 @@ async def create_site(
             api_bot["apiKey"] = f"sk-{generate_token(24)}"
 
     site = await crud_site.create(db, obj_in=site_in)
+    # 预加载租户信息以填充 tenant_slug
+    await db.refresh(site, ["tenant"])
 
     # 如果提供了管理员信息，初始化站点管理员
     if site_in.admin_email:
@@ -267,6 +283,8 @@ async def update_site(
                 api_bot["apiKey"] = f"sk-{generate_token(24)}"
 
     site = await crud_site.update(db, db_obj=site, obj_in=site_in)
+    # 预加载租户信息以填充 tenant_slug
+    await db.refresh(site, ["tenant"])
     await _refresh_bot_stream_services()
     return ApiResponse.ok(data=site, msg="更新成功")
 

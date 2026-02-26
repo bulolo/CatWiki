@@ -82,13 +82,13 @@ POSTGRES_PASSWORD=your_secure_password
 SECRET_KEY=your_random_secret_key_at_least_32_chars
 
 # CORS 允许的域名
-BACKEND_CORS_ORIGINS=["https://admin.catwiki.ai","https://demo.catwiki.ai","https://docs.catwiki.ai","https://catwiki.ai"]
+BACKEND_CORS_ORIGINS=["https://admin.catwiki.cn","https://catwiki.cn","https://docs.catwiki.cn","https://catwiki.ai"]
 
 # RustFS 对象存储配置
 RUSTFS_ENDPOINT=rustfs:9000                    # 内部访问地址
 RUSTFS_ACCESS_KEY=rustfsadmin                  # 访问密钥（建议修改）
 RUSTFS_SECRET_KEY=rustfsadmin                  # 密钥（建议修改）
-RUSTFS_PUBLIC_URL=https://files.catwiki.ai  # 公网访问地址
+RUSTFS_PUBLIC_URL=https://files.catwiki.cn  # 公网访问地址
 ```
 
 #### 前端配置

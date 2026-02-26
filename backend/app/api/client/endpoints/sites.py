@@ -14,6 +14,7 @@
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.core.common.masking import filter_client_site_data
 from app.core.common.utils import Paginator
@@ -37,8 +38,12 @@ async def list_active_sites(
     total = await crud_site.count(db, status="active")
     paginator = Paginator(page=page, size=size, total=total)
 
-    # 只返回状态为 active 的站点
-    sites = await crud_site.list(db, skip=paginator.skip, limit=paginator.size, status="active")
+    # 只返回状态为 active 的站点，并预加载租户信息
+    from sqlalchemy import select
+    from app.models.site import Site as SiteModel
+    stmt = select(SiteModel).where(SiteModel.status == "active").options(joinedload(SiteModel.tenant))
+    result = await db.execute(stmt.offset(paginator.skip).limit(paginator.size))
+    sites = list(result.scalars())
 
     # [Security] 对客户端站点数据进行脱敏
     for site in sites:
@@ -60,7 +65,11 @@ async def get_site_by_slug(
     db: AsyncSession = Depends(get_db),
 ) -> ApiResponse[Site]:
     """通过 slug 获取站点详情（客户端）"""
-    site = await crud_site.get_by_slug(db, slug=slug)
+    from sqlalchemy import select
+    from app.models.site import Site as SiteModel
+    stmt = select(SiteModel).where(SiteModel.slug == slug).options(joinedload(SiteModel.tenant))
+    result = await db.execute(stmt)
+    site = result.scalar_one_or_none()
     if not site or site.status != "active":
         raise NotFoundException(detail=f"站点 {slug} 不存在")
 
@@ -77,7 +86,11 @@ async def get_site(
     db: AsyncSession = Depends(get_db),
 ) -> ApiResponse[Site]:
     """获取站点详情（客户端）"""
-    site = await crud_site.get(db, id=site_id)
+    from sqlalchemy import select
+    from app.models.site import Site as SiteModel
+    stmt = select(SiteModel).where(SiteModel.id == site_id).options(joinedload(SiteModel.tenant))
+    result = await db.execute(stmt)
+    site = result.scalar_one_or_none()
     if not site or site.status != "active":
         raise NotFoundException(detail=f"站点 {site_id} 不存在")
 

@@ -42,10 +42,10 @@ features:
 import { ref, onMounted } from 'vue'
 
 const links = ref({
-  admin: 'https://admin.catwiki.ai',
-  client: 'https://demo.catwiki.ai/medical',
-  api: 'https://api.catwiki.ai/docs',
-  docs: 'https://docs.catwiki.ai'
+  admin: 'https://admin.catwiki.cn',
+  client: 'https://catwiki.cn',
+  api: 'https://api.catwiki.cn/docs',
+  docs: 'https://docs.catwiki.cn'
 })
 
 onMounted(() => {
@@ -105,7 +105,7 @@ make prod-up
     </div>
     <div class="service-info">
       <strong>管理后台</strong>
-      <span>:8001</span>
+      <span>{{ links.admin.replace('https://', '').replace('http://', '') }}</span>
     </div>
   </a>
   <a :href="links.client" class="service-item" target="_blank">
@@ -114,7 +114,7 @@ make prod-up
     </div>
     <div class="service-info">
       <strong>用户端</strong>
-      <span>:8002</span>
+      <span>{{ links.client.replace('https://', '').replace('http://', '') }}</span>
     </div>
   </a>
   <a :href="links.api" class="service-item" target="_blank">
@@ -123,7 +123,7 @@ make prod-up
     </div>
     <div class="service-info">
       <strong>API文档</strong>
-      <span>:3000/docs</span>
+      <span>{{ links.api.replace('https://', '').replace('http://', '') }}</span>
     </div>
   </a>
   <a :href="links.docs" class="service-item" target="_blank">
@@ -132,7 +132,7 @@ make prod-up
     </div>
     <div class="service-info">
       <strong>技术文档</strong>
-      <span>:8003</span>
+      <span>{{ links.docs.replace('https://', '').replace('http://', '') }}</span>
     </div>
   </a>
 </div>

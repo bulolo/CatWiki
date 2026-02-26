@@ -295,7 +295,7 @@ function AdminSidebarComponent() {
               <span className="font-medium">GitHub</span>
             </Link>
             <Link
-              href="https://docs.catwiki.ai"
+              href="https://docs.catwiki.cn"
               target="_blank"
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-primary hover:bg-muted/50 transition-all group"
             >
@@ -439,7 +439,7 @@ function AdminSidebarComponent() {
             <span className="font-medium">GitHub</span>
           </Link>
           <Link
-            href="https://docs.catwiki.ai"
+            href="https://docs.catwiki.cn"
             target="_blank"
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-primary hover:bg-muted/50 transition-all group"
           >

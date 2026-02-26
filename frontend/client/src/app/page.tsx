@@ -206,12 +206,12 @@ export default function HomePage() {
                         )}
                         <div className="flex items-center gap-2 mt-2">
                           <a
-                            href={`/${site.slug}`}
+                            href={`/${site.tenant_slug || 'default'}/${site.slug}`}
                             onClick={(e) => {
                               e.stopPropagation()
                               if (site.slug) {
                                 e.preventDefault()
-                                router.push(`/${site.slug}`)
+                                router.push(`/${site.tenant_slug || 'default'}/${site.slug}`)
                               }
                             }}
                             className="text-xs text-primary hover:text-primary/80 flex items-center gap-1"

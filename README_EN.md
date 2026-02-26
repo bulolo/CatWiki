@@ -14,7 +14,7 @@
 
 English | [简体中文](./README.md)
 
-[Demo Site](https://demo.catwiki.ai) | [Admin Dashboard](https://admin.catwiki.ai) | [Documentation](https://docs.catwiki.ai)
+[Demo Site](https://catwiki.cn) | [Admin Dashboard](https://admin.catwiki.cn) | [Documentation](https://docs.catwiki.cn)
 
 <p>
   <a href="https://github.com/bulolo/CatWiki">
@@ -30,7 +30,7 @@ English | [简体中文](./README.md)
 
 > [!IMPORTANT]
 > **Official Brand Domain is Live!**
-> We have officially launched our flagship portal **[catwiki.ai](https://catwiki.ai)**. All demo, documentation, and management services are now accessible via the new domain. Please update your bookmarks!
+> We have officially launched our flagship portal **[catwiki.ai](https://catwiki.ai)**. Core documentation and official site are active on `.ai`, while all operational business systems (App, Admin, API, Files) have migrated to **[catwiki.cn](https://catwiki.cn)**. Please update your bookmarks!
 
 ### 2026-02-23 🤖 Enterprise Bot Integration
 - 🔗 **DingTalk Bot**: Deep integration with DingTalk Stream mode, supporting AI card streaming output for intelligent knowledge base Q&A bot.
@@ -56,7 +56,7 @@ English | [简体中文](./README.md)
 - 🔧 **Dynamic OCR Config**: Admin dashboard supports enabling/disabling OCR recognition per parser.
 
 > [!TIP]
-> **View Full Changelog**: Visit [CatWiki Changelog](https://docs.catwiki.ai/about/project/changelog) for the complete version history.
+> **View Full Changelog**: Visit [CatWiki Changelog](https://docs.catwiki.cn/about/project/changelog) for the complete version history.
 
 ---
 

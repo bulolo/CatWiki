@@ -65,5 +65,10 @@ class Site(BaseModel):
         cascade="all, delete-orphan",
     )
 
+    @property
+    def tenant_slug(self) -> str | None:
+        """所属租户标识"""
+        return self.tenant.slug if self.tenant else None
+
     def __repr__(self) -> str:
         return f"<Site(id={self.id}, name='{self.name}')>"

@@ -14,7 +14,7 @@
 
 [English](./README_EN.md) | 简体中文
 
-[演示站点](https://demo.catwiki.ai) | [管理后台](https://admin.catwiki.ai) | [文档中心](https://docs.catwiki.ai)
+[演示站点](https://catwiki.cn) | [管理后台](https://admin.catwiki.cn) | [文档中心](https://docs.catwiki.cn)
 
 <p>
   <a href="https://github.com/bulolo/CatWiki">
@@ -35,7 +35,7 @@
 
 > [!IMPORTANT]
 > **全新品牌域名正式启用！**
-> 我们已正式上线官方门户网站 **[catwiki.ai](https://catwiki.ai)**。所有的演示、文档以及管理服务均已迁移至新域名下。请更新您的书签！
+> 我们已正式上线官方门户网站 **[catwiki.ai](https://catwiki.ai)**。所有的文档、官网均已迁移至新域名下。业务系统迁移至 **[catwiki.cn](https://catwiki.cn)**。请更新您的书签！
 
 ### 2026-02-23 🤖 AI 机器人集成
 - 🔗 **钉钉机器人**: 深度对接钉钉 Stream 模式，支持 AI 卡片流式输出，实现知识库智能问答机器人。
@@ -61,7 +61,7 @@
 - 🔧 **OCR 动态配置**: 管理后台支持按解析器配置开启/关闭 OCR 识别。
 
 > [!TIP]
-> **查看完整更新日志**: 访问 [CatWiki 更新日志](https://docs.catwiki.ai/about/project/changelog) 了解完整版本历史。
+> **查看完整更新日志**: 访问 [CatWiki 更新日志](https://docs.catwiki.cn/about/project/changelog) 了解完整版本历史。
 
 ---
 

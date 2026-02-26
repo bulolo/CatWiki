@@ -26,7 +26,7 @@ interface MessageSourcesProps {
 export function MessageSources({ sources, allSites }: MessageSourcesProps) {
   const params = useParams()
   const tenantSlug = params.tenantSlug as string
-  
+
   if (!sources || sources.length === 0) return null
 
   return (
@@ -48,8 +48,9 @@ export function MessageSources({ sources, allSites }: MessageSourcesProps) {
           const documentId = source.documentId || source.id
 
           // 生成多租户链接
-          const href = siteSlug && documentId 
-            ? (tenantSlug ? `/${tenantSlug}/${siteSlug}?documentId=${documentId}` : `/${siteSlug}?documentId=${documentId}`)
+          const currentTenant = tenantSlug || matchedSite?.tenant_slug || 'default'
+          const href = siteSlug && documentId
+            ? `/${currentTenant}/${siteSlug}?documentId=${documentId}`
             : "#"
 
           return (

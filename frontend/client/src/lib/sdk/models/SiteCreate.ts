@@ -48,6 +48,10 @@ export type SiteCreate = {
      */
     bot_config?: (Record<string, any> | null);
     /**
+     * 所属租户标识
+     */
+    tenant_slug?: (string | null);
+    /**
      * 管理员邮箱
      */
     admin_email?: (string | null);

@@ -158,7 +158,7 @@ http://localhost:8002/medical
 BACKEND_CORS_ORIGINS=http://localhost:8001,http://localhost:8002,http://localhost:8003
 
 # 生产环境
-BACKEND_CORS_ORIGINS=https://admin.catwiki.ai,https://demo.catwiki.ai,https://docs.catwiki.ai,https://catwiki.ai
+BACKEND_CORS_ORIGINS=https://admin.catwiki.cn,https://catwiki.cn,https://docs.catwiki.cn,https://catwiki.ai
 ```
 
 ### Q: 如何查看 API 文档？
