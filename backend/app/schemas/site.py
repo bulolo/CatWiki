@@ -37,7 +37,6 @@ class SiteBase(BaseModel):
     layout_mode: str | None = Field(None, max_length=20, description="布局模式: sidebar, top")
     quick_questions: list[QuickQuestion] | None = Field(None, description="快速问题配置")
     bot_config: dict | None = Field(None, description="机器人配置")
-    tenant_slug: str | None = Field(None, description="所属租户标识")
 
     @field_validator("bot_config")
     @classmethod
@@ -78,3 +77,5 @@ class Site(SiteBase, BaseSchemaWithTimestamps):
     """站点详情"""
 
     article_count: int = Field(default=0, description="文章数量")
+    tenant_slug: str | None = Field(None, description="所属租户标识")
+
