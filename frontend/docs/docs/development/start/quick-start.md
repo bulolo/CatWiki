@@ -42,7 +42,7 @@ make dev-up
 | 服务 | 地址 | 说明 |
 |------|------|------|
 | 🎯 管理后台 | http://localhost:8001 | 账号: `admin@example.com` / `admin123` |
-| 💬 客户端 | http://localhost:8002/medical | 默认医疗 Demo 站点 |
+| 💬 客户端 | http://localhost:8002/default/health | 默认医疗 Demo 站点 |
 | 📚 API 文档 | http://localhost:3000/docs | Swagger UI 交互式文档 |
 | 📖 文档中心 | http://localhost:8003 | 您现在正在阅读的文档 |
 
@@ -160,7 +160,7 @@ A:
 
 ### Q: 客户端 API 报 404？
 
-A: 确保访问路径包含站点域名后缀，例如：`http://localhost:8002/medical`。
+A: 确保访问路径包含站点域名后缀，例如：`http://localhost:8002/default/health`。
 
 ### Q: 修改配置后不生效？
 

@@ -147,7 +147,7 @@ make restart
 http://localhost:8002/
 
 # ✅ 正确
-http://localhost:8002/medical
+http://localhost:8002/default/health
 ```
 
 ### Q: CORS 错误？

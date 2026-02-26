@@ -33,9 +33,9 @@
 
 ## 🚀 最近更新
 
-> [!IMPORTANT]
-> **全新品牌域名正式启用！**
-> 我们已正式上线官方门户网站 **[catwiki.ai](https://catwiki.ai)**。所有的文档、官网均已迁移至新域名下。业务系统迁移至 **[catwiki.cn](https://catwiki.cn)**。请更新您的书签！
+> **官网：[catwiki.ai](https://catwiki.ai)**  
+> **文档中心：[docs.catwiki.cn](https://docs.catwiki.cn)**  
+> **业务系统：[catwiki.cn](https://catwiki.cn)**
 
 ### 2026-02-23 🤖 AI 机器人集成
 - 🔗 **钉钉机器人**: 深度对接钉钉 Stream 模式，支持 AI 卡片流式输出，实现知识库智能问答机器人。
@@ -254,7 +254,7 @@ make dev-up
 > **关于 `make dev-init`**: 它会重新从模板复制 `.env` 文件，这会覆盖您已有的配置。如果是后续启动，请直接跳过此步使用 `make dev-up`。
 访问：
 - 🎯 **管理后台**: http://localhost:8001 (admin@example.com / admin123)
-- 💬 **客户端**: http://localhost:8002/medical
+- 💬 **客户端**: http://localhost:8002/default/health
 - 📚 **文档站点**: http://localhost:8003
 - 🛡️ **API 文档**: http://localhost:3000/docs
 

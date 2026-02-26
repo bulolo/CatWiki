@@ -53,7 +53,7 @@ onMounted(() => {
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     links.value = {
       admin: 'http://localhost:8001',
-      client: 'http://localhost:8002/medical',
+      client: 'http://localhost:8002/default/health',
       api: 'http://localhost:3000/docs',
       docs: 'http://localhost:8003'
     }

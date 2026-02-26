@@ -153,8 +153,8 @@ class RAGService:
                 f"✨ [RAG] Turn Done | Recall: {recalled_count} -> Filtered: {output_count} | {duration:.3f}s"
             )
             embedding_model = getattr(vector_store, "_current_model", "N/A")
-            embedding_model = getattr(vector_store, '_current_model', 'N/A')
-            embedding_hash = getattr(vector_store, '_current_hash', '')
+            embedding_model = getattr(vector_store, "_current_model", "N/A")
+            embedding_hash = getattr(vector_store, "_current_hash", "")
             rerank_info = "disabled"
             if should_apply_rerank:
                 for inst in reranker._instances.values():
@@ -171,20 +171,22 @@ class RAGService:
             queries = stats.get("queries", [])
             if query not in queries:
                 queries.append(query)
-            
-            stats.update({
-                "queries": queries,
-                "site": filter.site_id if filter else "Global",
-                "embedding_model": embedding_model,
-                "embedding_hash": embedding_hash,
-                "recalled_count": stats.get("recalled_count", 0) + len(results),
-                "filtered_count": stats.get("filtered_count", 0) + len(candidate_list),
-                "threshold": final_threshold,
-                "rerank_model": rerank_info,
-                "output_count": stats.get("output_count", 0) + len(response_objects),
-                "top_k": final_top_k,
-                "retrieval_duration": stats.get("retrieval_duration", 0.0) + duration,
-            })
+
+            stats.update(
+                {
+                    "queries": queries,
+                    "site": filter.site_id if filter else "Global",
+                    "embedding_model": embedding_model,
+                    "embedding_hash": embedding_hash,
+                    "recalled_count": stats.get("recalled_count", 0) + len(results),
+                    "filtered_count": stats.get("filtered_count", 0) + len(candidate_list),
+                    "threshold": final_threshold,
+                    "rerank_model": rerank_info,
+                    "output_count": stats.get("output_count", 0) + len(response_objects),
+                    "top_k": final_top_k,
+                    "retrieval_duration": stats.get("retrieval_duration", 0.0) + duration,
+                }
+            )
 
             return response_objects
 

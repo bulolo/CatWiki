@@ -29,8 +29,9 @@ English | [简体中文](./README.md)
 ## 🚀 Recent Updates
 
 > [!IMPORTANT]
-> **Official Brand Domain is Live!**
-> We have officially launched our flagship portal **[catwiki.ai](https://catwiki.ai)**. Core documentation and official site are active on `.ai`, while all operational business systems (App, Admin, API, Files) have migrated to **[catwiki.cn](https://catwiki.cn)**. Please update your bookmarks!
+> **Official Site: [catwiki.ai](https://catwiki.ai)**  
+> **Documentation: [docs.catwiki.cn](https://docs.catwiki.cn)**  
+> **App & Admin: [catwiki.cn](https://catwiki.cn)**
 
 ### 2026-02-23 🤖 Enterprise Bot Integration
 - 🔗 **DingTalk Bot**: Deep integration with DingTalk Stream mode, supporting AI card streaming output for intelligent knowledge base Q&A bot.
@@ -241,7 +242,7 @@ make dev-up
 > **About `make dev-init`**: It will recopy `.env` files from templates, which will overwrite your existing configuration. For subsequent starts, skip this step and use `make dev-up` directly.
 Visit:
 - 🎯 **Admin Dashboard**: http://localhost:8001 (admin@example.com / admin123)
-- 💬 **Client Side**: http://localhost:8002/medical
+- 💬 **Client Side**: http://localhost:8002/default/health
 - 📚 **Docs Site**: http://localhost:8003
 - 🛡️ **API Docs**: http://localhost:3000/docs
 

@@ -104,6 +104,7 @@ class LLMManager:
 
         # 3. 初始化新实例
         from app.core.common.utils import log_ai_usage_signal
+
         log_ai_usage_signal(
             "chat",
             effective_model,

@@ -92,10 +92,11 @@ async def list_sites(
     paginator = Paginator(page=page, size=size, total=total)
 
     from app.models.site import Site as SiteModel
+
     stmt = select(SiteModel).options(joinedload(SiteModel.tenant))
     if status:
         stmt = stmt.where(SiteModel.status == status)
-    
+
     result = await db.execute(stmt.offset(paginator.skip).limit(paginator.size))
     sites = list(result.scalars())
 
@@ -124,6 +125,7 @@ async def get_site(
 ) -> ApiResponse[Site]:
     """获取站点详情"""
     from app.models.site import Site as SiteModel
+
     stmt = select(SiteModel).where(SiteModel.id == site_id).options(joinedload(SiteModel.tenant))
     result = await db.execute(stmt)
     site = result.scalar_one_or_none()
@@ -148,6 +150,7 @@ async def get_site_by_slug(
 ) -> ApiResponse[Site]:
     """通过 slug 获取站点详情（管理后台）"""
     from app.models.site import Site as SiteModel
+
     stmt = select(SiteModel).where(SiteModel.slug == slug).options(joinedload(SiteModel.tenant))
     result = await db.execute(stmt)
     site = result.scalar_one_or_none()

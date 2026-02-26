@@ -41,7 +41,10 @@ async def list_active_sites(
     # 只返回状态为 active 的站点，并预加载租户信息
     from sqlalchemy import select
     from app.models.site import Site as SiteModel
-    stmt = select(SiteModel).where(SiteModel.status == "active").options(joinedload(SiteModel.tenant))
+
+    stmt = (
+        select(SiteModel).where(SiteModel.status == "active").options(joinedload(SiteModel.tenant))
+    )
     result = await db.execute(stmt.offset(paginator.skip).limit(paginator.size))
     sites = list(result.scalars())
 
@@ -67,6 +70,7 @@ async def get_site_by_slug(
     """通过 slug 获取站点详情（客户端）"""
     from sqlalchemy import select
     from app.models.site import Site as SiteModel
+
     stmt = select(SiteModel).where(SiteModel.slug == slug).options(joinedload(SiteModel.tenant))
     result = await db.execute(stmt)
     site = result.scalar_one_or_none()
@@ -88,6 +92,7 @@ async def get_site(
     """获取站点详情（客户端）"""
     from sqlalchemy import select
     from app.models.site import Site as SiteModel
+
     stmt = select(SiteModel).where(SiteModel.id == site_id).options(joinedload(SiteModel.tenant))
     result = await db.execute(stmt)
     site = result.scalar_one_or_none()
