@@ -45,6 +45,7 @@ help:
 	@echo "  make prod-logs          - 查看生产环境日志"
 	@echo "  make prod-clean         - 停止容器并删除数据卷 (❗危险：清空生产数据)"
 	@echo "  make prod-website       - 仅启动官网服务 (需在 prod-up 之后)"
+	@echo "  make prod-docs          - 仅启动文档服务 (需在 prod-up 之后)"
 	@echo ""
 
 	@echo " 🧩  [通用命令] (Common Commands)"
@@ -170,7 +171,7 @@ prod-restart:
 # 深度清理生产环境 (警告：将删除所有生产数据卷！)
 prod-clean:
 	@echo "🛑 [危险] 正在尝试深度清理生产环境..."
-	@echo "⚠️  警告：此操作将删除所有生产容器相关的数据卷和数据！"
+	@echo "⚠️  警告：此操作将删除所有生产容器相关的数据卷 and 数据！"
 	@read -p "您确定要继续吗？[y/N] " ans && [ $${ans:-N} = y ] || (echo "❌ 操作已取消"; exit 1)
 	docker compose -f deploy/docker/docker-compose.prod.yml --profile init down -v
 	@docker rm -f catwiki-backend-init-prod >/dev/null 2>&1 || true
@@ -180,6 +181,10 @@ prod-clean:
 # 启动官网服务
 prod-website:
 	docker compose -f deploy/docker/docker-compose.prod.yml --profile website up -d website
+
+# 启动文档服务
+prod-docs:
+	docker compose -f deploy/docker/docker-compose.prod.yml --profile docs up -d docs-frontend
 
 # ==============================================================================
 # [通用命令] Common Targets

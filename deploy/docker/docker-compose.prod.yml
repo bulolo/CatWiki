@@ -66,6 +66,7 @@ services:
   # 负责数据库迁移和初始化
   # 注意：生产环境建议在部署流程中单独执行，而不是每次部署都运行
   backend-init:
+    profiles: ["init"]
     build:
       context: ../../backend
       dockerfile: Dockerfile.prod
@@ -247,6 +248,7 @@ services:
 
   # 文档站点服务
   docs-frontend:
+    profiles: ["docs"]
     build:
       context: ../../frontend/docs
       dockerfile: Dockerfile.prod
