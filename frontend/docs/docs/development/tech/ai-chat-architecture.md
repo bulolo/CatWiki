@@ -2,8 +2,6 @@
 
 本文档详细介绍了 CatWiki AI 对话系统的底层架构与处理机制。系统基于检索增强生成 (RAG) 和多轮推理逻辑构建，旨在提供高精确度、强上下文感知的智能问答服务。
 
----
-
 ## 1. 顶层架构地图 (Architecture Overview)
 
 系统采用 **ReAct (Reasoning and Acting)** 范式，核心引擎基于 [LangGraph](https://langchain-ai.github.io/langgraph/) 构建了一个支持外挂工具的有状态图工作流（StateGraph）。

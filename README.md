@@ -351,9 +351,9 @@ A: 确保你的访问路径包含站点域名后缀，例如：`http://localhost
 
 ## 📚 文档
 
-#### � 快速导航
+#### 🚀 快速导航
 
-- � [环境配置指南](./frontend/docs/docs/deployment/config/environment.md) - 开发和生产环境的完整配置说明
+- 📖 [环境配置指南](./frontend/docs/docs/deployment/config/environment.md) - 开发和生产环境的完整配置说明
 - 🚀 [开发快速开始](./frontend/docs/docs/development/start/quick-start.md) - 5 分钟上手开发环境
 - 🔌 [API 架构细节](./frontend/docs/docs/development/api/overview.md) - Admin API 和 Client API 设计原则
 - 📦 [RustFS 使用指南](./frontend/docs/docs/development/tech/rustfs.md) - 文件上传、下载、对象存储详解

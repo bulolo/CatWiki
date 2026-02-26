@@ -48,7 +48,7 @@ make dev-up
 
 ---
 
-## � 生产环境
+## 🚀 生产环境
 
 生产环境适合正式部署，使用 Nginx 反向代理，支持 HTTPS，性能优化。
 
@@ -98,7 +98,7 @@ RUSTFS_PUBLIC_URL=https://files.catwiki.cn  # 公网访问地址
 
 ---
 
-## �🛠️ 常用命令 (CLI Reference)
+## 🛠️ 常用命令 (CLI Reference)
 
 ### 开发环境 (Development)
 

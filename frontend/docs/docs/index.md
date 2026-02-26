@@ -44,7 +44,6 @@ import { ref, onMounted } from 'vue'
 const links = ref({
   admin: 'https://admin.catwiki.cn',
   client: 'https://catwiki.cn',
-  api: 'https://api.catwiki.cn/docs',
   docs: 'https://docs.catwiki.cn'
 })
 
@@ -54,7 +53,6 @@ onMounted(() => {
     links.value = {
       admin: 'http://localhost:8001',
       client: 'http://localhost:8002/default/health',
-      api: 'http://localhost:3000/docs',
       docs: 'http://localhost:8003'
     }
   }
@@ -117,15 +115,7 @@ make prod-up
       <span>{{ links.client.replace('https://', '').replace('http://', '') }}</span>
     </div>
   </a>
-  <a :href="links.api" class="service-item" target="_blank">
-    <div class="icon-box">
-      <svg class="service-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"/><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"/></svg>
-    </div>
-    <div class="service-info">
-      <strong>API文档</strong>
-      <span>{{ links.api.replace('https://', '').replace('http://', '') }}</span>
-    </div>
-  </a>
+
   <a :href="links.docs" class="service-item" target="_blank">
     <div class="icon-box">
       <svg class="service-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
