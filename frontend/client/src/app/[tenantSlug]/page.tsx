@@ -44,7 +44,7 @@ export default function TenantPortalPage() {
         const response = await api.site.list({ page: 1, size: 100 })
         const availableSites = (response.list || []).filter((site) => site.slug)
         setSites(availableSites)
-        
+
         // 如果没有站点且不是加载中，也视为租户配置问题或不存在
         if (availableSites.length === 0) {
           setError({ status: 404, message: "暂时无该租户" })
@@ -84,8 +84,8 @@ export default function TenantPortalPage() {
   if (error) {
     return (
       <div className="h-screen flex items-center justify-center bg-white">
-        <NotFoundState 
-          title="暂时无该租户" 
+        <NotFoundState
+          title="暂时无该租户"
           description={`抱歉，标识为 "${tenantSlug}" 的租户不存在或未配置任何公开站点。`}
           showHome={true}
         />
@@ -129,7 +129,7 @@ export default function TenantPortalPage() {
               </div>
             </a>
             <a
-              href={process.env.NEXT_PUBLIC_DOCS_URL || "http://localhost:8003"}
+              href={process.env.NEXT_PUBLIC_DOCS_URL || "https://docs.catwiki.cn"}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 text-slate-600 hover:text-primary hover:bg-slate-50 rounded-lg transition-all text-xs md:text-sm font-medium"
@@ -152,8 +152,11 @@ export default function TenantPortalPage() {
                 )}
               >
                 <div className="text-left flex-1 min-w-0 overflow-hidden">
-                  <div className="text-xs md:text-sm font-semibold text-slate-900 truncate">
+                  <div className="text-xs md:text-sm font-semibold text-slate-900 truncate flex items-center gap-1.5">
                     {selectedSite ? selectedSite.name : "全部站点"}
+                    <span className="px-1 py-0.5 bg-slate-200 text-slate-500 rounded text-[9px] font-mono leading-none">
+                      {tenantSlug}
+                    </span>
                   </div>
                   <div className="text-[10px] md:text-xs text-slate-500 hidden md:block truncate">
                     {selectedSite ? (selectedSite.description || "限定此站点") : "跨站点提问"}
@@ -214,8 +217,11 @@ export default function TenantPortalPage() {
                         )}
                       >
                         <div className="flex items-start justify-between mb-1">
-                          <div className="text-sm md:text-base font-semibold text-slate-900">
+                          <div className="text-sm md:text-base font-semibold text-slate-900 flex items-center gap-1.5">
                             {site.name}
+                            <span className="px-1 py-0.5 bg-slate-100 text-slate-400 rounded text-[9px] font-mono leading-none">
+                              {tenantSlug}
+                            </span>
                           </div>
                           {selectedSite?.id === site.id && (
                             <div className="w-2 h-2 bg-primary rounded-full mt-1.5 shrink-0" />

@@ -88,8 +88,8 @@ export function Sidebar({ items, selectedId, onSelect, isOpen, onClose, siteName
         <div
           className={cn(
             "group flex items-center gap-2 px-3 py-2 cursor-pointer rounded-xl transition-all duration-200",
-            isSelected 
-              ? "sidebar-item-active" 
+            isSelected
+              ? "sidebar-item-active"
               : "hover:bg-slate-200/50 text-slate-600 hover:text-slate-900",
           )}
           style={{ marginLeft: `${level * 12}px` }}
@@ -117,7 +117,7 @@ export function Sidebar({ items, selectedId, onSelect, isOpen, onClose, siteName
             </>
           ) : (
             <>
-              <Hash 
+              <Hash
                 className={cn("h-4 w-4", isSelected ? "" : "text-slate-400")}
                 style={isSelected ? { color: "var(--theme-primary)" } : undefined}
               />
@@ -143,7 +143,7 @@ export function Sidebar({ items, selectedId, onSelect, isOpen, onClose, siteName
     )}>
       <div className="p-6">
         <div className="flex items-center gap-3 px-2 mb-8">
-          <div 
+          <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shadow-lg"
             style={{
               backgroundColor: "var(--theme-primary)",
@@ -173,8 +173,8 @@ export function Sidebar({ items, selectedId, onSelect, isOpen, onClose, siteName
             onClick={() => onSelect?.({ id: "ai-home", type: "special" })}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
-              selectedId === "ai-home" 
-                ? "text-white shadow-lg" 
+              selectedId === "ai-home"
+                ? "text-white shadow-lg"
                 : "text-slate-600 hover:bg-slate-200/50 hover:text-slate-900"
             )}
             style={selectedId === "ai-home" ? {
@@ -182,7 +182,7 @@ export function Sidebar({ items, selectedId, onSelect, isOpen, onClose, siteName
               boxShadow: "0 10px 15px -3px var(--theme-primary-light), 0 4px 6px -2px var(--theme-primary-light)",
             } : undefined}
           >
-            <div 
+            <div
               className={cn(
                 "p-1.5 rounded-lg transition-colors",
                 selectedId === "ai-home" ? "bg-white/20" : "group-hover:bg-white"
@@ -191,7 +191,7 @@ export function Sidebar({ items, selectedId, onSelect, isOpen, onClose, siteName
                 backgroundColor: "var(--theme-primary-light)",
               } : undefined}
             >
-              <MessageSquare 
+              <MessageSquare
                 className="h-4 w-4"
                 style={selectedId === "ai-home" ? { color: "white" } : { color: "var(--theme-primary)" }}
               />
@@ -200,7 +200,7 @@ export function Sidebar({ items, selectedId, onSelect, isOpen, onClose, siteName
           </button>
         </div>
       </div>
-      
+
       <ScrollArea className="flex-1 px-4">
         <div className="px-2 mb-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
           合集目录
@@ -224,9 +224,9 @@ export function Sidebar({ items, selectedId, onSelect, isOpen, onClose, siteName
         {/* 版本信息展示 */}
         <div className="px-2 pt-3 border-t border-slate-200/60 flex flex-col gap-1 mt-4">
           <div className="flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-[#3b82f6]">
-            <Link 
-              href="https://catwiki.ai" 
-              target="_blank" 
+            <Link
+              href="https://catwiki.cn"
+              target="_blank"
               className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
               id="cw-sys-mount"
             >

@@ -178,7 +178,6 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.catwiki.cn}
         NEXT_PUBLIC_CLIENT_URL: ${NEXT_PUBLIC_CLIENT_URL:-https://catwiki.cn}
-        NEXT_PUBLIC_CATWIKI_EDITION: ${NEXT_PUBLIC_CATWIKI_EDITION:-community}
     image: catwiki-admin:latest
     container_name: catwiki-admin
     env_file:
@@ -218,7 +217,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.catwiki.cn}
         NEXT_PUBLIC_DOCS_URL: ${NEXT_PUBLIC_DOCS_URL:-https://docs.catwiki.cn}
-        NEXT_PUBLIC_CATWIKI_EDITION: ${NEXT_PUBLIC_CATWIKI_EDITION:-community}
+        NEXT_PUBLIC_ADMIN_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://admin.catwiki.cn}
     image: catwiki-client:latest
     container_name: catwiki-client
     env_file:
