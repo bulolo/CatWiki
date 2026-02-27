@@ -8,9 +8,12 @@
     "docs:preview": "vitepress preview"
   },
   "devDependencies": {
+    "mermaid": "^10.9.0",
     "vitepress": "^1.0.0",
-    "vue": "^3.4.0",
     "vitepress-plugin-mermaid": "^2.0.16",
-    "mermaid": "^10.9.0"
+    "vue": "^3.4.0"
+  },
+  "dependencies": {
+    "medium-zoom": "^1.1.0"
   }
 }

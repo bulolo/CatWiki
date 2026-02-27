@@ -1,0 +1,15 @@
+.medium-zoom-overlay {
+  z-index: 10000 !important;
+}
+
+.medium-zoom-image {
+  z-index: 10001 !important;
+}
+
+.vp-doc img:not(.no-zoom) {
+  cursor: zoom-in;
+}
+
+.vp-doc img.medium-zoom-image--opened {
+  cursor: zoom-out;
+}
