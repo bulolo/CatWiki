@@ -64,7 +64,7 @@ export function UserMenu() {
       case UserRole.ADMIN:
         return '系统管理员'
       case UserRole.TENANT_ADMIN:
-        return '租户管理员'
+        return '组织管理员'
       case UserRole.SITE_ADMIN:
         return '站点管理员'
       default:

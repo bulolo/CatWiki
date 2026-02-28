@@ -450,17 +450,20 @@ export default function UsersPage() {
                       <Badge
                         variant={
                           user.role === UserRole.ADMIN ? "default" :
-                            user.role === UserRole.SITE_ADMIN ? "secondary" : "outline"
+                            user.role === UserRole.TENANT_ADMIN ? "default" :
+                              user.role === UserRole.SITE_ADMIN ? "secondary" : "outline"
                         }
                         className={cn(
                           "font-bold text-[10px] tracking-tight px-2 border-none",
                           user.role === UserRole.ADMIN ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" :
-                            user.role === UserRole.SITE_ADMIN ? "bg-amber-500/10 text-amber-600 shadow-sm shadow-amber-500/10" :
-                              "bg-muted text-muted-foreground"
+                            user.role === UserRole.TENANT_ADMIN ? "bg-violet-500/10 text-violet-600 shadow-sm shadow-violet-500/10" :
+                              user.role === UserRole.SITE_ADMIN ? "bg-amber-500/10 text-amber-600 shadow-sm shadow-amber-500/10" :
+                                "bg-muted text-muted-foreground"
                         )}
                       >
                         {user.role === UserRole.ADMIN ? "系统管理员" :
-                          user.role === UserRole.SITE_ADMIN ? "站点管理员" : "站点编辑"}
+                          user.role === UserRole.TENANT_ADMIN ? "组织管理员" :
+                            user.role === UserRole.SITE_ADMIN ? "站点管理员" : user.role}
                       </Badge>
                     </TableCell>
                     <TableCell>

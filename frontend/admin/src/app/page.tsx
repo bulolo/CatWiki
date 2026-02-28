@@ -105,7 +105,7 @@ export default function AdminHome() {
           </h1>
 
           <p className="text-sm text-slate-500 mb-8 leading-relaxed max-w-xs mx-auto">
-            当前租户下暂无任何站点。您可以创建一个新的知识库站点来开始使用。
+            当前组织下暂无任何站点。您可以创建一个新的知识库站点来开始使用。
           </p>
 
           <Button

@@ -159,7 +159,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                   router.push('?modal=platform')
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-xl border border-primary/20 hover:bg-primary/20 transition-all active:scale-95"
-                title="平台租户管理"
+                title="平台组织管理"
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
                 <span className="text-xs font-bold">平台</span>

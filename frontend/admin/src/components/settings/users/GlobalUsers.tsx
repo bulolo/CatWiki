@@ -262,7 +262,7 @@ export function GlobalUsers() {
         {user.role === UserRole.ADMIN || user.role === UserRole.TENANT_ADMIN ? (
           <div className="w-full h-full px-4 py-3 min-h-[50px] flex flex-wrap gap-1 items-center relative pr-8">
             <span className="text-xs text-muted-foreground">
-              {user.role === UserRole.ADMIN ? "全平台" : (isCommunity ? "全部站点" : "全租户")}
+              {user.role === UserRole.ADMIN ? "全平台" : (isCommunity ? "全部站点" : "全组织")}
             </span>
           </div>
         ) : (
@@ -434,13 +434,13 @@ export function GlobalUsers() {
                           className={cn(
                             "font-bold text-[10px] tracking-tight px-2 border-none",
                             user.role === UserRole.ADMIN ? "bg-primary text-primary-foreground" :
-                              user.role === UserRole.TENANT_ADMIN ? "bg-blue-500/10 text-blue-600" :
+                              user.role === UserRole.TENANT_ADMIN ? "bg-violet-500/10 text-violet-600" :
                                 user.role === UserRole.SITE_ADMIN ? "bg-amber-500/10 text-amber-600" :
                                   "bg-muted text-muted-foreground"
                           )}
                         >
                           {user.role === UserRole.ADMIN ? "系统管理员" :
-                            user.role === UserRole.TENANT_ADMIN ? (isCommunity ? "超级管理员" : "租户管理员") :
+                            user.role === UserRole.TENANT_ADMIN ? (isCommunity ? "超级管理员" : "组织管理员") :
                               user.role === UserRole.SITE_ADMIN ? "站点管理员" : "未知角色"}
                         </Badge>
                       </TableCell>
@@ -498,7 +498,7 @@ export function GlobalUsers() {
                                       onSelect={() => updateRole(user.id, UserRole.TENANT_ADMIN)}
                                       className="flex items-center justify-between"
                                     >
-                                      <span>{isCommunity ? '超级管理员' : '租户管理员'}</span>
+                                      <span>{isCommunity ? '超级管理员' : '组织管理员'}</span>
                                       {user.role === UserRole.TENANT_ADMIN && <Check className="h-4 w-4 text-primary" />}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
@@ -515,42 +515,42 @@ export function GlobalUsers() {
 
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                      onClick={() => handleResetPassword(user.id, user.name, user.email)}
-                      className="text-amber-600 focus:text-amber-600 focus:bg-amber-50"
-                    >
-                      <KeyRound className="mr-2 h-4 w-4" />
-                      重置密码
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        const newStatus = user.status === UserStatus.ACTIVE ? UserStatus.INACTIVE : UserStatus.ACTIVE
-                        if (confirm(`确定要${newStatus === UserStatus.INACTIVE ? '禁用' : '启用'}该账户吗？`)) {
-                          updateStatus(user.id, newStatus)
-                        }
-                      }}
-                      disabled={user.id === currentUserId}
-                    >
-                      {user.status === UserStatus.ACTIVE ? (
-                        <>
-                          <Slash className="mr-2 h-4 w-4" />
-                          禁用账号
-                        </>
-                      ) : (
-                        <>
-                          <Check className="mr-2 h-4 w-4" />
-                          启用账号
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => handleDeleteUser(user.id, user.name)}
-                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                      disabled={user.id === currentUserId}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      删除用户
-                    </DropdownMenuItem>
+                                onClick={() => handleResetPassword(user.id, user.name, user.email)}
+                                className="text-amber-600 focus:text-amber-600 focus:bg-amber-50"
+                              >
+                                <KeyRound className="mr-2 h-4 w-4" />
+                                重置密码
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const newStatus = user.status === UserStatus.ACTIVE ? UserStatus.INACTIVE : UserStatus.ACTIVE
+                                  if (confirm(`确定要${newStatus === UserStatus.INACTIVE ? '禁用' : '启用'}该账户吗？`)) {
+                                    updateStatus(user.id, newStatus)
+                                  }
+                                }}
+                                disabled={user.id === currentUserId}
+                              >
+                                {user.status === UserStatus.ACTIVE ? (
+                                  <>
+                                    <Slash className="mr-2 h-4 w-4" />
+                                    禁用账号
+                                  </>
+                                ) : (
+                                  <>
+                                    <Check className="mr-2 h-4 w-4" />
+                                    启用账号
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteUser(user.id, user.name)}
+                                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                disabled={user.id === currentUserId}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                删除用户
+                              </DropdownMenuItem>
 
                             </DropdownMenuContent>
                           </DropdownMenu>

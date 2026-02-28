@@ -231,13 +231,13 @@ export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName
                   onClick={() => setRole(UserRole.TENANT_ADMIN)}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <span className="font-semibold text-sm">租户管理员</span>
+                    <span className="font-semibold text-sm">组织管理员</span>
                     {role === UserRole.TENANT_ADMIN && <Check className="h-4 w-4 text-primary" />}
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">
                     {edition === 'community'
-                      ? "拥有全平台管理权限，可管理所有站点、用户和全局配置。"
-                      : "管理当前租户下的所有站点、用户和全局配置，不可跨租户。"}
+                      ? "拥有全平台管理权限，可管理所有站点、用户 and 全局配置。"
+                      : "管理当前组织下的所有站点、用户和全局配置，不可跨组织。"}
                   </p>
                 </div>
 
@@ -251,7 +251,7 @@ export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName
                       {role === UserRole.ADMIN && <Check className="h-4 w-4 text-primary" />}
                     </div>
                     <p className="text-xs text-slate-500 leading-relaxed">
-                      拥有全平台最高权限，可管理所有所有租户、站点和全局配置。
+                      拥有全平台最高权限，可管理所有组织、站点和全局配置。
                     </p>
                   </div>
                 )}

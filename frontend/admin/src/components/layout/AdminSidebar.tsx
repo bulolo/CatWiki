@@ -109,7 +109,7 @@ function AdminSidebarComponent() {
             <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/70 truncate">
               {healthData?.edition === 'community'
                 ? '系统设置'
-                : (userRole === 'admin' ? '系统管理' : '租户设置')}
+                : (userRole === 'admin' ? '系统管理' : '组织设置')}
             </span>
           </div>
 
