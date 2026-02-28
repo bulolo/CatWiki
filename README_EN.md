@@ -28,18 +28,13 @@ English | [简体中文](./README.md)
 
 ## 🚀 Recent Updates
 
-> [!IMPORTANT]
-> **Official Site: [catwiki.ai](https://catwiki.ai)**  
-> **Documentation: [docs.catwiki.cn](https://docs.catwiki.cn)**  
-> **App & Admin: [catwiki.cn](https://catwiki.cn)**
-
 ### 2026-02-26 🤖 AI Bot Integration
 - 🌐 **Web Widget**: One-click embedding for any website, providing out-of-the-box intelligent lead generation and customer support.
 - 🔌 **API Bot**: Deeply compatible with the OpenAI protocol, allows connection to Dify, FastGPT, and various AI clients.
 - 🔗 **DingTalk Bot**: Deep integration with DingTalk Stream mode, supporting AI card streaming and interactive card capabilities.
 - 💬 **WeCom Services**: Full coverage of three integration modes — **WeCom Bot** (custom app messaging), **WeCom Smart Robot** (built-in AI assistant), and **WeCom Customer Service** (external customer support), covering all private domain scenarios.
-- 🦅 **Feishu (Lark)**: Connected to Feishu Open Platform with long-connection mode, event subscriptions, and rich text message interaction.
-- 📚 **Documentation**: Launched a full series of bot integration guides, covering detailed configuration workflows for all supported platforms.
+- 🦅 **Feishu Bot**: Connected to Feishu Open Platform with long-connection mode, event subscriptions, and rich text message interaction.
+- 📚 **Documentation**: Launched a full series of bot integration guides, covering detailed configuration workflows for all supported platforms (see the "Technical Details" section in the documentation center).
 
 ### 2026-02-09 🤖 LangGraph Agentic RAG & Multi-turn Autonomous Retrieval
 - 🔧 **LangGraph Integration**: Refactored chat functionality using LangGraph 1.x with tool-calling support.
