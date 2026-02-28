@@ -12,7 +12,7 @@
 
 ## 与其他企微机器人模式的区别
 
-| 特性 | 应用机器人 (wecom_app) | 智能机器人 (wecom_smart) | 客服 (wecom_kefu) |
+| 特性 | 应用机器人 (wecom-app) | 智能机器人 (wecom-smart) | 客服 (wecom-kefu) |
 |------|:---:|:---:|:---:|
 | **消息协议** | XML | JSON | XML |
 | **需要 AgentId** | ✅ | ❌ | ❌ |
@@ -20,8 +20,6 @@
 | **适用对象** | 企业内部员工 | 企业内部员工 / 群聊 | 外部微信用户 |
 | **流式回复** | ❌ (一次性回复) | ✅ (Pull 模式) | ❌ (一次性回复) |
 | **API 发送消息** | ✅ `message/send` | ❌ (Webhook 响应) | ✅ `kf/send_msg` |
-
----
 
 ## 1. 企业微信管理后台配置
 
@@ -32,12 +30,15 @@
    - 填写应用名称（如「CatWiki AI 助手」）。
    - 上传应用 Logo。
    - 设置可见范围（选择哪些部门/人员可以使用此机器人）。
+   ![创建自建应用](/images/roboot/wecom-app/wecom-app-1.png)
 4. 创建完成后，记录以下信息：
    - **AgentId**：应用详情页中可以看到。
    - **Secret**：应用详情页中点击查看。
+   ![应用详情](/images/roboot/wecom-app/wecom-app-6.png)
 
 ### 1.2 获取企业 CorpID
 1. 在管理后台首页 -> **"我的企业"** 底部可以找到 **企业 ID (CorpID)**。
+
 
 ### 1.3 配置接收消息
 1. 进入您刚创建的应用详情页。
@@ -48,25 +49,34 @@
    - *注意：请将 `{site_id}` 替换为您在 CatWiki 后台的实际站点 ID。*
    - 该地址必须能够从公网访问且支持 HTTPS。
 4. **获取凭据**：
-   - 记录下 **Token** 和 **EncodingAESKey**（或点击随机生成）。
-5. 点击 **"保存"**，企业微信会自动发送验证请求，CatWiki 将自动处理验证。
+   - 记录下 **Token** 和 **EncodingAESKey**（或点击随机生成，并**记录下来**）。
+5. **⚠️ 暂不点击保存！** 先将获取到的全部参数填入 CatWiki 后台并启动服务（参考下方步骤 2），只有 CatWiki 后端加载了你的 Token 和 AES Key 后，再回到这里点击“保存”，才能通过企业微信的 URL 签名机制连通性测试。
+   ![设置API接收-1](/images/roboot/wecom-app/wecom-app-2.png)
+   ![设置API接收-2](/images/roboot/wecom-app/wecom-app-3.png)
 
----
+### 1.4 配置企业可信 IP
+1. 在应用详情页底部，找到 **"开发者工具"** 部分。
+2. 点击 **"企业可信IP"**。
+3. 在弹出框中填入 CatWiki 服务器的 **公网出口 IP 地址**。
+   - *提示：若不配置可信 IP，企业微信将拒绝来自该服务器的 API 调用请求，导致机器人无法回复。*
+   ![配置企业可信IP](/images/roboot/wecom-app/wecom-app-4.png)
 
-## 2. CatWiki 后台配置
 
-1. 进入 CatWiki 后台 **"站点设置" -> "AI 机器人"**。
+
+## 2. CatWiki 后台配置与打通验证
+
+1. 保持企微后台页面不关，开个新标签页进入 CatWiki 后台 **"站点设置" -> "AI 机器人"**。
    ![AI机器人集成](/images/screenshots/8.png)
-2. 选中 **"企业微信机器人"**，开启开关。
+2. 选中 **"企业微信机器人"** 卡片，开启开关。
 3. **填入配置**：
    - **CorpID**：填入企业 ID。
    - **AgentID**：填入自建应用的 AgentId。
    - **Secret**：填入自建应用的 Secret。
-   - **Token**：填入"接收消息"中配置的 Token。
-   - **EncodingAESKey**：填入"接收消息"中配置的 EncodingAESKey。
-4. 点击 **"保存"**。
-
----
+   - **Token**：填入"接收消息"中生成的 Token。
+   - **EncodingAESKey**：填入"接收消息"中生成的 EncodingAESKey。
+   ![企业微信机器人配置](/images/roboot/wecom-app/wecom-app-5.png)
+4. 点击界面上的 **"保存"**。
+5. **打通验证**：现在切回企业微信管理后台的 **“设置 API 接收”** 页面，点击 **“保存”**，提示验证成功即可！
 
 ## 3. 技术特性
 - **流式回复**：❌ 不支持 (受限于企业微信官方 `message/send` API 机制限制，此时系统默认开启非流式调用，以进一步提升大模型的返回速度)。

@@ -834,7 +834,7 @@ export function SiteBotSettings({ siteId, config, onChange, chatModel }: SiteBot
       {/* 企业微信客服 */}
       <BotCard
         title="企业微信客服"
-        description="对接企业微信客服，使用知识库自动回复客户咨询"
+        description="对接企业微信-“微信客服”原生应用，使用知识库自动回复客户咨询"
         typeBadge="原生"
         icon={<Image src="/icons/wecom.svg" alt="企业微信" width={24} height={24} className="rounded" />}
         isEnabled={wecom_kefu?.enabled ?? false}
@@ -864,7 +864,18 @@ export function SiteBotSettings({ siteId, config, onChange, chatModel }: SiteBot
           />
         </SettingItem>
 
-        <SettingItem label="客服 Secret" required>
+        <SettingItem label="欢迎语">
+          <Input
+            value={wecom_kefu?.welcome_message || ""}
+            onChange={(e) => onChange("wecom_kefu", "welcome_message", e.target.value)}
+            placeholder="请输入欢迎语，例如：您好！我是企业智能助手，很高兴为您服务。"
+            disabled={!wecom_kefu?.enabled}
+            autoComplete="off"
+            className="bg-white rounded-lg h-9 text-[13px] placeholder:text-slate-400/80"
+          />
+        </SettingItem>
+
+        <SettingItem label="Corp Secret" required>
           <CopyableInput
             value={wecom_kefu?.secret || ""}
             onChange={(val) => onChange("wecom_kefu", "secret", val)}
@@ -907,9 +918,11 @@ export function SiteBotSettings({ siteId, config, onChange, chatModel }: SiteBot
             borderColor="border-teal-100"
             textColor="text-teal-700"
             items={[
-              "在企业微信管理后台进入 <b>「应用管理」-「微信客服」</b>",
-              "从 <b>「开发配置」</b> 模块获取企业 ID 和 Secret",
-              "在 <b>「事件和消息接收」</b> 中开启并填入本卡片提供的回调参数"
+              "在企业微信管理后台进入 <b>「应用管理」-「自建」</b> 创建一个用作信息中转的自建应用",
+              "获取该自建应用的 <b>Secret</b> (⚠️ 注意：旧版微信客服自有 Secret 已废弃，必须使用此自建应用 Secret)",
+              "在自建应用的 <b>「设置 API 接收」</b> 中填入上方回调地址并随机生成 Token 和 AES Key",
+              "进入 <b>「应用管理」-「微信客服」</b>，在底部 <b>「API」</b> 模块，将你的客服账号与刚刚创建的自建应用 <b>「绑定」</b>",
+              "在自建应用或微信客服的 <b>「企业可信IP」</b> 中填入您服务器的公网 IP"
             ]}
             footer={
               <p className="text-[11px] text-teal-800/80">

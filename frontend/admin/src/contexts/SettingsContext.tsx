@@ -79,6 +79,7 @@ function toApiModelConfig(config: AIConfigs[RuntimeModelType]): AIConfigUpdate["
     base_url: config.base_url,
     dimension: typeof config.dimension === "number" ? config.dimension : null,
     extra_body: config.extra_body as Record<string, any>,
+    is_vision: config.is_vision ?? false,
     mode: config.mode === "platform"
       ? ModelConfig.mode.PLATFORM
       : config.mode === "custom"
@@ -86,6 +87,7 @@ function toApiModelConfig(config: AIConfigs[RuntimeModelType]): AIConfigUpdate["
         : undefined
   }
 }
+
 
 interface SettingsContextType {
   // 配置状态

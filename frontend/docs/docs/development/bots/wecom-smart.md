@@ -11,47 +11,42 @@
 - **私域内部协同**：仅限企业内部员工使用，无法直接对普通外部微信用户提供服务。
 
 
-## 1. 企业微信开放平台配置
+## 1. 企业微信管理后台配置
 
 ### 1.1 开启智能机器人
 1. 登录 [企业微信管理后台](https://work.weixin.qq.com/wework_admin/loginpage_wx)。
 2. 进入 **“安全与管理” -> “管理工具” -> “智能机器人”**。
-   ![管理工具](/images/roboot/wecom_smart/wecom_smart-1.png)
+   ![管理工具](/images/roboot/wecom-smart/wecom-smart-1.png)
 3. 点击 **“开启智能机器人”**（如果尚未开启）。
 4. **创建机器人**：点击“添加机器人”，选择 **“API 模式”** 进行创建。只有 API 模式才支持流式回调和统一逻辑。
-   ![创建机器人](/images/roboot/wecom_smart/wecom_smart-2.png)
+   ![创建机器人](/images/roboot/wecom-smart/wecom-smart-2.png)
 
 ### 1.2 获取凭据与配置回调
 1. 在智能机器人设置页面，底部可以看到 **“API配置”** 部分。
 2. **获取凭据**：
-   - 记录下 **Token** 和 **EncodingAESKey**（或点击随机生成）。
-   ![获取凭据](/images/roboot/wecom_smart/wecom_smart-3.png)
+   - 记录下 **Token** 和 **EncodingAESKey**（或者点击随机生成，并**记录下来**）。
+   ![获取凭据](/images/roboot/wecom-smart/wecom-smart-3.png)
 3. **URL 配置**：
    - 填入 CatWiki 提供的 Webhook 地址。
    - 格式为：`https://您的域名/v1/bot/wecom-smart-robot?site_id={site_id}`
    - *注意：请将 `{site_id}` 替换为您在 CatWiki 后台的实际站点 ID。*
    - 该地址必须能够从公网访问且支持 HTTPS。
+4. **⚠️ 暂不点击保存！** 由于微信服务器在你点击“保存”时会向你填写的 URL 发起签名验证请求，此时如果你还没在 CatWiki 后台填入 Token，CatWiki 无法验证通过。因此，请保持该页面不关，先进行下方的第 2 步配置。
 
-### 1.3 验证有效性
-配置完成后，点击“保存”或“验证”，企业微信会向该 URL 发送验证请求，CatWiki 会自动处理并完成验证。
+## 2. CatWiki 后台配置与打通验证
 
----
-
-## 2. CatWiki 后台配置
-
-1. 进入 CatWiki 后台 **“站点设置” -> “AI 机器人”**。
+1. 保持企微后台页面不关，开个新标签页进入 CatWiki 后台 **“站点设置” -> “AI 机器人”**。
    ![AI机器人集成](/images/screenshots/8.png)
 
 2. 选中 **“企业微信智能机器人”**，开启开关。
 3. **填入配置**：
-   - **Token**：填入从企微获取的 Token。
-   - **EncodingAESKey**：填入从企微获取的 EncodingAESKey。
+   - **Token**：填入刚从企微随机生成的 Token。
+   - **EncodingAESKey**：填入刚从企微生成的 EncodingAESKey。
    - *注意：智能机器人模式不需要 AgentId 和 Secret。*
    
-   ![AI机器人集成](/images/roboot/wecom_smart/wecom_smart-4.png)
-4. 点击 **“保存”**。
-
----
+   ![AI机器人集成](/images/roboot/wecom-smart/wecom-smart-4.png)
+4. 点击界面上的 **“保存”**。此时 CatWiki 后端已加载了你的 Token 和 AES Key。
+5. **打通验证**：现在切回企业微信智能机器人的 **“API配置”** 页面，点击 **“保存”**（或“验证”），提示验证成功即可！
 
 ## 3. 技术特性
 - **流式回复**：✅ 支持（通过缓冲池长轮询模式实现流式输出效果）。

@@ -45,9 +45,10 @@ class ModelConfig(BaseConfigModel):
     mode: Literal["custom", "platform"] = Field(
         default="custom", description="配置模式: custom=自定义, platform=使用平台资源"
     )
+    is_vision: bool = Field(default=False, description="是否支持视觉/多模态")
     extra_body: dict[str, Any] | None = Field(
         default=None,
-        description='额外请求体参数 (例如: {"chat_template_kwargs": {"enable_thinking": false}})',
+        description='额外请求体参数 (例如: {"chat_template_kwargs": {"enable_thinking": true}})',
     )
 
 
@@ -152,9 +153,10 @@ class WecomKefuConfig(BaseConfigModel):
 
     enabled: bool = Field(default=False, description="是否启用")
     corp_id: str = Field(default="", description="企业ID")
-    secret: str = Field(default="", description="客服 Secret")
+    secret: str = Field(default="", description="Corp Secret")
     token: str = Field(default="", description="Token")
     encoding_aes_key: str = Field(default="", description="Encoding AES Key")
+    welcome_message: str = Field(default="", description="欢迎语")
 
 
 class WecomAppConfig(BaseConfigModel):

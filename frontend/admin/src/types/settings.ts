@@ -70,6 +70,7 @@ export type BotConfig = {
     secret: string
     token: string
     encoding_aes_key: string
+    welcome_message?: string
   }
   wecom_app: {
     enabled: boolean
@@ -106,6 +107,7 @@ export const initialConfigs: AIConfigs = {
     api_key: "",
     base_url: "",
     mode: ModelConfigEnum.mode.CUSTOM,
+    is_vision: false,
     extra_body: {}
   },
   embedding: {
@@ -113,21 +115,24 @@ export const initialConfigs: AIConfigs = {
     model: "",
     api_key: "",
     base_url: "",
-    mode: ModelConfigEnum.mode.CUSTOM
+    mode: ModelConfigEnum.mode.CUSTOM,
+    is_vision: false
   },
   rerank: {
     provider: "openai",
     model: "",
     api_key: "",
     base_url: "",
-    mode: ModelConfigEnum.mode.CUSTOM
+    mode: ModelConfigEnum.mode.CUSTOM,
+    is_vision: false
   },
   vl: {
     provider: "openai",
     model: "",
     api_key: "",
     base_url: "",
-    mode: ModelConfigEnum.mode.CUSTOM
+    mode: ModelConfigEnum.mode.CUSTOM,
+    is_vision: true
   },
   bot_config: {
     web_widget: {
@@ -163,7 +168,8 @@ export const initialConfigs: AIConfigs = {
       corp_id: "",
       secret: "",
       token: "",
-      encoding_aes_key: ""
+      encoding_aes_key: "",
+      welcome_message: ""
     },
     wecom_app: {
       enabled: false,

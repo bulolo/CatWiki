@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import threading
@@ -13,12 +14,143 @@ from app.core.integration.robot.wecom_common.utils import WeComTokenManager
 from app.models.site import Site
 from app.services.robot import RobotOrchestrator
 
+logger = logging.getLogger(__name__)
+
 
 class WeComKefuService:
     """企业微信客服业务逻辑。"""
 
     _token_manager = WeComTokenManager()
     _deduplicator = MessageDeduplicator()
+    # 消息游标缓存，key: open_kfid
+    _cursors: dict[str, str] = {}
+
+    # 同步锁，防止同一个客服 ID 多个同步任务同时运行
+    _sync_locks: dict[str, asyncio.Lock] = {}
+    # 记录是否已发送欢迎语，避免同一会话重复发送 (可选)
+    _welcome_sent: dict[str, float] = {}
+
+    @classmethod
+    def _get_lock(cls, open_kfid: str) -> asyncio.Lock:
+        if open_kfid not in cls._sync_locks:
+            cls._sync_locks[open_kfid] = asyncio.Lock()
+        return cls._sync_locks[open_kfid]
+
+    @classmethod
+    async def sync_messages(
+        cls,
+        site: Site,
+        bot_config: dict,
+        open_kfid: str,
+        background_tasks: Any,
+        notification_token: str = "",
+    ) -> None:
+        """从微信侧拉取客服消息"""
+        # 获取并发锁，确保同一个 kfid 同时只有一个同步任务
+        lock = cls._get_lock(open_kfid)
+        if lock.locked():
+            logger.debug(f"⏳ [WeComKefu] Sync is already running for {open_kfid}, skipping...")
+            return
+
+        async with lock:
+            corp_id = bot_config.get("corp_id")
+            secret = bot_config.get("secret")
+            if not corp_id or not secret:
+                logger.error("WeComKefu: 缺少 corp_id 或 secret，无法完成消息同步")
+                return
+
+            try:
+                token = await cls._token_manager.get_access_token(corp_id, secret)
+                has_more = True
+                current_token = notification_token
+
+                # 最多同步 10 轮，防止死循环
+                max_rounds = 10
+                round_count = 0
+
+                while has_more and round_count < max_rounds:
+                    round_count += 1
+                    cursor = cls._cursors.get(open_kfid, "")
+
+                    async with httpx.AsyncClient() as client:
+                        body = {"limit": 100, "open_kfid": open_kfid}
+                        if cursor:
+                            body["cursor"] = cursor
+                        if current_token:
+                            body["token"] = current_token
+                        resp = await client.post(
+                            "https://qyapi.weixin.qq.com/cgi-bin/kf/sync_msg",
+                            params={"access_token": token},
+                            json=body,
+                            timeout=10,
+                        )
+                        data = resp.json()
+                        if data.get("errcode") != 0:
+                            logger.error(f"同步客服消息失败: {data}")
+                            break
+
+                        new_cursor = data.get("next_cursor")
+                        if new_cursor:
+                            cls._cursors[open_kfid] = new_cursor
+
+                        msg_list = data.get("msg_list", [])
+                        for msg in msg_list:
+                            msg_id = msg.get("msgid")
+                            if msg_id and cls._deduplicator.is_duplicate(msg_id):
+                                continue
+
+                            # origin: 3表示客户发送，1,2表示客服/机器人，4表示系统
+                            origin = msg.get("origin", 3)
+                            if origin != 3:
+                                # 系统事件 (origin=4) 需要特殊处理，其他的跳过
+                                if origin == 4 and msg.get("msgtype") == "event":
+                                    event_data = msg.get("event", {})
+                                    if event_data.get("event") == "enter_session":
+                                        await cls.handle_welcome_event(
+                                            site,
+                                            msg.get("external_userid"),
+                                            open_kfid,
+                                            background_tasks,
+                                        )
+                                continue
+
+                            msg_type = msg.get("msgtype")
+                            from_user = msg.get("external_userid")
+
+                            if msg_type == "text":
+                                content = msg.get("text", {}).get("content", "")
+                                if from_user and content:
+                                    await cls.handle_text_message(
+                                        site=site,
+                                        from_user=from_user,
+                                        open_kfid=open_kfid,
+                                        content=content,
+                                        background_tasks=background_tasks,
+                                    )
+                            else:
+                                logger.info(
+                                    f"ℹ️ [WeComKefu] Received unsupported msg_type in sync: {msg_type}"
+                                )
+                                if from_user:
+                                    await cls.send_message(
+                                        corp_id=corp_id,
+                                        secret=secret,
+                                        open_kfid=open_kfid,
+                                        external_userid=from_user,
+                                        content="[系统消息] 我目前只能理解文字信息，请使用文字与我沟通。",
+                                    )
+
+                        has_more = data.get("has_more") == 1
+                        # 只有第一轮可以使用 notification_token
+                        current_token = ""
+
+                if round_count >= max_rounds:
+                    logger.warning(
+                        f"⚠️ [WeComKefu] Sync reached max rounds ({max_rounds}) for {open_kfid}"
+                    )
+
+            except Exception as e:
+                logger.error(f"同步微信客服消息时发生异常: {e}")
 
     @classmethod
     async def send_message(
@@ -74,6 +206,8 @@ class WeComKefuService:
             logger.error(f"企业微信客服消息解密失败: 错误码={ret}")
             raise ValueError(f"解密失败: {ret}")
 
+        logger.debug(f"📩 [WeComKefu] Decrypted message: {msg_body}")
+
         try:
             xml_tree = ET.fromstring(msg_body)
             msg_type = xml_tree.find("MsgType").text
@@ -81,36 +215,50 @@ class WeComKefuService:
 
             # 1. 去重逻辑
             if msg_id and cls._deduplicator.is_duplicate(msg_id):
-                logger.debug("微信客服忽略重复消息: msg_id=%s", msg_id)
+                logger.info("微信客服忽略重复消息: msg_id=%s", msg_id)
                 return "success"
 
             # 微信客服消息事件类型
             if msg_type == "event":
-                event = xml_tree.find("Event").text
+                event_node = xml_tree.find("Event")
+                event = event_node.text if event_node is not None else ""
+                logger.debug(f"📬 [WeComKefu] Received event: {event}")
                 if event == "kf_msg_or_event":
-                    token = xml_tree.find("Token").text
-                    # 需要调用同步接口拉取消息，但通常简化处理
-                    # 这里如果是回调，通常会有具体的 MsgType
-                    pass
+                    open_kfid_node = xml_tree.find("OpenKfId")
+                    if open_kfid_node is None:
+                        open_kfid_node = xml_tree.find("OpenKFID")
+                    open_kfid = open_kfid_node.text if open_kfid_node is not None else None
+                    token_node = xml_tree.find("Token")
+                    token = token_node.text if token_node is not None else ""
+                    if open_kfid:
+                        # 开启后台任务异步拉取
+                        background_tasks.add_task(
+                            cls.sync_messages,
+                            site=site,
+                            bot_config=site.bot_config.get("wecom_kefu", {}),
+                            open_kfid=open_kfid,
+                            background_tasks=background_tasks,
+                            notification_token=token,
+                        )
+                    return "success"
 
             # 具体的客服消息内容
-            # 注意：微信客服如果是通过回调接收，通常是带 Token 的通知，需要去拉取
-            # 但如果是“接收客服消息”配置了回调，则会直接推送到这里。
-            # 参考：https://developer.work.weixin.qq.com/document/path/94670
+            # 这里处理最常见的文本消息
+            from_user_node = xml_tree.find("ExternalUserID")
+            from_user = from_user_node.text if from_user_node is not None else None
 
-            # 这里我们处理最常见的文本消息
-            from_user = (
-                xml_tree.find("ExternalUserID").text
-                if xml_tree.find("ExternalUserID") is not None
-                else None
-            )
-            open_kfid = (
-                xml_tree.find("OpenKFID").text if xml_tree.find("OpenKFID") is not None else None
-            )
+            open_kfid_node = xml_tree.find("OpenKfId")
+            if open_kfid_node is None:
+                open_kfid_node = xml_tree.find("OpenKFID")
+            open_kfid = open_kfid_node.text if open_kfid_node is not None else None
+
             content_node = xml_tree.find("Text/Content")
             content = content_node.text if content_node is not None else ""
 
             if from_user and open_kfid and content:
+                logger.info(
+                    f"💬 [WeComKefu] Handling direct text message from {from_user} via {open_kfid}"
+                )
                 await cls.handle_text_message(
                     site=site,
                     from_user=from_user,
@@ -124,6 +272,30 @@ class WeComKefuService:
             # 即使解析失败也返回 success 避免微信重试
 
         return "success"
+
+    @classmethod
+    async def handle_welcome_event(
+        cls, site: Site, from_user: str, open_kfid: str, background_tasks: Any
+    ) -> None:
+        """处理用户进入会话事件（发送欢迎语）"""
+        bot_config = site.bot_config.get("wecom_kefu", {})
+        welcome_msg = bot_config.get("welcome_message")
+        if not welcome_msg:
+            return
+
+        # 简单的频率限制，1分钟内只发一次欢迎语，避免刷屏
+        last_sent = cls._welcome_sent.get(from_user, 0)
+        if time.time() - last_sent < 60:
+            return
+        cls._welcome_sent[from_user] = time.time()
+
+        await cls.send_message(
+            corp_id=bot_config.get("corp_id"),
+            secret=bot_config.get("secret"),
+            open_kfid=open_kfid,
+            external_userid=from_user,
+            content=welcome_msg,
+        )
 
     @classmethod
     async def handle_text_message(

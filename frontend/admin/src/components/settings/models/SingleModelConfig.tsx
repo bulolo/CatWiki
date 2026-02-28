@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button"
 import { PlugZap, Save, Loader2 } from "lucide-react"
 import { useModelConfigLogic } from "@/hooks/useModelConfigLogic"
 import { PlatformModeView } from "./PlatformModeView"
-import { CustomConfigForm } from "./CustomConfigForm"
+import { ModelConfigFields } from "./ModelConfigFields"
 
 interface SingleModelConfigProps {
   type: "chat" | "embedding" | "rerank" | "vl"
@@ -70,7 +70,7 @@ export function SingleModelConfig({ type, onSuccess }: SingleModelConfigProps) {
       {mode === "platform" ? (
         <PlatformModeView type={type} />
       ) : (
-        <CustomConfigForm
+        <ModelConfigFields
           type={type}
           config={config}
           onUpdate={handleUpdate}
