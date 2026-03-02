@@ -1,7 +1,7 @@
 .PHONY: help \
 	dev-init dev-up dev-down dev-rebuild dev-restart dev-logs dev-clean dev-db-migrate dev-db-upgrade dev-db-psql gen-sdk license format \
 	prod-init prod-up prod-up-build prod-rebuild prod-down prod-restart prod-logs prod-clean prod-website prod-docs clean-cache \
-	 setup-hooks check-changed check-all
+	 publish-ce-images setup-hooks check-changed check-all
 
 # ==============================================================================
 # 跨平台配置 (Cross-Platform Config)
@@ -63,8 +63,6 @@ help:
 	@echo ""
 
 	@echo " 📦  [CE 发布] (CE Release)"
-	@echo "  make sync-ce            - 从 ee 生成 CE 并推送到 origin/ce"
-	@echo "  make publish-ce-repo    - 将 origin/ce 推送到 GitHub"
 	@echo "  make publish-ce-images  - 构建 CE 镜像并推送到 Docker Hub (公开仓库)"
 	@echo ""
 	@echo " ⚠️  Windows 用户注意: 请使用 WSL2 或 Git Bash 运行 make 命令"
@@ -275,11 +273,18 @@ license:
 	@echo "✅ License Header 注入完成！"
 
 # ==============================================================================
+# ==============================================================================
+
 # 从 ee 生成 CE 并推送到 origin/ce
 # 将 origin/ce 推送到 GitHub
 # 构建 CE 镜像并推送到 Docker Hub (公开仓库)
 # 支持指定服务: make publish-ce-images s=backend
 # 支持指定版本: make publish-ce-images v=v1.0.0
+publish-ce-images:
+	@VERSION=$(v) bash scripts/publish_ce_images.sh $(s)
+
 # 构建并推送 EE 镜像到腾讯云 TCR (私有仓库)
 # 支持指定服务: make s=client
 # 支持指定版本: make v=v1.0.0
+:
+	@VERSION=$(v) bash scripts/publish_ee_images.sh $(s)
