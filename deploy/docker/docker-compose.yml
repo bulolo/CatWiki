@@ -102,7 +102,7 @@ services:
     build:
       context: ../../backend
       dockerfile: Dockerfile.prod
-    image: ccr.ccs.tencentyun.com/catwiki/catwiki-backend-init:latest
+    image: bulolo/catwiki-backend-init:latest
     container_name: catwiki-backend-init
     env_file:
       - .env.backend
@@ -144,7 +144,7 @@ services:
     build:
       context: ../../backend
       dockerfile: Dockerfile.prod
-    image: ccr.ccs.tencentyun.com/catwiki/catwiki-backend:latest
+    image: bulolo/catwiki-backend:latest
     container_name: catwiki-backend
     env_file:
       - .env.backend
@@ -189,7 +189,7 @@ services:
     build:
       context: ../../frontend/admin
       dockerfile: Dockerfile.prod
-    image: ccr.ccs.tencentyun.com/catwiki/catwiki-admin:latest
+    image: bulolo/catwiki-admin:latest
     container_name: catwiki-admin
     environment:
       NODE_ENV: production
@@ -228,7 +228,7 @@ services:
     build:
       context: ../../frontend/client
       dockerfile: Dockerfile.prod
-    image: ccr.ccs.tencentyun.com/catwiki/catwiki-client:latest
+    image: bulolo/catwiki-client:latest
     container_name: catwiki-client
     environment:
       NODE_ENV: production
