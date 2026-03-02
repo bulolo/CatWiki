@@ -29,68 +29,80 @@ import { z } from 'zod'
  * - 不要在 NEXT_PUBLIC_ 变量中存储敏感信息
  * - 服务端专用的环境变量不需要 NEXT_PUBLIC_ 前缀
  */
+/**
+ * 校验是否为占位符 (用于 Docker 运行时注入)
+ */
+const isPlaceholder = (val: unknown) =>
+  typeof val === 'string' && val.startsWith('__NEXT_PUBLIC_') && val.endsWith('_PLACEHOLDER__');
+
 const envSchema = z.object({
   // ==================== 客户端环境变量 ====================
 
   /**
    * API 基础 URL
-   * 用于所有后端 API 请求
-   * 
-   * 示例：
-   * - 开发环境: http://localhost:3000
-   * - 生产环境: https://api.catwiki.com
    */
-  NEXT_PUBLIC_API_URL: z.string().url({
-    message: 'NEXT_PUBLIC_API_URL 必须是有效的 URL'
-  }).default('http://localhost:3000'),
+  NEXT_PUBLIC_API_URL: z.preprocess(
+    (val) => (isPlaceholder(val) ? '/api-proxy' : val), // 构建时占位符设为默认相对路径
+    z.string()
+      .min(1, { message: 'NEXT_PUBLIC_API_URL 不能为空' })
+      .refine(
+        (val) => val.startsWith('/') || z.string().url().safeParse(val).success,
+        { message: 'NEXT_PUBLIC_API_URL 必须是有效的 URL 或以 / 开头的路径' }
+      )
+      .default('http://localhost:3000')
+  ),
 
   /**
    * 应用环境
-   * development | production | test
    */
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
   /**
    * 是否启用调试模式
-   * 在开发环境中默认启用
    */
-  NEXT_PUBLIC_DEBUG: z.enum(['true', 'false'])
-    .transform(val => val === 'true')
-    .optional()
-    .default('false'),
+  NEXT_PUBLIC_DEBUG: z.preprocess(
+    (val) => (isPlaceholder(val) ? 'false' : val),
+    z.enum(['true', 'false'])
+      .optional()
+      .default('false')
+      .transform(val => val === 'true')
+  ),
 
   /**
    * Sentry DSN（可选）
-   * 用于错误监控
    */
-  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
-
-  /**
-   * Google Analytics ID（可选）
-   * 用于分析
-   */
-  NEXT_PUBLIC_GA_ID: z.string().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.preprocess(
+    (val) => (isPlaceholder(val) ? undefined : val),
+    z.string().url().optional()
+  ),
 
   /**
    * 客户端站点 URL
-   * 用于从管理后台跳转到客户端
    */
-  NEXT_PUBLIC_CLIENT_URL: z.string().url({
-    message: 'NEXT_PUBLIC_CLIENT_URL 必须是有效的 URL'
-  }).default('http://localhost:8002'),
+  NEXT_PUBLIC_CLIENT_URL: z.preprocess(
+    (val) => (isPlaceholder(val) ? 'http://localhost:8002' : val),
+    z.string().url({
+      message: 'NEXT_PUBLIC_CLIENT_URL 必须是有效的 URL'
+    }).default('http://localhost:8002')
+  ),
 
   /**
    * 文档站点 URL
    */
-  NEXT_PUBLIC_DOCS_URL: z.string().url({
-    message: 'NEXT_PUBLIC_DOCS_URL 必须是有效的 URL'
-  }).default('http://localhost:8003'),
+  NEXT_PUBLIC_DOCS_URL: z.preprocess(
+    (val) => (isPlaceholder(val) ? 'http://localhost:8003' : val),
+    z.string().url({
+      message: 'NEXT_PUBLIC_DOCS_URL 必须是有效的 URL'
+    }).default('http://localhost:8003')
+  ),
 
   /**
    * CatWiki 版本
-   * community | enterprise
    */
-  NEXT_PUBLIC_CATWIKI_EDITION: z.string().optional().transform(() => 'community' as const),
+  NEXT_PUBLIC_CATWIKI_EDITION: z.preprocess(
+    (val) => (isPlaceholder(val) ? 'community' : val),
+    z.string().optional().transform(() => 'community' as const)
+  ),
 })
 
 /**
@@ -111,7 +123,6 @@ function validateEnv(): Env {
       NODE_ENV: process.env.NODE_ENV,
       NEXT_PUBLIC_DEBUG: process.env.NEXT_PUBLIC_DEBUG,
       NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
-      NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
       NEXT_PUBLIC_CLIENT_URL: process.env.NEXT_PUBLIC_CLIENT_URL,
       NEXT_PUBLIC_DOCS_URL: process.env.NEXT_PUBLIC_DOCS_URL,
       NEXT_PUBLIC_CATWIKI_EDITION: process.env.NEXT_PUBLIC_CATWIKI_EDITION,

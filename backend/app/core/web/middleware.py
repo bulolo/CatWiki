@@ -92,12 +92,28 @@ def setup_middleware(app):
     app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
     # CORS 中间件
+    cors_origins = settings.BACKEND_CORS_ORIGINS
+    allow_credentials = True
+
+    if settings.ENVIRONMENT != "prod":
+        # 开发环境下，除了配置的源，还允许常见的本地开发地址
+        # 别用 "*"，因为我们要开启 allow_credentials=True，必须指明具体源
+        dev_origins = [
+            "http://localhost:8001",
+            "http://localhost:8002",
+            "http://localhost:8003",
+            "http://localhost:3000",
+        ]
+        cors_origins = list(set(cors_origins + dev_origins))
+        allow_credentials = True
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.BACKEND_CORS_ORIGINS,
-        allow_credentials=True,
+        allow_origins=cors_origins,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["*"],
     )
 
     # 请求日志中间件

@@ -77,11 +77,9 @@ help:
 dev-init:
 	@echo "🔧 [CatWiki] 正在初始化环境配置..."
 	@echo "🧹 [CatWiki] 清理现有配置文件..."
-	@rm -f backend/.env frontend/admin/.env frontend/client/.env
+	@rm -f backend/.env
 	@echo "📥 [CatWiki] 从 .env.example 复制配置文件..."
 	@cp backend/.env.example backend/.env
-	@cp frontend/admin/.env.example frontend/admin/.env
-	@cp frontend/client/.env.example frontend/client/.env
 	@# 自动修正开发环境基础配置
 	@$(SED_I) 's/^ENVIRONMENT=.*/ENVIRONMENT=dev/g' backend/.env
 	@$(SED_I) 's/^DEBUG=.*/DEBUG=true/g' backend/.env
@@ -138,8 +136,6 @@ prod-init:
 	@echo "🚀 开始初始化生产环境配置..."
 	@mkdir -p deploy/docker
 	@cp backend/.env.example deploy/docker/.env.backend
-	@cp frontend/admin/.env.example deploy/docker/.env.admin
-	@cp frontend/client/.env.example deploy/docker/.env.client
 	@# 自动修正生产环境基础配置
 	@$(SED_I) 's/^ENVIRONMENT=.*/ENVIRONMENT=prod/g' deploy/docker/.env.backend
 	@$(SED_I) 's/^DEBUG=.*/DEBUG=false/g' deploy/docker/.env.backend
@@ -147,15 +143,12 @@ prod-init:
 	@echo "⚠️  请务必在运行 'make prod-up' 前修改这些 .env.* 文件中的敏感信息！"
 
 prod-up:
-	set -a && . deploy/docker/.env.client && . deploy/docker/.env.admin && set +a && \
 	docker compose -f deploy/docker/docker-compose.yml up -d --build
 
 # 生产环境无缓存重新构建
 prod-rebuild:
 	@echo "🔧 [CatWiki] 无缓存重新构建生产环境..."
-	set -a && . deploy/docker/.env.client && . deploy/docker/.env.admin && set +a && \
 	docker compose -f deploy/docker/docker-compose.yml build --no-cache
-	set -a && . deploy/docker/.env.client && . deploy/docker/.env.admin && set +a && \
 	docker compose -f deploy/docker/docker-compose.yml up -d
 
 # 生产环境停止

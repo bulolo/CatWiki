@@ -64,7 +64,19 @@ const nextConfig = {
     // 图片尺寸配置
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-  }
+  },
+
+  // 禁用路径末尾斜杠
+  trailingSlash: false,
+
+  async rewrites () {
+    return [
+      {
+        source: '/api-proxy/:path*',
+        destination: `${process.env.PROXY_API_URL || 'http://backend:3000'}/:path*`,
+      },
+    ]
+  },
 }
 
 module.exports = nextConfig

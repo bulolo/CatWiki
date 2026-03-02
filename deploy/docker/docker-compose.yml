@@ -70,7 +70,7 @@ services:
     env_file:
       - .env.backend
     environment:
-      - TZ=Asia/Shanghai
+      TZ: Asia/Shanghai
     volumes:
       - rustfs_data:/data
       - rustfs_logs:/logs
@@ -106,17 +106,6 @@ services:
     container_name: catwiki-backend-init
     env_file:
       - .env.backend
-    environment:
-      # 环境配置
-      ENVIRONMENT: prod
-      TZ: Asia/Shanghai
-      
-      # 数据库配置
-      POSTGRES_SERVER: postgres
-      POSTGRES_PORT: 5432
-      
-      # RustFS 对象存储配置
-      RUSTFS_ENDPOINT: ${RUSTFS_ENDPOINT:-rustfs:9000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -159,17 +148,6 @@ services:
     container_name: catwiki-backend
     env_file:
       - .env.backend
-    environment:
-      # 环境配置
-      ENVIRONMENT: prod
-      TZ: Asia/Shanghai
-      
-      # 数据库配置
-      POSTGRES_SERVER: postgres
-      POSTGRES_PORT: 5432
-      
-      # RustFS 对象存储配置
-      RUSTFS_ENDPOINT: ${RUSTFS_ENDPOINT:-rustfs:9000}
     depends_on:
       backend-init:
         condition: service_completed_successfully
@@ -183,7 +161,7 @@ services:
       - catwiki-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/v1/health/"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -211,17 +189,16 @@ services:
     build:
       context: ../../frontend/admin
       dockerfile: Dockerfile.prod
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.catwiki.cn}
-        NEXT_PUBLIC_CLIENT_URL: ${NEXT_PUBLIC_CLIENT_URL:-https://catwiki.cn}
-        NEXT_PUBLIC_DOCS_URL: ${NEXT_PUBLIC_DOCS_URL:-https://docs.catwiki.cn}
     image: catwiki-admin:latest
     container_name: catwiki-admin
-    env_file:
-      - .env.admin
     environment:
       NODE_ENV: production
       TZ: Asia/Shanghai
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      NEXT_PUBLIC_CLIENT_URL: http://localhost:8002
+      NEXT_PUBLIC_DOCS_URL: http://localhost:8003
+      NEXT_PUBLIC_DEBUG: false
+      NEXT_PUBLIC_SENTRY_DSN: ""
     depends_on:
       backend:
         condition: service_healthy
@@ -251,17 +228,15 @@ services:
     build:
       context: ../../frontend/client
       dockerfile: Dockerfile.prod
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.catwiki.cn}
-        NEXT_PUBLIC_DOCS_URL: ${NEXT_PUBLIC_DOCS_URL:-https://docs.catwiki.cn}
-        NEXT_PUBLIC_ADMIN_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://admin.catwiki.cn}
     image: catwiki-client:latest
     container_name: catwiki-client
-    env_file:
-      - .env.client
     environment:
       NODE_ENV: production
       TZ: Asia/Shanghai
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      NEXT_PUBLIC_DOCS_URL: http://localhost:8003
+      NEXT_PUBLIC_ADMIN_URL: http://localhost:8001
+      NEXT_PUBLIC_DEBUG: false
     depends_on:
       backend:
         condition: service_healthy

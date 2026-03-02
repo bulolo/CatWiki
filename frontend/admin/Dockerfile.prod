@@ -26,15 +26,24 @@ RUN pnpm install --frozen-lockfile
 # 复制源代码 (放在安装依赖之后，利用 Docker 缓存)
 COPY . .
 
-# 构建参数
-ARG NEXT_PUBLIC_API_URL
+# 构建参数 - 使用占位符，以便在运行时通过 entrypoint.sh 替换
+ARG NEXT_PUBLIC_API_URL=__NEXT_PUBLIC_API_URL_PLACEHOLDER__
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-ARG NEXT_PUBLIC_CLIENT_URL
+ARG NEXT_PUBLIC_CLIENT_URL=__NEXT_PUBLIC_CLIENT_URL_PLACEHOLDER__
 ENV NEXT_PUBLIC_CLIENT_URL=$NEXT_PUBLIC_CLIENT_URL
 
-ARG NEXT_PUBLIC_CATWIKI_EDITION
+ARG NEXT_PUBLIC_CATWIKI_EDITION=__NEXT_PUBLIC_CATWIKI_EDITION_PLACEHOLDER__
 ENV NEXT_PUBLIC_CATWIKI_EDITION=$NEXT_PUBLIC_CATWIKI_EDITION
+
+ARG NEXT_PUBLIC_DOCS_URL=__NEXT_PUBLIC_DOCS_URL_PLACEHOLDER__
+ENV NEXT_PUBLIC_DOCS_URL=$NEXT_PUBLIC_DOCS_URL
+
+ARG NEXT_PUBLIC_DEBUG=__NEXT_PUBLIC_DEBUG_PLACEHOLDER__
+ENV NEXT_PUBLIC_DEBUG=$NEXT_PUBLIC_DEBUG
+
+ARG NEXT_PUBLIC_SENTRY_DSN=__NEXT_PUBLIC_SENTRY_DSN_PLACEHOLDER__
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 
 # 构建应用
 RUN pnpm build
@@ -58,10 +67,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# 复制入口脚本
+COPY entrypoint.sh ./entrypoint.sh
 
-
-# 设置文件所有者
-RUN chown -R nextjs:nodejs /app
+# 设置文件所有者并使脚本可执行
+RUN chown -R nextjs:nodejs /app && \
+    chmod +x ./entrypoint.sh
 
 USER nextjs
 
@@ -69,6 +80,9 @@ EXPOSE 8001
 
 ENV PORT=8001
 ENV HOSTNAME="0.0.0.0"
+
+# 使用 entrypoint 脚本
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 CMD ["node", "server.js"]
 

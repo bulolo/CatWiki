@@ -126,7 +126,7 @@ class DoclingDocProcessor(BaseDocProcessor):
         for k, v in final_options.items():
             if isinstance(v, bool):
                 data[k] = "true" if v else "false"
-            elif isinstance(v, (int, float)):
+            elif isinstance(v, int | float):
                 data[k] = str(v)
             elif v is None:
                 continue

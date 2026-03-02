@@ -16,7 +16,7 @@
 const nextConfig = {
   reactStrictMode: true, // 开启 Strict Mode 以检测潜在问题
   output: 'standalone', // 支持 Docker 部署
-  
+
   // 图片优化配置
   images: {
     remotePatterns: [
@@ -33,12 +33,24 @@ const nextConfig = {
     ],
     formats: ['image/avif', 'image/webp'],
   },
-  
+
   // 编译优化
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
       exclude: ['error', 'warn'],
     } : false,
+  },
+
+  // 禁用路径末尾斜杠
+  trailingSlash: false,
+
+  async rewrites () {
+    return [
+      {
+        source: '/api-proxy/:path*',
+        destination: `${process.env.PROXY_API_URL || 'http://backend:3000'}/:path*`,
+      },
+    ]
   },
 }
 

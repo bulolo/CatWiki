@@ -16,7 +16,7 @@ export class AdminHealthService {
     public getAdminHealth(): CancelablePromise<ApiResponse_HealthResponse_> {
         return this.httpRequest.request({
             method: 'GET',
-            url: '/admin/v1/health/',
+            url: '/admin/v1/health',
         });
     }
 }

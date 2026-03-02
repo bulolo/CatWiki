@@ -68,13 +68,11 @@ async def get_db() -> AsyncGenerator[AsyncSession]:
 
             if not isinstance(
                 e,
-                (
-                    HTTPException,
-                    RequestValidationError,
-                    ValidationError,
-                    CatWikiError,
-                    ClientDisconnect,
-                ),
+                HTTPException
+                | RequestValidationError
+                | ValidationError
+                | CatWikiError
+                | ClientDisconnect,
             ):
                 logger.error(f"数据库会话错误: {e}")
             await session.rollback()

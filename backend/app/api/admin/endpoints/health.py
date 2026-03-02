@@ -27,7 +27,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/",
+    "",
     response_model=ApiResponse[HealthResponse],
     summary="健康检查",
     description="检查 API 服务、数据库连接和对象存储状态",

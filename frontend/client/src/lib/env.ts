@@ -24,15 +24,28 @@ import { z } from 'zod'
 /**
  * 环境变量 Schema
  */
+/**
+ * 校验是否为占位符 (用于 Docker 运行时注入)
+ */
+const isPlaceholder = (val: unknown) =>
+  typeof val === 'string' && val.startsWith('__NEXT_PUBLIC_') && val.endsWith('_PLACEHOLDER__');
+
 const envSchema = z.object({
   // ==================== 客户端环境变量 ====================
 
   /**
    * API 基础 URL
    */
-  NEXT_PUBLIC_API_URL: z.string().url({
-    message: 'NEXT_PUBLIC_API_URL 必须是有效的 URL'
-  }).default('http://localhost:3000'),
+  NEXT_PUBLIC_API_URL: z.preprocess(
+    (val) => (isPlaceholder(val) ? '/api-proxy' : val),
+    z.string()
+      .min(1, { message: 'NEXT_PUBLIC_API_URL 不能为空' })
+      .refine(
+        (val) => val.startsWith('/') || z.string().url().safeParse(val).success,
+        { message: 'NEXT_PUBLIC_API_URL 必须是有效的 URL 或以 / 开头的路径' }
+      )
+      .default('http://localhost:3000')
+  ),
 
   /**
    * 应用环境
@@ -42,10 +55,29 @@ const envSchema = z.object({
   /**
    * 是否启用调试模式
    */
-  NEXT_PUBLIC_DEBUG: z.enum(['true', 'false'])
-    .transform((val: string) => val === 'true')
-    .optional()
-    .default(false),
+  NEXT_PUBLIC_DEBUG: z.preprocess(
+    (val) => (isPlaceholder(val) ? 'false' : val),
+    z.enum(['true', 'false'])
+      .optional()
+      .default('false')
+      .transform((val) => val === 'true')
+  ),
+
+  /**
+   * 管理后台地址
+   */
+  NEXT_PUBLIC_ADMIN_URL: z.preprocess(
+    (val) => (isPlaceholder(val) ? 'http://localhost:8001' : val),
+    z.string().url().optional().default('http://localhost:8001')
+  ),
+
+  /**
+   * 文档站点地址
+   */
+  NEXT_PUBLIC_DOCS_URL: z.preprocess(
+    (val) => (isPlaceholder(val) ? 'http://localhost:8003' : val),
+    z.string().url().optional().default('http://localhost:8003')
+  ),
 })
 
 /**
@@ -62,6 +94,8 @@ function validateEnv(): Env {
       NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
       NODE_ENV: process.env.NODE_ENV,
       NEXT_PUBLIC_DEBUG: process.env.NEXT_PUBLIC_DEBUG,
+      NEXT_PUBLIC_ADMIN_URL: process.env.NEXT_PUBLIC_ADMIN_URL,
+      NEXT_PUBLIC_DOCS_URL: process.env.NEXT_PUBLIC_DOCS_URL,
     })
   } catch (error: unknown) {
     if (error instanceof z.ZodError) {

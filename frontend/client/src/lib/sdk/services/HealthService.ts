@@ -16,7 +16,7 @@ export class HealthService {
     public getClientHealth(): CancelablePromise<ApiResponse_HealthResponse_> {
         return this.httpRequest.request({
             method: 'GET',
-            url: '/v1/health/',
+            url: '/v1/health',
         });
     }
 }

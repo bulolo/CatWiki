@@ -76,9 +76,7 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      # 时区设置
-      - TZ=Asia/Shanghai
-      # RustFS 配置 (从 .env 加载)
+      TZ: Asia/Shanghai
     ports:
       # RustFS API 端口
       - "9000:9000"
@@ -128,15 +126,12 @@ services:
     environment:
       # 环境配置
       TZ: Asia/Shanghai
-      
       # 数据库配置（使用服务名连接）
       POSTGRES_SERVER: postgres
       POSTGRES_PORT: 5432
-      
       # RustFS 对象存储配置 (从 .env 加载，Docker 内部通信使用 RUSTFS_DOCKER_ENDPOINT)
       RUSTFS_ENDPOINT: ${RUSTFS_DOCKER_ENDPOINT:-rustfs:9000}
       UV_CACHE_DIR: /root/.cache/uv
-      
     volumes:
       # 挂载代码目录以访问脚本
       - ./backend:/app:delegated
@@ -202,17 +197,6 @@ services:
     container_name: catwiki-backend-dev
     env_file:
       - ./backend/.env
-    environment:
-      # 时区配置
-      TZ: Asia/Shanghai
-      
-      # 数据库配置（使用服务名连接）
-      POSTGRES_SERVER: postgres
-      POSTGRES_PORT: 5432
-      
-      # RustFS 对象存储配置 (从 .env 加载，Docker 内部通信使用 RUSTFS_DOCKER_ENDPOINT)
-      RUSTFS_ENDPOINT: ${RUSTFS_DOCKER_ENDPOINT:-rustfs:9000}
-      
     ports:
       - "3000:3000"
     volumes:
@@ -261,11 +245,15 @@ services:
       dockerfile: Dockerfile.dev
     image: catwiki-admin-frontend-dev
     container_name: catwiki-admin-frontend-dev
-    env_file:
-      - ./frontend/admin/.env
     environment:
-      - NODE_ENV=development
-      - TZ=Asia/Shanghai
+      NODE_ENV: development
+      TZ: Asia/Shanghai
+      NEXT_PUBLIC_API_URL: /api-proxy
+      NEXT_PUBLIC_CLIENT_URL: http://localhost:8002
+      NEXT_PUBLIC_DOCS_URL: http://localhost:8003
+      NEXT_PUBLIC_CATWIKI_EDITION: community
+      NEXT_PUBLIC_DEBUG: true
+      PROXY_API_URL: http://backend:3000
     ports:
       - "8001:8001"
     volumes:
@@ -304,11 +292,15 @@ services:
       dockerfile: Dockerfile.dev
     image: catwiki-client-frontend-dev
     container_name: catwiki-client-frontend-dev
-    env_file:
-      - ./frontend/client/.env
     environment:
-      - NODE_ENV=development
-      - TZ=Asia/Shanghai
+      NODE_ENV: development
+      TZ: Asia/Shanghai
+      NEXT_PUBLIC_API_URL: /api-proxy
+      NEXT_PUBLIC_DOCS_URL: http://localhost:8003
+      NEXT_PUBLIC_ADMIN_URL: http://localhost:8001
+      NEXT_PUBLIC_CATWIKI_EDITION: community
+      NEXT_PUBLIC_DEBUG: true
+      PROXY_API_URL: http://backend:3000
     ports:
       - "8002:8002"
     volumes:
@@ -348,8 +340,8 @@ services:
     image: catwiki-docs-frontend-dev
     container_name: catwiki-docs-frontend-dev
     environment:
-      - NODE_ENV=development
-      - TZ=Asia/Shanghai
+      NODE_ENV: development
+      TZ: Asia/Shanghai
     ports:
       - "8003:8003"
     volumes:
