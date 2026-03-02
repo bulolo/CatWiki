@@ -73,7 +73,6 @@ SERVICES=(
   "backend:backend:Dockerfile.prod"
   "admin:frontend/admin:Dockerfile.prod"
   "client:frontend/client:Dockerfile.prod"
-  "docs:frontend/docs:Dockerfile.prod"
 )
 
 TARGET_SERVICE=$1
