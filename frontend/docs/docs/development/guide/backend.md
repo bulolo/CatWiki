@@ -82,7 +82,7 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 3000
 
 ### 3. CE (社区版) 同步
 - **同步代码**: `make sync-ce` (将 EE 代码同步并过滤生成 CE 版)
-- **发布代码**: `make publish-ce-repo` (推送至 GitHub 公开仓库)
+- **发布代码**: `make publish-ce-github` (推送至 GitHub 公开仓库)
 - **发布镜像**: `make publish-ce-images` (构建 CE 镜像并推送到 Docker Hub)
 
 ---
