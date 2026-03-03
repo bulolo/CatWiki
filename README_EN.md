@@ -401,11 +401,19 @@ We've adopted a model similar to Dify.ai to provide better enterprise flexibilit
 
 ---
 
+<div align="center">
+
 ## 📮 Contact
 
-- 💬 **Feedback**: Submit via [GitHub Issues](https://github.com/bulolo/CatWiki/issues)
-- 📧 **Business**: 82607314@qq.com / bulolo (WeChat)
-- 🌐 **Website**: https://catwiki.ai
+**💬 Feedback**: [GitHub Issues](https://github.com/bulolo/CatWiki/issues) &nbsp; | &nbsp; **📧 Business**: 82607314@qq.com / bulolo (WeChat) &nbsp; | &nbsp; **🌐 Website**: [catwiki.ai](https://catwiki.ai)
+
+<br>
+
+<img src="./frontend/docs/docs/public/images/wechat.jpg" width="160" alt="WeChat QR Code">
+<br>
+<sub>Scan to join community (Note: CatWiki)</sub>
+
+</div>
 
 ---
 

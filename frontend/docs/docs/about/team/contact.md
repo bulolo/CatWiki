@@ -23,6 +23,12 @@
 - **微信助手**: 添加微信 `bulolo` (请备注: **CatWiki**)
 - **社群动态**: 获取最新功能预告、技术干货分享及实时答疑协助。
 
+<div align="center">
+  <img src="/images/wechat.jpg" width="160" alt="微信二维码" style="margin-top: 15px; border-radius: 8px;">
+  <br>
+  <sub>扫码加入社区 (备注: CatWiki)</sub>
+</div>
+
 ### 🌐 官方网站
 
 - **官网**: [https://catwiki.ai](https://catwiki.ai)

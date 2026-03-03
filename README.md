@@ -409,11 +409,19 @@ A: 确保你的访问路径包含站点域名后缀，例如：`http://localhost
 
 ---
 
+<div align="center">
+
 ## 📮 联系方式
 
-- 💬 **问题反馈**: 通过 [GitHub Issues](https://github.com/bulolo/CatWiki/issues) 提交
-- 📧 **商务合作**: 82607314@qq.com/ bulolo(微信)
-- 🌐 **官方网站**: https://catwiki.ai
+**💬 问题反馈**: [GitHub Issues](https://github.com/bulolo/CatWiki/issues) &nbsp; | &nbsp; **📧 商务合作**: 82607314@qq.com / bulolo (微信) &nbsp; | &nbsp; **🌐 官方网站**: [catwiki.ai](https://catwiki.ai)
+
+<br>
+
+<img src="./frontend/docs/docs/public/images/wechat.jpg" width="160" alt="微信二维码">
+<br>
+<sub>扫码加入社区 (备注: CatWiki)</sub>
+
+</div>
 
 ---
 
