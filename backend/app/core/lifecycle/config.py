@@ -24,6 +24,7 @@ from app.core.infra.config import (
 )
 from app.crud.system_config import crud_system_config
 from app.db.database import AsyncSessionLocal
+from app.schemas.system_config import DocProcessorConfig
 
 logger = logging.getLogger(__name__)
 
@@ -153,46 +154,56 @@ async def sync_doc_processor_config_to_db():
                 "⚠️ [强制覆盖] 检测到 FORCE_UPDATE_DOC_PROCESSOR=True，将使用环境变量覆盖数据库配置"
             )
 
-        # 2. 构建配置列表
+        # 2. 提取现有配置中的 ID 以保持幂等性 (如果名字匹配，则复用其 ID)
+        name_to_id = {}
+        if existing_config and "processors" in existing_config.config_value:
+            for p in existing_config.config_value["processors"]:
+                if "name" in p and "id" in p:
+                    name_to_id[p["name"]] = p["id"]
+
+        # 3. 构建配置列表
         processors_list = []
 
         # (1) Docling 配置
         if settings.DOCLING_BASE_URL:
             processors_list.append(
-                {
-                    "name": settings.DOCLING_NAME,
-                    "type": "Docling",
-                    "base_url": settings.DOCLING_BASE_URL,
-                    "api_key": settings.DOCLING_API_KEY or "",
-                    "enabled": settings.DOCLING_ENABLED,
-                    "config": {"is_ocr": True, "extract_tables": True, "extract_images": False},
-                }
+                DocProcessorConfig(
+                    name=settings.DOCLING_NAME,
+                    id=name_to_id.get(settings.DOCLING_NAME),  # 尝试复用原有 ID
+                    type="Docling",
+                    base_url=settings.DOCLING_BASE_URL,
+                    api_key=settings.DOCLING_API_KEY or "",
+                    enabled=settings.DOCLING_ENABLED,
+                    config={"is_ocr": True, "extract_tables": True, "extract_images": False},
+                ).model_dump(mode="json")
             )
 
         # (2) Mineru 配置
         if settings.MINERU_BASE_URL:
             processors_list.append(
-                {
-                    "name": settings.MINERU_NAME,
-                    "type": "MinerU",
-                    "base_url": settings.MINERU_BASE_URL,
-                    "api_key": settings.MINERU_API_KEY or "",
-                    "enabled": settings.MINERU_ENABLED,
-                    "config": {"is_ocr": True, "extract_tables": True, "extract_images": False},
-                }
+                DocProcessorConfig(
+                    name=settings.MINERU_NAME,
+                    id=name_to_id.get(settings.MINERU_NAME),  # 尝试复用原有 ID
+                    type="MinerU",
+                    base_url=settings.MINERU_BASE_URL,
+                    api_key=settings.MINERU_API_KEY or "",
+                    enabled=settings.MINERU_ENABLED,
+                    config={"is_ocr": True, "extract_tables": True, "extract_images": False},
+                ).model_dump(mode="json")
             )
 
         # (3) PaddleOCR 配置
         if settings.PADDLEOCR_BASE_URL:
             processors_list.append(
-                {
-                    "name": settings.PADDLEOCR_NAME,
-                    "type": "PaddleOCR",
-                    "base_url": settings.PADDLEOCR_BASE_URL,
-                    "api_key": settings.PADDLEOCR_API_KEY or "",
-                    "enabled": settings.PADDLEOCR_ENABLED,
-                    "config": {"is_ocr": True, "extract_tables": True, "extract_images": False},
-                }
+                DocProcessorConfig(
+                    name=settings.PADDLEOCR_NAME,
+                    id=name_to_id.get(settings.PADDLEOCR_NAME),  # 尝试复用原有 ID
+                    type="PaddleOCR",
+                    base_url=settings.PADDLEOCR_BASE_URL,
+                    api_key=settings.PADDLEOCR_API_KEY or "",
+                    enabled=settings.PADDLEOCR_ENABLED,
+                    config={"is_ocr": True, "extract_tables": True, "extract_images": False},
+                ).model_dump(mode="json")
             )
 
         if not processors_list:

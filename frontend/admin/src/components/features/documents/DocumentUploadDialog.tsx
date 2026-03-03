@@ -129,6 +129,7 @@ export function DocumentUploadDialog({
             ? res.processors
               .filter((item): item is Record<string, unknown> => isRecord(item))
               .map((item) => ({
+                id: typeof item.id === "string" ? item.id : "",
                 name: typeof item.name === "string" ? item.name : "",
                 type: parseDocProcessorType(item.type),
                 enabled: Boolean(item.enabled),

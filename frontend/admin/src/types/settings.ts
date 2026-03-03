@@ -32,6 +32,7 @@ export { DocProcessorType }
 
 // SDK 的 DocProcessorConfig 扩展：增加前端专用 'origin' 字段
 export type DocProcessorConfig = SdkDocProcessorConfig & {
+  id: string
   origin?: 'platform' | 'tenant'
 }
 
@@ -207,6 +208,7 @@ export const DOC_PROCESSOR_TYPES: { value: DocProcessorType; label: string; desc
 ]
 
 export const initialDocProcessorConfig: DocProcessorConfig = {
+  id: "",
   name: "",
   type: DocProcessorType.MINER_U,
   base_url: "",

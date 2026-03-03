@@ -8,6 +8,10 @@ import type { DocProcessorType } from './DocProcessorType';
  */
 export type DocProcessorConfig = {
     /**
+     * 唯一标识符
+     */
+    id?: string;
+    /**
      * 服务名称（用于标识）
      */
     name: string;

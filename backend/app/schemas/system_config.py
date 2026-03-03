@@ -17,6 +17,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Any, Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -235,6 +236,7 @@ class DocProcessorType(str, Enum):
 class DocProcessorConfig(BaseConfigModel):
     """单个文档处理服务配置"""
 
+    id: str = Field(default_factory=lambda: str(uuid4()), description="唯一标识符")
     name: str = Field(..., description="服务名称（用于标识）")
     type: DocProcessorType = Field(..., description="服务类型")
     base_url: str = Field(..., description="API 端点地址")

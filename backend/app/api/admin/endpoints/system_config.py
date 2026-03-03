@@ -506,15 +506,23 @@ async def get_doc_processor_config(
             )
             if platform_config:
                 platform_processors = platform_config.config_value.get("processors", [])
-                # 标记来源
+                # 标记来源并确保 ID 存在
                 for p in platform_processors:
                     p["origin"] = "platform"
+                    if "id" not in p:
+                        from uuid import uuid4
+
+                        p["id"] = str(uuid4())
 
     tenant_processors = []
     if config:
         tenant_processors = config.config_value.get("processors", [])
         for p in tenant_processors:
             p["origin"] = "tenant"
+            if "id" not in p:
+                from uuid import uuid4
+
+                p["id"] = str(uuid4())
 
     # 如果两边都没有，返回空
     # 对租户视角下的配置项进行脱敏

@@ -96,7 +96,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
   }
 
   const handleTest = async (processor: DocProcessorConfig) => {
-    setTesting(processor.name)
+    setTesting(processor.id)
     testMutation.mutate(processor, {
       onSuccess: (response: unknown) => {
         const status =
@@ -124,7 +124,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
   const handleStartAdd = () => {
     setIsAdding(true)
     setEditingIndex(null)
-    setFormData(initialDocProcessorConfig)
+    setFormData({ ...initialDocProcessorConfig, id: crypto.randomUUID() })
   }
 
   const handleStartEdit = (index: number) => {
@@ -166,14 +166,14 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
     handleCancel()
   }
 
-  const handleDelete = (processorName: string) => {
-    const updated = processors.filter(p => p.name !== processorName)
+  const handleDelete = (processorId: string) => {
+    const updated = processors.filter(p => p.id !== processorId)
     handleSave(updated)
   }
 
-  const handleToggleEnabled = (processorName: string, enabled: boolean) => {
+  const handleToggleEnabled = (processorId: string, enabled: boolean) => {
     const updated = processors.map(p =>
-      p.name === processorName ? { ...p, enabled } : p
+      p.id === processorId ? { ...p, enabled } : p
     )
     handleSave(updated)
   }
@@ -431,9 +431,9 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
           <div className="grid gap-4">
             {processors.map((processor, index) => (
               editingIndex === index ? (
-                <div key={processor.name}>{renderForm()}</div>
+                <div key={processor.id}>{renderForm()}</div>
               ) : (
-                <Card key={processor.name} className={`transition-all ${!processor.enabled ? 'opacity-60' : ''}`}>
+                <Card key={processor.id} className={`transition-all ${!processor.enabled ? 'opacity-60' : ''}`}>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -481,17 +481,17 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                         {processor.origin !== 'platform' && (
                           <Switch
                             checked={processor.enabled}
-                            onCheckedChange={(checked: boolean) => handleToggleEnabled(processor.name, checked)}
+                            onCheckedChange={(checked: boolean) => handleToggleEnabled(processor.id, checked)}
                           />
                         )}
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleTest(processor)}
-                          disabled={testing === processor.name || processor.origin === 'platform'}
+                          disabled={testing === processor.id || processor.origin === 'platform'}
                           title={processor.origin === 'platform' ? "平台级资源，无需测试连接" : "测试连接性"}
                         >
-                          {testing === processor.name ? (
+                          {testing === processor.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <Zap className="h-4 w-4" />
@@ -510,7 +510,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => handleDelete(processor.name)}
+                                onClick={() => handleDelete(processor.id)}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

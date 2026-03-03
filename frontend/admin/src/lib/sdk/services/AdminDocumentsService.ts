@@ -58,7 +58,7 @@ export class AdminDocumentsService {
          */
         keyword?: (string | null),
         /**
-         * 排序字段: views, updated_at
+         * 排序字段: views, created_at, updated_at
          */
         orderBy?: (string | null),
         /**
