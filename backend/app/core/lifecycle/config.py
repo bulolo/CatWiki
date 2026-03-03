@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import logging
+from uuid import uuid4
 
 from app.core.infra.config import (
     AI_CHAT_CONFIG_KEY,
@@ -29,13 +31,17 @@ from app.schemas.system_config import DocProcessorConfig
 logger = logging.getLogger(__name__)
 
 
+def _get_default_tenant_id():
+    """根据版本决定初始配置的归属：EE版作为平台全局配置(None)，CE版作为单租户配置(1)"""
+    return None if settings.CATWIKI_EDITION == "enterprise" else 1
+
+
 async def sync_ai_config_to_db():
     """
     将 .env 中的 AI 配置同步到数据库。
     规则：如果数据库中已存在 AI 配置，则跳过同步，以保护手动修改的配置。
     """
-    # 根据版本决定初始配置的归属：EE版作为平台全局配置(None)，CE版作为单租户配置(1)
-    tenant_id = None if settings.CATWIKI_EDITION == "enterprise" else 1
+    tenant_id = _get_default_tenant_id()
     async with AsyncSessionLocal() as db:
         # 1. 检查数据库中是否已存在 AI 配置 (检查 Chat 即可代表系统已初始化)
         existing_config = await crud_system_config.get_by_key(
@@ -54,13 +60,11 @@ async def sync_ai_config_to_db():
                 "⚠️ [强制覆盖] 检测到 FORCE_UPDATE_AI_CONFIG=True，将使用环境变量覆盖数据库配置"
             )
 
-        # 2. 从环境变量构建初始配置
+        # 从环境变量构建初始配置
         # 只有在提供了 API Key 的情况下才认为是有意义的配置
         # 解析额外参数
         extra_body = {}
         if settings.AI_CHAT_EXTRA_BODY:
-            import json
-
             try:
                 extra_body = json.loads(settings.AI_CHAT_EXTRA_BODY)
             except Exception as e:
@@ -136,8 +140,7 @@ async def sync_doc_processor_config_to_db():
     """
     将 .env 中的文档解析服务配置同步到数据库。
     """
-    # 根据版本决定初始配置的归属：EE版作为平台全局配置(None)，CE版作为单租户配置(1)
-    tenant_id = None if settings.CATWIKI_EDITION == "enterprise" else 1
+    tenant_id = _get_default_tenant_id()
     async with AsyncSessionLocal() as db:
         # 1. 检查数据库中是否已存在
         existing_config = await crud_system_config.get_by_key(
@@ -163,45 +166,42 @@ async def sync_doc_processor_config_to_db():
 
         # 3. 构建配置列表
         processors_list = []
+        processor_defs = [
+            {
+                "name": settings.DOCLING_NAME,
+                "type": "Docling",
+                "base_url": settings.DOCLING_BASE_URL,
+                "api_key": settings.DOCLING_API_KEY,
+                "enabled": settings.DOCLING_ENABLED,
+            },
+            {
+                "name": settings.MINERU_NAME,
+                "type": "MinerU",
+                "base_url": settings.MINERU_BASE_URL,
+                "api_key": settings.MINERU_API_KEY,
+                "enabled": settings.MINERU_ENABLED,
+            },
+            {
+                "name": settings.PADDLEOCR_NAME,
+                "type": "PaddleOCR",
+                "base_url": settings.PADDLEOCR_BASE_URL,
+                "api_key": settings.PADDLEOCR_API_KEY,
+                "enabled": settings.PADDLEOCR_ENABLED,
+            },
+        ]
 
-        # (1) Docling 配置
-        if settings.DOCLING_BASE_URL:
+        for defn in processor_defs:
+            if not defn["base_url"]:
+                continue
+
             processors_list.append(
                 DocProcessorConfig(
-                    name=settings.DOCLING_NAME,
-                    id=name_to_id.get(settings.DOCLING_NAME),  # 尝试复用原有 ID
-                    type="Docling",
-                    base_url=settings.DOCLING_BASE_URL,
-                    api_key=settings.DOCLING_API_KEY or "",
-                    enabled=settings.DOCLING_ENABLED,
-                    config={"is_ocr": True, "extract_tables": True, "extract_images": False},
-                ).model_dump(mode="json")
-            )
-
-        # (2) Mineru 配置
-        if settings.MINERU_BASE_URL:
-            processors_list.append(
-                DocProcessorConfig(
-                    name=settings.MINERU_NAME,
-                    id=name_to_id.get(settings.MINERU_NAME),  # 尝试复用原有 ID
-                    type="MinerU",
-                    base_url=settings.MINERU_BASE_URL,
-                    api_key=settings.MINERU_API_KEY or "",
-                    enabled=settings.MINERU_ENABLED,
-                    config={"is_ocr": True, "extract_tables": True, "extract_images": False},
-                ).model_dump(mode="json")
-            )
-
-        # (3) PaddleOCR 配置
-        if settings.PADDLEOCR_BASE_URL:
-            processors_list.append(
-                DocProcessorConfig(
-                    name=settings.PADDLEOCR_NAME,
-                    id=name_to_id.get(settings.PADDLEOCR_NAME),  # 尝试复用原有 ID
-                    type="PaddleOCR",
-                    base_url=settings.PADDLEOCR_BASE_URL,
-                    api_key=settings.PADDLEOCR_API_KEY or "",
-                    enabled=settings.PADDLEOCR_ENABLED,
+                    id=name_to_id.get(defn["name"]) or str(uuid4()),
+                    name=defn["name"],
+                    type=defn["type"],
+                    base_url=defn["base_url"],
+                    api_key=defn["api_key"] or "",
+                    enabled=defn["enabled"],
                     config={"is_ocr": True, "extract_tables": True, "extract_images": False},
                 ).model_dump(mode="json")
             )
