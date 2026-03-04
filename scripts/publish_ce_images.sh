@@ -14,9 +14,9 @@ set -e
 #   VERSION             - 镜像版本标签 (默认: latest)
 #
 # Usage:
-#   make publish-ce-images               # 构建并推送所有 CE 镜像
+#   make publish-ce-images               # 构建并推送所有 CE 镜像 (标签: latest)
 #   make publish-ce-images s=backend     # 仅构建并推送指定服务
-#   make publish-ce-images v=v1.0.0      # 指定版本号
+#   make publish-ce-images v=v1.0.0      # 指定版本号 (同时自动附加 latest 标签)
 # ==============================================================================
 
 REGISTRY="docker.io"
@@ -27,6 +27,9 @@ echo "=========================================="
 echo "🚀 开始构建并推送 CatWiki CE 镜像到 Docker Hub"
 echo "📦 目标仓库: ${NAMESPACE}/*"
 echo "🏷️  镜像版本: ${VERSION}"
+if [ "$VERSION" != "latest" ]; then
+  echo "🏷️  同时推送: latest (自动附加)"
+fi
 echo "=========================================="
 
 # ---- 分支检查 ----
