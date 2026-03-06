@@ -16,6 +16,7 @@
 const nextConfig = {
   reactStrictMode: true, // 开启 Strict Mode 以检测潜在问题
   output: 'standalone', // 支持 Docker 部署
+  compress: false, // 禁用自带压缩，避免流式响应被缓冲
 
   // 图片优化配置
   images: {

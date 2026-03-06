@@ -84,6 +84,7 @@ class ClientSite(BaseModel):
     description: str | None = None
     icon: str | None = None
     article_count: int = 0
+    tenant_id: int | None = None
     tenant_slug: str | None = None
     theme_color: str | None = None
     layout_mode: str | None = None

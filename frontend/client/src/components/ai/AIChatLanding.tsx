@@ -29,11 +29,12 @@ import { ClientSite, QuickQuestion } from "@/lib/api-client"
 interface AIChatLandingProps {
   siteName?: string
   siteId?: number | null
+  tenantId?: number | null
   quickQuestions?: QuickQuestion[]
   allSites?: ClientSite[]
 }
 
-export function AIChatLanding({ siteName = "CatWiki", siteId, quickQuestions: propQuickQuestions, allSites }: AIChatLandingProps) {
+export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, quickQuestions: propQuickQuestions, allSites }: AIChatLandingProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [input, setInput] = useState("")
@@ -41,6 +42,7 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, quickQuestions: pr
 
   const { messages, isLoading, sendMessage, threadId, resetMessages, loadSessionMessages } = useAIChat({
     selectedSiteId: siteId,
+    selectedTenantId: tenantId,
     onMessageSent: () => setRefreshTrigger(prev => prev + 1)
   })
 
@@ -67,6 +69,7 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, quickQuestions: pr
     <div className="flex-1 flex bg-white h-full overflow-hidden relative">
       <ChatHistorySidebar
         siteId={siteId}
+        tenantId={tenantId}
         currentThreadId={threadId}
         refreshTrigger={refreshTrigger}
         onSelectSession={(tid) => {

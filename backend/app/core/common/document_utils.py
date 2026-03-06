@@ -101,13 +101,29 @@ async def enrich_document_dict(
             "content": getattr(document, "content", None),
         }
 
-    # 添加站点信息
-    if include_site_info and hasattr(document, "site") and document.site:
-        doc_dict["site_name"] = document.site.name
-        doc_dict["site_slug"] = document.site.slug
-        if hasattr(document.site, "tenant") and document.site.tenant:
-            doc_dict["tenant_slug"] = document.site.tenant.slug
+    # 添加站点信息 (使用 inspect 避免未加载时的 lazy-load 错误)
+    if include_site_info:
+        from sqlalchemy import inspect
+
+        insp = inspect(document)
+        # 检查 site 是否已加载且非 None
+        if "site" not in insp.unloaded and document.site:
+            doc_dict["site_name"] = document.site.name
+            doc_dict["site_slug"] = document.site.slug
+
+            # 检查 site.tenant 是否已加载
+            site_insp = inspect(document.site)
+            # 注意：site.tenant 也要检查是否在 site 的 unloaded 列表中
+            if "tenant" not in site_insp.unloaded and document.site.tenant:
+                doc_dict["tenant_id"] = document.site.tenant.id
+                doc_dict["tenant_slug"] = document.site.tenant.slug
+            else:
+                doc_dict["tenant_id"] = getattr(document.site, "tenant_id", None)
+                doc_dict["tenant_slug"] = None
         else:
+            doc_dict["site_name"] = None
+            doc_dict["site_slug"] = None
+            doc_dict["tenant_id"] = None
             doc_dict["tenant_slug"] = None
 
     # 添加合集对象

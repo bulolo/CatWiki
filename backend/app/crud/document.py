@@ -148,6 +148,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         db: AsyncSession,
         *,
         site_id: int | None = None,
+        tenant_id: int | None = None,
         collection_ids: list[int] | None = None,
         status: str | None = None,
         vector_status: str | None = None,
@@ -174,6 +175,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         query = self._apply_filters(
             query,
             site_id=site_id,
+            tenant_id=tenant_id,
             collection_ids=collection_ids,
             status=status,
             vector_status=vector_status,
@@ -255,9 +257,13 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         return await self.get_with_related_site(db, id=document_id)
 
     async def get_with_related_site(self, db: AsyncSession, id: int) -> Document | None:
-        """获取文档及其关联的站点信息（使用预加载优化）"""
+        """获取文档及其关联的站点与租户信息（使用预加载优化）"""
+        from app.models.site import Site as SiteModel
+
         result = await db.execute(
-            select(self.model).options(joinedload(self.model.site)).where(self.model.id == id)
+            select(self.model)
+            .options(joinedload(self.model.site).joinedload(SiteModel.tenant))
+            .where(self.model.id == id)
         )
         return result.scalar_one_or_none()
 

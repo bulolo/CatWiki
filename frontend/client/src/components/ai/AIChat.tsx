@@ -38,6 +38,7 @@ interface AIChatProps {
   onOpenChange: (open: boolean) => void
   initialQuery?: string
   siteId?: number | null
+  tenantId?: number | null
   allSites?: ClientSite[]
 }
 
@@ -47,10 +48,11 @@ const WELCOME_MESSAGE = {
   content: "你好！我是 catWiki 的 AI 助手，有什么可以帮助你的吗？",
 }
 
-export function AIChat({ open, onOpenChange, initialQuery, siteId, allSites }: AIChatProps) {
+export function AIChat({ open, onOpenChange, initialQuery, siteId, tenantId, allSites }: AIChatProps) {
   const { messages, isLoading, sendMessage } = useAIChat({
     initialMessages: [WELCOME_MESSAGE],
     selectedSiteId: siteId,
+    selectedTenantId: tenantId,
   })
 
   const [input, setInput] = useState("")

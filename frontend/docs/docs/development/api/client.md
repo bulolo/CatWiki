@@ -18,7 +18,7 @@ Client API 不需要身份认证，可以直接访问。
 
 ### 文档浏览
 
-- `GET /v1/documents` - 获取已发布文档列表
+- `GET /v1/documents` - 获取已发布文档列表（支持 tenant_slug 跨端拉取）
 - `GET /v1/documents/{id}` - 获取文档详情（自动增加浏览量）
 
 ### 合集浏览
@@ -37,7 +37,7 @@ Client API 不需要身份认证，可以直接访问。
 
 ### 会话记录
 
-- `GET /v1/chat/sessions` - 获取会话列表（支持 keyword 搜索，member_id 过滤）
+- `GET /v1/chat/sessions` - 获取会话列表（支持 tenant_slug, keyword 搜索，member_id 过滤）
 - `GET /v1/chat/sessions/{thread_id}` - 获取会话详情
 - `GET /v1/chat/sessions/{thread_id}/messages` - 获取会话历史消息
 - `DELETE /v1/chat/sessions/{thread_id}` - 删除会话
@@ -109,6 +109,7 @@ const site = response.data
 
 ```typescript
 const response = await apiClient.chatSessions.listChatSessions({
+  tenantSlug: "company-a", // 跨站点拉取
   keyword: "搜索内容",
   memberId: "user-123",
   page: 1,

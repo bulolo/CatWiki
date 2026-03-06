@@ -24,6 +24,7 @@ class ChatSessionBase(BaseModel):
 
     thread_id: str = Field(..., description="会话 thread_id")
     site_id: int = Field(..., description="站点ID")
+    tenant_id: int | None = Field(None, description="租户ID")
     member_id: str | None = Field(None, description="会员ID或访客标识")
     title: str | None = Field(None, description="会话标题")
 

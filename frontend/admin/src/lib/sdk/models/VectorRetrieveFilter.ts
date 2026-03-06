@@ -7,6 +7,10 @@
  */
 export type VectorRetrieveFilter = {
     /**
+     * 租户ID (可选过滤)
+     */
+    tenant_id?: (number | null);
+    /**
      * 站点ID (可选过滤)
      */
     site_id?: (number | null);

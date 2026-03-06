@@ -32,6 +32,7 @@ router = APIRouter()
 async def get_collection_tree(
     site_id: int = Query(..., description="站点ID"),
     include_documents: bool = Query(False, description="是否包含文档节点"),
+    tenant_id: int | None = Query(None, description="租户ID"),
     db: AsyncSession = Depends(get_db),
 ) -> ApiResponse[list[CollectionTree]]:
     """获取合集树形结构（客户端）"""
@@ -45,9 +46,9 @@ async def get_collection_tree(
 
     documents_by_collection = {}
     if include_documents:
-        # 获取站点下所有已发布文档（用于树形展示，不限制数量）
+        # 获取站点下所有已发布文档（用于树形展示，不限制数量，增加 tenant_id 过滤）
         all_documents = await crud_document.list(
-            db, site_id=site_id, status="published", skip=0, limit=None
+            db, site_id=site_id, tenant_id=tenant_id, status="published", skip=0, limit=None
         )
         published_docs = all_documents
 
@@ -59,7 +60,9 @@ async def get_collection_tree(
 
     async def build_tree(parent_id: int | None = None) -> list[CollectionTree]:
         """递归构建合集树"""
-        collections = await crud_collection.list(db, site_id=site_id, parent_id=parent_id)
+        collections = await crud_collection.list(
+            db, site_id=site_id, tenant_id=tenant_id, parent_id=parent_id
+        )
 
         tree = []
         for collection in collections:

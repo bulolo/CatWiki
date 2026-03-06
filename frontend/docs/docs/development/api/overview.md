@@ -97,7 +97,7 @@ CatWiki API 遵循 [Google API Design Guide](https://cloud.google.com/apis/desig
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `GET` | `/` | 获取已发布文档列表（分页） | `page`, `size`, `site_id`, `collection_id`, `keyword`, `exclude_content` (默认: true) |
+| `GET` | `/` | 获取已发布文档列表（分页） | `page`, `size`, `tenant_slug` (可选), `site_id`, `collection_id`, `keyword`, `exclude_content` |
 | `GET` | `/{document_id}` | 获取文档详情（自动增加浏览量） | - |
 
 **特性**:
@@ -269,7 +269,7 @@ CatWiki 接入 RustFS/MinIO 存储，支持标准对象存储操作。
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `GET` | `/sessions` | 获取会话列表 | `site_id`, `member_id`, `keyword`, `page`, `size` |
+| `GET` | `/sessions` | 获取会话列表 | `tenant_slug` (可选), `site_id`, `member_id`, `keyword`, `page`, `size` |
 | `GET` | `/sessions/{thread_id}` | 获取会话详情 | - |
 | `GET` | `/sessions/{thread_id}/messages` | 获取会话历史消息 | - |
 | `DELETE` | `/sessions/{thread_id}` | 删除会话（同步删除历史） | - |
@@ -393,13 +393,14 @@ make gen-sdk
 ---
 
 ## 开发提示
-1. **权限控制**: 所有 Admin API 都需要通过 `get_current_user_with_tenant` 进行身份验证
-2. **状态过滤**: Client API 自动过滤，仅返回 `status="active"` 的站点和 `status="published"` 的文档
-3. **向量状态**: 只有 `vector_status="completed"` 的文档才会被 AI 检索引用
-4. **性能优化**: 
-   - Client API 的 `GET /documents` 建议使用 `exclude_content=true` 加速列表加载
-   - 树形结构接口已优化，批量加载数据避免 N+1 查询
-5. **缓存策略**: Client API 的站点详情接口有 10 秒缓存
-6. **文件存储**: 支持 RustFS/MinIO，上传时自动生成唯一文件名并保存原始文件名到元数据
-7. **API 风格**: 自定义操作使用冒号风格 (`:action`)，符合 Google API Design Guide
-8. **多租户**: 系统配置接口支持 `scope` 参数（`platform`/`tenant`），区分平台级和租户级配置
+1. **权限控制**: 所有 Admin API 都需要通过 `get_current_user_with_tenant` 进行身份验证，强制租户视图。
+2. **状态过滤**: Client API 自动过滤，仅返回 `status="active"` 的站点和 `status="published"` 的文档。
+3. **隔离策略**: Client API 采用参数化隔离（如 `site_id`），不再依赖强制性的 `X-Tenant-Slug` Header，支持跨租户的站点广场模式。
+4. **向量状态**: 只有 `vector_status="completed"` 的文档才会被 AI 检索引用。
+5. **性能优化**: 
+   - Client API 的 `GET /documents` 建议使用 `exclude_content=true` 加速列表加载。
+   - 树形结构接口已优化，批量加载数据避免 N+1 查询。
+6. **缓存策略**: Client API 的站点详情接口有 10 秒缓存。
+7. **文件存储**: 支持 RustFS/MinIO，上传时自动生成唯一文件名并保存原始文件名到元数据。
+8. **API 风格**: 自定义操作使用冒号风格 (`:action`)，符合 Google API Design Guide。
+9. **多租户配置**: 系统配置接口支持 `scope` 参数（`platform`/`tenant`），区分平台级和租户级配置。

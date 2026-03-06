@@ -108,7 +108,10 @@ async def search_knowledge_base(query: str, config: RunnableConfig) -> str:
             retrieved_docs = await RAGService.retrieve(
                 query=query,
                 k=settings.RAG_RECALL_K,
-                filter=VectorRetrieveFilter(site_id=int(site_id)) if site_id else None,
+                filter=VectorRetrieveFilter(
+                    site_id=int(site_id) if site_id else None,
+                    tenant_id=int(tenant_id) if tenant_id else None,
+                ),
                 enable_rerank=settings.RAG_ENABLE_RERANK,
                 rerank_k=settings.RAG_RERANK_TOP_K,
             )
@@ -197,7 +200,7 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
     model_with_tools = model.bind_tools(tools)
 
     # 2. 定义节点
-    async def agent_node(state: ChatGraphState) -> dict:
+    async def agent_node(state: ChatGraphState, config: RunnableConfig) -> dict:
         """Agent 决策节点"""
         logger.debug("🤖 [Agent] Thinking...")
 
@@ -237,15 +240,10 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
         else:
             messages[0] = SystemMessage(content=system_content)
 
-        full_response = None
-        async for chunk in model_with_tools.astream(messages):
-            if full_response is None:
-                full_response = chunk
-            else:
-                full_response += chunk
-        return {"messages": [full_response]}
+        response = await model_with_tools.ainvoke(messages, config)
+        return {"messages": [response]}
 
-    async def summarize_conversation(state: ChatGraphState) -> dict:
+    async def summarize_conversation(state: ChatGraphState, config: RunnableConfig) -> dict:
         """对话摘要节点"""
         logger.info("📝 [Summarize] Summarizing conversation history...")
         messages = state["messages"]
@@ -266,7 +264,7 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
         prompt_messages = conversation_messages + [HumanMessage(content=summarize_message)]
 
         # 调用模型生成摘要
-        response = await model.ainvoke(prompt_messages)
+        response = await model.ainvoke(prompt_messages, config)
         new_summary = str(response.content)
         logger.info(f"📝 [Summarize] New summary: {new_summary[:100]}...")
 
@@ -291,7 +289,7 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
     max_consecutive_empty = settings.AGENT_MAX_CONSECUTIVE_EMPTY
     summary_trigger_count = settings.AGENT_SUMMARY_TRIGGER_MSG_COUNT
 
-    async def tools_wrapper_node(state: ChatGraphState) -> dict:
+    async def tools_wrapper_node(state: ChatGraphState, config: RunnableConfig) -> dict:
         """工具节点包装器，执行工具并追踪迭代计数和空结果"""
         current_count = state.get("iteration_count", 0)
         consecutive_empty = state.get("consecutive_empty_count", 0)
@@ -320,7 +318,7 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
             }
 
         # 正常执行工具
-        result = await tool_node.ainvoke(state)
+        result = await tool_node.ainvoke(state, config)
 
         # 递增迭代计数
         result["iteration_count"] = current_count + 1

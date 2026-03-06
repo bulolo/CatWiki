@@ -44,15 +44,18 @@ async def list_sessions(
     keyword: str | None = Query(None, description="搜索关键词（匹配标题或最后消息）"),
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(20, ge=1, le=100, description="每页数量"),
+    tenant_id: int | None = Query(None, description="租户ID"),
     db: AsyncSession = Depends(get_db),
 ) -> ApiResponse[ChatSessionListResponse]:
     """
     获取会话列表
 
-    支持按站点和会员过滤，支持关键词搜索，按更新时间倒序排列。
+    支持按租户、站点和会员过滤，支持关键词搜索，按更新时间倒序排列。
     """
+
     sessions, total = await ChatSessionService.list_sessions(
         db=db,
+        tenant_id=tenant_id,
         site_id=site_id,
         member_id=member_id,
         keyword=keyword,

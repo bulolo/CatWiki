@@ -15,6 +15,10 @@ export type ChatSessionResponse = {
      */
     site_id: number;
     /**
+     * 租户ID
+     */
+    tenant_id?: (number | null);
+    /**
      * 会员ID或访客标识
      */
     member_id?: (string | null);

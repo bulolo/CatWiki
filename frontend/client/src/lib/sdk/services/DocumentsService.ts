@@ -24,6 +24,7 @@ export class DocumentsService {
         orderBy,
         orderDir = 'desc',
         includeSiteInfo = false,
+        tenantId,
     }: {
         page?: number,
         size?: number,
@@ -55,6 +56,10 @@ export class DocumentsService {
          * 是否包含站点信息
          */
         includeSiteInfo?: boolean,
+        /**
+         * 租户ID
+         */
+        tenantId?: (number | null),
     }): CancelablePromise<ApiResponse_PaginatedResponse_Document__> {
         return this.httpRequest.request({
             method: 'GET',
@@ -69,6 +74,7 @@ export class DocumentsService {
                 'order_by': orderBy,
                 'order_dir': orderDir,
                 'include_site_info': includeSiteInfo,
+                'tenant_id': tenantId,
             },
             errors: {
                 422: `Validation Error`,

@@ -285,6 +285,7 @@ export default function TenantPortalPage() {
       <AIChatLanding
         siteName={selectedSite?.name}
         siteId={selectedSite?.id}
+        tenantId={selectedSite?.tenant_id || sites[0]?.tenant_id}
         quickQuestions={selectedSite?.quick_questions ?? undefined}
         allSites={sites}
       />

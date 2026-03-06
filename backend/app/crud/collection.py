@@ -52,6 +52,7 @@ class CRUDCollection(CRUDBase[Collection, CollectionCreate, CollectionUpdate]):
         db: AsyncSession,
         *,
         site_id: int | None = None,
+        tenant_id: int | None = None,
         parent_id: int | None | Any = _UNSET,
         skip: int = 0,
         limit: int = 100,
@@ -66,6 +67,7 @@ class CRUDCollection(CRUDBase[Collection, CollectionCreate, CollectionUpdate]):
             order_by="order",
             order_dir="asc",
             site_id=site_id,
+            tenant_id=tenant_id,
             parent_id=parent_id,
         )
 

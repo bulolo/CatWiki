@@ -17,7 +17,7 @@ export type Document = {
      */
     title: string;
     /**
-     * 所属租户ID
+     * 租户ID
      */
     tenant_id?: (number | null);
     /**

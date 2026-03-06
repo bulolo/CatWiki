@@ -95,6 +95,7 @@ class Document(DocumentBase, BaseSchemaWithTimestamps):
     # 关联字段
     site_name: str | None = Field(None, description="站点名称")
     site_slug: str | None = Field(None, description="站点标识")
+    tenant_id: int | None = Field(None, description="租户ID")
     tenant_slug: str | None = Field(None, description="租户标识")
     collection: CollectionInfo | None = Field(None, description="所属合集信息")
 
@@ -116,6 +117,7 @@ class VectorizeResponse(BaseModel):
 class VectorRetrieveFilter(BaseModel):
     """向量检索过滤器"""
 
+    tenant_id: int | None = Field(None, description="租户ID (可选过滤)")
     site_id: int | None = Field(None, description="站点ID (可选过滤)")
     id: str | None = Field(None, description="文档ID (可选过滤)")
     source: str | None = Field("document", description="来源 (可选过滤)")

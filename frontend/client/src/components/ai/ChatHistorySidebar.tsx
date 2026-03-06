@@ -23,6 +23,7 @@ import { useChatSessions } from "@/hooks/useChatSessions"
 
 interface ChatHistorySidebarProps {
   siteId?: number | null
+  tenantId?: number | null
   currentThreadId?: string
   onSelectSession: (threadId: string) => void
   onNewChat: () => void
@@ -40,9 +41,10 @@ export function ChatHistorySidebar({
   onNewChat,
   isOpen,
   onClose,
-  refreshTrigger = 0
+  refreshTrigger = 0,
+  tenantId
 }: ChatHistorySidebarProps) {
-  const { sessions, isLoading, deleteSession, refresh, searchSessions } = useChatSessions({ siteId })
+  const { sessions, isLoading, deleteSession, refresh, searchSessions } = useChatSessions({ siteId, tenantId })
 
   // 监听外部刷新信号
   useEffect(() => {

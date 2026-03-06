@@ -25,6 +25,8 @@ interface UseAIChatOptions {
   initialMessages?: Message[]
   /** 当前选中的站点ID（用于生成 filter） */
   selectedSiteId?: number | null
+  /** 当前选中的租户ID（用于双重校验隔离） */
+  selectedTenantId?: number | null
   /** 消息发送完成后的回调 */
   onMessageSent?: () => void
 }
@@ -59,6 +61,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
   const {
     initialMessages = [],
     selectedSiteId = null,
+    selectedTenantId = null,
   } = options
 
   const [messages, setMessages] = useState<Message[]>(initialMessages)
@@ -104,28 +107,20 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       user: getVisitorId(), // 增加 Visitor ID 以支持匿名会话记录
     }
 
-    // 添加过滤器
-    if (selectedSiteId) {
+    // 添加过滤器 (携带 site_id 和 tenant_id 实现双重校验隔离)
+    if (selectedSiteId || selectedTenantId) {
       requestBody.filter = {
-        site_id: selectedSiteId
+        site_id: selectedSiteId,
+        tenant_id: selectedTenantId
       }
     }
 
     try {
-      // 提取 tenantSlug 用于多租户隔离
-      let tenantSlug = ""
-      if (typeof window !== 'undefined') {
-        const pathParts = window.location.pathname.split('/').filter(Boolean)
-        if (pathParts.length > 0) {
-          tenantSlug = pathParts[0]
-        }
-      }
-
       const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/v1/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(tenantSlug ? { "X-Tenant-Slug": tenantSlug } : {}),
+          // X-Tenant-Slug 已通过 requestBody.filter 传递，此处移除 Header
         },
         body: JSON.stringify(requestBody),
         signal: abortControllerRef.current.signal,
@@ -330,7 +325,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       abortControllerRef.current = null
       onMessageSent?.()
     }
-  }, [threadId, isLoading, selectedSiteId, onMessageSent])
+  }, [threadId, isLoading, selectedSiteId, selectedTenantId, onMessageSent])
 
   const resetMessages = useCallback(() => {
     if (abortControllerRef.current) {

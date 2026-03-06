@@ -12,21 +12,26 @@ export class SitesService {
      * List Active Sites
      * 获取激活的站点列表（客户端）
      *
-     * - 不传 tenant_slug：返回所有租户的激活站点（站点广场）
-     * - 传 tenant_slug：仅返回该租户下的激活站点
+     * - 不传 tenant_id：返回所有租户的激活站点（站点广场）
+     * - 传 tenant_id：仅返回该租户下的激活站点
      * @returns ApiResponse_PaginatedResponse_ClientSite__ Successful Response
      * @throws ApiError
      */
     public listClientSites({
         page = 1,
         size = 10,
+        tenantId,
         tenantSlug,
         keyword,
     }: {
         page?: number,
         size?: number,
         /**
-         * 租户标识（可选，不传则返回所有租户的站点）
+         * 租户ID
+         */
+        tenantId?: (number | null),
+        /**
+         * 租户标识 (Portal 入口有效)
          */
         tenantSlug?: (string | null),
         /**
@@ -40,6 +45,7 @@ export class SitesService {
             query: {
                 'page': page,
                 'size': size,
+                'tenant_id': tenantId,
                 'tenant_slug': tenantSlug,
                 'keyword': keyword,
             },

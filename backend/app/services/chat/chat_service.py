@@ -69,16 +69,36 @@ class ChatService:
         chunk_id_prefix = f"chatcmpl-{uuid.uuid4()}"
 
         try:
-            async for event in graph.astream_events(input_state, config, version="v1"):
+            # 💡 [亮点] 立即发送一个空的消息增量，用于“打桩”打破代理缓存
+            yield ChatCompletionChunk(
+                id=chunk_id_prefix,
+                object="chat.completion.chunk",
+                created=int(time.time()),
+                model=model_name,
+                choices=[
+                    ChatCompletionChunkChoice(
+                        index=0,
+                        delta=ChatCompletionChunkDelta(content=""),
+                        finish_reason=None,
+                    )
+                ],
+            )
+
+            # 使用 v2 版本，它是 LangGraph 推荐的新版事件流驱动协议
+            async for event in graph.astream_events(input_state, config, version="v2"):
                 kind = event["event"]
 
-                # 1. 处理 LLM 流式输出 (Token)
+                # 1. 处理 LLM 流式输出 (Token 和 Tool Delta)
                 if kind == "on_chat_model_stream":
-                    chunk_data = event["data"]["chunk"]
-                    chunk_content = chunk_data.content
+                    chunk_data = event.get("data", {}).get("chunk")
+                    if not chunk_data:
+                        continue
 
-                    if chunk_content:
-                        full_response += chunk_content
+                    delta_content = chunk_data.content
+
+                    # (1) 发送文本内容增量
+                    if delta_content:
+                        full_response += delta_content
                         yield ChatCompletionChunk(
                             id=chunk_id_prefix,
                             object="chat.completion.chunk",
@@ -87,12 +107,13 @@ class ChatService:
                             choices=[
                                 ChatCompletionChunkChoice(
                                     index=0,
-                                    delta=ChatCompletionChunkDelta(content=chunk_content),
+                                    delta=ChatCompletionChunkDelta(content=delta_content),
                                     finish_reason=None,
                                 )
                             ],
                         )
 
+                    # (2) 发送工具调用增量 (Tool Call Deltas)
                     if hasattr(chunk_data, "tool_call_chunks") and chunk_data.tool_call_chunks:
                         for tc_chunk in chunk_data.tool_call_chunks:
                             cleaned_tc = convert_tool_call_chunk_to_openai(tc_chunk)
@@ -110,45 +131,49 @@ class ChatService:
                                 ],
                             )
 
-                # 2. 工具开始调用 - 发送状态指示
+                # 2. 工具/链/节点的开始与结束事件
                 elif kind == "on_tool_start":
-                    tool_name = event.get("name", "unknown")
-                    logger.debug(f"🔧 [Stream] Tool started: {tool_name}")
-                    yield {"status": "tool_calling", "tool": tool_name}
+                    name = event.get("name", "tool")
+                    logger.info(f"🔧 [Stream] Tool Node Start: {name}")
+                    yield {"status": "tool_calling", "tool": name}
 
-            # 引用提取与善后
+                elif kind == "on_tool_end":
+                    name = event.get("name", "tool")
+                    logger.info(f"✅ [Stream] Tool Node End: {name}")
+                    yield {"status": "tool_completed", "tool": name}
+
+            # 3. 异步更新数据库记录 (改为传参模式，避免背景任务中连接已关闭)
+            final_messages = []
+            persistent_content = full_response
+
             state_snapshot = await graph.aget_state(config)
             if state_snapshot.values:
                 final_messages = state_snapshot.values.get("messages", [])
                 sources = extract_sources_from_messages(final_messages, from_last_turn=True)
 
+                # 提取助手最后的文本回复
+                final_response = ""
+                for msg in reversed(final_messages):
+                    if isinstance(msg, AIMessage) and msg.content:
+                        final_response = msg.content
+                        break
+                persistent_content = final_response or full_response
+
             if sources:
                 yield {"sources": sources}
 
-            # 3. 异步更新数据库记录
-            async def save_history():
+            async def save_history_task(msgs, content):
                 async with AsyncSessionLocal() as db:
-                    state_snapshot = await graph.aget_state(config)
-                    final_messages = (
-                        state_snapshot.values.get("messages", []) if state_snapshot.values else []
-                    )
-                    final_response = ""
-                    if final_messages:
-                        for msg in reversed(final_messages):
-                            if isinstance(msg, AIMessage) and msg.content:
-                                final_response = msg.content
-                                break
-
-                    persistent_content = final_response or full_response
-                    if persistent_content:
+                    if content:
                         await ChatSessionService.update_assistant_response(
-                            db=db, thread_id=thread_id, assistant_message=persistent_content
+                            db=db, thread_id=thread_id, assistant_message=content
                         )
-                    await ChatHistoryService.save_history_from_messages(
-                        db=db, thread_id=thread_id, messages=final_messages
-                    )
+                    if msgs:
+                        await ChatHistoryService.save_history_from_messages(
+                            db=db, thread_id=thread_id, messages=msgs
+                        )
 
-            background_tasks.add_task(save_history)
+            background_tasks.add_task(save_history_task, final_messages, persistent_content)
 
             # 💡 [亮点] 在一次对话回合的所有事件结束后，打印最终的 Pipeline 汇总卡片
             # 这符合用户“在最后面”的预期，且能提供更完整的数据视角
@@ -234,6 +259,7 @@ class ChatService:
         messages: list[ChatMessage] | None = None,
         model_name: str | None = None,
         temperature: float = 0.7,
+        tenant_id: int | None = None,
     ) -> tuple[ChatOpenAI, dict, dict, int | None]:
         """
         初始化聊天上下文：解析租户、构建 LLM、持久化首条消息并准备 Graph 状态。
@@ -274,10 +300,14 @@ class ChatService:
             context_messages = [HumanMessage(content=input_message)]
 
         # 3. 解析 site_id 和 tenant_id
-        tenant_id = None
-        async with AsyncSessionLocal() as db:
-            site = await crud_site.get(db, id=site_id)
-            tenant_id = site.tenant_id if site else None
+        resolved_tenant_id = tenant_id  # 默认为传入参数
+        if site_id:
+            async with AsyncSessionLocal() as db:
+                site = await crud_site.get(db, id=site_id)
+                if site:
+                    resolved_tenant_id = site.tenant_id
+
+        tenant_id = resolved_tenant_id
 
         # [Important] 设置当前租户上下文
         from app.core.infra.tenant import set_current_tenant
@@ -322,7 +352,9 @@ class ChatService:
             "iteration_count": 0,
             "consecutive_empty_count": 0,
         }
-        config = {"configurable": {"thread_id": thread_id, "site_id": site_id}}
+        config = {
+            "configurable": {"thread_id": thread_id, "site_id": site_id, "tenant_id": tenant_id}
+        }
 
         return llm, initial_state, config, tenant_id
 
@@ -333,8 +365,9 @@ class ChatService:
         """核心聊天处理逻辑 (ReAct Agent)"""
         from app.core.web.exceptions import CatWikiError
 
-        # 确定 site_id (从 filter 或 默认)
+        # 确定 site_id 和 tenant_id (从 filter 或 默认)
         site_id = request.filter.site_id if (request.filter and request.filter.site_id) else 0
+        tenant_id_val = request.filter.tenant_id if request.filter else None
 
         try:
             llm, initial_state, config, tenant_id = await cls.initialize_chat_context(
@@ -345,6 +378,7 @@ class ChatService:
                 messages=request.messages,
                 model_name=request.model,
                 temperature=request.temperature or 0.7,
+                tenant_id=tenant_id_val,
             )
             # 更新 request 中的 thread_id 以便后续逻辑一致
             current_thread_id = config["configurable"]["thread_id"]
@@ -394,6 +428,7 @@ class ChatService:
                 return StreamingResponse(
                     protected_generator(),
                     media_type="text/event-stream",
+                    headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
                 )
             else:
                 # 非流式响应

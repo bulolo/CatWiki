@@ -14,7 +14,7 @@ export class ChatSessionsService {
      * List Sessions
      * 获取会话列表
      *
-     * 支持按站点和会员过滤，支持关键词搜索，按更新时间倒序排列。
+     * 支持按租户、站点和会员过滤，支持关键词搜索，按更新时间倒序排列。
      * @returns ApiResponse_ChatSessionListResponse_ Successful Response
      * @throws ApiError
      */
@@ -24,7 +24,7 @@ export class ChatSessionsService {
         keyword,
         page = 1,
         size = 20,
-        xTenantSlug,
+        tenantId,
     }: {
         /**
          * 站点ID过滤
@@ -46,20 +46,21 @@ export class ChatSessionsService {
          * 每页数量
          */
         size?: number,
-        xTenantSlug?: (string | null),
+        /**
+         * 租户ID
+         */
+        tenantId?: (number | null),
     }): CancelablePromise<ApiResponse_ChatSessionListResponse_> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/v1/chat/sessions',
-            headers: {
-                'X-Tenant-Slug': xTenantSlug,
-            },
             query: {
                 'site_id': siteId,
                 'member_id': memberId,
                 'keyword': keyword,
                 'page': page,
                 'size': size,
+                'tenant_id': tenantId,
             },
             errors: {
                 422: `Validation Error`,
@@ -76,19 +77,14 @@ export class ChatSessionsService {
      */
     public getChatSession({
         threadId,
-        xTenantSlug,
     }: {
         threadId: string,
-        xTenantSlug?: (string | null),
     }): CancelablePromise<ApiResponse_ChatSessionResponse_> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/v1/chat/sessions/{thread_id}',
             path: {
                 'thread_id': threadId,
-            },
-            headers: {
-                'X-Tenant-Slug': xTenantSlug,
             },
             errors: {
                 422: `Validation Error`,
@@ -105,19 +101,14 @@ export class ChatSessionsService {
      */
     public deleteChatSession({
         threadId,
-        xTenantSlug,
     }: {
         threadId: string,
-        xTenantSlug?: (string | null),
     }): CancelablePromise<ApiResponse_dict_> {
         return this.httpRequest.request({
             method: 'DELETE',
             url: '/v1/chat/sessions/{thread_id}',
             path: {
                 'thread_id': threadId,
-            },
-            headers: {
-                'X-Tenant-Slug': xTenantSlug,
             },
             errors: {
                 422: `Validation Error`,
@@ -134,19 +125,14 @@ export class ChatSessionsService {
      */
     public getChatSessionMessages({
         threadId,
-        xTenantSlug,
     }: {
         threadId: string,
-        xTenantSlug?: (string | null),
     }): CancelablePromise<ApiResponse_ChatSessionMessagesResponse_> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/v1/chat/sessions/{thread_id}/messages',
             path: {
                 'thread_id': threadId,
-            },
-            headers: {
-                'X-Tenant-Slug': xTenantSlug,
             },
             errors: {
                 422: `Validation Error`,

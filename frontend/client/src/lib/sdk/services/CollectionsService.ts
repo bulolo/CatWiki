@@ -16,7 +16,7 @@ export class CollectionsService {
     public getClientCollectionTree({
         siteId,
         includeDocuments = false,
-        xTenantSlug,
+        tenantId,
     }: {
         /**
          * 站点ID
@@ -26,17 +26,18 @@ export class CollectionsService {
          * 是否包含文档节点
          */
         includeDocuments?: boolean,
-        xTenantSlug?: (string | null),
+        /**
+         * 租户ID
+         */
+        tenantId?: (number | null),
     }): CancelablePromise<ApiResponse_list_CollectionTree__> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/v1/collections:tree',
-            headers: {
-                'X-Tenant-Slug': xTenantSlug,
-            },
             query: {
                 'site_id': siteId,
                 'include_documents': includeDocuments,
+                'tenant_id': tenantId,
             },
             errors: {
                 422: `Validation Error`,

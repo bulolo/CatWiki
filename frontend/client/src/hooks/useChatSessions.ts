@@ -21,6 +21,7 @@ import { getVisitorId } from "@/lib/visitor"
 
 interface UseChatSessionsOptions {
   siteId?: number | null
+  tenantId?: number | null
 }
 
 export function useChatSessions(options: UseChatSessionsOptions = {}) {
@@ -59,7 +60,8 @@ export function useChatSessions(options: UseChatSessionsOptions = {}) {
         memberId: getVisitorId(),
         keyword: currentKeyword || undefined,
         page: pageNum,
-        size: currentKeyword ? 20 : 5  // 搜索时返回更多结果
+        size: currentKeyword ? 20 : 5,  // 搜索时返回更多结果
+        tenantId: options.tenantId || undefined
       })
 
       if (append) {
@@ -74,7 +76,7 @@ export function useChatSessions(options: UseChatSessionsOptions = {}) {
     } finally {
       setIsLoading(false)
     }
-  }, [siteId])
+  }, [siteId, options.tenantId])
 
   const searchSessions = useCallback(async (searchKeyword: string) => {
     setKeyword(searchKeyword)

@@ -39,6 +39,7 @@ async def list_published_documents(
     order_by: str | None = Query(None, description="排序字段"),
     order_dir: str = Query("desc", description="排序方向"),
     include_site_info: bool = Query(False, description="是否包含站点信息"),
+    tenant_id: int | None = Query(None, description="租户ID"),
     db: AsyncSession = Depends(get_db),
 ) -> ApiResponse[PaginatedResponse[Document]]:
     """获取已发布文档列表（客户端）"""
@@ -54,6 +55,7 @@ async def list_published_documents(
 
     documents = await crud_document.list(
         db,
+        tenant_id=tenant_id,
         site_id=site_id,
         collection_ids=collection_ids,
         status="published",
@@ -65,7 +67,12 @@ async def list_published_documents(
         include_site=include_site_info,
     )
     paginator.total = await crud_document.count(
-        db, site_id=site_id, collection_ids=collection_ids, status="published", keyword=keyword
+        db,
+        tenant_id=tenant_id,
+        site_id=site_id,
+        collection_ids=collection_ids,
+        status="published",
+        keyword=keyword,
     )
 
     # 批量加载所有需要的collection信息（优化N+1查询）
@@ -113,17 +120,12 @@ async def get_document(
     user_agent = request.headers.get("user-agent")
     referer = request.headers.get("referer")
 
-    # 先获取文档以确认存在并获取 site_id
-    document = await crud_document.get(db, id=document_id)
-
-    if not document:
+    # 获取文档及其关联信息
+    document = await crud_document.get_with_related_site(db, id=document_id)
+    if not document or document.status != "published":
         raise NotFoundException(detail=f"文档 {document_id} 不存在")
 
-    # 只返回已发布的文档
-    if document.status != "published":
-        raise NotFoundException(detail=f"文档 {document_id} 不存在")
-
-    # 自动增加浏览量并记录浏览事件
+    # 自动增加浏览量并记录浏览事件 (此方法内部会刷新文档并重新返回带关联的对象)
     document = await crud_document.increment_views(
         db,
         document_id=document_id,

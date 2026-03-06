@@ -91,14 +91,6 @@ class CustomHttpRequest extends FetchHttpRequest {
     headers['X-App-State'] = stateCode
     headers['X-Client-Origin'] = origin
 
-    // 提取 tenantSlug：假设路径格式为 /[tenantSlug]/...
-    if (typeof window !== 'undefined') {
-      const pathParts = window.location.pathname.split('/').filter(Boolean)
-      if (pathParts.length > 0) {
-        headers['X-Tenant-Slug'] = pathParts[0]
-      }
-    }
-
     return super.request<T>({
       ...options,
       headers
@@ -131,6 +123,7 @@ const documentApi = {
     orderBy?: string
     orderDir?: 'asc' | 'desc'
     includeSiteInfo?: boolean
+    tenantId?: number
   } = {}) => {
     return wrapResponse<Models.PaginatedResponse_Document_>(client.documents.listClientDocuments({
       page: params.page ?? 1,
@@ -142,6 +135,7 @@ const documentApi = {
       orderBy: params.orderBy,
       orderDir: params.orderDir,
       includeSiteInfo: params.includeSiteInfo,
+      tenantId: params.tenantId,
     }))
   },
 
@@ -178,10 +172,11 @@ const siteApi = {
   /**
    * 获取站点列表
    */
-  list: (params: { page?: number; size?: number; tenantSlug?: string; keyword?: string } = {}) => {
+  list: (params: { page?: number; size?: number; tenantId?: number; tenantSlug?: string; keyword?: string } = {}) => {
     return wrapResponse<Models.PaginatedResponse_ClientSite_>(client.sites.listClientSites({
       page: params.page ?? 1,
       size: params.size ?? 10,
+      tenantId: params.tenantId,
       tenantSlug: params.tenantSlug,
       keyword: params.keyword,
     }))
@@ -215,13 +210,14 @@ const chatSessionApi = {
   /**
    * 获取会话列表
    */
-  list: (params: { siteId?: number; memberId?: string; keyword?: string; page?: number; size?: number } = {}) => {
+  list: (params: { siteId?: number; memberId?: string; keyword?: string; page?: number; size?: number; tenantId?: number } = {}) => {
     return wrapResponse<Models.ChatSessionListResponse>(client.chatSessions.listChatSessions({
       siteId: params.siteId,
       memberId: params.memberId,
       keyword: params.keyword,
       page: params.page,
       size: params.size,
+      tenantId: params.tenantId,
     }))
   },
 

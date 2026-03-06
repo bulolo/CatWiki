@@ -157,6 +157,7 @@ class ChatSessionService:
     @staticmethod
     async def list_sessions(
         db: AsyncSession,
+        tenant_id: int | None = None,
         site_id: int | None = None,
         member_id: str | None = None,
         keyword: str | None = None,
@@ -166,6 +167,7 @@ class ChatSessionService:
         """获取会话列表
 
         Args:
+            tenant_id: 租户ID过滤
             member_id: 会员ID或访客ID（可选，过滤）
             keyword: 搜索关键词（可选，匹配标题或最后消息）
         """
@@ -173,6 +175,10 @@ class ChatSessionService:
 
         query = select(ChatSession)
         count_query = select(func.count(ChatSession.id))
+
+        if tenant_id is not None:
+            query = query.where(ChatSession.tenant_id == tenant_id)
+            count_query = count_query.where(ChatSession.tenant_id == tenant_id)
 
         if site_id is not None:
             query = query.where(ChatSession.site_id == site_id)

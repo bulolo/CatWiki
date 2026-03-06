@@ -164,6 +164,7 @@ function SlugPageContent() {
               <AIChatLanding
                 siteName={siteName}
                 siteId={site?.id}
+                tenantId={site?.tenant_id}
                 quickQuestions={site?.quick_questions ?? undefined}
                 allSites={site ? [site] : undefined}
               />
@@ -182,6 +183,7 @@ function SlugPageContent() {
           onOpenChange={handleChatOpenChange}
           initialQuery={initialAIQuery}
           siteId={site?.id}
+          tenantId={site?.tenant_id}
           allSites={site ? [site] : undefined}
         />
       </div>

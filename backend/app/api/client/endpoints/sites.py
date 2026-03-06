@@ -32,33 +32,35 @@ router = APIRouter()
 async def list_active_sites(
     page: int = 1,
     size: int = 10,
-    tenant_slug: str | None = Query(None, description="租户标识（可选，不传则返回所有租户的站点）"),
+    tenant_id: int | None = Query(None, description="租户ID"),
+    tenant_slug: str | None = Query(None, description="租户标识 (Portal 入口有效)"),
     keyword: str | None = Query(None, description="搜索关键词（站点名称或描述）"),
     db: AsyncSession = Depends(get_db),
 ) -> ApiResponse[PaginatedResponse[ClientSite]]:
     """获取激活的站点列表（客户端）
 
-    - 不传 tenant_slug：返回所有租户的激活站点（站点广场）
-    - 传 tenant_slug：仅返回该租户下的激活站点
+    - 不传 tenant_id：返回所有租户的激活站点（站点广场）
+    - 传 tenant_id：仅返回该租户下的激活站点
     """
     from sqlalchemy import func, or_, select
 
     from app.models.site import Site as SiteModel
 
-    # 解析租户过滤条件
-    tenant_id = None
-    if tenant_slug:
-        from app.crud.tenant import crud_tenant
-
-        tenant = await crud_tenant.get_by_slug(db, slug=tenant_slug)
-        if not tenant:
-            raise NotFoundException(detail=f"租户 {tenant_slug} 不存在")
-        tenant_id = tenant.id
-
     # 构建基础查询条件
     base_filters = [SiteModel.status == "active"]
     if tenant_id is not None:
         base_filters.append(SiteModel.tenant_id == tenant_id)
+    elif tenant_slug:
+        from app.models.tenant import Tenant as TenantModel
+
+        # 通过 Join 租户表过滤
+        stmt_tenant = select(TenantModel.id).where(TenantModel.slug == tenant_slug)
+        tenant_id_res = (await db.execute(stmt_tenant)).scalar_one_or_none()
+        if tenant_id_res:
+            base_filters.append(SiteModel.tenant_id == tenant_id_res)
+        else:
+            # 租户不存在，直接返回空结果
+            return ApiResponse.ok(data=PaginatedResponse(list=[], total=0, page=page, size=size))
 
     if keyword:
         base_filters.append(
