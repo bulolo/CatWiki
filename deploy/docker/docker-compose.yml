@@ -152,7 +152,7 @@ services:
     pull_policy: always
     container_name: catwiki-backend
     env_file:
-      - .env.backend
+      - .env
     depends_on:
       backend-init:
         condition: service_completed_successfully
