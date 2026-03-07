@@ -15,7 +15,7 @@
 import time
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.document import VectorRetrieveFilter
 
@@ -87,6 +87,57 @@ class ChatCompletionRequest(BaseModel):
     logit_bias: dict[str, float] | None = None
     user: str | None = None
     filter: VectorRetrieveFilter | None = None
+
+
+class InternalChatCompletionRequest(BaseModel):
+    """内部聊天接口请求（非 OpenAI 兼容）"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    message: str
+    thread_id: str | None = None
+    temperature: float | None = 0.7
+    stream: bool | None = False
+    user: str | None = None
+    filter: VectorRetrieveFilter | None = None
+
+
+class OpenAIChatCompletionRequest(BaseModel):
+    """严格 OpenAI 兼容聊天请求（用于对外 Bot API）"""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    model: str
+    messages: list[ChatMessage]
+    temperature: float | None = 0.7
+    top_p: float | None = 1.0
+    n: int | None = 1
+    stream: bool | None = False
+    stop: str | list[str] | None = None
+    max_tokens: int | None = None
+    presence_penalty: float | None = 0.0
+    frequency_penalty: float | None = 0.0
+    logit_bias: dict[str, float] | None = None
+    user: str | None = None
+    response_format: dict[str, Any] | None = None
+    seed: int | None = None
+    tools: list[dict[str, Any]] | None = None
+    tool_choice: str | dict[str, Any] | None = None
+    stream_options: dict[str, Any] | None = None
+    reasoning_effort: str | None = None
+    verbosity: str | None = None
+    service_tier: str | None = Field(default=None, alias="serviceTier")
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_undefined_values(cls, data: Any) -> Any:
+        """兼容部分 OpenAI 客户端会传递的字符串 '[undefined]' 占位值。"""
+        if not isinstance(data, dict):
+            return data
+        for key, value in list(data.items()):
+            if isinstance(value, str) and value.strip() in {"[undefined]", "undefined"}:
+                data[key] = None
+        return data
 
 
 class ChatCompletionChoice(BaseModel):

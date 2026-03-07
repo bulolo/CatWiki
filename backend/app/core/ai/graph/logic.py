@@ -325,6 +325,7 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
 
         # 检测工具返回是否为空结果
         is_empty_result = False
+        duplicate_tool_result = False
         if result.get("messages"):
             last_tool_msg = result["messages"][-1]
             if last_tool_msg:
@@ -332,10 +333,22 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
                 if content == NO_RESULTS_MESSAGE or "未找到相关文档" in content or content == "[]":
                     is_empty_result = True
 
-        if is_empty_result:
-            result["consecutive_empty_count"] = consecutive_empty + 1
+                # 检测“重复工具结果”：若本次工具输出与历史已出现过的输出完全一致，
+                # 说明 Agent 可能在同一轮重复检索相同信息，后续应尽快收敛到最终回答。
+                for hist_msg in reversed(state.get("messages", [])):
+                    if not isinstance(hist_msg, ToolMessage):
+                        continue
+                    hist_content = getattr(hist_msg, "content", "")
+                    if hist_content and hist_content == content:
+                        duplicate_tool_result = True
+                        break
+
+        if duplicate_tool_result:
+            logger.warning("⚠️ [Graph] Duplicate tool output detected, forcing convergence.")
+            # 直接拉满连续空计数，下一次若仍尝试工具调用将触发强制停止。
+            result["consecutive_empty_count"] = max_consecutive_empty
         else:
-            result["consecutive_empty_count"] = 0
+            result["consecutive_empty_count"] = consecutive_empty + 1 if is_empty_result else 0
 
         # [优化] 使用显眼的进度卡片展示 Iteration 进度
         log_process_step_card(

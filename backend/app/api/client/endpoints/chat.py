@@ -20,6 +20,7 @@ from fastapi.responses import StreamingResponse
 from app.schemas.chat import (
     ChatCompletionRequest,
     ChatCompletionResponse,
+    InternalChatCompletionRequest,
 )
 from app.services.chat.chat_service import ChatService
 
@@ -31,13 +32,25 @@ logger = logging.getLogger(__name__)
     "/completions", response_model=ChatCompletionResponse, operation_id="createChatCompletion"
 )
 async def create_chat_completion(
-    request: ChatCompletionRequest,
+    request: InternalChatCompletionRequest,
     background_tasks: BackgroundTasks,
     origin: str | None = Header(None),
     referer: str | None = Header(None),
 ) -> ChatCompletionResponse | StreamingResponse:
     """
-    创建聊天补全 (OpenAI 兼容接口)
+    创建聊天补全（内部接口，非 OpenAI 兼容）
     """
     # 统一通过 ChatService 处理，它已包含 Site/Tenant 路由、LLM 池化和流式支持
-    return await ChatService.process_chat_request(request, background_tasks)
+    service_request = ChatCompletionRequest(
+        message=request.message,
+        thread_id=request.thread_id,
+        temperature=request.temperature,
+        stream=request.stream,
+        user=request.user,
+        filter=request.filter,
+    )
+    return await ChatService.process_chat_request(
+        service_request,
+        background_tasks,
+        channel="internal",
+    )

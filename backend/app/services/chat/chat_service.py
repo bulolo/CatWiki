@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import json
 import logging
 import time
 import uuid
 from collections.abc import AsyncGenerator
+from typing import Literal
 
 from fastapi import BackgroundTasks
 from fastapi.responses import StreamingResponse
@@ -27,6 +29,7 @@ from app.core.ai.graph import create_agent_graph
 from app.core.ai.graph.checkpointer import get_checkpointer
 from app.core.ai.providers.llm_manager import llm_manager
 from app.core.common.utils import rag_stats_var
+from app.core.infra.config import settings
 from app.core.vector.rag_utils import (
     convert_tool_call_chunk_to_openai,
     extract_sources_from_messages,
@@ -49,6 +52,118 @@ logger = logging.getLogger(__name__)
 
 
 class ChatService:
+    @staticmethod
+    def _guard_channel_policy(
+        *,
+        channel: Literal["internal", "bot"],
+        emit_tool_status_text: bool,
+    ) -> None:
+        """服务层策略守卫：避免通过新增 CE 入口误触发 EE/Bot 专属能力。"""
+        from app.core.web.exceptions import ForbiddenException
+
+        if channel != "bot" and emit_tool_status_text:
+            raise ForbiddenException("emit_tool_status_text 仅允许 bot 渠道使用")
+
+        if channel != "bot":
+            return
+
+        if settings.CATWIKI_EDITION != "enterprise":
+            raise ForbiddenException("bot 渠道仅支持企业版")
+
+        # 二次校验 license（即使入口层已做校验，也在服务层兜底）
+        try:
+            from app.ee.license import license_service
+        except Exception as e:  # pragma: no cover - 仅用于部署形态差异兜底
+            raise ForbiddenException("企业版模块未加载，bot 渠道不可用") from e
+
+        is_licensed = (
+            license_service.is_valid()
+            if callable(getattr(license_service, "is_valid", None))
+            else bool(getattr(license_service, "is_valid", False))
+        )
+        if not is_licensed:
+            raise ForbiddenException("企业版授权无效，bot 渠道不可用")
+
+    @staticmethod
+    def _build_chunk(
+        *,
+        chunk_id: str,
+        model_name: str,
+        content: str | None = None,
+        role: str | None = None,
+        tool_calls: list[dict] | None = None,
+        finish_reason: str | None = None,
+    ) -> ChatCompletionChunk:
+        """统一构造 OpenAI 兼容 chunk，减少重复模板代码。"""
+        delta = ChatCompletionChunkDelta(content=content, role=role, tool_calls=tool_calls)
+        return ChatCompletionChunk(
+            id=chunk_id,
+            object="chat.completion.chunk",
+            created=int(time.time()),
+            model=model_name,
+            choices=[
+                ChatCompletionChunkChoice(
+                    index=0,
+                    delta=delta,
+                    finish_reason=finish_reason,
+                )
+            ],
+        )
+
+    @staticmethod
+    def _split_text_for_stream(text: str, target_len: int = 26, max_len: int = 48) -> list[str]:
+        """将最终答案切成更自然的流式片段（优先在标点/换行处断开）。"""
+        if not text:
+            return []
+
+        boundary_chars = set("。！？；，、,.!?;\n")
+        pieces: list[str] = []
+        buf = ""
+
+        for ch in text:
+            buf += ch
+            if len(buf) >= target_len and ch in boundary_chars:
+                pieces.append(buf)
+                buf = ""
+            elif len(buf) >= max_len:
+                pieces.append(buf)
+                buf = ""
+
+        if buf:
+            pieces.append(buf)
+
+        return pieces
+
+    @staticmethod
+    def _extract_openai_tool_calls(messages: list[BaseMessage]) -> list[dict]:
+        """提取最后一轮工具调用（避免将多轮历史 tool_calls 一次性外发导致客户端重复渲染）。"""
+        tool_calls: list[dict] = []
+        last_tool_call_msg: AIMessage | None = None
+
+        for msg in reversed(messages):
+            if isinstance(msg, AIMessage) and getattr(msg, "tool_calls", None):
+                last_tool_call_msg = msg
+                break
+
+        if not last_tool_call_msg:
+            return tool_calls
+
+        for tc in last_tool_call_msg.tool_calls:
+            tool_calls.append(
+                {
+                    "index": len(tool_calls),
+                    "id": tc.get("id"),
+                    "type": "function",
+                    "function": {
+                        "name": tc.get("name"),
+                        "arguments": json.dumps(tc.get("args", {}), ensure_ascii=False)
+                        if not isinstance(tc.get("args"), str)
+                        else tc.get("args"),
+                    },
+                }
+            )
+        return tool_calls
+
     @classmethod
     async def generate_chat_chunks(
         cls,
@@ -58,6 +173,10 @@ class ChatService:
         model_name: str,
         thread_id: str,
         background_tasks: BackgroundTasks,
+        include_internal_events: bool = True,
+        emit_openai_tool_chunks: bool | None = None,
+        suppress_intermediate_tool_text: bool | None = None,
+        emit_tool_status_text: bool = False,
     ) -> AsyncGenerator[ChatCompletionChunk | dict, None]:
         """核心流式响应生成器 - 产出原始 Chunk 对象或状态 dict"""
         # 💡 [亮点] 预初始化 ContextVar 统计字典，确保跨 Task 的数据能够注入
@@ -67,80 +186,122 @@ class ChatService:
         full_response = ""
         sources = []
         chunk_id_prefix = f"chatcmpl-{uuid.uuid4()}"
+        if emit_openai_tool_chunks is None:
+            emit_openai_tool_chunks = include_internal_events
+        if suppress_intermediate_tool_text is None:
+            suppress_intermediate_tool_text = not include_internal_events
+        buffer_tool_calls_until_end = emit_openai_tool_chunks and suppress_intermediate_tool_text
 
         try:
             # 💡 [亮点] 立即发送一个空的消息增量，用于“打桩”打破代理缓存
-            yield ChatCompletionChunk(
-                id=chunk_id_prefix,
-                object="chat.completion.chunk",
-                created=int(time.time()),
-                model=model_name,
-                choices=[
-                    ChatCompletionChunkChoice(
-                        index=0,
-                        delta=ChatCompletionChunkDelta(content=""),
-                        finish_reason=None,
-                    )
-                ],
+            yield cls._build_chunk(
+                chunk_id=chunk_id_prefix,
+                model_name=model_name,
+                role="assistant",
             )
 
             # 使用 v2 版本，它是 LangGraph 推荐的新版事件流驱动协议
             async for event in graph.astream_events(input_state, config, version="v2"):
                 kind = event["event"]
+                node_name = event.get("metadata", {}).get("langgraph_node")
 
                 # 1. 处理 LLM 流式输出 (Token 和 Tool Delta)
                 if kind == "on_chat_model_stream":
+                    # 仅转发 agent 节点的流式输出，避免把 summarize 等内部节点结果暴露给客户端
+                    if node_name and node_name != "agent":
+                        continue
+
                     chunk_data = event.get("data", {}).get("chunk")
                     if not chunk_data:
                         continue
 
-                    delta_content = chunk_data.content
+                    # 先处理工具调用增量，更新状态机后再决定是否输出文本内容
+                    has_tool_call_chunks = bool(
+                        hasattr(chunk_data, "tool_call_chunks") and chunk_data.tool_call_chunks
+                    )
 
-                    # (1) 发送文本内容增量
-                    if delta_content:
-                        full_response += delta_content
-                        yield ChatCompletionChunk(
-                            id=chunk_id_prefix,
-                            object="chat.completion.chunk",
-                            created=int(time.time()),
-                            model=model_name,
-                            choices=[
-                                ChatCompletionChunkChoice(
-                                    index=0,
-                                    delta=ChatCompletionChunkDelta(content=delta_content),
-                                    finish_reason=None,
-                                )
-                            ],
-                        )
-
-                    # (2) 发送工具调用增量 (Tool Call Deltas)
-                    if hasattr(chunk_data, "tool_call_chunks") and chunk_data.tool_call_chunks:
+                    # (1) 发送工具调用增量 (Tool Call Deltas)
+                    if (
+                        has_tool_call_chunks
+                        and emit_openai_tool_chunks
+                        and not buffer_tool_calls_until_end
+                    ):
                         for tc_chunk in chunk_data.tool_call_chunks:
                             cleaned_tc = convert_tool_call_chunk_to_openai(tc_chunk)
-                            yield ChatCompletionChunk(
-                                id=chunk_id_prefix,
-                                object="chat.completion.chunk",
-                                created=int(time.time()),
-                                model=model_name,
-                                choices=[
-                                    ChatCompletionChunkChoice(
-                                        index=0,
-                                        delta=ChatCompletionChunkDelta(tool_calls=[cleaned_tc]),
-                                        finish_reason=None,
-                                    )
-                                ],
+                            yield cls._build_chunk(
+                                chunk_id=chunk_id_prefix,
+                                model_name=model_name,
+                                tool_calls=[cleaned_tc],
                             )
+
+                    delta_content = chunk_data.content
+
+                    # (2) 发送文本内容增量
+                    # 在 suppress_intermediate_tool_text 模式下，正文统一在末尾一次性分段输出，
+                    # 流中不再发送正文 token，避免第三方客户端在多轮工具时重复拼接正文。
+                    should_emit_content = (
+                        bool(delta_content) and not suppress_intermediate_tool_text
+                    )
+                    if should_emit_content:
+                        full_response += delta_content
+                        yield cls._build_chunk(
+                            chunk_id=chunk_id_prefix,
+                            model_name=model_name,
+                            content=delta_content,
+                        )
 
                 # 2. 工具/链/节点的开始与结束事件
                 elif kind == "on_tool_start":
                     name = event.get("name", "tool")
                     logger.info(f"🔧 [Stream] Tool Node Start: {name}")
-                    yield {"status": "tool_calling", "tool": name}
+                    tool_query = ""
+                    tool_input = event.get("data", {}).get("input")
+                    if isinstance(tool_input, dict):
+                        q = tool_input.get("query")
+                        if isinstance(q, str):
+                            tool_query = q.strip()
+                    elif isinstance(tool_input, str):
+                        tool_query = tool_input.strip()
+
+                    # OpenAI 兼容 keep-alive：在仅末尾输出正文的模式下，第三方客户端可能因长时间无 token 触发重试。
+                    # 发送空 content 的标准 chunk 保持流活跃，避免重复请求导致的内容重复。
+                    if suppress_intermediate_tool_text:
+                        yield cls._build_chunk(
+                            chunk_id=chunk_id_prefix,
+                            model_name=model_name,
+                            content="",
+                        )
+                    if emit_tool_status_text:
+                        tool_line = (
+                            f"\n> **`TOOL`** 检索中: `{tool_query}`\n"
+                            if tool_query
+                            else "\n> **`TOOL`** 检索中\n"
+                        )
+                        yield cls._build_chunk(
+                            chunk_id=chunk_id_prefix,
+                            model_name=model_name,
+                            content=tool_line,
+                        )
+                    if include_internal_events:
+                        yield {"status": "tool_calling", "tool": name}
 
                 elif kind == "on_tool_end":
                     name = event.get("name", "tool")
                     logger.info(f"✅ [Stream] Tool Node End: {name}")
-                    yield {"status": "tool_completed", "tool": name}
+                    if suppress_intermediate_tool_text:
+                        yield cls._build_chunk(
+                            chunk_id=chunk_id_prefix,
+                            model_name=model_name,
+                            content="",
+                        )
+                    if emit_tool_status_text:
+                        yield cls._build_chunk(
+                            chunk_id=chunk_id_prefix,
+                            model_name=model_name,
+                            content="> **`TOOL`** 检索完成\n",
+                        )
+                    if include_internal_events:
+                        yield {"status": "tool_completed", "tool": name}
 
             # 3. 异步更新数据库记录 (改为传参模式，避免背景任务中连接已关闭)
             final_messages = []
@@ -159,8 +320,40 @@ class ChatService:
                         break
                 persistent_content = final_response or full_response
 
-            if sources:
+            if include_internal_events and sources:
                 yield {"sources": sources}
+
+            # 第三方兼容模式：一次性发送完整 tool_calls，避免客户端对增量 tool_calls 处理异常导致重复正文。
+            if buffer_tool_calls_until_end and final_messages:
+                buffered_tool_calls = cls._extract_openai_tool_calls(final_messages)
+                if buffered_tool_calls:
+                    yield cls._build_chunk(
+                        chunk_id=chunk_id_prefix,
+                        model_name=model_name,
+                        tool_calls=buffered_tool_calls,
+                    )
+
+            # 工具链路场景：仅在最终阶段一次性输出完整答案，避免多轮工具中间文本重复/反复改写
+            if suppress_intermediate_tool_text and persistent_content:
+                full_response = persistent_content
+                # 分段输出（OpenAI chunk）：在标点处优先断开，改善第三方客户端观感。
+                for piece in cls._split_text_for_stream(persistent_content):
+                    if not piece:
+                        continue
+                    yield cls._build_chunk(
+                        chunk_id=chunk_id_prefix,
+                        model_name=model_name,
+                        content=piece,
+                    )
+                    # 微小节流，提供“打字”感；根据分片长度自适应，避免过慢。
+                    await asyncio.sleep(min(0.014, max(0.004, len(piece) * 0.00035)))
+
+            # OpenAI 兼容流式结束块：显式发送 finish_reason=stop
+            yield cls._build_chunk(
+                chunk_id=chunk_id_prefix,
+                model_name=model_name,
+                finish_reason="stop",
+            )
 
             async def save_history_task(msgs, content):
                 async with AsyncSessionLocal() as db:
@@ -237,10 +430,23 @@ class ChatService:
         model_name: str,
         thread_id: str,
         background_tasks: BackgroundTasks,
+        include_internal_events: bool = True,
+        emit_openai_tool_chunks: bool | None = None,
+        suppress_intermediate_tool_text: bool | None = None,
+        emit_tool_status_text: bool = False,
     ) -> AsyncGenerator[str, None]:
         """流式响应生成器 - 包装 generate_chat_chunks 并序列化为 SSE 格式"""
         async for chunk in ChatService.generate_chat_chunks(
-            graph, input_state, config, model_name, thread_id, background_tasks
+            graph,
+            input_state,
+            config,
+            model_name,
+            thread_id,
+            background_tasks,
+            include_internal_events=include_internal_events,
+            emit_openai_tool_chunks=emit_openai_tool_chunks,
+            suppress_intermediate_tool_text=suppress_intermediate_tool_text,
+            emit_tool_status_text=emit_tool_status_text,
         ):
             if isinstance(chunk, ChatCompletionChunk):
                 yield f"data: {chunk.model_dump_json()}\n\n"
@@ -360,10 +566,22 @@ class ChatService:
 
     @classmethod
     async def process_chat_request(
-        cls, request: ChatCompletionRequest, background_tasks: BackgroundTasks
+        cls,
+        request: ChatCompletionRequest,
+        background_tasks: BackgroundTasks,
+        channel: Literal["internal", "bot"] = "internal",
+        include_internal_events: bool = True,
+        emit_openai_tool_chunks: bool | None = None,
+        suppress_intermediate_tool_text: bool | None = None,
+        emit_tool_status_text: bool = False,
     ) -> ChatCompletionResponse | StreamingResponse:
         """核心聊天处理逻辑 (ReAct Agent)"""
         from app.core.web.exceptions import CatWikiError
+
+        cls._guard_channel_policy(
+            channel=channel,
+            emit_tool_status_text=emit_tool_status_text,
+        )
 
         # 确定 site_id 和 tenant_id (从 filter 或 默认)
         site_id = request.filter.site_id if (request.filter and request.filter.site_id) else 0
@@ -422,6 +640,10 @@ class ChatService:
                             llm.model_name,
                             current_thread_id,
                             background_tasks,
+                            include_internal_events=include_internal_events,
+                            emit_openai_tool_chunks=emit_openai_tool_chunks,
+                            suppress_intermediate_tool_text=suppress_intermediate_tool_text,
+                            emit_tool_status_text=emit_tool_status_text,
                         ):
                             yield sse_chunk
 
