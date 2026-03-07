@@ -473,8 +473,6 @@ class VectorStoreManager:
             target_indexes = ["id", "site_id", "collection_id", "tenant_id"]
 
             async with self._sa_engine.connect() as conn:
-                conn = await conn.execution_options(isolation_level="AUTOCOMMIT")
-
                 result = await conn.execute(
                     text(
                         f"SELECT indexname FROM pg_indexes WHERE tablename = '{self.collection_name}'"
@@ -488,10 +486,11 @@ class VectorStoreManager:
                         logger.info(f"🔄 [Index] 检测到缺少索引 '{index_name}'，正在创建...")
                         await conn.execute(
                             text(
-                                f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {index_name} ON {self.collection_name} ({col})"
+                                f"CREATE INDEX IF NOT EXISTS {index_name} ON {self.collection_name} ({col})"
                             )
                         )
                         logger.info(f"✅ [Index] 成功创建索引 '{index_name}'")
+                await conn.commit()
 
         except Exception as e:
             logger.warning(f"⚠️ [Index] 索引维护失败 (可能是权限不足或已存在): {e}")
