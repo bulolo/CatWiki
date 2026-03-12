@@ -13,6 +13,7 @@ export type ClientSite = {
     description?: (string | null);
     icon?: (string | null);
     article_count?: number;
+    view_count?: number;
     tenant_id?: (number | null);
     tenant_slug?: (string | null);
     theme_color?: (string | null);

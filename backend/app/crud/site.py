@@ -277,9 +277,29 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
         paginator = Paginator(page=page, size=size, total=total)
 
         # 查询列表
-        stmt = select(self.model).where(*base_filters).options(joinedload(self.model.tenant))
+        from app.models.document_view_event import DocumentViewEvent
+
+        # 统计浏览量的子查询
+        view_count_subquery = (
+            select(func.count(DocumentViewEvent.id))
+            .where(DocumentViewEvent.site_id == self.model.id)
+            .scalar_subquery()
+            .label("view_count")
+        )
+
+        stmt = (
+            select(self.model, view_count_subquery)
+            .where(*base_filters)
+            .options(joinedload(self.model.tenant))
+        )
         result = await db.execute(stmt.offset(paginator.skip).limit(paginator.size))
-        sites = list(result.scalars())
+
+        sites = []
+        for row in result:
+            site_obj = row[0]
+            # 手动将统计结果注入对象，以便 Pydantic 导出
+            setattr(site_obj, "view_count", row[1] or 0)
+            sites.append(site_obj)
 
         return sites, total
 

@@ -15,6 +15,8 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
+import Image from "next/image"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { api } from "@/lib/api-client"
@@ -108,15 +110,21 @@ export default function HomePage() {
       {/* 顶部导航 */}
       <header className="fixed top-0 left-0 w-full z-50 h-16 border-b border-slate-100 bg-white/70 backdrop-blur-xl flex items-center justify-between px-6 md:px-10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-            <BookOpen className="h-5 w-5 text-white" />
+          <div className="relative w-9 h-9">
+            <Image
+              src="/logo.png"
+              alt="CatWiki Logo"
+              fill
+              className="object-contain"
+              priority
+            />
           </div>
           <span className="text-lg font-black tracking-tight text-slate-900 group">CatWiki<span className="text-primary tracking-tighter ml-0.5">.</span></span>
         </div>
 
         <nav className="hidden md:flex items-center gap-6">
-          <a href="#" className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors">广场</a>
-          <a href={env.NEXT_PUBLIC_DOCS_URL} className="text-sm font-semibold text-slate-400 hover:text-slate-600 transition-colors">文档</a>
+          <Link href="/" className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors">广场</Link>
+          <a href={env.NEXT_PUBLIC_DOCS_URL} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-slate-400 hover:text-slate-600 transition-colors">文档</a>
           <div className="w-px h-4 bg-slate-200" />
           <a
             href="https://github.com/bulolo/CatWiki"
@@ -189,7 +197,8 @@ export default function HomePage() {
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* 布局切换与全屏功能暂未开通，隐藏 */}
+            {/* <div className="flex items-center gap-2">
               <button className="p-2 bg-white border border-slate-200 rounded-lg shadow-sm text-slate-600 hover:text-primary transition-all">
                 <Grid3X3 className="h-4 w-4" />
               </button>
@@ -197,7 +206,7 @@ export default function HomePage() {
                 <Maximize2 className="h-4 w-4" />
                 全屏浏览
               </button>
-            </div>
+            </div> */}
           </div>
 
           {/* Grid Layout */}
@@ -247,10 +256,9 @@ export default function HomePage() {
                 key={doc.id}
                 doc={doc}
                 onClick={() => {
-                  const tSlug = doc.tenant_slug || "default";
-                  const sSlug = doc.site_slug;
-                  if (sSlug) {
-                    router.push(`/${tSlug}/${sSlug}?documentId=${doc.id}`);
+                  if (doc.site_slug && doc.id) {
+                    const tSlug = doc.tenant_slug || "default";
+                    router.push(`/${tSlug}/${doc.site_slug}?documentId=${doc.id}`);
                   }
                 }}
               />
@@ -318,13 +326,7 @@ export default function HomePage() {
         <div className="max-w-[1440px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2 opacity-40">
             <BookOpen className="h-5 w-5" />
-            <span className="text-sm font-bold tracking-tight">CatWiki Project &copy; 2026</span>
-          </div>
-
-          <div className="flex items-center gap-8">
-            <a href="#" className="text-sm font-semibold text-slate-400 hover:text-primary transition-colors">关于我们</a>
-            <a href="#" className="text-sm font-semibold text-slate-400 hover:text-primary transition-colors">隐私政策</a>
-            <a href="#" className="text-sm font-semibold text-slate-400 hover:text-primary transition-colors">联系支持</a>
+            <span className="text-sm font-bold tracking-tight">CatWiki Project &copy; {new Date().getFullYear()}</span>
           </div>
         </div>
       </footer>

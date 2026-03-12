@@ -15,6 +15,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
@@ -34,7 +35,7 @@ import {
 import { env } from "@/lib/env"
 import { useSiteData } from "@/hooks"
 import { getUserInfo } from "@/lib/auth"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { getRoutePath, useRouteContext } from "@/lib/routing"
 import { useHealth } from "@/hooks/useHealth"
 
@@ -98,13 +99,38 @@ function AdminSidebarComponent() {
   // 直接从站点数据获取 tenantSlug，站点 API 已经返回了 tenant_slug
   const tenantSlug = siteData.tenant_slug || 'default'
 
+  const [imgError, setImgError] = useState(false)
+
+  // 切换站点时重置错误状态
+  const currentSiteId = siteData.id
+  useEffect(() => {
+    setImgError(false)
+  }, [currentSiteId])
+
+  const isValidIcon = siteData.icon && siteData.icon.trim() !== "" && (
+    siteData.icon.startsWith('/') ||
+    siteData.icon.startsWith('http://') ||
+    siteData.icon.startsWith('https://') ||
+    siteData.icon.startsWith('data:')
+  )
+
+  const hasCustomIcon = !!(isValidIcon && !imgError)
+  const logoSrc = hasCustomIcon ? siteData.icon! : "/logo.png"
+
   if (isGlobalManagement && (userRole === 'admin' || userRole === 'tenant_admin')) {
     return (
       <div className="w-64 bg-muted/50 border-r border-border h-screen flex flex-col sticky top-0">
         <div className="p-6">
           <div className="flex items-center gap-3 px-2 mb-10">
-            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/30 transition-transform hover:scale-105 duration-300" suppressHydrationWarning>
-              <Settings className="text-primary-foreground h-5 w-5" />
+            <div className="relative w-9 h-9">
+              <Image
+                src="/logo.png"
+                alt="CatWiki Logo"
+                fill
+                className="object-contain"
+                unoptimized
+                priority
+              />
             </div>
             <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/70 truncate">
               {healthData?.edition === 'community'
@@ -239,8 +265,15 @@ function AdminSidebarComponent() {
       <div className="w-64 bg-muted/50 border-r border-border h-screen flex flex-col sticky top-0">
         <div className="p-6">
           <div className="flex items-center gap-3 px-2 mb-10">
-            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/30 transition-transform hover:scale-105 duration-300" suppressHydrationWarning>
-              <Globe className="text-primary-foreground h-5 w-5" />
+            <div className="relative w-9 h-9">
+              <Image
+                src="/logo.png"
+                alt="CatWiki Logo"
+                fill
+                className="object-contain"
+                unoptimized
+                priority
+              />
             </div>
             <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/70 truncate">
               站点管理
@@ -314,16 +347,28 @@ function AdminSidebarComponent() {
   }
 
 
-
   return (
     <div className="w-64 bg-muted/50 border-r border-border h-screen flex flex-col sticky top-0">
       <div className="p-6">
         <div className="flex items-center gap-3 px-2 mb-10">
-          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/30 transition-transform hover:scale-105 duration-300" suppressHydrationWarning>
-            <Globe className="text-primary-foreground h-5 w-5" />
+          <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-border flex items-center justify-center shadow-lg shadow-primary/20 transition-transform hover:scale-105 duration-300">
+            <Image
+              key={logoSrc}
+              src={logoSrc}
+              alt={siteData.name || "CatWiki Logo"}
+              fill
+              className={hasCustomIcon ? "object-cover" : "object-contain p-1.5"}
+              unoptimized={true} // 强制禁用优化，避免 /_next/image 400 错误
+              onError={() => {
+                if (logoSrc !== "/logo.png") {
+                  console.warn(`Failed to load site icon: ${logoSrc}, falling back to default.`);
+                  setImgError(true);
+                }
+              }}
+            />
           </div>
           <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/70 truncate">
-            {isSitesPage ? '站点管理' : (siteData.name || '加载中')}
+            {isSitesPage ? "站点管理" : (siteData.name || "加载中")}
           </span>
         </div>
 

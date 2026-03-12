@@ -98,8 +98,8 @@ export function SiteCard({ site, onSelect, onVisit }: SiteCardProps) {
           <BookOpen className="h-3 w-3" />
           <span>{site.article_count || 0} 篇文章</span>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          浏览量 1.2k
+        <div className="flex items-center gap-1">
+          浏览量 {site.view_count !== undefined ? (site.view_count >= 1000 ? `${(site.view_count / 1000).toFixed(1)}k` : site.view_count) : 0}
         </div>
       </div>
     </motion.div>
