@@ -14,7 +14,7 @@
 
 [English](./README_EN.md) | 简体中文
 
-[官网](https://catwiki.ai) | [演示站点](https://catwiki.cn/default/health) | [管理后台](https://admin.catwiki.cn) | [文档中心](https://docs.catwiki.cn)
+[官网](https://catwiki.ai) | [演示站点](https://catwiki.cn) | [管理后台](https://admin.catwiki.cn) | [文档中心](https://docs.catwiki.cn)
 
 <p>
   <a href="https://github.com/bulolo/CatWiki">
