@@ -189,6 +189,37 @@ services:
     ports:
       - "127.0.0.1:${BACKEND_PORT:-3000}:3000"
 
+  # 后端 Worker 服务 (处理异步任务)
+  worker:
+    image: bulolo/catwiki-backend:v1.0.1
+    container_name: catwiki-worker
+    env_file:
+      - .env
+    depends_on:
+      backend-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - catwiki-network
+    restart: unless-stopped
+    command: uv run arq app.core.queue.worker_config.WorkerSettings
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
   # 管理后台前端
   admin-frontend:
     build:

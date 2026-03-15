@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "catwiki.fullname" . }}-worker
+  labels:
+    {{- include "catwiki.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: worker
+      {{- include "catwiki.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: worker
+        {{- include "catwiki.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: worker
+          image: {{ include "catwiki.image" (dict "global" .Values.global "image" .Values.backend.image) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command: ["uv", "run", "arq", "app.core.queue.worker_config.WorkerSettings"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "catwiki.fullname" . }}-config
+            - secretRef:
+                name: {{ include "catwiki.fullname" . }}-secret
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}

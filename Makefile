@@ -6,8 +6,8 @@
 # ==============================================================================
 
 .PHONY: help \
-	dev-init dev-up dev-down dev-rebuild dev-restart dev-logs dev-clean dev-db-migrate dev-db-upgrade dev-db-psql gen-sdk license format \
-	prod-init prod-up prod-up-build prod-rebuild prod-down prod-restart prod-logs prod-clean prod-docs clean-cache \
+	dev-init dev-up dev-down dev-rebuild dev-restart dev-restart-backend dev-logs dev-clean dev-db-migrate dev-db-upgrade dev-db-psql gen-sdk license format \
+	prod-init prod-up prod-up-build prod-rebuild prod-down prod-restart prod-restart-backend prod-logs prod-clean prod-docs clean-cache \
 	set-version publish-ce-github publish-ce-images setup-hooks check-changed check-all
 
 # ------------------------------------------------------------------------------
@@ -41,7 +41,8 @@ help:
 	@echo "  make dev-up             - 启动开发服务 (前台运行, 查看日志)"
 	@echo "  make dev-down           - 停止开发容器"
 	@echo "  make dev-rebuild        - 重建并启动开发环境 (后台运行)"
-	@echo "  make dev-restart        - 重启开发环境后端服务"
+	@echo "  make dev-restart        - 重启开发环境所有服务"
+	@echo "  make dev-restart-backend - 仅重启后端应用服务 (API + Worker)"
 	@echo "  make dev-logs           - 查看开发环境后端日志"
 	@echo "  make dev-clean          - 停止容器并删除数据卷 (重置数据库/存储)"
 	@echo "  make dev-db-migrate m=\"\"  - 创建数据库迁移脚本"
@@ -54,7 +55,8 @@ help:
 	@echo "  make prod-up-build      - 启动生产环境并在本地构建 (后台运行)"
 	@echo "  make prod-rebuild       - 无缓存重新构建并启动生产环境"
 	@echo "  make prod-down          - 停止生产环境"
-	@echo "  make prod-restart       - 重启生产环境后端服务"
+	@echo "  make prod-restart       - 重启生产环境所有服务"
+	@echo "  make prod-restart-backend - 仅重启后端应用服务 (API + Worker)"
 	@echo "  make prod-logs          - 查看生产环境日志"
 	@echo "  make prod-clean         - 停止容器并删除数据卷 (❗危险：清空生产数据)"
 	@echo ""
@@ -99,8 +101,12 @@ dev-down:
 dev-rebuild:
 	docker compose -f docker-compose.dev.yml up -d --build
 
-# 重启后端服务
+# 重启开发环境所有服务
 dev-restart:
+	docker compose -f docker-compose.dev.yml restart
+
+# 仅重启后端应用 (API + Worker)
+dev-restart-backend:
 	docker compose -f docker-compose.dev.yml restart backend worker
 
 # 查看后端日志
