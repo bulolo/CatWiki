@@ -43,7 +43,8 @@ help:
 	@echo "  make dev-rebuild        - 重建并启动开发环境 (后台运行)"
 	@echo "  make dev-restart        - 重启开发环境所有服务"
 	@echo "  make dev-restart-backend - 仅重启后端应用服务 (API + Worker)"
-	@echo "  make dev-logs           - 查看开发环境后端日志"
+	@echo "  make dev-logs           - 查看开发环境所有服务日志"
+	@echo "  make dev-logs-backend   - 查看开发环境后端日志 (API)"
 	@echo "  make dev-clean          - 停止容器并删除数据卷 (重置数据库/存储)"
 	@echo "  make dev-db-migrate m=\"\"  - 创建数据库迁移脚本"
 	@echo "  make dev-db-upgrade     - 执行数据库迁移升级到最新版本"
@@ -57,7 +58,7 @@ help:
 	@echo "  make prod-down          - 停止生产环境"
 	@echo "  make prod-restart       - 重启生产环境所有服务"
 	@echo "  make prod-restart-backend - 仅重启后端应用服务 (API + Worker)"
-	@echo "  make prod-logs          - 查看生产环境日志"
+	@echo "  make prod-logs          - 查看生产环境所有服务日志"
 	@echo "  make prod-clean         - 停止容器并删除数据卷 (❗危险：清空生产数据)"
 	@echo ""
 	@echo " 🧩  [通用命令] (Common Commands)"
@@ -109,8 +110,12 @@ dev-restart:
 dev-restart-backend:
 	docker compose -f docker-compose.dev.yml restart backend worker
 
-# 查看后端日志
+# 查看所有日志
 dev-logs:
+	docker compose -f docker-compose.dev.yml logs -f
+
+# 查看后端日志
+dev-logs-backend:
 	docker compose -f docker-compose.dev.yml logs -f backend
 
 # 深度清理开发环境
@@ -178,7 +183,7 @@ prod-down: check-prod-env
 	fi
 	@docker rm -f catwiki-backend-init-prod >/dev/null 2>&1 || true
 
-# 查看生产环境日志
+# 查看生产环境所有日志
 prod-logs: check-prod-env
 	docker compose -f $(PROD_DIR)/docker-compose.yml logs -f
 # 重启生产环境所有服务
@@ -188,6 +193,18 @@ prod-restart: check-prod-env
 # 仅重启后端应用 (API + Worker)
 prod-restart-backend: check-prod-env
 	docker compose -f $(PROD_DIR)/docker-compose.yml restart backend worker
+
+# 深度清理生产环境
+prod-clean: check-prod-env
+	@echo "🛑 [危险] 正在尝试深度清理生产环境..."
+	@echo "⚠️  警告：此操作将删除所有生产容器相关的数据卷和数据！"
+	@read -p "您确定要继续吗？[y/N] " ans && [ $${ans:-N} = y ] || (echo "❌ 操作已取消"; exit 1)
+	docker compose -f $(PROD_DIR)/docker-compose.yml down -v
+	@if [ -f "$(PROD_DIR)/docker-compose.static.yml" ]; then \
+		docker compose -f $(PROD_DIR)/docker-compose.static.yml down -v; \
+	fi
+	@docker rm -f catwiki-backend-init-prod >/dev/null 2>&1 || true
+	@echo "✅ 生产环境深度清理完成"
 
 
 # ------------------------------------------------------------------------------

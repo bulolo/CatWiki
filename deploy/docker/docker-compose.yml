@@ -208,7 +208,7 @@ services:
     networks:
       - catwiki-network
     restart: unless-stopped
-    command: uv run arq app.core.queue.worker_config.WorkerSettings
+    command: arq app.core.queue.worker_config.WorkerSettings
     deploy:
       resources:
         limits:

@@ -28,6 +28,7 @@ ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 ENV PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
 ENV UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 ENV UV_LINK_MODE=copy
+ENV PATH="/app/.venv/bin:$PATH"
 
 # 复制依赖文件
 COPY pyproject.toml uv.lock ./
@@ -43,9 +44,9 @@ EXPOSE 3000
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
+  CMD curl -f http://localhost:3000/v1/health || exit 1
 
 # 启动命令
 # 注意：数据库迁移和初始化由 backend-init 服务完成
-CMD ["uv", "run", "gunicorn", "app.main:app", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:3000"]
+CMD ["gunicorn", "app.main:app", "-w", "1", "-k", uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:3000"]
 
