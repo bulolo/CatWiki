@@ -2,10 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-/**
- * 通用 API 响应模型
- */
-export type ApiResponse = {
+import type { PaginatedResponse_Task_ } from './PaginatedResponse_Task_';
+export type ApiResponse_PaginatedResponse_Task__ = {
     /**
      * 响应码，0 表示成功
      */
@@ -17,6 +15,6 @@ export type ApiResponse = {
     /**
      * 响应数据
      */
-    data?: null;
+    data?: (PaginatedResponse_Task_ | null);
 };
 

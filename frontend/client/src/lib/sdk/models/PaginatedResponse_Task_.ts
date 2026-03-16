@@ -3,14 +3,12 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { PaginationInfo } from './PaginationInfo';
-/**
- * 通用分页响应数据模型
- */
-export type PaginatedResponse = {
+import type { Task } from './Task';
+export type PaginatedResponse_Task_ = {
     /**
      * 数据列表
      */
-    list: Array<any>;
+    list: Array<Task>;
     /**
      * 分页信息
      */

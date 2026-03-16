@@ -51,6 +51,7 @@ import { toast } from "sonner"
 import { api } from "@/lib/api-client"
 import { DOC_PROCESSOR_TYPES, type DocProcessorConfig, DocProcessorType } from "@/types/settings"
 import { CollectionItem } from "@/types"
+import { useTasks } from "@/contexts/TaskContext"
 
 interface ProcessorExtraConfig {
   is_ocr?: boolean
@@ -115,6 +116,7 @@ export function DocumentUploadDialog({
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [currentUploadingFile, setCurrentUploadingFile] = useState<string>("")
+  const { addTasks } = useTasks()
 
   // 获取解析器列表
   useEffect(() => {
@@ -245,13 +247,14 @@ export function DocumentUploadDialog({
     try {
       setIsUploading(true)
       let successCount = 0
+      const generatedTasks = []
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
-        setCurrentUploadingFile(`正在处理 (${i + 1}/${files.length}): ${file.name}`)
+        setCurrentUploadingFile(`正在上传 (${i + 1}/${files.length}): ${file.name}`)
         setUploadProgress(0)
 
-        // 模拟进度条
+        // 模拟上传进度条
         const interval = setInterval(() => {
           setUploadProgress(prev => {
             if (prev >= 90) return prev
@@ -272,7 +275,8 @@ export function DocumentUploadDialog({
           formData.append("extract_images", extractImages.toString())
           formData.append("extract_tables", extractTables.toString())
 
-          await api.document.importDocument(formData)
+          const task = await api.document.importDocument(formData)
+          generatedTasks.push(task as any)
           successCount++
         } catch (err: unknown) {
           const errMsg = err instanceof Error ? err.message : "未知错误"
@@ -284,20 +288,9 @@ export function DocumentUploadDialog({
       }
 
       if (successCount > 0) {
-        toast.success(`成功导入 ${successCount} 个文档`)
-        if (successCount === files.length) {
-          // 全部成功，关闭弹窗
-          onOpenChange(false)
-        } else {
-          // 部分成功，移除成功的（这里简化为不移除，让用户看到哪些还在）
-          // 或者直接重置
-          onOpenChange(false) // 还是关闭吧，刷新列表看到结果
-        }
-
-        // 触发父组件刷新
-        if (onSuccess) {
-          onSuccess();
-        }
+        toast.success(`成功提交 ${successCount} 个文档上传队列`)
+        addTasks(generatedTasks)
+        onOpenChange(false)
 
       }
 

@@ -487,6 +487,15 @@ const healthApi = {
 }
 
 
+const taskApi = {
+  list: (params: { page?: number; size?: number; siteId?: number } = {}) =>
+    wrapResponse<Models.PaginatedResponse_Task_>(client.adminTasks.listTasksAdminV1TasksGet({
+      ...params,
+    })),
+  get: (taskId: number) => wrapResponse<Models.Task>(client.adminTasks.getTaskStatusAdminV1TasksTaskIdGet({ taskId })),
+}
+
+
 // ==================== 导出 ====================
 
 export const api = {
@@ -498,6 +507,7 @@ export const api = {
   stats: statsApi,
   file: fileApi,
   health: healthApi,
+  task: taskApi,
   tenant: {
     getCurrent: () => wrapResponse<Models.TenantSchema | null>(client.adminTenants.getAdminCurrentTenant()),
   }

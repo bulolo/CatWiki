@@ -2,8 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { ApiResponse } from '../models/ApiResponse';
-import type { ApiResponse_PaginatedResponse_ } from '../models/ApiResponse_PaginatedResponse_';
+import type { ApiResponse_PaginatedResponse_Task__ } from '../models/ApiResponse_PaginatedResponse_Task__';
+import type { ApiResponse_Task_ } from '../models/ApiResponse_Task_';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class AdminTasksService {
@@ -11,7 +11,7 @@ export class AdminTasksService {
     /**
      * List Tasks
      * 获取异步任务列表
-     * @returns ApiResponse_PaginatedResponse_ Successful Response
+     * @returns ApiResponse_PaginatedResponse_Task__ Successful Response
      * @throws ApiError
      */
     public listTasksAdminV1TasksGet({
@@ -25,7 +25,7 @@ export class AdminTasksService {
          * 站点ID
          */
         siteId?: (number | null),
-    }): CancelablePromise<ApiResponse_PaginatedResponse_> {
+    }): CancelablePromise<ApiResponse_PaginatedResponse_Task__> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/admin/v1/tasks',
@@ -42,14 +42,14 @@ export class AdminTasksService {
     /**
      * Get Task Status
      * 获取单个任务详情和状态
-     * @returns ApiResponse Successful Response
+     * @returns ApiResponse_Task_ Successful Response
      * @throws ApiError
      */
     public getTaskStatusAdminV1TasksTaskIdGet({
         taskId,
     }: {
         taskId: number,
-    }): CancelablePromise<ApiResponse> {
+    }): CancelablePromise<ApiResponse_Task_> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/admin/v1/tasks/{task_id}',

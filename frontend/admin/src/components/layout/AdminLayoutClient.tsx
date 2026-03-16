@@ -20,8 +20,10 @@ import dynamic from 'next/dynamic'
 import { Toaster } from 'sonner'
 import { ReactQueryProvider } from '@/providers/ReactQueryProvider'
 import { SiteProvider } from '@/contexts/SiteContext'
+import { TaskProvider } from '@/contexts/TaskContext'
 import { ErrorBoundary } from '@/components/ui'
 import { UserMenu, StatePersistence } from '@/components/layout'
+import { TaskQueuePanel } from '@/components/features/tasks/TaskQueuePanel'
 import { useHealth, useDemoMode } from '@/hooks/useHealth'
 import Link from 'next/link'
 import {
@@ -199,6 +201,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       </main>
       <StatePersistence />
+      <TaskQueuePanel />
     </div>
   )
 }
@@ -215,10 +218,12 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
     <ErrorBoundary>
       <ReactQueryProvider>
         <SiteProvider>
-          <Toaster position="top-center" richColors />
-          <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
-            <AdminLayoutContent>{children}</AdminLayoutContent>
-          </Suspense>
+          <TaskProvider>
+            <Toaster position="top-center" richColors />
+            <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+              <AdminLayoutContent>{children}</AdminLayoutContent>
+            </Suspense>
+          </TaskProvider>
         </SiteProvider>
       </ReactQueryProvider>
     </ErrorBoundary>
