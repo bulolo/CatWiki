@@ -199,5 +199,5 @@ async def test_doc_processor_connection(
         target_tenant_id,
     )
 
-    result = await service.test_doc_processor_connection(request.config)
+    result = await service.test_doc_processor_connection(target_tenant_id, request.config)
     return ApiResponse.ok(data=result, msg="连接成功")

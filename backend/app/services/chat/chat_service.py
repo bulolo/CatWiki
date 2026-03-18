@@ -37,6 +37,7 @@ from app.core.vector.rag_utils import (
 )
 from app.crud.site import crud_site
 from app.db.database import AsyncSessionLocal, get_db
+from app.db.transaction import transactional
 from app.schemas.chat import (
     ChatCompletionChoice,
     ChatCompletionChunk,
@@ -472,6 +473,7 @@ class ChatService:
 
         yield "data: [DONE]\n\n"
 
+    @transactional()
     async def initialize_chat_context(
         self,
         thread_id: str | None,

@@ -519,6 +519,7 @@ export default function DocumentsPage() {
   }
 
   const handleDeleteCollection = async (id: string, name: string) => {
+    cancelBatchMode()
     setDeleteCollectionTarget({ id, name })
   }
 
@@ -537,6 +538,7 @@ export default function DocumentsPage() {
   }
 
   const handleDeleteDocument = async (id: number, title: string) => {
+    cancelBatchMode()
     setDeleteDocTarget({ id, title })
   }
 
@@ -563,6 +565,7 @@ export default function DocumentsPage() {
   }
 
   const handleNodeSelect = (id: string | undefined) => {
+    cancelBatchMode()
     if (!id) {
       setSelectedCollectionId(undefined)
       setSelectedDocumentId(undefined)
@@ -600,6 +603,11 @@ export default function DocumentsPage() {
   // 批量操作处理函数
   const toggleBatchMode = () => {
     setIsBatchMode(!isBatchMode)
+    setSelectedDocIds([])
+  }
+
+  const cancelBatchMode = () => {
+    setIsBatchMode(false)
     setSelectedDocIds([])
   }
 
@@ -740,7 +748,10 @@ export default function DocumentsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsDocumentUploadOpen(true)}
+            onClick={() => {
+              cancelBatchMode()
+              setIsDocumentUploadOpen(true)
+            }}
             className="gap-1.5 md:gap-2 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
           >
             <FolderInput className="h-4 w-4" />
@@ -757,7 +768,10 @@ export default function DocumentsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsVectorRetrieveOpen(true)}
+            onClick={() => {
+              cancelBatchMode()
+              setIsVectorRetrieveOpen(true)
+            }}
             className="flex items-center gap-1.5 md:gap-2 border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-all shadow-sm"
           >
             <Brain className="h-4 w-4" />
@@ -768,6 +782,7 @@ export default function DocumentsPage() {
             variant="outline"
             size="sm"
             onClick={() => {
+              cancelBatchMode()
               const clientUrl = env.NEXT_PUBLIC_CLIENT_URL
               window.open(`${clientUrl}/${tenantSlug}/${currentSite.slug}`, '_blank')
             }}
@@ -871,6 +886,7 @@ export default function DocumentsPage() {
             selectedId={selectedCollectionId || selectedDocumentId}
             onSelect={handleNodeSelect}
             onCreateCollection={(parentId) => {
+              cancelBatchMode()
               setTargetParentId(parentId ? parseInt(parentId) : undefined)
               setIsCreateCollectionOpen(true)
             }}
@@ -918,6 +934,7 @@ export default function DocumentsPage() {
                           handleNodeSelect(id)
                         }}
                         onCreateCollection={(parentId) => {
+                          cancelBatchMode()
                           setTargetParentId(parentId ? parseInt(parentId) : undefined)
                           setIsCreateCollectionOpen(true)
                         }}

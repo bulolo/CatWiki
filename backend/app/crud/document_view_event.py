@@ -36,7 +36,7 @@ class CRUDDocumentViewEvent:
         member_id: int | None = None,  # 预留：未来会员系统
         user_agent: str | None = None,
         referer: str | None = None,
-        auto_commit: bool = True,
+        auto_commit: bool = False,
     ) -> DocumentViewEvent:
         """记录一次文档浏览事件（支持租户 ID 自动填充）"""
         event = DocumentViewEvent(

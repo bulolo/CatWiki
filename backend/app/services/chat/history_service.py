@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.vector.rag_utils import convert_messages_to_openai, extract_sources_from_messages
 from app.db.database import get_db
+from app.db.transaction import transactional
 from app.models.chat_message import ChatMessage
 
 logger = logging.getLogger(__name__)
@@ -36,11 +37,11 @@ class ChatHistoryService:
     负责聊天消息的存取，与 ChatSessionService 配合使用。
     """
 
+    @transactional()
     async def save_history_from_messages(
         self,
         thread_id: str,
         messages: list[BaseMessage],
-        auto_commit: bool = True,
     ) -> int:
         """从 LangChain 消息列表同步新消息到 SQL (包括 tool_calls 和 tool 结果)"""
         # 1. 找到最后一条 HumanMessage 的索引，这通常是当前轮次的起点
@@ -66,15 +67,12 @@ class ChatHistoryService:
                 tool_calls=msg_dict.get("tool_calls"),
                 tool_call_id=msg_dict.get("tool_call_id"),
                 additional_kwargs=msg_dict.get("additional_kwargs"),
-                auto_commit=False,
             )
             saved_count += 1
 
-        if auto_commit:
-            await self.db.commit()
-
         return saved_count
 
+    @transactional()
     async def save_message(
         self,
         thread_id: str,
@@ -83,7 +81,6 @@ class ChatHistoryService:
         tool_calls: list | None = None,
         tool_call_id: str | None = None,
         additional_kwargs: dict | None = None,
-        auto_commit: bool = True,
     ) -> ChatMessage:
         """保存单条消息到全量历史表"""
         try:
@@ -96,17 +93,10 @@ class ChatHistoryService:
                 additional_kwargs=additional_kwargs,
             )
             self.db.add(msg)
-            if auto_commit:
-                await self.db.commit()
-                await self.db.refresh(msg)
-            else:
-                await self.db.flush()
             logger.debug(f"💾 [ChatMessage] Saved: thread_id={thread_id}, role={role}")
             return msg
         except Exception as e:
             logger.error(f"❌ [ChatMessage] Error in save_message: {e}")
-            if auto_commit:
-                await self.db.rollback()
             raise
 
     async def get_session_messages(

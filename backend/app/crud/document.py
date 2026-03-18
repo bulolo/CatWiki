@@ -30,7 +30,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
     """文档 CRUD 操作（异步版本）"""
 
     async def create(
-        self, db: AsyncSession, *, obj_in: DocumentCreate, auto_commit: bool = True
+        self, db: AsyncSession, *, obj_in: DocumentCreate, auto_commit: bool = False
     ) -> Document:
         """创建文档（自动计算阅读时间与租户 ID）"""
         from app.core.common.reading_time import calculate_reading_time
@@ -66,7 +66,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         *,
         db_obj: Document,
         obj_in: DocumentUpdate | dict[str, Any],
-        auto_commit: bool = True,
+        auto_commit: bool = False,
     ) -> Document:
         """更新文档（自动计算阅读时间）"""
         from app.core.common.reading_time import calculate_reading_time
@@ -228,6 +228,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         ip_address: str | None = None,
         user_agent: str | None = None,
         referer: str | None = None,
+        auto_commit: bool = False,
     ) -> Document | None:
         """增加浏览量（不支持跨租户更新）
 
@@ -263,8 +264,9 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
                 ip_address=ip_address,
                 user_agent=user_agent,
                 referer=referer,
+                auto_commit=auto_commit,
             )
-        else:
+        elif auto_commit:
             await db.commit()
 
         # 返回更新后的文档
@@ -307,7 +309,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         document_id: int,
         status: str,
         error: str | None = None,
-        auto_commit: bool = True,
+        auto_commit: bool = False,
     ) -> Document | None:
         """更新文档的向量化状态
 
@@ -342,6 +344,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         document_ids: list[int],
         status: str,
         error: str | None = None,
+        auto_commit: bool = False,
     ) -> int:
         """批量更新文档的向量化状态（支持租户隔离）
 
@@ -369,7 +372,8 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
             values["vector_error"] = None
 
         result = await db.execute(stmt.values(**values))
-        await db.commit()
+        if auto_commit:
+            await db.commit()
         return result.rowcount
 
 

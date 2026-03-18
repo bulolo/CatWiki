@@ -34,7 +34,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
         return query
 
     async def create(
-        self, db: AsyncSession, *, obj_in: SiteCreate, auto_commit: bool = True
+        self, db: AsyncSession, *, obj_in: SiteCreate, auto_commit: bool = False
     ) -> Site:
         """创建站点（过滤掉非模型字段，并支持租户 ID 自动填充）"""
         from app.core.infra.tenant import get_current_tenant
@@ -123,7 +123,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
         *,
         db_obj: Site,
         obj_in: SiteUpdate | dict[str, Any],
-        auto_commit: bool = True,
+        auto_commit: bool = False,
     ) -> Site:
         """更新站点 (重写以处理缓存失效)"""
         # 1. 获取旧的 API Key (用于清除缓存)
@@ -186,7 +186,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
         return list(result.scalars())
 
     async def increment_article_count(
-        self, db: AsyncSession, *, site_id: int, auto_commit: bool = True
+        self, db: AsyncSession, *, site_id: int, auto_commit: bool = False
     ) -> None:
         """原子增加文章计数（支持租户隔离）"""
         from app.core.infra.tenant import get_current_tenant
@@ -201,7 +201,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
             await db.commit()
 
     async def decrement_article_count(
-        self, db: AsyncSession, *, site_id: int, auto_commit: bool = True
+        self, db: AsyncSession, *, site_id: int, auto_commit: bool = False
     ) -> None:
         """原子减少文章计数（支持租户隔离）"""
         from app.core.infra.tenant import get_current_tenant
@@ -216,7 +216,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
             await db.commit()
 
     async def remove_with_relationships(
-        self, db: AsyncSession, *, id: int, auto_commit: bool = True
+        self, db: AsyncSession, *, id: int, auto_commit: bool = False
     ) -> bool:
         """删除站点及其所有关联数据（高性能批量删除，支持租户隔离）"""
         from app.core.infra.tenant import get_current_tenant

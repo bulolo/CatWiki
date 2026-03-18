@@ -107,7 +107,7 @@ services:
   # 负责数据库迁移和初始化
   # 注意：生产环境建议在部署流程中单独执行，而不是每次部署都运行
   backend-init:
-    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.3}
+    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.4}
     pull_policy: always
     container_name: catwiki-backend-init
     env_file:
@@ -155,7 +155,7 @@ services:
     build:
       context: ../../backend
       dockerfile: Dockerfile.prod
-    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.3}
+    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.4}
     pull_policy: always
     container_name: catwiki-backend
     env_file:
@@ -198,7 +198,7 @@ services:
 
   # 后端 Worker 服务 (处理异步任务)
   worker:
-    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.3}
+    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.4}
     container_name: catwiki-worker
     env_file:
       - .env
@@ -238,7 +238,7 @@ services:
     build:
       context: ../../frontend/admin
       dockerfile: Dockerfile.prod
-    image: bulolo/catwiki-admin:${DOCKER_IMAGE_TAG:-v1.0.3}
+    image: bulolo/catwiki-admin:${DOCKER_IMAGE_TAG:-v1.0.4}
     pull_policy: always
     container_name: catwiki-admin
     environment:
@@ -278,7 +278,7 @@ services:
     build:
       context: ../../frontend/client
       dockerfile: Dockerfile.prod
-    image: bulolo/catwiki-client:${DOCKER_IMAGE_TAG:-v1.0.3}
+    image: bulolo/catwiki-client:${DOCKER_IMAGE_TAG:-v1.0.4}
     pull_policy: always
     container_name: catwiki-client
     environment:

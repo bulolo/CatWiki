@@ -15,6 +15,7 @@ from app.core.web.exceptions import (
 )
 from app.crud.user import crud_user
 from app.db.database import get_db
+from app.db.transaction import transactional
 from app.models.user import User, UserRole, UserStatus
 from app.schemas.user import (
     UserCreate,
@@ -68,6 +69,7 @@ class UserService:
                 # 如果 target_user.managed_sites 为空，intersection 也是空。
                 raise ForbiddenException(detail=f"无权{action}该用户")
 
+    @transactional()
     async def get_user(self, user_id: int) -> User:
         """
         获取用户详情
@@ -77,6 +79,7 @@ class UserService:
             raise NotFoundException(detail=f"用户 {user_id} 不存在")
         return user
 
+    @transactional()
     async def list_users(
         self,
         current_user: User,
@@ -137,9 +140,8 @@ class UserService:
         )
         return users, paginator
 
-    async def create_user(
-        self, current_user: User, user_in: UserCreate, auto_commit: bool = True
-    ) -> User:
+    @transactional()
+    async def create_user(self, current_user: User, user_in: UserCreate) -> User:
         """
         创建用户（带权限校验）
         """
@@ -162,11 +164,10 @@ class UserService:
         if existing_user:
             raise ConflictException(detail=f"邮箱 {user_in.email} 已被使用")
 
-        return await crud_user.create(self.db, obj_in=user_in, auto_commit=auto_commit)
+        return await crud_user.create(self.db, obj_in=user_in)
 
-    async def invite_user(
-        self, current_user: User, user_in: UserInvite, auto_commit: bool = True
-    ) -> tuple[User, str]:
+    @transactional()
+    async def invite_user(self, current_user: User, user_in: UserInvite) -> tuple[User, str]:
         """
         邀请用户（带权限校验）
         """
@@ -192,12 +193,11 @@ class UserService:
         if existing_user:
             raise ConflictException(detail=f"邮箱 {user_in.email} 已被使用")
 
-        user, password = await crud_user.invite(self.db, obj_in=user_in, auto_commit=auto_commit)
+        user, password = await crud_user.invite(self.db, obj_in=user_in)
         return user, password
 
-    async def update_user(
-        self, current_user: User, user_id: int, user_in: UserUpdate, auto_commit: bool = True
-    ) -> User:
+    @transactional()
+    async def update_user(self, current_user: User, user_id: int, user_in: UserUpdate) -> User:
         """
         更新用户（带权限校验）
         """
@@ -229,10 +229,9 @@ class UserService:
             if existing_user:
                 raise ConflictException(detail=f"邮箱 {user_in.email} 已被使用")
 
-        return await crud_user.update(
-            self.db, db_obj=db_user, obj_in=user_in, auto_commit=auto_commit
-        )
+        return await crud_user.update(self.db, db_obj=db_user, obj_in=user_in)
 
+    @transactional()
     async def authenticate(self, login_in: UserLogin) -> tuple[User, str]:
         """
         用户登录验证并生成 Token
@@ -253,13 +252,11 @@ class UserService:
         # 更新最后登录时间
         user.last_login_at = datetime.utcnow()
         self.db.add(user)
-        await self.db.commit()
 
         return user, token
 
-    async def reset_password(
-        self, current_user: User, user_id: int, auto_commit: bool = True
-    ) -> tuple[User, str]:
+    @transactional()
+    async def reset_password(self, current_user: User, user_id: int) -> tuple[User, str]:
         """
         重置用户密码（带权限校验）
         """
@@ -269,12 +266,11 @@ class UserService:
 
         self.ensure_user_access(current_user, db_user, action="重置密码")
 
-        user, new_password = await crud_user.reset_password(
-            self.db, db_obj=db_user, auto_commit=auto_commit
-        )
+        user, new_password = await crud_user.reset_password(self.db, db_obj=db_user)
         return user, new_password
 
-    async def delete_user(self, current_user: User, user_id: int, auto_commit: bool = True) -> None:
+    @transactional()
+    async def delete_user(self, current_user: User, user_id: int) -> None:
         """
         删除用户（带权限校验）
         """
@@ -284,16 +280,16 @@ class UserService:
 
         self.ensure_user_access(current_user, db_user, action="删除")
 
-        success = await crud_user.delete(self.db, id=user_id, auto_commit=auto_commit)
+        success = await crud_user.delete(self.db, id=user_id)
         if not success:
             raise NotFoundException(detail=f"用户 {user_id} 不存在")
 
+    @transactional()
     async def update_password(
         self,
         current_user: User,
         user_id: int,
         password_in: UserUpdatePassword,
-        auto_commit: bool = True,
     ) -> None:
         """
         更新用户密码（带权限校验）
@@ -310,7 +306,7 @@ class UserService:
             raise BadRequestException(detail="旧密码错误")
 
         await crud_user.update_password(
-            self.db, db_obj=db_user, new_password=password_in.new_password, auto_commit=auto_commit
+            self.db, db_obj=db_user, new_password=password_in.new_password
         )
 
 

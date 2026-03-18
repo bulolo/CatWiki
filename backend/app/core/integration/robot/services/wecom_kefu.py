@@ -161,13 +161,18 @@ class WeComKefuService:
     ) -> None:
         """调用微信客服 API 发送消息"""
         try:
+            from app.core.common.utils import strip_markdown
+
+            # [✨ 亮点] 微信客服接口原生不支持 Markdown，发送文本回复前需剥离格式
+            clean_content = strip_markdown(content)
+
             token = await cls._token_manager.get_access_token(corp_id, secret)
             async with httpx.AsyncClient() as client:
                 body = {
                     "touser": external_userid,
                     "open_kfid": open_kfid,
                     "msgtype": "text",
-                    "text": {"content": content},
+                    "text": {"content": clean_content},
                 }
                 resp = await client.post(
                     "https://qyapi.weixin.qq.com/cgi-bin/kf/send_msg",

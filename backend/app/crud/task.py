@@ -52,7 +52,7 @@ class CRUDTask(CRUDBase[Task, TaskCreate, TaskSchema]):
         progress: float | None = None,
         result: dict | None = None,
         error: str | None = None,
-        auto_commit: bool = True,
+        auto_commit: bool = False,
     ) -> Task | None:
         """更新任务状态"""
         update_data = {"status": status.value if isinstance(status, TaskStatus) else status}

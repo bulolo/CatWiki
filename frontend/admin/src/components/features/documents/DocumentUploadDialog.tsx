@@ -106,7 +106,7 @@ export function DocumentUploadDialog({
   onSuccess
 }: DocumentUploadDialogProps) {
   const [files, setFiles] = useState<File[]>([])
-  const [processor, setProcessor] = useState<string>("")
+  const [processorId, setProcessorId] = useState<string>("")
   const [processors, setProcessors] = useState<DocProcessor[]>([])
   const [isLoadingProcessors, setIsLoadingProcessors] = useState(false)
   const [collectionId, setCollectionId] = useState<string>("")
@@ -154,7 +154,7 @@ export function DocumentUploadDialog({
           // 默认选中第一个并同步设置
           if (activeProcessors.length > 0) {
             const first = activeProcessors[0]
-            setProcessor(first.name)
+            setProcessorId(first.id)
             if (first.config) {
               setOcrEnabled(first.config.is_ocr ?? false)
               setExtractImages(first.config.extract_images ?? false)
@@ -223,9 +223,9 @@ export function DocumentUploadDialog({
     setFiles(prev => prev.filter((_, i) => i !== index))
   }
 
-  const handleProcessorChange = (name: string) => {
-    setProcessor(name)
-    const selected = processors.find(p => p.name === name)
+  const handleProcessorChange = (id: string) => {
+    setProcessorId(id)
+    const selected = processors.find(p => p.id === id)
     if (selected && selected.config) {
       const cfg = parseProcessorConfig(selected.config)
       setOcrEnabled(cfg.is_ocr ?? false)
@@ -263,7 +263,7 @@ export function DocumentUploadDialog({
         }, 300)
 
         try {
-          const selectedProcessor = processors.find(p => p.name === processor)
+          const selectedProcessor = processors.find(p => p.id === processorId)
           const type = selectedProcessor?.type || "MinerU"
 
           const formData = new FormData()
@@ -291,7 +291,6 @@ export function DocumentUploadDialog({
         toast.success(`成功提交 ${successCount} 个文档上传队列`)
         addTasks(generatedTasks)
         onOpenChange(false)
-
       }
 
     } catch (error: unknown) {
@@ -394,7 +393,7 @@ export function DocumentUploadDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>解析器</Label>
-              <Select value={processor} onValueChange={handleProcessorChange} disabled={processors.length === 0 || isLoadingProcessors}>
+              <Select value={processorId} onValueChange={handleProcessorChange} disabled={processors.length === 0 || isLoadingProcessors}>
                 <SelectTrigger>
                   <SelectValue placeholder={isLoadingProcessors ? "加载中..." : (processors.length === 0 ? "无可用解析器" : "选择解析器")} />
                 </SelectTrigger>
@@ -404,18 +403,18 @@ export function DocumentUploadDialog({
                     const icons: Record<string, LucideIcon> = { Bird, Zap, Scan, BookOpen, Pickaxe, FileText }
                     const Icon = typeInfo ? icons[typeInfo.icon] || FileText : FileText
                     return (
-                      <SelectItem key={p.name} value={p.name} disabled={typeInfo?.disabled}>
-                        <div className="flex items-center gap-2">
+                      <SelectItem key={p.id} value={p.id} disabled={typeInfo?.disabled}>
+                        <div className="flex items-center gap-2 w-full min-w-0">
                           {typeInfo?.icon.startsWith('/') ? (
-                            <Image src={typeInfo.icon} alt="" width={16} height={16} className="object-contain" />
+                            <Image src={typeInfo.icon} alt="" width={16} height={16} className="object-contain shrink-0" />
                           ) : (
-                            <Icon className={`h-4 w-4 ${typeInfo?.color.split(' ')[0] || "text-slate-500"}`} />
+                            <Icon className={`h-4 w-4 shrink-0 ${typeInfo?.color.split(' ')[0] || "text-slate-500"}`} />
                           )}
-                          <span>{p.name}</span>
-                          <span className="text-xs text-slate-400">({p.type})</span>
+                          <span className="truncate font-medium flex-1">{p.name}</span>
+                          <span className="text-xs text-slate-400 shrink-0 opacity-70">({p.type})</span>
                           {p.origin === 'platform' && (
-                            <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100">
-                              <Globe className="h-2.5 w-2.5 mr-1" />
+                            <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100 ml-1">
+                              <Globe className="h-2.5 w-2.5 mr-0.5" />
                               平台
                             </span>
                           )}
@@ -448,14 +447,14 @@ export function DocumentUploadDialog({
           </div>
 
           {
-            processor && ['MinerU', 'Docling', 'PaddleOCR'].includes(processors.find(p => p.name === processor)?.type || '') && (
+            processorId && ['MinerU', 'Docling', 'PaddleOCR'].includes(processors.find(p => p.id === processorId)?.type || '') && (
               <div className="space-y-3">
                 {/* OCR */}
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                   <div className="space-y-1">
                     <Label className="text-sm font-medium">OCR识别</Label>
                     <p className="text-xs text-slate-500">
-                      {processors.find(p => p.name === processor)?.type === 'Docling'
+                      {processors.find(p => p.id === processorId)?.type === 'Docling'
                         ? "启用 Docling OCR 识别，更好地处理扫描件。"
                         : "对扫描件或复杂公式启用 OCR 识别，速度较慢但精度更高。"
                       }
@@ -482,7 +481,7 @@ export function DocumentUploadDialog({
                 </div>
 
                 {/* Extract Tables (Docling Only) */}
-                {processors.find(p => p.name === processor)?.type === 'Docling' && (
+                {processors.find(p => p.id === processorId)?.type === 'Docling' && (
                   <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                     <div className="space-y-1">
                       <Label className="text-sm font-medium">表格结构识别</Label>
@@ -522,7 +521,7 @@ export function DocumentUploadDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUploading}>
             取消
           </Button>
-          <Button onClick={handleUpload} disabled={files.length === 0 || !collectionId || !processor || isUploading}>
+          <Button onClick={handleUpload} disabled={files.length === 0 || !collectionId || !processorId || isUploading}>
             {isUploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {isUploading ? "处理中..." : `开始批量导入 (${files.length})`}
           </Button>

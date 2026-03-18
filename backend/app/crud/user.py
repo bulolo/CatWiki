@@ -211,7 +211,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         return result.scalar_one()
 
     async def create(
-        self, db: AsyncSession, *, obj_in: UserCreate, auto_commit: bool = True
+        self, db: AsyncSession, *, obj_in: UserCreate, auto_commit: bool = False
     ) -> User:
         """创建用户（自动处理密码哈希与租户 ID）"""
         from app.core.infra.tenant import get_current_tenant
@@ -250,7 +250,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         return db_user
 
     async def invite(
-        self, db: AsyncSession, *, obj_in: UserInvite, auto_commit: bool = True
+        self, db: AsyncSession, *, obj_in: UserInvite, auto_commit: bool = False
     ) -> tuple[User, str]:
         """邀请用户（支持租户 ID 自动填充）"""
         from app.core.infra.tenant import get_current_tenant
@@ -291,7 +291,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         return db_user, generated_password
 
     async def update(
-        self, db: AsyncSession, *, db_obj: User, obj_in: UserUpdate, auto_commit: bool = True
+        self, db: AsyncSession, *, db_obj: User, obj_in: UserUpdate, auto_commit: bool = False
     ) -> User:
         """更新用户信息"""
         update_data = obj_in.model_dump(exclude_unset=True)
@@ -313,7 +313,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         return user
 
     async def update_password(
-        self, db: AsyncSession, *, db_obj: User, new_password: str, auto_commit: bool = True
+        self, db: AsyncSession, *, db_obj: User, new_password: str, auto_commit: bool = False
     ) -> User:
         """更新用户密码"""
         db_obj.password_hash = get_password_hash(new_password)
@@ -334,7 +334,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         return db_obj
 
     async def reset_password(
-        self, db: AsyncSession, *, db_obj: User, auto_commit: bool = True
+        self, db: AsyncSession, *, db_obj: User, auto_commit: bool = False
     ) -> tuple[User, str]:
         """重置用户密码（并清理缓存）"""
         generated_password = generate_random_password()
@@ -373,8 +373,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         if needs_password_rehash(user.password_hash):
             user.password_hash = get_password_hash(password)
             db.add(user)
-            # 身份认证中的自动重哈希由于通常是原子操作，默认 commit
-            await db.commit()
+            # 自动重哈希，由装饰器或调用方决定是否提交
 
             # 清理缓存以保证一致性
             from app.core.infra.cache import get_cache
@@ -385,7 +384,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
 
         return user
 
-    async def delete(self, db: AsyncSession, *, id: Any, auto_commit: bool = True) -> User | None:
+    async def delete(self, db: AsyncSession, *, id: Any, auto_commit: bool = False) -> User | None:
         """删除用户并清理缓存"""
         user = await self.get(db, id=id)
         if user:

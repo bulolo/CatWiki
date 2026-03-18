@@ -41,3 +41,6 @@ alembic/versions/*.pyc
 
 # 日志
 *.log
+
+# 数据存储
+data/

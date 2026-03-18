@@ -13,6 +13,7 @@ from app.core.integration.robot.services.wecom_smart import WeComSmartService
 from app.core.web.exceptions import BadRequestException, ConflictException, NotFoundException
 from app.crud import crud_site, crud_user
 from app.db.database import get_db
+from app.db.transaction import transactional
 from app.models.site import Site as SiteModel
 from app.models.user import User, UserRole
 from app.schemas.site import SiteCreate, SiteUpdate
@@ -25,13 +26,15 @@ class SiteService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def increment_article_count(self, site_id: int, auto_commit: bool = True) -> None:
+    @transactional()
+    async def increment_article_count(self, site_id: int) -> None:
         """增加站点的文章计数"""
-        await crud_site.increment_article_count(self.db, site_id=site_id, auto_commit=auto_commit)
+        await crud_site.increment_article_count(self.db, site_id=site_id)
 
-    async def decrement_article_count(self, site_id: int, auto_commit: bool = True) -> None:
+    @transactional()
+    async def decrement_article_count(self, site_id: int) -> None:
         """减少站点的文章计数"""
-        await crud_site.decrement_article_count(self.db, site_id=site_id, auto_commit=auto_commit)
+        await crud_site.decrement_article_count(self.db, site_id=site_id)
 
     async def refresh_bot_stream_services(self) -> None:
         """站点机器人配置变更后，刷新飞书/钉钉/企微智能机器人长连接服务。"""
@@ -104,6 +107,7 @@ class SiteService:
                     detail="启用企业微信机器人(应用)时，企业 ID、Secret、Token 和 Encoding AES Key 均不能为空。"
                 )
 
+    @transactional()
     async def list_sites(
         self, page: int, size: int, status: str | None, is_demo: bool
     ) -> tuple[list[SiteModel], Paginator]:
@@ -123,6 +127,7 @@ class SiteService:
 
         return sites, paginator
 
+    @transactional()
     async def get_site(self, site_id: int, is_demo: bool) -> SiteModel:
         """获取站点详情"""
         site = await crud_site.get_with_tenant(self.db, id=site_id)
@@ -136,6 +141,7 @@ class SiteService:
 
         return site
 
+    @transactional()
     async def get_site_by_slug(self, slug: str, is_demo: bool) -> SiteModel:
         """通过 slug 获取站点详情"""
         site = await crud_site.get_by_slug_with_tenant(self.db, slug=slug)
@@ -149,6 +155,7 @@ class SiteService:
 
         return site
 
+    @transactional()
     async def create_site(self, site_in: SiteCreate) -> SiteModel:
         # 检查名称是否已存在
         existing = await crud_site.get_by_name(self.db, name=site_in.name)
@@ -186,7 +193,7 @@ class SiteService:
                     )
 
         # 初始化站点及其管理员
-        site = await crud_site.create(self.db, obj_in=site_in, auto_commit=False)
+        site = await crud_site.create(self.db, obj_in=site_in)
 
         # 如果提供了管理员信息，初始化站点管理员
         if admin_email:
@@ -201,7 +208,6 @@ class SiteService:
                         obj_in=UserUpdate(
                             managed_site_ids=new_managed_sites, role=existing_user.role
                         ),
-                        auto_commit=False,
                     )
             else:
                 # 用户不存在，创建新用户
@@ -214,21 +220,28 @@ class SiteService:
                         role=UserRole.SITE_ADMIN,
                         managed_site_ids=[site.id],
                     ),
-                    auto_commit=False,
                 )
 
-        # 显式提交事务
-        await self.db.commit()
+        # 自动处理提交
 
         # 刷新对象以填充 tenant_slug
         await self.db.refresh(site, ["tenant"])
 
-        await self.refresh_bot_stream_services()
-        # Clear client site caches as a new site might affect the list
-        cache = get_cache()
-        await cache.delete_by_prefix("service:sites:client_list")
+        # 注册提交后回调：由于 bot 刷新和缓存清理是副作用，应在事务成功后执行
+        from app.db.transaction import on_commit
+
+        on_commit(self.db, self._after_site_change)
+
         return site
 
+    async def _after_site_change(self):
+        """站点变更后的统一处理：刷新服务与清理缓存"""
+        await self.refresh_bot_stream_services()
+        cache = get_cache()
+        await cache.delete_by_prefix("service:sites:client_list")
+        await cache.delete_by_prefix("service:sites:client_detail")
+
+    @transactional()
     async def update_site(self, site_id: int, site_in: SiteUpdate) -> SiteModel:
         site = await crud_site.get(self.db, id=site_id)
         if not site:
@@ -266,30 +279,28 @@ class SiteService:
         site = await crud_site.update(self.db, db_obj=site, obj_in=site_in)
         # 预加载租户信息以填充 tenant_slug
         await self.db.refresh(site, ["tenant"])
-        await self.refresh_bot_stream_services()
 
-        # Clear client site caches as site data has changed
-        cache = get_cache()
-        await cache.delete_by_prefix("service:sites:client_list")
-        await cache.delete_by_prefix("service:sites:client_detail")
+        # 注册提交后回调
+        from app.db.transaction import on_commit
+
+        on_commit(self.db, self._after_site_change)
+
         return site
 
-    async def delete_site(self, site_id: int, auto_commit: bool = True) -> None:
+    @transactional()
+    async def delete_site(self, site_id: int) -> None:
         """删除站点及其关联数据"""
-        success = await crud_site.remove_with_relationships(
-            self.db, id=site_id, auto_commit=auto_commit
-        )
+        success = await crud_site.remove_with_relationships(self.db, id=site_id)
         if not success:
             raise NotFoundException(detail=f"站点 {site_id} 不存在")
 
-        await self.refresh_bot_stream_services()
+        # 注册提交后回调
+        from app.db.transaction import on_commit
 
-        # Clear client site caches as a site has been deleted
-        cache = get_cache()
-        await cache.delete_by_prefix("service:sites:client_list")
-        await cache.delete_by_prefix("service:sites:client_detail")
+        on_commit(self.db, self._after_site_change)
 
     @cached(ttl=60, key_prefix="service:sites:client_list")
+    @transactional()
     async def list_client_sites(
         self,
         page: int,
@@ -312,6 +323,7 @@ class SiteService:
         return sites, paginator
 
     @cached(ttl=60, key_prefix="service:sites:client_detail")
+    @transactional()
     async def get_client_site(
         self, site_id: int | None = None, slug: str | None = None
     ) -> SiteModel:
@@ -322,6 +334,7 @@ class SiteService:
 
         return site
 
+    @transactional()
     async def get_site_by_api_token(self, token: str) -> SiteModel:
         """根据 API Token 获取站点，并进行基础校验。"""
         site = await crud_site.get_by_api_token(self.db, api_token=token)

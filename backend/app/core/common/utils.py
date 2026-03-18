@@ -80,6 +80,47 @@ def truncate_string(text: str, max_length: int = 100, suffix: str = "...") -> st
     return text[: max_length - len(suffix)] + suffix
 
 
+def strip_markdown(text: str) -> str:
+    """
+    [✨ 亮点] 去除文字中的 Markdown 格式，降级为文字。
+    常用于不支持 Markdown 渲染的推送通道（如微信客服、短信、飞书非 Markdown 模式等）。
+
+    逻辑规则:
+    1. 标题 (#) -> 去除 #
+    2. 加粗/斜体 (**/*) -> 去除 *
+    3. 行内代码 (`) -> 去除 `
+    4. 代码块 (```) -> 去除 ```
+    5. 链接 ([desc](url)) -> desc (url)
+    6. 图片 (![desc](url)) -> [图片: desc]
+    """
+    if not text:
+        return ""
+
+    # 1. 链接 [desc](url) -> desc (url)
+    text = re.sub(r"\[([^\]]+)\]\((https?://[^\)]+)\)", r"\1 (\2)", text)
+
+    # 2. 图片 ![desc](url) -> [图片: desc]
+    text = re.sub(r"!\[([^\]]*)\]\((https?://[^\)]+)\)", r"[图片: \1]", text)
+
+    # 3. 标题 # 标题 -> 标题
+    text = re.sub(r"^#+\s*(.*)$", r"\1", text, flags=re.MULTILINE)
+
+    # 4. 加粗/斜体 **text** or *text* -> text
+    text = re.sub(r"[*_]{1,3}(.*?)[*_]{1,3}", r"\1", text)
+
+    # 5. 行内代码 `code` -> code
+    text = re.sub(r"`(.*?)`", r"\1", text)
+
+    # 6. 代码块 ```code``` -> code
+    # 尽可能保留缩进，并移除开头的语言标识
+    text = re.sub(r"```(?:\w+\n)?([\s\S]*?)```", r"\1", text)
+
+    # 7. 清理多余的连续空白行
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    return text.strip()
+
+
 def remove_none_values(data: dict[str, Any]) -> dict[str, Any]:
     """移除字典中的 None 值"""
     return {k: v for k, v in data.items() if v is not None}

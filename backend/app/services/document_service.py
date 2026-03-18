@@ -1,5 +1,4 @@
 import logging
-import shutil
 import time
 import uuid
 from pathlib import Path
@@ -16,7 +15,8 @@ from app.core.web.exceptions import BadRequestException, NotFoundException
 from app.crud.collection import crud_collection
 from app.crud.document import crud_document
 from app.crud.site import crud_site
-from app.db.database import AsyncSessionLocal, get_db
+from app.db.database import get_db
+from app.db.transaction import transactional
 from app.models.document import Document as DocumentModel
 from app.models.document import DocumentStatus, VectorStatus
 from app.models.task import TaskType
@@ -50,99 +50,100 @@ class DocumentService:
         )
 
     @staticmethod
-    async def process_vectorization_task(document_id: int):
+    @transactional()
+    async def process_vectorization_task(db: AsyncSession, document_id: int):
         """处理文档向量化任务（异步后台任务）"""
         task_start_time = time.time()
         logger.info(f"🔄 [Task] 开始处理向量化任务 | DocID: {document_id}")
 
-        async with AsyncSessionLocal() as db:
+        try:
+            document = await crud_document.get(db, id=document_id)
+            if not document:
+                logger.warning(f"⚠️ 文档 {document_id} 不存在，跳过向量化")
+                return
+
+            if document.vector_status != VectorStatus.PENDING:
+                logger.warning(
+                    f"⚠️ 文档 {document_id} 状态不为 pending ({document.vector_status})，跳过向量化"
+                )
+                return
+
+            with temporary_tenant_context(document.tenant_id):
+                # 🔍 [New] 在执行逻辑前再次强制检测配置 (针对 Worker 场景)
+                vector_store = await VectorStoreManager.get_instance()
+                await vector_store.validate_config(tenant_id=document.tenant_id)
+
+                await crud_document.update_vector_status(
+                    db, document_id=document_id, status=VectorStatus.PROCESSING
+                )
+
+                if not document.content:
+                    logger.warning(f"⚠️ 文档 {document_id} 内容为空，无法向量化")
+                    await crud_document.update_vector_status(
+                        db,
+                        document_id=document_id,
+                        status=VectorStatus.FAILED,
+                        error="文档内容为空",
+                    )
+                    return
+
+                vector_store = await VectorStoreManager.get_instance()
+                base_metadata = {
+                    "source": "document",
+                    "id": str(document.id),
+                    "title": document.title,
+                    "author": document.author,
+                    "site_id": document.site_id,
+                    "collection_id": document.collection_id,
+                    "tenant_id": document.tenant_id,
+                }
+
+                from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+                text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000, chunk_overlap=200, length_function=len
+                )
+                chunks = text_splitter.create_documents(
+                    texts=[document.content], metadatas=[base_metadata]
+                )
+
+                logger.info(
+                    f"📄 文档 {document_id} (租户: {document.tenant_id}) 已切分为 {len(chunks)} 个片段"
+                )
+
+                chunk_ids = []
+                for i, chunk in enumerate(chunks):
+                    chunk_id_str = f"{document.id}_chunk_{i}"
+                    chunk_uuid = str(uuid.uuid5(NAMESPACE_CATWIKI, chunk_id_str))
+                    chunk_ids.append(chunk_uuid)
+                    chunk.metadata["id"] = str(document.id)
+                    chunk.metadata["chunk_index"] = i
+
+                await vector_store.delete_by_metadata(key="id", value=str(document.id))
+
+                if chunks:
+                    await vector_store.add_documents(documents=chunks, ids=chunk_ids)
+
+                await crud_document.update_vector_status(
+                    db, document_id=document_id, status=VectorStatus.COMPLETED
+                )
+                total_elapsed = time.time() - task_start_time
+                logger.info(
+                    f"✨ [Task] 文档向量化完成! | ID: {document.id} | Chunks: {len(chunks)} | 总耗时: {total_elapsed:.3f}s"
+                )
+
+        except Exception as e:
+            logger.error(f"❌ 文档 {document_id} 向量化失败: {e}", exc_info=True)
             try:
-                document = await crud_document.get(db, id=document_id)
-                if not document:
-                    logger.warning(f"⚠️ 文档 {document_id} 不存在，跳过向量化")
-                    return
+                await crud_document.update_vector_status(
+                    db, document_id=document_id, status=VectorStatus.FAILED, error=str(e)
+                )
+            except Exception as update_err:
+                logger.warning(f"更新文档 {document_id} 向量化状态失败: {update_err}")
+            # 重新抛出异常，让外部 Worker (document_tasks.py) 能感知到失败并标记 Task 状态
+            raise e
 
-                if document.vector_status != VectorStatus.PENDING:
-                    logger.warning(
-                        f"⚠️ 文档 {document_id} 状态不为 pending ({document.vector_status})，跳过向量化"
-                    )
-                    return
-
-                with temporary_tenant_context(document.tenant_id):
-                    # 🔍 [New] 在执行逻辑前再次强制检测配置 (针对 Worker 场景)
-                    vector_store = await VectorStoreManager.get_instance()
-                    await vector_store.validate_config(tenant_id=document.tenant_id)
-
-                    await crud_document.update_vector_status(
-                        db, document_id=document_id, status=VectorStatus.PROCESSING
-                    )
-
-                    if not document.content:
-                        logger.warning(f"⚠️ 文档 {document_id} 内容为空，无法向量化")
-                        await crud_document.update_vector_status(
-                            db,
-                            document_id=document_id,
-                            status=VectorStatus.FAILED,
-                            error="文档内容为空",
-                        )
-                        return
-
-                    vector_store = await VectorStoreManager.get_instance()
-                    base_metadata = {
-                        "source": "document",
-                        "id": str(document.id),
-                        "title": document.title,
-                        "author": document.author,
-                        "site_id": document.site_id,
-                        "collection_id": document.collection_id,
-                        "tenant_id": document.tenant_id,
-                    }
-
-                    from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-                    text_splitter = RecursiveCharacterTextSplitter(
-                        chunk_size=1000, chunk_overlap=200, length_function=len
-                    )
-                    chunks = text_splitter.create_documents(
-                        texts=[document.content], metadatas=[base_metadata]
-                    )
-
-                    logger.info(
-                        f"📄 文档 {document_id} (租户: {document.tenant_id}) 已切分为 {len(chunks)} 个片段"
-                    )
-
-                    chunk_ids = []
-                    for i, chunk in enumerate(chunks):
-                        chunk_id_str = f"{document.id}_chunk_{i}"
-                        chunk_uuid = str(uuid.uuid5(NAMESPACE_CATWIKI, chunk_id_str))
-                        chunk_ids.append(chunk_uuid)
-                        chunk.metadata["id"] = str(document.id)
-                        chunk.metadata["chunk_index"] = i
-
-                    await vector_store.delete_by_metadata(key="id", value=str(document.id))
-
-                    if chunks:
-                        await vector_store.add_documents(documents=chunks, ids=chunk_ids)
-
-                    await crud_document.update_vector_status(
-                        db, document_id=document_id, status=VectorStatus.COMPLETED
-                    )
-                    total_elapsed = time.time() - task_start_time
-                    logger.info(
-                        f"✨ [Task] 文档向量化完成! | ID: {document.id} | Chunks: {len(chunks)} | 总耗时: {total_elapsed:.3f}s"
-                    )
-
-            except Exception as e:
-                logger.error(f"❌ 文档 {document_id} 向量化失败: {e}", exc_info=True)
-                try:
-                    await crud_document.update_vector_status(
-                        db, document_id=document_id, status=VectorStatus.FAILED, error=str(e)
-                    )
-                except Exception as update_err:
-                    logger.warning(f"更新文档 {document_id} 向量化状态失败: {update_err}")
-                # 重新抛出异常，让外部 Worker (document_tasks.py) 能感知到失败并标记 Task 状态
-                raise e
-
+    @transactional()
     async def import_document(
         self,
         file: UploadFile,
@@ -154,11 +155,13 @@ class DocumentService:
         extract_tables: bool,
         current_username: str,
     ) -> Any:
-        """导入文档（上传 -> 解析 -> 创建）并返回 enriched dictionary"""
+        """导入文档（上传 -> 云端暂存 -> 解析 -> 创建）并返回 enriched dictionary"""
+
+        from app.core.infra.rustfs import get_rustfs_service
+        from app.core.vector.vector_store import VectorStoreManager
+
         try:
             active_tenant_id = get_current_tenant()
-            from app.core.vector.vector_store import VectorStoreManager
-
             v_mgr = await VectorStoreManager.get_instance()
             await v_mgr.validate_config(tenant_id=active_tenant_id)
         except Exception as e:
@@ -169,14 +172,14 @@ class DocumentService:
         if not site:
             raise BadRequestException(detail=f"站点 {site_id} 不存在")
 
-        filename = file.filename or ""
+        filename = file.filename or "unknown"
         suffix = Path(filename).suffix.lower()
         if suffix not in [".pdf", ".jpg", ".jpeg", ".png"]:
             raise BadRequestException(detail="目前仅支持 PDF 和图片文件")
 
-        # 2. 获取处理器配置 (显式获取，解决 F821 错误)
+        # 2. 获取处理器配置 (显式获取，mask=False 以带上真实 API Key 到后台任务)
         processor_config_list = await self.system_config_service.get_doc_processor_config(
-            active_tenant_id, scope="tenant"
+            active_tenant_id, scope="tenant", mask=False
         )
         target_processor_config = next(
             (p for p in processor_config_list.get("processors", []) if p["type"] == processor_type),
@@ -185,47 +188,80 @@ class DocumentService:
         if not target_processor_config:
             raise BadRequestException(detail=f"处理器 {processor_type} 未配置或无效")
 
-        # 3. 保存文件到持久化目录供 Worker 读取
-        upload_dir = Path("data/uploads")
-        upload_dir.mkdir(parents=True, exist_ok=True)
+        # 3. 准备上传至 RustFS 暂存区 (云端共享，解耦存储)
+        rustfs = get_rustfs_service()
+        if not rustfs.is_available():
+            raise BadRequestException(detail="云端存储服务不可用，无法处理文档导入")
 
-        saved_filename = f"{uuid.uuid4()}{suffix}"
-        permanent_path = upload_dir / saved_filename
+        object_name = f"temp_imports/{uuid.uuid4()}{suffix}"
+        file_content = await file.read()
+        content_type = file.content_type or "application/octet-stream"
 
-        try:
-            with open(permanent_path, "wb") as f:
-                file.file.seek(0)
-                shutil.copyfileobj(file.file, f)
-        except Exception as e:
-            logger.error(f"保存上传文件失败: {e}")
-            raise BadRequestException(detail="文件存盘失败")
+        # [✨ 关键修复]：将上传操作注册为 on_commit 回调
+        # 理由：如果直接上传，但随后的数据库事务（如 enqueue_task）失败回滚，
+        # 则云端会残留垃圾文件。且必须保证在 Worker 启动前文件已落盘。
+        from app.db.transaction import on_commit
 
-        # 4. 组装任务参数并分发
+        on_commit(
+            self.db,
+            self._do_upload_to_rustfs,
+            object_name,
+            file_content,
+            content_type,
+            filename,
+        )
+
+        # 4. 创建后台任务 (enqueue_task 内部也会注册一个 on_commit 用于分发)
         task_payload = {
+            "object_name": object_name,
             "filename": filename,
-            "file_path": str(permanent_path),
+            "original_filename": filename,
             "site_id": site_id,
-            "tenant_id": active_tenant_id,
             "collection_id": collection_id,
-            "processor_type": processor_type,
+            "tenant_id": active_tenant_id,
+            "author": current_username,
+            "processor_config": target_processor_config,
             "ocr_enabled": ocr_enabled,
             "extract_images": extract_images,
             "extract_tables": extract_tables,
-            "author": current_username,
-            "processor_config": target_processor_config,
         }
 
         task = await TaskService.enqueue_task(
-            self.db,
+            db=self.db,
             task_type=TaskType.IMPORT_PARSING,
+            payload=task_payload,
             tenant_id=active_tenant_id,
             site_id=site_id,
             created_by=current_username,
-            payload=task_payload,
         )
 
         return task
 
+    async def _do_upload_to_rustfs(
+        self, object_name: str, content: bytes, content_type: str, filename: str
+    ):
+        """实际执行上传的回调函数"""
+        import io
+
+        from app.core.infra.rustfs import get_rustfs_service
+
+        try:
+            rustfs = get_rustfs_service()
+            success = rustfs.upload_file(
+                object_name=object_name,
+                file_data=io.BytesIO(content),
+                file_size=len(content),
+                content_type=content_type,
+                metadata={"original_filename": filename},
+            )
+            if not success:
+                logger.error(f"❌ 异步上传云端失败: {object_name}")
+            else:
+                logger.info(f"☁️ 异步上传云端成功: {object_name}")
+        except Exception as e:
+            logger.error(f"❌ 执行云端异步上传遭遇异常: {e}")
+
+    @transactional()
     async def dispatch_vectorization_tasks(
         self,
         background_tasks: BackgroundTasks,
@@ -286,6 +322,7 @@ class DocumentService:
 
         return success_ids, failed_count
 
+    @transactional()
     async def list_documents(
         self,
         page: int,
@@ -356,6 +393,7 @@ class DocumentService:
 
         return enriched_docs, paginator
 
+    @transactional()
     async def get_document(self, document_id: int) -> dict:
         """获取文档详情"""
         document = await crud_document.get_with_related_site(self.db, id=document_id)
@@ -365,40 +403,33 @@ class DocumentService:
             document, self.db, crud_collection, include_site_info=True
         )
 
-    async def create_document(self, document_in: DocumentCreate, auto_commit: bool = True) -> dict:
+    @transactional()
+    async def create_document(self, document_in: DocumentCreate) -> dict:
         """创建文档"""
         site = await crud_site.get(self.db, id=document_in.site_id)
         if not site:
             raise BadRequestException(detail=f"站点 {document_in.site_id} 不存在")
 
-        # 执行更新并手动提交
-        document = await crud_document.create(self.db, obj_in=document_in, auto_commit=False)
-        await self.site_service.increment_article_count(
-            site_id=document_in.site_id, auto_commit=False
-        )
+        # 执行关键操作
+        document = await crud_document.create(self.db, obj_in=document_in)
+        await self.site_service.increment_article_count(site_id=document_in.site_id)
 
-        if auto_commit:
-            await self.db.commit()
-            await self.db.refresh(document)
-        else:
-            await self.db.flush()
-
+        # 这里不再需要手动调用 commit() 或 refresh()，装饰器会自动处理
+        # 我们可以只返回 enriched dict，装饰器处理外部事务
         return await enrich_document_dict(document, self.db, crud_collection)
 
-    async def update_document(
-        self, document_id: int, document_in: any, auto_commit: bool = True
-    ) -> dict:
+    @transactional()
+    async def update_document(self, document_id: int, document_in: any) -> dict:
         """更新文档"""
         document = await crud_document.get(self.db, id=document_id)
         if not document:
             raise NotFoundException(detail=f"文档 {document_id} 不存在")
 
-        document = await crud_document.update(
-            self.db, db_obj=document, obj_in=document_in, auto_commit=auto_commit
-        )
+        document = await crud_document.update(self.db, db_obj=document, obj_in=document_in)
         return await enrich_document_dict(document, self.db, crud_collection)
 
-    async def delete_document(self, document_id: int, auto_commit: bool = True) -> None:
+    @transactional()
+    async def delete_document(self, document_id: int) -> None:
         """删除文档"""
         doc = await crud_document.get(self.db, id=document_id)
         if not doc:
@@ -406,38 +437,43 @@ class DocumentService:
 
         site_id = doc.site_id
 
-        # 1. 删除向量数据 (非强制)
+        # 2. 注册提交后回调：执行向量数据删除 (只有 DB 删除成功后才执行)
+        from app.db.transaction import on_commit
+
+        on_commit(self.db, self._do_delete_vector, document_id)
+
+        # 3. 执行数据库删除操作 (由 @transactional 合并提交)
+        await crud_document.delete(self.db, id=document_id)
+        await self.site_service.decrement_article_count(site_id=site_id)
+
+    async def _do_delete_vector(self, document_id: int):
+        """实际执行向量删除的回调"""
         try:
             from app.core.vector.vector_store import VectorStoreManager
 
             vector_store = await VectorStoreManager.get_instance()
             await vector_store.delete_by_metadata(key="id", value=str(document_id))
+            logger.info(f"💾 已清理文档 {document_id} 的相关向量数据")
         except Exception as e:
-            logger.warning(f"删除文档向量失败: {e}")
+            logger.warning(f"⚠️ 清理文档向量失败: {e}")
 
-        # 执行删除并手动提交
-        await crud_document.delete(self.db, id=document_id, auto_commit=False)
-        await self.site_service.decrement_article_count(site_id=site_id, auto_commit=False)
-
-        if auto_commit:
-            await self.db.commit()
-        else:
-            await self.db.flush()
-
+    @transactional()
     async def remove_document_vector(self, document_id: int) -> dict:
         """手动清空文档向量数据"""
         doc = await crud_document.get(self.db, id=document_id)
         if not doc:
             raise NotFoundException(detail=f"文档 {document_id} 不存在")
 
-        from app.core.vector.vector_store import VectorStoreManager
+        # 注册提交后回调执行向量删除
+        from app.db.transaction import on_commit
 
-        vector_store = await VectorStoreManager.get_instance()
-        await vector_store.delete_by_metadata(key="id", value=str(document_id))
+        on_commit(self.db, self._do_delete_vector, document_id)
 
+        # 更新 DB 状态
         await crud_document.update(self.db, db_obj=doc, obj_in={"vector_status": VectorStatus.NONE})
         return await enrich_document_dict(doc, self.db, crud_collection)
 
+    @transactional()
     async def get_document_chunks(self, document_id: int) -> list[dict]:
         """获取文档切片"""
         document = await crud_document.get(self.db, id=document_id)
@@ -451,6 +487,7 @@ class DocumentService:
             logger.error(f"Failed to get chunks for doc {document_id}: {e}")
             return []
 
+    @transactional()
     async def vectorize_single_document(
         self, background_tasks: BackgroundTasks, document_id: int, current_username: str = "system"
     ) -> dict:
@@ -474,6 +511,7 @@ class DocumentService:
         document = await crud_document.get(self.db, id=document_id)
         return await enrich_document_dict(document, self.db, crud_collection)
 
+    @transactional()
     async def get_client_document(
         self,
         document_id: int,

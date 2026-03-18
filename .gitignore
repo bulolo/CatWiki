@@ -53,3 +53,6 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Data
+data/

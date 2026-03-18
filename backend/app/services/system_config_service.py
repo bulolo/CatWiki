@@ -1,4 +1,3 @@
-import asyncio
 import copy
 import logging
 from typing import Any
@@ -16,6 +15,7 @@ from app.core.infra.tenant import get_current_tenant, temporary_tenant_context
 from app.core.web.exceptions import BadRequestException, NotFoundException
 from app.crud.system_config import crud_system_config
 from app.db.database import get_db
+from app.db.transaction import transactional
 from app.services.config.configuration_service import configuration_service
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,7 @@ class SystemConfigService:
 
         return AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
 
+    @transactional()
     async def get_ai_config(self, target_tenant_id: int | None) -> dict:
         """获取 AI 模型配置 (返回结构化数据：configs + meta)"""
         with temporary_tenant_context(target_tenant_id):
@@ -73,6 +74,7 @@ class SystemConfigService:
 
             return {"configs": configs, "meta": meta}
 
+    @transactional()
     async def resolve_platform_defaults(self, target_tenant_id: int | None) -> dict:
         """解析并聚合平台默认配置 (脱敏后)"""
         if not target_tenant_id:
@@ -123,6 +125,7 @@ class SystemConfigService:
                 # 3. 递归：处理嵌套结构 (如 extra_body)
                 SystemConfigService._merge_securely(new_dict[k], v)
 
+    @transactional()
     async def get_full_ai_state(self, target_tenant_id: int | None) -> dict:
         """获取全量 AI 状态 (配置 + 元数据 + 平台默认值)"""
         ai_state = await self.get_ai_config(target_tenant_id)
@@ -133,9 +136,8 @@ class SystemConfigService:
             "platform_defaults": platform_defaults or None,
         }
 
-    async def delete_config(
-        self, config_key: str, target_tenant_id: int | None, auto_commit: bool = True
-    ) -> None:
+    @transactional()
+    async def delete_config(self, config_key: str, target_tenant_id: int | None) -> None:
         """删除指定配置"""
         with temporary_tenant_context(target_tenant_id):
             db_config = await crud_system_config.get_by_key(
@@ -146,9 +148,8 @@ class SystemConfigService:
             raise NotFoundException(detail=f"配置 {config_key} 不存在")
 
         await self.db.delete(db_config)
-        if auto_commit:
-            await self.db.commit()
 
+    @transactional()
     async def update_ai_config(self, target_tenant_id: int | None, update_data: Any) -> dict:
         """更新 AI 模型配置 (保存后返回全量数据)"""
         new_values = update_data.model_dump(exclude_unset=True)
@@ -172,39 +173,37 @@ class SystemConfigService:
                     config_key=config_key,
                     config_value=new_config_val,
                     tenant_id=target_tenant_id,
-                    auto_commit=False,
                 )
 
-        # 显式提交事务 (兼容 FastAPI 依赖项已开启的事务)
-        await self.db.commit()
+        # 2. 注册提交后回调：清理缓存并重新加载向量库
+        from app.db.transaction import on_commit
 
-        # 2. 清理配置缓存
+        on_commit(
+            self.db, self._after_ai_config_update, target_tenant_id, "embedding" in new_values
+        )
+
+        # 3. 返回全量状态
+        return await self.get_full_ai_state(target_tenant_id)
+
+    async def _after_ai_config_update(self, tenant_id: int | None, reload_vector: bool):
+        """AI 配置更新后的副作用处理"""
         try:
-            configuration_service.clear_cache(tenant_id=target_tenant_id)
-            logger.info(f"🧹 Cleared AI config cache for tenant: {target_tenant_id}")
+            configuration_service.clear_cache(tenant_id=tenant_id)
+            logger.info(f"🧹 Cleared AI config cache for tenant: {tenant_id}")
         except Exception as e:
             logger.error(f"❌ Failed to clear config cache: {e}")
 
-        # 3. 触发 VectorStore 热更新 (仅当更新了 embedding 配置时)
-        if "embedding" in new_values:
-            _reload_tenant_id = target_tenant_id
+        if reload_vector:
+            try:
+                from app.core.vector.vector_store import VectorStoreManager
 
-            async def _reload_vector_store():
-                try:
-                    async with asyncio.timeout(10):
-                        from app.core.vector.vector_store import VectorStoreManager
+                manager = await VectorStoreManager.get_instance()
+                await manager.reload_credentials(tenant_id=tenant_id)
+                logger.info("✅ VectorStore credentials reloaded")
+            except Exception as e:
+                logger.warning(f"⚠️ Vector store reload failed: {e}")
 
-                        manager = await VectorStoreManager.get_instance()
-                        await manager.reload_credentials(tenant_id=_reload_tenant_id)
-                        logger.info("✅ VectorStore credentials reloaded in background")
-                except Exception as e:
-                    logger.warning(f"⚠️ Vector store reload skipped or failed: {e}")
-
-            asyncio.create_task(_reload_vector_store())
-
-        # 4. 返回全量状态
-        return await self.get_full_ai_state(target_tenant_id)
-
+    @transactional()
     async def _resolve_connection_params(
         self, target_tenant_id: int | None, model_type: str, config: Any
     ) -> tuple[str, str, str]:
@@ -234,6 +233,7 @@ class SystemConfigService:
 
         return api_key, base_url, model
 
+    @transactional()
     async def test_model_connection(
         self, target_tenant_id: int | None, model_type: str, config: Any
     ) -> dict:
@@ -293,7 +293,10 @@ class SystemConfigService:
                 raise Exception(f"HTTP {resp.status_code}: {resp.text[:100]}")
             return {"status": "ok"}
 
-    async def get_doc_processor_config(self, target_tenant_id: int | None, scope: str) -> dict:
+    @transactional()
+    async def get_doc_processor_config(
+        self, target_tenant_id: int | None, scope: str, mask: bool = True
+    ) -> dict:
         """获取文档处理服务配置 (带平台回退合并逻辑)"""
         # 1. 检查平台回退权限
         platform_fallback_allowed = False
@@ -331,14 +334,38 @@ class SystemConfigService:
                             p["id"] = str(uuid4())
 
         # 4. 根据视角进行脱敏并合并
-        if scope == "tenant":
+        if mask:
+            if tenant_processors:
+                tenant_processors = mask_sensitive_data(tenant_processors)
             if platform_processors:
                 platform_processors = mask_sensitive_data(platform_processors)
 
         return {"processors": tenant_processors + platform_processors}
 
+    @transactional()
+    async def resolve_platform_doc_processor_defaults(self, target_tenant_id: int | None) -> dict:
+        """解析租户可用的平台文档处理器默认值"""
+        # 检查租户是否允许使用平台资源
+        from app.crud.tenant import crud_tenant
+
+        tenant = await crud_tenant.get(self.db, id=target_tenant_id)
+        if not tenant or "doc_processors" not in (tenant.platform_resources_allowed or []):
+            return {"processors": []}
+
+        # 获取平台（None 租户）配置
+        with temporary_tenant_context(None):
+            platform_config = await crud_system_config.get_by_key(
+                self.db, config_key=DOC_PROCESSOR_CONFIG_KEY, tenant_id=None
+            )
+            if not platform_config:
+                return {"processors": []}
+
+            procs = mask_sensitive_data(platform_config.config_value.get("processors", []))
+            return {"processors": procs}
+
+    @transactional()
     async def update_doc_processor_config(
-        self, target_tenant_id: int | None, update_data: Any, auto_commit: bool = True
+        self, target_tenant_id: int | None, update_data: Any
     ) -> dict:
         """更新文档处理服务配置 (自动过滤平台来源，并持久化 ID)"""
         config_value = update_data.model_dump(mode="json")
@@ -363,17 +390,37 @@ class SystemConfigService:
             config_key=DOC_PROCESSOR_CONFIG_KEY,
             config_value=config_value,
             tenant_id=target_tenant_id,
-            auto_commit=False,
         )
-        if auto_commit:
-            await self.db.commit()
-            await self.db.refresh(db_config)
-        else:
-            await self.db.flush()
         return copy.deepcopy(db_config.config_value)
 
-    async def test_doc_processor_connection(self, config: Any) -> dict:
+    async def _resolve_doc_processor_config(self, target_tenant_id: int | None, config: Any) -> Any:
+        """从数据库恢复 masked 的 DocProcessor 配置"""
+        if not self._is_masked(config.api_key):
+            return config
+
+        # 如果是掩码，需要从数据库找回原值
+        # 注意：DocProcessor 是一个列表，我们需要根据 ID 匹配
+        all_configs = await self.get_doc_processor_config(
+            target_tenant_id, scope="tenant", mask=False
+        )
+        processors = all_configs.get("processors", [])
+        target = next((p for p in processors if p.get("id") == config.id), None)
+
+        if target:
+            config.api_key = target.get("api_key", config.api_key)
+            # 如果 base_url 也是空的（对于平台资源），也可以从这里恢复
+            if not config.base_url:
+                config.base_url = target.get("base_url", config.base_url)
+
+        return config
+
+    async def test_doc_processor_connection(
+        self, target_tenant_id: int | None, config: Any
+    ) -> dict:
         """测试文档处理服务连接性"""
+        # 1. 自动恢复掩码密钥
+        config = await self._resolve_doc_processor_config(target_tenant_id, config)
+
         try:
             from app.core.doc_processor import DocProcessorFactory
 

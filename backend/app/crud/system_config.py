@@ -93,7 +93,7 @@ class CRUDSystemConfig(CRUDBase[SystemConfig, SystemConfigCreate, SystemConfigUp
         config_key: str,
         config_value: dict,
         tenant_id: int | None = None,
-        auto_commit: bool = True,
+        auto_commit: bool = False,
     ) -> SystemConfig:
         """根据配置键更新配置（tenant_id 为 None 时避免重复写入）。"""
         from sqlalchemy.dialects.postgresql import insert
@@ -159,7 +159,7 @@ class CRUDSystemConfig(CRUDBase[SystemConfig, SystemConfigCreate, SystemConfigUp
         return db_config
 
     async def delete_by_key(
-        self, db: AsyncSession, *, config_key: str, auto_commit: bool = True
+        self, db: AsyncSession, *, config_key: str, auto_commit: bool = False
     ) -> bool:
         """根据配置键删除配置"""
         db_config = await self.get_by_key(db, config_key=config_key)

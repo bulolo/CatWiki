@@ -129,7 +129,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return list(result.scalars())
 
     async def create(
-        self, db: AsyncSession, *, obj_in: CreateSchemaType, auto_commit: bool = True
+        self,
+        db: AsyncSession,
+        *,
+        obj_in: CreateSchemaType | dict[str, Any],
+        auto_commit: bool = False,
     ) -> ModelType:
         """
         创建记录（支持自动填充 tenant_id）
@@ -142,7 +146,10 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         返回:
             创建的模型实例
         """
-        obj_in_data = obj_in.model_dump()
+        if isinstance(obj_in, dict):
+            obj_in_data = obj_in
+        else:
+            obj_in_data = obj_in.model_dump()
 
         db_obj = self.model(**obj_in_data)
         db.add(db_obj)
@@ -159,7 +166,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         *,
         db_obj: ModelType,
         obj_in: UpdateSchemaType | dict[str, Any],
-        auto_commit: bool = True,
+        auto_commit: bool = False,
     ) -> ModelType:
         """
         更新记录
@@ -191,7 +198,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db_obj
 
     async def delete(
-        self, db: AsyncSession, *, id: Any, auto_commit: bool = True
+        self, db: AsyncSession, *, id: Any, auto_commit: bool = False
     ) -> ModelType | None:
         """
         删除记录
@@ -229,7 +236,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         stmt = delete(self.model).where(self.model.tenant_id == tenant_id)
         result = await db.execute(stmt)
-        await db.commit()
+        # 默认不自动提交，由调用方或装饰器处理
         return result.rowcount
 
     async def count(self, db: AsyncSession, **kwargs) -> int:

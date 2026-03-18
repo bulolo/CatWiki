@@ -71,7 +71,19 @@ class TenantSeeder(BaseSeeder):
 
     async def run(self):
         """执行播种"""
-        tenant_name = self.data["tenant"]["name"]
+        tenant_data = self.data["tenant"]
+        tenant_slug = tenant_data["slug"]
+        tenant_name = tenant_data["name"]
+
+        # [✨ 优化] 整体幂等性检查：如果该租户（通过 slug 识别）已存在，则跳过整个播种逻辑
+        # 这样可以从源头上防止项目重启时 init.py 重新执行导致用户在界面上修改的配置、文档等被覆盖
+        existing_tenant = await crud_tenant.get_by_slug(self.db, slug=tenant_slug)
+        if existing_tenant:
+            await self.log(
+                f"ℹ️ 组织空间 '{tenant_name}' ({tenant_slug}) 已存在，跳过播种流程以保护现有配置和数据。"
+            )
+            return
+
         await self.log(f"🚀 开始初始化 {tenant_name} 数据...")
 
         tenant = await self.create_tenant()

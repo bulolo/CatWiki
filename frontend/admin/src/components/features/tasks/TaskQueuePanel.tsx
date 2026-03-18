@@ -122,7 +122,7 @@ export function TaskQueuePanel() {
 
             <div className="max-h-[300px] overflow-y-auto p-2 space-y-1 custom-scrollbar">
               {tasks.map((task) => {
-                const filename = task.payload?.filename || `任务 ${task.id}`
+                const filename = task.payload?.filename || task.payload?.original_filename || `任务 ${task.id}`
                 return (
                   <div key={task.id} className="flex flex-col p-2 bg-white hover:bg-slate-50 rounded-lg group transition-colors">
                     <div className="flex items-start justify-between gap-2">
