@@ -2,13 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type TenantUpdate = {
-    name?: (string | null);
-    slug?: (string | null);
-    domain?: (string | null);
-    logo_url?: (string | null);
-    description?: (string | null);
-    status?: string;
+export type TenantEEUpdate = {
     max_sites?: number;
     max_documents?: number;
     max_storage_mb?: number;
@@ -17,6 +11,13 @@ export type TenantUpdate = {
     platform_resources_allowed?: Array<string>;
     contact_email?: (string | null);
     contact_phone?: (string | null);
+    advanced_config?: Record<string, any>;
+    name?: (string | null);
+    slug?: (string | null);
+    domain?: (string | null);
+    logo_url?: (string | null);
+    description?: (string | null);
+    status?: string;
     plan_expires_at?: (string | null);
 };
 

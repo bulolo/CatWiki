@@ -95,6 +95,12 @@ services:
       - /etc/timezone:/etc/timezone:ro
     networks:
       - catwiki-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     # 资源限制
     deploy:
       resources:
@@ -133,9 +139,12 @@ services:
       - /app/__pycache__
       - /app/.pytest_cache
     depends_on:
-      - postgres
-      - rustfs
-      - redis
+      postgres:
+        condition: service_started
+      rustfs:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - catwiki-network
     command: >
@@ -204,7 +213,7 @@ services:
       postgres:
         condition: service_started
       rustfs:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_started
       backend-init:

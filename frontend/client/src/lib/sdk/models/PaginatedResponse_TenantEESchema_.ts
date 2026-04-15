@@ -3,12 +3,12 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { PaginationInfo } from './PaginationInfo';
-import type { TenantSchema } from './TenantSchema';
-export type PaginatedResponse_TenantSchema_ = {
+import type { TenantEESchema } from './TenantEESchema';
+export type PaginatedResponse_TenantEESchema_ = {
     /**
      * 数据列表
      */
-    list: Array<TenantSchema>;
+    list: Array<TenantEESchema>;
     /**
      * 分页信息
      */

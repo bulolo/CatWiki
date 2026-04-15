@@ -9,7 +9,7 @@ import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronLeft, Save, Send, ExternalLink, Clock, User, Info, Loader2 } from "lucide-react"
+import { ChevronLeft, Save, Send, ExternalLink, Clock, User, Info, Loader2, Database } from "lucide-react"
 import { useTranslations, useLocale } from "next-intl"
 import { DocumentStatus } from "@/lib/api-client"
 import { toast } from "sonner"
@@ -189,6 +189,26 @@ export default function EditDocumentPage() {
             <MetaRow icon={User} label={t("editDoc.author")}>
               <span className="text-xs font-bold text-slate-700">{document?.author || "Admin"}</span>
             </MetaRow>
+            {document?.parse_meta && (
+              <details className="group">
+                <summary className="flex items-center justify-between cursor-pointer list-none bg-slate-50/50 p-3 rounded-xl hover:bg-slate-100/60 transition-colors">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Database className="h-3.5 w-3.5" />
+                    <span className="text-xs font-medium">解析元数据</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 group-open:hidden">{String(document.parse_meta.processor_type ?? "")}</span>
+                  <span className="text-[10px] text-slate-400 hidden group-open:inline">收起</span>
+                </summary>
+                <div className="mt-1 rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden text-[11px]">
+                  {Object.entries(document.parse_meta).map(([k, v]) => (
+                    <div key={k} className="flex gap-2 px-3 py-1.5 bg-white">
+                      <span className="text-slate-400 shrink-0 w-28">{k}</span>
+                      <span className="text-slate-600 break-all">{String(v)}</span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
           </DocumentEditorSidebar>
         </div>
       </div>

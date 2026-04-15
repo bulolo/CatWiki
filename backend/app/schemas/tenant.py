@@ -14,7 +14,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, computed_field
+from pydantic import BaseModel, ConfigDict, computed_field
 
 
 class TenantBase(BaseModel):
@@ -24,45 +24,28 @@ class TenantBase(BaseModel):
     logo_url: str | None = None
     description: str | None = None
     status: str = "trial"
-    max_sites: int = 3
-    max_documents: int = 1000
-    max_storage_mb: int = 5120
-    max_users: int = 10
-    plan: str = "starter"
-    platform_resources_allowed: list[str] = []
-    contact_email: EmailStr | None = None
-    contact_phone: str | None = None
 
 
 class TenantCreate(TenantBase):
-    plan_expires_at: datetime
-
-
-class TenantCreateRequest(TenantCreate):
-    admin_email: EmailStr
-    admin_password: str
-    admin_name: str | None = None
+    pass
 
 
 class TenantUpdate(TenantBase):
     name: str | None = None
     slug: str | None = None
-    plan_expires_at: datetime | None = None
 
 
 class TenantInDBBase(TenantBase):
     id: int
     created_at: datetime
     updated_at: datetime
-    plan_expires_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
     @computed_field
     @property
     def is_demo(self) -> bool:
-        """是否为演示模式"""
-        return self.plan == "demo"
+        return False
 
 
 class TenantSchema(TenantInDBBase):

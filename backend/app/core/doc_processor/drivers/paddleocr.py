@@ -14,6 +14,7 @@
 
 import base64
 import logging
+import re
 from pathlib import Path
 
 import httpx
@@ -36,6 +37,27 @@ class PaddleOCRDocProcessor(BaseDocProcessor):
         super().__init__(config)
         self.timeout = 120.0  # 大文件需要更长时间
         logger.info(f"PaddleOCRDocProcessor initialized with {config.name}")
+
+    async def is_healthy(self) -> bool:
+        """
+        检查 PaddleOCR 服务健康状态
+        PaddleOCR health API 返回格式:
+        {
+            "logId": "xxx",
+            "errorCode": 0,
+            "errorMsg": "Healthy"
+        }
+        """
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                resp = await client.get(f"{self.base_url}/health")
+                if resp.status_code != 200:
+                    return False
+                data = resp.json()
+                return data.get("errorCode") == 0
+        except Exception as e:
+            logger.warning(f"PaddleOCR health check failed: {e}")
+            return False
 
     async def process(self, file_path: Path, **kwargs) -> ParsedResult:
         """
@@ -75,9 +97,10 @@ class PaddleOCRDocProcessor(BaseDocProcessor):
         else:
             file_type = 1  # 图片类型
 
-        # 获取配置选项
+        # 获取配置
         processor_config = self.config.model_dump().get("config", {}) or {}
-        extract_images = processor_config.get("extract_images", False)
+        extract_images = kwargs.get("extract_images", processor_config.get("extract_images", False))
+        extract_tables = kwargs.get("extract_tables", processor_config.get("extract_tables", True))
 
         # 构建请求体
         request_body = {
@@ -85,7 +108,7 @@ class PaddleOCRDocProcessor(BaseDocProcessor):
             "fileType": file_type,
             "useLayoutDetection": True,
             "prettifyMarkdown": True,
-            "mergeTables": True,
+            "mergeTables": extract_tables,
             "relevelTitles": True,
         }
 
@@ -153,8 +176,6 @@ class PaddleOCRDocProcessor(BaseDocProcessor):
                         logger.error(f"Image processing failed: {e}")
                 elif markdown_content and not extract_images:
                     # 清理未处理的图片引用，避免死链
-                    import re
-
                     # 移除 HTML <img> 标签 (PaddleOCR 格式)
                     markdown_content = re.sub(
                         r'<img\s+[^>]*src=["\']imgs/[^"\']*["\'][^>]*/?\s*>', "", markdown_content
@@ -172,32 +193,9 @@ class PaddleOCRDocProcessor(BaseDocProcessor):
                     },
                 )
 
-        except httpx.TimeoutException:
-            raise TimeoutError("PaddleOCR request timed out")
         except Exception as e:
             logger.error(f"PaddleOCR process failed: {e}", exc_info=True)
-            raise e
-
-    async def is_healthy(self) -> bool:
-        """
-        检查 PaddleOCR 服务健康状态
-        PaddleOCR health API 返回格式:
-        {
-            "logId": "xxx",
-            "errorCode": 0,
-            "errorMsg": "Healthy"
-        }
-        """
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                resp = await client.get(f"{self.base_url}/health")
-                if resp.status_code != 200:
-                    return False
-                data = resp.json()
-                return data.get("errorCode") == 0
-        except Exception as e:
-            logger.warning(f"PaddleOCR health check failed: {e}")
-            return False
+            raise
 
 
 # 注册 PaddleOCR

@@ -11,7 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import { locales, localeLabels, type Locale } from '@/i18n/config';
 
-export function LanguageSwitcher() {
+export function LanguageSwitcher({ isCompact = false }: { isCompact?: boolean }) {
   const locale = useLocale();
 
   const switchLanguage = (newLocale: Locale) => {
@@ -23,9 +23,15 @@ export function LanguageSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-600 flex items-center gap-1.5 focus:outline-none">
-          {<Languages className="h-4 w-4" />}
-          <span className="text-xs font-bold uppercase tracking-wider">{locale}</span>
+        <button className={cn(
+          "hover:bg-slate-100 rounded-xl transition-colors text-slate-600 flex items-center gap-1.5 focus:outline-none",
+          isCompact ? "p-1 hover:bg-slate-200/50" : "p-2 hover:bg-slate-100"
+        )}>
+          {!isCompact && <Languages className="h-4 w-4" />}
+          <span className={cn(
+            "font-bold uppercase tracking-wider",
+            isCompact ? "text-[10px]" : "text-xs"
+          )}>{locale}</span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[120px] p-1">

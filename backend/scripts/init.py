@@ -42,6 +42,7 @@ async def init_database():
         edition = settings.CATWIKI_EDITION
         logger.info(f"✨ 检测到系统版本: {edition.upper()}")
 
+
         # ========================
         # 社区版 (CE) 初始化
         # ========================

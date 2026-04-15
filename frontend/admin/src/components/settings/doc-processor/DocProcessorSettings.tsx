@@ -14,7 +14,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -67,6 +67,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
   const t = useTranslations("DocProcessor")
   const [processors, setProcessors] = useState<DocProcessorConfig[]>([])
   const [testing, setTesting] = useState<string | null>(null)
+  const [versions, setVersions] = useState<Record<string, string>>({})
 
   // 内联编辑状态
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -78,13 +79,27 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
   const updateMutation = useUpdateDocProcessorConfig(scope)
   const testMutation = useTestDocProcessorConnection(scope)
 
-  // 当配置加载完成时，同步到本地 processors 状态
+  // 使用 ref 稳定 testMutation 引用，避免 useEffect 无限循环
+  const testMutationRef = useRef(testMutation)
+  testMutationRef.current = testMutation
+
+  // 当配置加载完成时，同步到本地 processors 状态并自动获取版本
   useEffect(() => {
     if (configData?.processors) {
-      setProcessors(configData.processors.map(p => ({
+      const list = configData.processors.map(p => ({
         ...p,
-        id: p.id || "" // 确保 ID 存在，满足前端类型要求
-      } as DocProcessorConfig)))
+        id: p.id || ""
+      } as DocProcessorConfig))
+      setProcessors(list)
+
+      list.filter(p => p.enabled).forEach(p => {
+        testMutationRef.current.mutateAsync(p)
+          .then((res: unknown) => {
+            const version = (res as { version?: string })?.version
+            if (version) setVersions(prev => ({ ...prev, [p.id]: version }))
+          })
+          .catch(() => {})
+      })
     }
   }, [configData])
 
@@ -105,15 +120,11 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
     setTesting(processor.id)
     testMutation.mutate(processor, {
       onSuccess: (response: unknown) => {
-        const status =
-          response &&
-            typeof response === "object" &&
-            "status" in response &&
-            typeof (response as { status?: unknown }).status === "string"
-            ? (response as { status: string }).status
-            : undefined
-        if (status === "healthy") {
-          toast.success(`${processor.name} ${t("testSuccess")}`)
+        const res = response as { status?: string; version?: string } | undefined
+        if (res?.status === "healthy") {
+          const versionStr = res.version ? ` v${res.version}` : ""
+          toast.success(`${processor.name}${versionStr} ${t("testSuccess")}`)
+          if (res.version) setVersions(prev => ({ ...prev, [processor.id]: res.version! }))
         } else {
           toast.error(t("testFailed"))
         }
@@ -260,20 +271,16 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                 if (selectedType) {
                   return (
                     <p className="text-xs text-slate-500">
-                      {selectedType.description}
                       {selectedType.docUrl && (
-                        <>
-                          {" · "}
-                          <a
-                            href={selectedType.docUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline inline-flex items-center gap-1"
-                          >
-                            {t("deployDoc")} <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </>
-                  )}
+                        <a
+                          href={selectedType.docUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          {t("deployDoc")} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
                     </p>
                   )
                 }
@@ -354,21 +361,208 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                 </div>
 
                 {formData.type === "Docling" && (
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="extract_tables"
-                      checked={getConfigFlag(formData.config, "extract_tables")}
-                      onCheckedChange={(checked: boolean) =>
-                        setFormData({
-                          ...formData,
-                          config: { ...formData.config, extract_tables: checked }
-                        })
-                      }
-                    />
-                    <Label htmlFor="extract_tables" className="text-sm">{t("extractTables")}</Label>
-                  </div>
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="extract_tables"
+                        checked={getConfigFlag(formData.config, "extract_tables")}
+                        onCheckedChange={(checked: boolean) =>
+                          setFormData({
+                            ...formData,
+                            config: { ...formData.config, extract_tables: checked }
+                          })
+                        }
+                      />
+                      <Label htmlFor="extract_tables" className="text-sm">{t("extractTables")}</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="do_formula_enrichment"
+                        checked={(formData.config as any)?.do_formula_enrichment !== false}
+                        onCheckedChange={(checked: boolean) =>
+                          setFormData({
+                            ...formData,
+                            config: { ...formData.config, do_formula_enrichment: checked }
+                          })
+                        }
+                      />
+                      <Label htmlFor="do_formula_enrichment" className="text-sm">{t("formulaRecognition")}</Label>
+                    </div>
+                  </>
+                )}
+
+                {formData.type === "MinerU" && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="formula_enable"
+                        checked={(formData.config as any)?.formula_enable !== false}
+                        onCheckedChange={(checked: boolean) =>
+                          setFormData({ ...formData, config: { ...formData.config, formula_enable: checked } })
+                        }
+                      />
+                      <Label htmlFor="formula_enable" className="text-sm">{t("formulaRecognition")}</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="table_enable"
+                        checked={(formData.config as any)?.table_enable !== false}
+                        onCheckedChange={(checked: boolean) =>
+                          setFormData({ ...formData, config: { ...formData.config, table_enable: checked } })
+                        }
+                      />
+                      <Label htmlFor="table_enable" className="text-sm">{t("extractTables")}</Label>
+                    </div>
+                  </>
                 )}
               </div>
+
+              {/* Docling 专属配置 */}
+              {formData.type === "Docling" && (
+                <div className="space-y-3 pt-2 border-t border-primary/10">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="docling_ocr_engine" className="text-sm">{t("ocrEngine")}</Label>
+                      <Select
+                        value={(formData.config as any)?.ocr_engine || "rapidocr"}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, config: { ...formData.config, ocr_engine: value } })
+                        }
+                      >
+                        <SelectTrigger id="docling_ocr_engine"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="rapidocr">rapidocr</SelectItem>
+                          <SelectItem value="easyocr">easyocr</SelectItem>
+                          <SelectItem value="tesseract">tesseract</SelectItem>
+                          <SelectItem value="tesserocr">tesserocr</SelectItem>
+                          <SelectItem value="ocrmac">ocrmac</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="docling_pdf_backend" className="text-sm">{t("pdfBackend")}</Label>
+                      <Select
+                        value={(formData.config as any)?.pdf_backend || "dlparse_v4"}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, config: { ...formData.config, pdf_backend: value } })
+                        }
+                      >
+                        <SelectTrigger id="docling_pdf_backend"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="dlparse_v4">dlparse_v4（推荐）</SelectItem>
+                          <SelectItem value="dlparse_v2">dlparse_v2</SelectItem>
+                          <SelectItem value="dlparse_v1">dlparse_v1</SelectItem>
+                          <SelectItem value="pypdfium2">pypdfium2</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="docling_pipeline" className="text-sm">{t("doclingPipeline")}</Label>
+                      <Select
+                        value={(formData.config as any)?.pipeline || "standard"}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, config: { ...formData.config, pipeline: value } })
+                        }
+                      >
+                        <SelectTrigger id="docling_pipeline"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="standard">standard（推荐）</SelectItem>
+                          <SelectItem value="vlm">vlm（需要 GPU）</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MinerU 专属配置 */}
+              {formData.type === "MinerU" && (
+                <div className="space-y-3 pt-2 border-t border-primary/10">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="mineru_backend" className="text-sm">{t("mineruBackend")}</Label>
+                    <Select
+                      value={(formData.config as any)?.backend || "hybrid-auto-engine"}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, config: { ...formData.config, backend: value } })
+                      }
+                    >
+                      <SelectTrigger id="mineru_backend">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hybrid-auto-engine">{t("hybridAutoEngine")}</SelectItem>
+                        <SelectItem value="pipeline">{t("pipeline")}</SelectItem>
+                        <SelectItem value="vlm-auto-engine">{t("vlmAutoEngine")}</SelectItem>
+                        <SelectItem value="vlm-http-client">{t("vlmHttpClient")}</SelectItem>
+                        <SelectItem value="hybrid-http-client">{t("hybridHttpClient")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="mineru_parse_method" className="text-sm">{t("parseMethod")}</Label>
+                    <Select
+                      value={(formData.config as any)?.parse_method || "auto"}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, config: { ...formData.config, parse_method: value } })
+                      }
+                    >
+                      <SelectTrigger id="mineru_parse_method">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">{t("parseAuto")}</SelectItem>
+                        <SelectItem value="ocr">{t("parseOcr")}</SelectItem>
+                        <SelectItem value="txt">{t("parseTxt")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">{t("recognitionLanguage")}</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: "ch", label: t("langCh") },
+                        { value: "en", label: t("langEn") },
+                        { value: "korean", label: t("langKorean") },
+                        { value: "japan", label: t("langJapan") },
+                        { value: "chinese_cht", label: t("langCht") },
+                        { value: "latin", label: t("langLatin") },
+                        { value: "arabic", label: t("langArabic") },
+                        { value: "cyrillic", label: t("langCyrillic") },
+                        { value: "east_slavic", label: t("langEastSlavic") },
+                        { value: "devanagari", label: t("langDevanagari") },
+                        { value: "th", label: t("langTh") },
+                        { value: "el", label: t("langEl") },
+                        { value: "ta", label: t("langTa") },
+                        { value: "te", label: t("langTe") },
+                        { value: "ka", label: t("langKa") },
+                      ].map(({ value: lang, label }) => {
+                        const current: string[] = (formData.config as any)?.lang_list || ["ch", "en"]
+                        const selected = current.includes(lang)
+                        return (
+                          <button
+                            key={lang}
+                            type="button"
+                            onClick={() => {
+                              const next = selected
+                                ? current.filter((l: string) => l !== lang)
+                                : [...current, lang]
+                              if (next.length === 0) return
+                              setFormData({ ...formData, config: { ...formData.config, lang_list: next } })
+                            }}
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                              selected
+                                ? "bg-primary text-white border-primary"
+                                : "bg-white text-slate-600 border-slate-200 hover:border-primary/50"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -465,6 +659,11 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                         <div>
                           <div className="flex items-center gap-2">
                             <CardTitle className="text-base">{processor.name}</CardTitle>
+                            {versions[processor.id] && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
+                                v{versions[processor.id]}
+                              </span>
+                            )}
                             {processor.origin === 'platform' && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700">
                                 <Globe className="h-3 w-3 mr-1" />
@@ -474,13 +673,20 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                           </div>
                           <CardDescription>
                             {DOC_PROCESSOR_TYPES.find(t => t.value === processor.type)?.label || processor.type}
-                            {processor.base_url !== "****" && (
-                              <>
-                                {" · "}
-                                {processor.base_url}
-                              </>
-                            )}
                           </CardDescription>
+                          {(() => {
+                            const formats = DOC_PROCESSOR_TYPES.find(t => t.value === processor.type)?.formats
+                            if (!formats?.length) return null
+                            return (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {formats.map(f => (
+                                  <span key={f} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500">
+                                    {f}
+                                  </span>
+                                ))}
+                              </div>
+                            )
+                          })()}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

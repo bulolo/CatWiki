@@ -14,44 +14,23 @@
 
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header
+from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.responses import StreamingResponse
 
-from app.schemas.chat import (
-    ChatCompletionRequest,
-    ChatCompletionResponse,
-    InternalChatCompletionRequest,
-)
+from app.schemas.chat import ResponsesAPIRequest, ResponsesAPIResponse
 from app.services.chat.chat_service import ChatService, get_chat_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.post(
-    "/completions", response_model=ChatCompletionResponse, operation_id="createChatCompletion"
-)
-async def create_chat_completion(
-    request: InternalChatCompletionRequest,
+@router.post("/responses", response_model=ResponsesAPIResponse, operation_id="createResponse")
+async def create_response(
+    request: ResponsesAPIRequest,
     background_tasks: BackgroundTasks,
     service: ChatService = Depends(get_chat_service),
-    origin: str | None = Header(None),
-    referer: str | None = Header(None),
-) -> ChatCompletionResponse | StreamingResponse:
+) -> ResponsesAPIResponse | StreamingResponse:
     """
-    创建聊天补全（内部接口，非 OpenAI 兼容）
+    创建 AI 响应（标准 OpenAI Responses API，含 CatWiki 扩展字段 filter）
     """
-    # 统一通过 ChatService 处理，它已包含 Site/Tenant 路由、LLM 池化和流式支持
-    service_request = ChatCompletionRequest(
-        message=request.message,
-        thread_id=request.thread_id,
-        temperature=request.temperature,
-        stream=request.stream,
-        user=request.user,
-        filter=request.filter,
-    )
-    return await service.process_chat_request(
-        service_request,
-        background_tasks,
-        channel="internal",
-    )
+    return await service.process_responses_request(request, background_tasks)

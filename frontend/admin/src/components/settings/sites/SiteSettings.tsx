@@ -166,6 +166,19 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
     return () => { cancelled = true }
   }, [mounted, isEnterprise, siteId])
 
+  // 启用/禁用站点立即生效
+  const handleToggleActive = async () => {
+    const next = !isActive
+    setIsActive(next)
+    try {
+      await updateSiteMutation.mutateAsync({ siteId, data: { status: next ? "active" : "disabled" } })
+      toast.success(t("saveSuccess"))
+    } catch (e: any) {
+      setIsActive(!next)
+      toast.error(e.message || t("saveError"))
+    }
+  }
+
   // EE: 保存访问控制配置
   const handleSaveAccessConfig = async (updates: { is_public?: boolean; password?: string | null }) => {
     try {
@@ -173,7 +186,11 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
       setEeIsPublic(config.is_public ?? true)
       setEeHasPassword(config.has_password ?? false)
       setEeNewPassword("")
-      toast.success(t("saveSuccess"))
+      if ((config as any).generated_password) {
+        toast.success(`访问密码已自动设置为：${(config as any).generated_password}，请妥善保存`, { duration: 10000 })
+      } else {
+        toast.success(t("saveSuccess"))
+      }
     } catch (e: any) {
       toast.error(e.message || "保存失败")
     }
@@ -487,7 +504,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
                       </div>
                       <div
                         className={`w-11 h-6 ${isActive ? 'bg-primary' : 'bg-slate-200'} rounded-full relative cursor-pointer transition-colors`}
-                        onClick={() => setIsActive(!isActive)}
+                        onClick={handleToggleActive}
                       >
                         <div className={`absolute ${isActive ? 'right-1' : 'left-1'} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
                       </div>

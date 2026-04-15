@@ -2,34 +2,26 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { ChatCompletionResponse } from '../models/ChatCompletionResponse';
-import type { InternalChatCompletionRequest } from '../models/InternalChatCompletionRequest';
+import type { ResponsesAPIRequest } from '../models/ResponsesAPIRequest';
+import type { ResponsesAPIResponse } from '../models/ResponsesAPIResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class ChatService {
     constructor(public readonly httpRequest: BaseHttpRequest) {}
     /**
-     * Create Chat Completion
-     * 创建聊天补全（内部接口，非 OpenAI 兼容）
-     * @returns ChatCompletionResponse Successful Response
+     * Create Response
+     * 创建 AI 响应（标准 OpenAI Responses API，含 CatWiki 扩展字段 filter）
+     * @returns ResponsesAPIResponse Successful Response
      * @throws ApiError
      */
-    public createChatCompletion({
+    public createResponse({
         requestBody,
-        origin,
-        referer,
     }: {
-        requestBody: InternalChatCompletionRequest,
-        origin?: (string | null),
-        referer?: (string | null),
-    }): CancelablePromise<ChatCompletionResponse> {
+        requestBody: ResponsesAPIRequest,
+    }): CancelablePromise<ResponsesAPIResponse> {
         return this.httpRequest.request({
             method: 'POST',
-            url: '/v1/chat/completions',
-            headers: {
-                'origin': origin,
-                'referer': referer,
-            },
+            url: '/v1/chat/responses',
             body: requestBody,
             mediaType: 'application/json',
             errors: {

@@ -21,7 +21,7 @@ from urllib.parse import quote_plus
 from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_VERSION = "1.0.7"
+DEFAULT_VERSION = "1.0.8"
 
 
 def get_project_version() -> str:
@@ -51,9 +51,7 @@ class Settings(BaseSettings):
     # 环境配置
     ENVIRONMENT: str = Field(default="local", pattern="^(local|dev|prod)$")
     DEBUG: bool = Field(default=False)
-    CATWIKI_EDITION: str = Field(
-        default="community", validation_alias="CATWIKI_EDITION_DISABLE_ENV_OVERRIDE"
-    )  # CE: hardcoded
+    CATWIKI_EDITION: str = Field(default="community", validation_alias="CATWIKI_EDITION_DISABLE_ENV_OVERRIDE")  # CE: hardcoded
     CATWIKI_LICENSE_KEY: str | None = Field(default=None)
 
     # 数据库配置
@@ -144,7 +142,7 @@ class Settings(BaseSettings):
     DB_ECHO: bool = Field(default=False, description="是否输出 SQL 日志")
 
     # RustFS 对象存储配置
-    RUSTFS_ENDPOINT: str = Field(default="localhost:9000", description="RustFS 服务地址")
+    RUSTFS_ENDPOINT: str = Field(default="rustfs:9000", description="RustFS 服务地址")
     RUSTFS_ACCESS_KEY: str = Field(default="rustfsadmin", description="RustFS 访问密钥")
     RUSTFS_SECRET_KEY: str = Field(default="rustfsadmin", description="RustFS 密钥")
     RUSTFS_BUCKET_NAME: str = Field(default="catwiki", description="RustFS 存储桶名称")

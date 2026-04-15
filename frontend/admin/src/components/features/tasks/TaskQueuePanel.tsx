@@ -3,13 +3,13 @@
 import React from 'react'
 import { useTranslations } from 'next-intl'
 import { useTasks } from '@/contexts/TaskContext'
-
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-
 import { X, Minus, Loader2, CheckCircle2, AlertCircle, ChevronUp } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { type Task } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
+import { DOC_PROCESSOR_TYPES } from '@/types/settings'
 
 export function TaskQueuePanel() {
   const { tasks, isPanelOpen, setPanelOpen, minimizePanel, togglePanel, removeTask, clearFinishedTasks } = useTasks()
@@ -125,6 +125,10 @@ export function TaskQueuePanel() {
             <div className="max-h-[300px] overflow-y-auto p-2 space-y-1 custom-scrollbar">
               {tasks.map((task) => {
                 const filename = task.payload?.filename || task.payload?.original_filename || t("taskFallback", { id: task.id })
+                const processorType = task.payload?.processor_config?.type
+                const processorInfo = processorType
+                  ? DOC_PROCESSOR_TYPES.find(p => p.value === processorType)
+                  : null
                 return (
                   <div key={task.id} className="flex flex-col p-2 bg-white hover:bg-slate-50 rounded-lg group transition-colors">
                     <div className="flex items-start justify-between gap-2">
@@ -140,6 +144,14 @@ export function TaskQueuePanel() {
                             <span className={cn("text-xs", getStatusTextColor(task.status))}>
                               {getStatusLabel(task.status)}
                             </span>
+                            {processorInfo && (
+                              <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
+                                {processorInfo.icon.startsWith('/') ? (
+                                  <Image src={processorInfo.icon} alt={processorInfo.label} width={12} height={12} className="object-contain" />
+                                ) : null}
+                                {processorInfo.label}
+                              </span>
+                            )}
                             {task.status === 'failed' && task.error && (
                               <span className="text-xs text-red-500 truncate max-w-[150px]" title={task.error}>
                                 : {task.error}

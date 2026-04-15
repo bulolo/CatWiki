@@ -89,19 +89,6 @@ class ChatCompletionRequest(BaseModel):
     filter: VectorRetrieveFilter | None = None
 
 
-class InternalChatCompletionRequest(BaseModel):
-    """内部聊天接口请求（非 OpenAI 兼容）"""
-
-    model_config = ConfigDict(extra="forbid")
-
-    message: str
-    thread_id: str | None = None
-    temperature: float | None = 0.7
-    stream: bool | None = False
-    user: str | None = None
-    filter: VectorRetrieveFilter | None = None
-
-
 class OpenAIChatCompletionRequest(BaseModel):
     """严格 OpenAI 兼容聊天请求（用于对外 Bot API）"""
 
@@ -203,3 +190,49 @@ class ModelObject(BaseModel):
 class ModelList(BaseModel):
     object: str = "list"
     data: list[ModelObject]
+
+
+# =============================================================================
+# Responses API Models (OpenAI /v1/responses compatible)
+# =============================================================================
+
+
+class ResponsesAPIRequest(BaseModel):
+    """标准 OpenAI Responses API 请求（含 CatWiki 扩展字段）"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    # 标准字段
+    model: str | None = None
+    input: str | list[ChatMessage]
+    instructions: str | None = None
+    previous_response_id: str | None = None  # 对应内部 thread_id
+    stream: bool | None = False
+    temperature: float | None = 0.7
+    max_output_tokens: int | None = None
+    user: str | None = None
+
+    # CatWiki 扩展
+    filter: VectorRetrieveFilter | None = None
+
+
+class ResponseOutputContent(BaseModel):
+    type: str = "output_text"
+    text: str
+
+
+class ResponseOutputItem(BaseModel):
+    type: str = "message"
+    id: str
+    role: str = "assistant"
+    content: list[ResponseOutputContent]
+
+
+class ResponsesAPIResponse(BaseModel):
+    id: str  # 同时作为下次请求的 previous_response_id
+    object: str = "response"
+    created_at: int = Field(default_factory=lambda: int(time.time()))
+    status: str = "completed"
+    model: str
+    output: list[ResponseOutputItem]
+    usage: ChatCompletionUsage | None = None

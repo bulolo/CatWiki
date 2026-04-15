@@ -82,6 +82,11 @@ class Document(BaseModel):
     # 标签 (JSON数组)
     tags = Column(JSON, nullable=True, default=list, comment="标签列表")
 
+    # 解析元数据（导入时记录，用于排查）
+    parse_meta = Column(
+        JSON, nullable=True, comment="文档解析元数据：解析器类型、原始文件路径、耗时等"
+    )
+
     # 关联（手动指定 foreign_keys 和 primaryjoin）
     site = relationship(
         "Site",

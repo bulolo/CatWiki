@@ -33,45 +33,6 @@ def upgrade() -> None:
             server_default="trial",
             comment="租户状态: active, suspended, trial",
         ),
-        sa.Column(
-            "max_sites", sa.Integer(), nullable=False, server_default="3", comment="最大站点数"
-        ),
-        sa.Column(
-            "max_documents",
-            sa.Integer(),
-            nullable=False,
-            server_default="1000",
-            comment="最大文档数",
-        ),
-        sa.Column(
-            "max_storage_mb",
-            sa.Integer(),
-            nullable=False,
-            server_default="5120",
-            comment="最大存储空间(MB)",
-        ),
-        sa.Column(
-            "max_users", sa.Integer(), nullable=False, server_default="10", comment="最大用户数"
-        ),
-        sa.Column(
-            "plan",
-            sa.String(length=50),
-            nullable=False,
-            server_default="starter",
-            comment="订阅计划: starter/pro/custom",
-        ),
-        sa.Column(
-            "plan_expires_at", sa.DateTime(timezone=True), nullable=False, comment="订阅到期时间"
-        ),
-        sa.Column("contact_email", sa.String(length=255), nullable=True, comment="联系邮箱"),
-        sa.Column("contact_phone", sa.String(length=50), nullable=True, comment="联系电话"),
-        sa.Column(
-            "platform_resources_allowed",
-            sa.JSON(),
-            nullable=False,
-            server_default="[]",
-            comment="允许使用的平台资源列表: models, doc_processors",
-        ),
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column(
             "created_at",

@@ -101,12 +101,12 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     // 3. 准备请求（持久化模式）
     abortControllerRef.current = new AbortController()
 
-    // 构建请求体 - 只传 thread_id 和 message
+    // 构建标准 Responses API 请求体
     const requestBody: Record<string, unknown> = {
-      thread_id: threadId,
-      message: content.trim(),
+      input: content.trim(),
       stream: true,
-      user: getVisitorId(), // 增加 Visitor ID 以支持匿名会话记录
+      user: getVisitorId(),
+      ...(threadId ? { previous_response_id: threadId } : {}),
     }
 
     // 添加过滤器 (携带 site_id 和 tenant_id 实现双重校验隔离)
@@ -118,7 +118,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     }
 
     try {
-      const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/v1/chat/completions`, {
+      const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/v1/chat/responses`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -143,7 +143,12 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       const decoder = new TextDecoder()
       let accumulatedContent = ""
       // 累积当前轮次的 tool_call (因为可能分多个 chunk 发送)
-      let currentToolCall: { id: string; name: string; arguments: string } | null = null
+      interface ToolCallAccumulator {
+        id: string
+        name: string
+        arguments: string
+      }
+      let currentToolCall: ToolCallAccumulator | null = null
       // 保存所有历史 tool calls（已完成的）
       const allCompletedToolCalls: Array<{ id: string; name: string; arguments: string }> = []
 
@@ -166,9 +171,16 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
           try {
             const data = JSON.parse(dataStr)
+            const eventType: string = data.type
 
-            // 1. 处理 sources (从 citations 改名而来)
-            if (data.sources) {
+            // 0. response.created — 拿到服务端生成的 response_id 作为新 thread_id
+            if (eventType === "response.created") {
+              if (data.response?.id) setThreadId(data.response.id)
+              continue
+            }
+
+            // 1. 知识库来源
+            if (eventType === "response.knowledge_sources") {
               setMessages(prev =>
                 prev.map(msg =>
                   msg.id === assistantMsgId
@@ -179,25 +191,20 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
               continue
             }
 
-            // 2. 处理 status 事件 (工具调用状态) - 这表示一个新的 tool call 开始
-            if (data.status === "tool_calling") {
-              // 如果有正在进行的 tool call，将其标记为已完成并加入历史
-              if (currentToolCall && currentToolCall.id) {
-                allCompletedToolCalls.push({ ...currentToolCall })
+            // 2. 工具调用开始
+            if (eventType === "response.tool_call.started") {
+              if (currentToolCall?.id) {
+                const tc = currentToolCall as { id: string; name: string; arguments: string }
+                allCompletedToolCalls.push({ id: tc.id, name: tc.name, arguments: tc.arguments })
               }
-              // 重置当前 tool call
               currentToolCall = null
 
-              // 构建完整的 toolCalls 列表用于展示
-              const displayToolCalls = [
-                // 已完成的历史 tool calls
-                ...allCompletedToolCalls.map(tc => ({
-                  id: tc.id,
-                  type: "function" as const,
-                  function: { name: tc.name, arguments: tc.arguments },
-                  status: "completed" as const
-                })),
-              ]
+              const displayToolCalls = allCompletedToolCalls.map(tc => ({
+                id: tc.id,
+                type: "function" as const,
+                function: { name: tc.name, arguments: tc.arguments },
+                status: "completed" as const
+              }))
 
               setMessages(prev =>
                 prev.map(msg =>
@@ -214,38 +221,25 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
               continue
             }
 
-            // 3. 处理 tool_calls delta
-            const toolCallsDeltas = data.choices?.[0]?.delta?.tool_calls
-            if (toolCallsDeltas && Array.isArray(toolCallsDeltas)) {
-              for (const tcDelta of toolCallsDeltas) {
-                // 初始化或更新当前 tool call
-                if (!currentToolCall) {
-                  currentToolCall = { id: "", name: "", arguments: "" }
-                }
+            // 3. 工具调用 delta（累积 id/name/arguments）
+            if (eventType === "response.tool_call.delta") {
+              const tc = data.tool_call || {}
+              if (!currentToolCall) currentToolCall = { id: "", name: "", arguments: "" }
+              if (tc.id) currentToolCall.id = tc.id
+              if (tc.function?.name) currentToolCall.name = tc.function.name
+              if (tc.function?.arguments) currentToolCall.arguments += tc.function.arguments
 
-                if (tcDelta.id) currentToolCall.id = tcDelta.id
-                if (tcDelta.function?.name) currentToolCall.name = tcDelta.function.name
-                if (tcDelta.function?.arguments) currentToolCall.arguments += tcDelta.function.arguments
-              }
-
-              // 构建完整的 toolCalls 列表
+              const running = currentToolCall as { id: string; name: string; arguments: string }
               const displayToolCalls = [
-                // 已完成的历史 tool calls
-                ...allCompletedToolCalls.map(tc => ({
-                  id: tc.id,
-                  type: "function" as const,
-                  function: { name: tc.name, arguments: tc.arguments },
+                ...allCompletedToolCalls.map(t => ({
+                  id: t.id, type: "function" as const,
+                  function: { name: t.name, arguments: t.arguments },
                   status: "completed" as const
                 })),
-                // 当前正在进行的 tool call
-                ...(currentToolCall ? [{
-                  id: currentToolCall.id,
-                  type: "function" as const,
-                  function: { name: currentToolCall.name, arguments: currentToolCall.arguments },
-                  status: "running" as const
-                }] : [])
+                { id: running.id, type: "function" as const,
+                  function: { name: running.name, arguments: running.arguments },
+                  status: "running" as const }
               ]
-
               setMessages(prev =>
                 prev.map(msg =>
                   msg.id === assistantMsgId
@@ -256,19 +250,31 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
               continue
             }
 
-            // 4. 处理文本 content delta - 这表示所有 tool calls 已完成
-            const deltaContent = data.choices?.[0]?.delta?.content || ""
+            // 4. 工具调用结束
+            if (eventType === "response.tool_call.completed") {
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === assistantMsgId
+                    ? { ...msg, activeToolName: undefined }
+                    : msg
+                )
+              )
+              continue
+            }
 
-            if (deltaContent) {
-              accumulatedContent += deltaContent
+            // 5. 文本增量
+            if (eventType === "response.output_text.delta") {
+              const delta: string = data.delta || ""
+              if (!delta) continue
 
-              // 如果有当前进行中的 tool call，将其加入已完成列表
-              if (currentToolCall && currentToolCall.id) {
-                allCompletedToolCalls.push({ ...currentToolCall })
+              accumulatedContent += delta
+
+              if (currentToolCall?.id) {
+                const tc = currentToolCall as { id: string; name: string; arguments: string }
+                allCompletedToolCalls.push({ id: tc.id, name: tc.name, arguments: tc.arguments })
                 currentToolCall = null
               }
 
-              // 所有 tool calls 标记为已完成
               const finalToolCalls = allCompletedToolCalls.length > 0
                 ? allCompletedToolCalls.map(tc => ({
                   id: tc.id,
@@ -278,7 +284,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
                 }))
                 : undefined
 
-              // 实时更新 AI 消息内容
               setMessages(prev =>
                 prev.map(msg =>
                   msg.id === assistantMsgId
@@ -289,6 +294,18 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
                       toolCalls: finalToolCalls,
                       activeToolName: undefined
                     }
+                    : msg
+                )
+              )
+              continue
+            }
+
+            // 6. 错误事件
+            if (eventType === "response.error") {
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === assistantMsgId
+                    ? { ...msg, content: msg.content || `⚠️ ${data.error}` }
                     : msg
                 )
               )

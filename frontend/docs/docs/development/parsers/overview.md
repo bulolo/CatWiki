@@ -31,11 +31,11 @@
 > **集成状态提示**
 > 下表列出的解析器已正式集成。CatWiki 目前**首选支持 MinerU 和 Docling** 作为核心解析引擎。
 
-| 解析器 | 说明 | 特点 | 官方文档 | 状态 |
-|--------|------|------|----------|------|
-| [MinerU](./mineru) | **(首选支持)** 高质量文档解析工具 | 解析精度高、支持复杂版面 | [Docker 部署](https://opendatalab.github.io/MinerU/zh/quick_start/docker_deployment/#docker-compose) | ✅ 已集成 |
-| [Docling](./docling) | IBM 开源文档处理引擎 | 轻量级、易部署 | [部署指南](https://github.com/docling-project/docling-serve) | ✅ 已集成 |
-| [PaddleOCR](./paddleocr) | 百度开源 OCR 引擎 | 中文识别率高、支持 VL 模型 | [官方文档](https://www.paddleocr.ai/) | ✅ 已集成 |
+| 解析器 | 说明 | 支持格式 | 版本要求 | 官方文档 | 状态 |
+|--------|------|----------|----------|----------|------|
+| [MinerU](./mineru) | **(首选支持)** 高质量文档解析工具 | PDF、Word、Image | **>= 3.0.0** | [Docker 部署](https://opendatalab.github.io/MinerU/zh/quick_start/docker_deployment/#docker-compose) | ✅ 已集成 |
+| [Docling](./docling) | IBM 开源文档处理引擎 | PDF、Word、PPT、Excel、HTML、Image、Markdown | 无特殊要求 | [部署指南](https://github.com/docling-project/docling-serve) | ✅ 已集成 |
+| [PaddleOCR](./paddleocr) | 百度开源 OCR 引擎 | PDF、Image | 无特殊要求 | [官方文档](https://www.paddleocr.ai/) | ✅ 已集成 |
 
 ## 核心优势
 

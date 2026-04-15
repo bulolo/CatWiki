@@ -299,7 +299,7 @@ wheels = [
 
 [[package]]
 name = "catwiki-backend"
-version = "1.0.7"
+version = "1.0.8"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },

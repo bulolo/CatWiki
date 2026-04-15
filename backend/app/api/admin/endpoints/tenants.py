@@ -60,9 +60,8 @@ async def get_current_tenant_info(
 
     schema_data = TenantSchema.model_validate(tenant)
     logger.info(
-        "🧭 [Tenants] getCurrentTenant: ID=%s, Plan=%s, is_demo=%s",
+        "🧭 [Tenants] getCurrentTenant: ID=%s, is_demo=%s",
         tenant.id,
-        tenant.plan,
         schema_data.is_demo,
     )
     return ApiResponse.ok(data=schema_data)

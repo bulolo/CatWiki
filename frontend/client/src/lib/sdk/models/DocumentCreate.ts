@@ -56,5 +56,9 @@ export type DocumentCreate = {
      * 标签列表
      */
     tags?: (Array<string> | null);
+    /**
+     * 解析元数据（解析器类型、文件路径等）
+     */
+    parse_meta?: (Record<string, any> | null);
 };
 

@@ -104,12 +104,23 @@ class TenantSeeder(BaseSeeder):
                 name=t_data["name"],
                 slug=t_data["slug"],
                 description=t_data["description"],
-                plan=t_data["plan"],
-                plan_expires_at=datetime.now(UTC) + timedelta(days=365),
                 status=t_data["status"],
-                platform_resources_allowed=t_data.get("platform_resources_allowed", []),
             )
             tenant = await crud_tenant.create(self.db, obj_in=tenant_in)
+
+            try:
+                from app.ee.models.ee_config import TenantEEConfig
+
+                ee_config = TenantEEConfig(
+                    tenant_id=tenant.id,
+                    plan=t_data.get("plan", "starter"),
+                    plan_expires_at=datetime.now(UTC) + timedelta(days=365),
+                    platform_resources_allowed=t_data.get("platform_resources_allowed", []),
+                )
+                self.db.add(ee_config)
+                await self.db.commit()
+            except ImportError:
+                pass
             await self.log(f"✅ 创建组织空间：{tenant.name}")
         else:
             await self.log(f"✅ 组织空间已存在：{tenant.name}")

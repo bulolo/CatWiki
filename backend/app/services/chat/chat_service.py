@@ -713,6 +713,142 @@ class ChatService:
             logger.error(f"❌ [ChatService] Execution Error: {e}", exc_info=True)
             raise e
 
+    async def process_responses_request(
+        self,
+        request,  # ResponsesAPIRequest
+        background_tasks: BackgroundTasks,
+    ):
+        """处理标准 Responses API 请求，复用 generate_chat_chunks 核心逻辑"""
+        from app.core.web.exceptions import CatWikiError
+        from app.schemas.chat import (
+            ChatMessage,
+            ResponseOutputContent,
+            ResponseOutputItem,
+            ResponsesAPIResponse,
+        )
+
+        if isinstance(request.input, str):
+            message = request.input
+            messages = None
+            if request.instructions:
+                messages = [
+                    ChatMessage(role="system", content=request.instructions),
+                    ChatMessage(role="user", content=request.input),
+                ]
+                message = request.input
+        else:
+            messages = request.input
+            if request.instructions:
+                messages = [ChatMessage(role="system", content=request.instructions)] + list(
+                    messages
+                )
+            message = next((m.content for m in reversed(request.input) if m.role == "user"), "")
+
+        site_id = request.filter.site_id if (request.filter and request.filter.site_id) else 0
+        tenant_id_val = request.filter.tenant_id if request.filter else None
+
+        try:
+            llm, initial_state, config, _ = await self.initialize_chat_context(
+                thread_id=request.previous_response_id,
+                site_id=site_id,
+                user_id=request.user,
+                message=message,
+                messages=messages,
+                model_name=request.model,
+                temperature=request.temperature or 0.7,
+                tenant_id=tenant_id_val,
+                # TODO: max_output_tokens 待 llm_manager.get_model 支持后接入
+            )
+        except CatWikiError as e:
+            error_detail = e.detail
+            if request.stream:
+
+                async def _err_stream():
+                    yield f'data: {{"type":"response.error","error":{json.dumps(error_detail)}}}\n\n'
+                    yield "data: [DONE]\n\n"
+
+                return StreamingResponse(_err_stream(), media_type="text/event-stream")
+            raise
+
+        response_id = config["configurable"]["thread_id"]
+        model_name = llm.model_name
+
+        if request.stream:
+
+            async def responses_stream():
+                yield f'data: {{"type":"response.created","response":{{"id":{json.dumps(response_id)},"object":"response","status":"in_progress"}}}}\n\n'
+
+                async with get_checkpointer() as cp:
+                    graph = create_agent_graph(checkpointer=cp, model=llm)
+                    async for chunk in self.generate_chat_chunks(
+                        graph,
+                        initial_state,
+                        config,
+                        model_name,
+                        response_id,
+                        background_tasks,
+                        include_internal_events=True,
+                    ):
+                        if isinstance(chunk, ChatCompletionChunk):
+                            content = chunk.choices[0].delta.content
+                            tool_calls_delta = chunk.choices[0].delta.tool_calls
+                            if content:
+                                yield f'data: {{"type":"response.output_text.delta","delta":{json.dumps(content)}}}\n\n'
+                            elif tool_calls_delta:
+                                # 将 OpenAI tool_calls delta 转为 Responses API 事件
+                                for tc in tool_calls_delta:
+                                    yield f'data: {{"type":"response.tool_call.delta","tool_call":{json.dumps(tc.model_dump(exclude_none=True))}}}\n\n'
+                        elif isinstance(chunk, dict):
+                            if "sources" in chunk:
+                                yield f'data: {{"type":"response.knowledge_sources","sources":{json.dumps(chunk["sources"])}}}\n\n'
+                            elif chunk.get("status") == "tool_calling":
+                                yield f'data: {{"type":"response.tool_call.started","tool":{json.dumps(chunk.get("tool"))}}}\n\n'
+                            elif chunk.get("status") == "tool_completed":
+                                yield f'data: {{"type":"response.tool_call.completed","tool":{json.dumps(chunk.get("tool"))}}}\n\n'
+
+                yield f'data: {{"type":"response.completed","response":{{"id":{json.dumps(response_id)},"object":"response","status":"completed"}}}}\n\n'
+                yield "data: [DONE]\n\n"
+
+            return StreamingResponse(
+                responses_stream(),
+                media_type="text/event-stream",
+                headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
+            )
+        else:
+            async with get_checkpointer() as cp:
+                graph = create_agent_graph(checkpointer=cp, model=llm)
+                result = await graph.ainvoke(initial_state, config)
+                messages_out = result["messages"]
+                last = messages_out[-1] if messages_out else AIMessage(content="")
+                content = last.content if isinstance(last, BaseMessage) else ""
+
+                async def _save():
+                    async with AsyncSessionLocal() as db:
+                        from app.services.chat.history_service import ChatHistoryService
+                        from app.services.chat.session_service import ChatSessionService
+
+                        bg_ss = ChatSessionService(db)
+                        bg_hs = ChatHistoryService(db)
+                        await bg_ss.update_assistant_response(
+                            thread_id=response_id, assistant_message=content
+                        )
+                        await bg_hs.save_history_from_messages(
+                            thread_id=response_id, messages=messages_out
+                        )
+
+                background_tasks.add_task(_save)
+
+                return ResponsesAPIResponse(
+                    id=response_id,
+                    model=model_name,
+                    output=[
+                        ResponseOutputItem(
+                            id=f"msg-{uuid.uuid4().hex[:12]}",
+                            content=[ResponseOutputContent(text=content)],
+                        )
+                    ],
+                )
+
 
 def get_chat_service(
     db: AsyncSession = Depends(get_db),

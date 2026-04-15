@@ -9,5 +9,6 @@ export type SiteEEConfigResponse = {
     site_id: number;
     is_public?: boolean;
     has_password?: boolean;
+    generated_password?: (string | null);
 };
 

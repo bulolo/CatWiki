@@ -197,10 +197,10 @@ export const BAILIAN_BASE = {
 
 // ============ 文档处理服务配置 ============
 
-export const DOC_PROCESSOR_TYPES: { value: DocProcessorType; label: string; description: string; endpoint: string; docUrl?: string; icon: string; color: string; disabled?: boolean }[] = [
-  { value: DocProcessorType.MINER_U, label: "MinerU", description: "High-quality document parser", endpoint: "/file_parse", docUrl: "https://opendatalab.github.io/MinerU/zh/quick_start/docker_deployment/#docker-compose", icon: "/icons/mineru.svg", color: "text-amber-600 bg-amber-50" },
-  { value: DocProcessorType.DOCLING, label: "Docling", description: "IBM open-source document processing engine (X-Api-Key auth)", endpoint: "/v1/convert/file", docUrl: "https://github.com/docling-project/docling-serve", icon: "/icons/docling.svg", color: "text-indigo-600 bg-indigo-50" },
-  { value: DocProcessorType.PADDLE_OCR, label: "PaddleOCR", description: "PaddleOCR-VL layout parsing engine", endpoint: "/layout-parsing", docUrl: "https://github.com/PaddlePaddle/PaddleOCR", icon: "/icons/paddleocr.svg", color: "text-blue-600 bg-blue-50" },
+export const DOC_PROCESSOR_TYPES: { value: DocProcessorType; label: string; description: string; endpoint: string; docUrl?: string; icon: string; color: string; disabled?: boolean; formats: string[] }[] = [
+  { value: DocProcessorType.MINER_U, label: "MinerU", description: "High-quality document parser", endpoint: "/tasks", docUrl: "https://docs.catwiki.cn/development/parsers/mineru", icon: "/icons/mineru.svg", color: "text-amber-600 bg-amber-50", formats: ["PDF", "Word", "Image"] },
+  { value: DocProcessorType.DOCLING, label: "Docling", description: "IBM open-source document processing engine (X-Api-Key auth)", endpoint: "/v1/convert/file/async", docUrl: "https://docs.catwiki.cn/development/parsers/docling", icon: "/icons/docling.svg", color: "text-indigo-600 bg-indigo-50", formats: ["PDF", "Word", "PPT", "Excel", "HTML", "Image", "Markdown"] },
+  { value: DocProcessorType.PADDLE_OCR, label: "PaddleOCR", description: "PaddleOCR-VL layout parsing engine", endpoint: "/layout-parsing", docUrl: "https://docs.catwiki.cn/development/parsers/paddleocr", icon: "/icons/paddleocr.svg", color: "text-blue-600 bg-blue-50", formats: ["PDF", "Image"] },
 ]
 
 export const initialDocProcessorConfig: DocProcessorConfig = {
@@ -211,7 +211,7 @@ export const initialDocProcessorConfig: DocProcessorConfig = {
   api_key: "",
   enabled: true,
   config: {
-    is_ocr: true,
+    is_ocr: false,
     extract_images: false,
     extract_tables: true
   }

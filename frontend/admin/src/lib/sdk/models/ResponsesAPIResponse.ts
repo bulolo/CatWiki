@@ -2,14 +2,15 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { ChatCompletionChoice } from './ChatCompletionChoice';
 import type { ChatCompletionUsage } from './ChatCompletionUsage';
-export type ChatCompletionResponse = {
+import type { ResponseOutputItem } from './ResponseOutputItem';
+export type ResponsesAPIResponse = {
     id: string;
     object?: string;
-    created?: number;
+    created_at?: number;
+    status?: string;
     model: string;
-    choices: Array<ChatCompletionChoice>;
+    output: Array<ResponseOutputItem>;
     usage?: (ChatCompletionUsage | null);
 };
 

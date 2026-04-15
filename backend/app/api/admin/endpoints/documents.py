@@ -122,7 +122,7 @@ async def import_document(
     processor_type: str = Form("MinerU"),
     ocr_enabled: bool = Form(False),
     extract_images: bool = Form(False),
-    extract_tables: bool = Form(False),
+    extract_tables: bool = Form(True),
     service: DocumentService = Depends(get_document_service),
     current_user: User = Depends(get_current_user_with_tenant),
 ) -> ApiResponse[TaskSchema]:

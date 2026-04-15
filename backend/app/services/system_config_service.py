@@ -64,7 +64,17 @@ class SystemConfigService:
                     from app.crud.tenant import crud_tenant
 
                     tenant = await crud_tenant.get(self.db, id=target_tenant_id)
-                    if tenant and "models" in (tenant.platform_resources_allowed or []):
+                    allowed_resources = ["models", "doc_processors"]
+                    try:
+                        from app.ee.loader import get_ee_tenant_platform_resources
+
+                        allowed_resources = await get_ee_tenant_platform_resources(
+                            self.db, target_tenant_id
+                        )
+                    except ImportError:
+                        pass
+
+                    if tenant and "models" in allowed_resources:
                         for model_type in MODEL_TYPES:
                             # [✨ 逻辑修正] 只有当租户显式保存了 mode 为 'platform' 时，才视为 Fallback 状态
                             # 这样如果租户什么都没配，界面会正确显示为“未配置”，而不是莫名其妙就变成“已配置（平台提供）”
@@ -85,7 +95,17 @@ class SystemConfigService:
             from app.crud.tenant import crud_tenant
 
             tenant = await crud_tenant.get(self.db, id=target_tenant_id)
-            if tenant and "models" in (tenant.platform_resources_allowed or []):
+            allowed_resources = ["models", "doc_processors"]
+            try:
+                from app.ee.loader import get_ee_tenant_platform_resources
+
+                allowed_resources = await get_ee_tenant_platform_resources(
+                    self.db, target_tenant_id
+                )
+            except ImportError:
+                pass
+
+            if tenant and "models" in allowed_resources:
                 from app.core.infra.config_resolver import ConfigResolver
 
                 defaults = {
@@ -305,7 +325,16 @@ class SystemConfigService:
             from app.crud.tenant import crud_tenant
 
             tenant = await crud_tenant.get(self.db, id=target_tenant_id)
-            if tenant and "doc_processors" in (tenant.platform_resources_allowed or []):
+            allowed_resources = ["models", "doc_processors"]
+            try:
+                from app.ee.loader import get_ee_tenant_platform_resources
+
+                allowed_resources = await get_ee_tenant_platform_resources(
+                    self.db, target_tenant_id
+                )
+            except ImportError:
+                pass
+            if tenant and "doc_processors" in allowed_resources:
                 platform_fallback_allowed = True
 
         tenant_processors = []
@@ -350,7 +379,14 @@ class SystemConfigService:
         from app.crud.tenant import crud_tenant
 
         tenant = await crud_tenant.get(self.db, id=target_tenant_id)
-        if not tenant or "doc_processors" not in (tenant.platform_resources_allowed or []):
+        allowed_resources = ["models", "doc_processors"]
+        try:
+            from app.ee.loader import get_ee_tenant_platform_resources
+
+            allowed_resources = await get_ee_tenant_platform_resources(self.db, target_tenant_id)
+        except ImportError:
+            pass
+        if not tenant or "doc_processors" not in allowed_resources:
             return {"processors": []}
 
         # 获取平台（None 租户）配置
@@ -371,6 +407,12 @@ class SystemConfigService:
         """更新文档处理服务配置 (自动过滤平台来源，并持久化 ID)"""
         config_value = update_data.model_dump(mode="json")
         if "processors" in config_value:
+            # 先取出数据库中未脱敏的旧配置，用于恢复被掩码的字段
+            old_configs = await self.get_doc_processor_config(
+                target_tenant_id, scope="tenant", mask=False
+            )
+            old_map = {p["id"]: p for p in old_configs.get("processors", []) if p.get("id")}
+
             filtered_procs = []
             for p in config_value["processors"]:
                 # 1. 过滤：禁止将来源为 platform 的项存入租户私有库
@@ -380,6 +422,10 @@ class SystemConfigService:
                 # 2. 稳定 ID：如果新加的项没有 ID，生成一个并固定下来
                 if not p.get("id"):
                     p["id"] = str(uuid4())
+
+                # 3. 恢复掩码：如果 api_key 是掩码值，从旧配置取回真实值
+                if self._is_masked(p.get("api_key")) and p["id"] in old_map:
+                    p["api_key"] = old_map[p["id"]].get("api_key", p["api_key"])
 
                 filtered_procs.append(p)
 
@@ -428,7 +474,8 @@ class SystemConfigService:
             processor = DocProcessorFactory.create(config)
             is_healthy = await processor.is_healthy()
             if is_healthy:
-                return {"status": "healthy"}
+                version = await processor.get_version()
+                return {"status": "healthy", "version": version}
             else:
                 raise BadRequestException(detail=_("config.service_unavailable"))
         except Exception as e:

@@ -15,7 +15,6 @@ from app.core.infra.config import (
 from app.crud.system_config import crud_system_config
 from app.crud.tenant import crud_tenant
 from app.db.database import AsyncSessionLocal
-from app.schemas.tenant import TenantUpdate
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -36,21 +35,22 @@ async def setup_demo_mode():
             # 1. Update Tenant 1 Permissions
             tenant = await crud_tenant.get(db, id=1)
             if tenant:
-                update_data = {
-                    "plan": "demo",
-                    "platform_resources_allowed": ["models", "doc_processors"],
-                }
+                try:
+                    from app.ee.schemas.tenant_ee import TenantEEUpdate
+                    from app.ee.services.tenant_service import tenant_service
 
-                # Check for updates to minimize redundant writes
-                if (
-                    tenant.plan != update_data["plan"]
-                    or tenant.platform_resources_allowed
-                    != update_data["platform_resources_allowed"]
-                ):
-                    await crud_tenant.update(db, db_obj=tenant, obj_in=TenantUpdate(**update_data))
+                    update_data = {
+                        "plan": "demo",
+                        "platform_resources_allowed": ["models", "doc_processors"],
+                    }
+                    await tenant_service.update_tenant(
+                        db, tenant_id=1, tenant_in=TenantEEUpdate(**update_data)
+                    )
                     logger.info("✅ Tenant 1 plan set to 'demo' and granted platform resources.")
-                else:
-                    logger.info("ℹ️ Tenant 1 permissions are already up-to-date.")
+                except ImportError:
+                    logger.info(
+                        "ℹ️ CE edition does not have 'plan' or platform resources constraints. Skipping EE update."
+                    )
             else:
                 logger.error("❌ Tenant 1 not found in database!")
                 return

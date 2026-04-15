@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 from pathlib import Path
 
@@ -30,6 +31,19 @@ class DoclingDocProcessor(BaseDocProcessor):
     Docling 文档解析器
     """
 
+    async def get_version(self) -> str | None:
+        headers = {}
+        if self.api_key:
+            headers["X-Api-Key"] = self.api_key
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                resp = await client.get(f"{self.base_url}/version", headers=headers)
+                if resp.status_code == 200:
+                    return resp.json().get("docling-serve")
+        except Exception:
+            pass
+        return None
+
     async def is_healthy(self) -> bool:
         headers = {}
         if self.api_key:
@@ -46,26 +60,25 @@ class DoclingDocProcessor(BaseDocProcessor):
 
     async def process(self, file_path: Path, **kwargs) -> ParsedResult:
         """
-        调用 Docling API 解析文档
+        调用 Docling API 解析文档（异步提交+轮询）
 
         API 参考:
-        POST /v1/convert/file
+        POST /v1/convert/file/async  -> 提交任务，返回 task_id
+        GET  /v1/status/poll/{task_id} -> 轮询状态，task_status: pending/started/success/failure
+        GET  /v1/result/{task_id}      -> 获取结果
         """
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        url = f"{self.base_url}/v1/convert/file"
+        url = f"{self.base_url}/v1/convert/file/async"
 
         # 获取系统配置
         system_config = self.config.model_dump().get("config", {}) or {}
 
-        # 提取通用配置并映射到 Docling 参数
-        # 1. OCR (默认为 True)
-        is_ocr = system_config.get("is_ocr", True)
-        # 2. 表格 (默认为 True)
-        extract_tables = system_config.get("extract_tables", True)
-        # 3. 图片 (默认为 False)
-        extract_images = system_config.get("extract_images", False)
+        # 提取通用配置并映射到 Docling 参数，kwargs 优先级高于解析器配置
+        is_ocr = kwargs.get("ocr_enabled", system_config.get("is_ocr", True))
+        extract_tables = kwargs.get("extract_tables", system_config.get("extract_tables", True))
+        extract_images = kwargs.get("extract_images", system_config.get("extract_images", False))
 
         # 默认配置 (来源于用户提供的最佳实践)
         default_options = {
@@ -140,41 +153,78 @@ class DoclingDocProcessor(BaseDocProcessor):
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 with open(file_path, "rb") as f:
-                    # 保持 files key 为 "files"
                     files_param = [("files", (file_path.name, f, "application/octet-stream"))]
-
                     resp = await client.post(url, files=files_param, data=data, headers=headers)
 
-                    if resp.status_code != 200:
-                        error_msg = f"Docling API Error ({resp.status_code}): {resp.text}"
-                        logger.error(error_msg)
-                        raise ValueError(error_msg)
+                if resp.status_code != 200:
+                    error_msg = f"Docling API Error ({resp.status_code}): {resp.text}"
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
 
-                    result = resp.json()
+                task_info = resp.json()
+                task_id = task_info.get("task_id")
+                if not task_id:
+                    raise ValueError(f"Docling async submit failed, no task_id: {task_info}")
 
-                    doc = result.get("document", {})
-                    markdown = doc.get("md_content") or ""
+                logger.info(f"Docling task submitted: {task_id}")
 
-                    # 处理图片 (Base64 -> RustFS URL)
-                    if markdown:
-                        try:
-                            image_processor = ImageProcessor()
-                            markdown = await image_processor.process_docling_content(markdown)
-                        except Exception as e:
-                            logger.error(f"Image processing failed: {e}")
+                # 轮询任务状态
+                loop = asyncio.get_running_loop()
+                poll_timeout = max(self.timeout, 600.0)
+                deadline = loop.time() + poll_timeout
+                while True:
+                    status_resp = await client.get(
+                        f"{self.base_url}/v1/status/poll/{task_id}", headers=headers
+                    )
+                    if status_resp.status_code != 200:
+                        raise ValueError(
+                            f"Docling poll error ({status_resp.status_code}): {status_resp.text}"
+                        )
 
-                    return ParsedResult(
-                        content=markdown,
-                        markdown=markdown,
-                        images=[],
-                        metadata=doc.get("json_content") or {},
+                    status_data = status_resp.json()
+                    task_status = status_data.get("task_status", "")
+                    logger.debug(f"Docling task {task_id} status: {task_status}")
+
+                    if task_status == "success":
+                        break
+                    elif task_status in ("failure", "error"):
+                        raise ValueError(f"Docling task {task_id} failed: {status_data}")
+                    elif loop.time() > deadline:
+                        raise TimeoutError(f"Docling task {task_id} timed out")
+
+                    await asyncio.sleep(2)
+
+                # 获取结果
+                result_resp = await client.get(
+                    f"{self.base_url}/v1/result/{task_id}", headers=headers
+                )
+                if result_resp.status_code != 200:
+                    raise ValueError(
+                        f"Docling result error ({result_resp.status_code}): {result_resp.text}"
                     )
 
-        except httpx.TimeoutException:
-            raise TimeoutError("Docling request timed out")
+                result = result_resp.json()
+                doc = result.get("document", {})
+                markdown = doc.get("md_content") or ""
+
+                # 处理图片 (Base64 -> RustFS URL)
+                if markdown:
+                    try:
+                        image_processor = ImageProcessor()
+                        markdown = await image_processor.process_docling_content(markdown)
+                    except Exception as e:
+                        logger.error(f"Image processing failed: {e}")
+
+                return ParsedResult(
+                    content=markdown,
+                    markdown=markdown,
+                    images=[],
+                    metadata=doc.get("json_content") or {},
+                )
+
         except Exception as e:
             logger.error(f"Docling process failed: {e}", exc_info=True)
-            raise e
+            raise
 
 
 # 注册 Docling

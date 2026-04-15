@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
@@ -53,15 +54,15 @@ class BaseDocProcessor(ABC):
 
     @abstractmethod
     async def is_healthy(self) -> bool:
-        """
-        检查服务是否可用
-        Returns:
-            bool: True if healthy, False otherwise
-        """
+        """检查服务是否可用"""
         pass
 
+    async def get_version(self) -> str | None:
+        """获取服务版本号，子类可按需覆盖"""
+        return None
+
     @abstractmethod
-    async def process(self, file_path: Any, **kwargs) -> ParsedResult:
+    async def process(self, file_path: Path, **kwargs) -> ParsedResult:
         """
         解析文件
 

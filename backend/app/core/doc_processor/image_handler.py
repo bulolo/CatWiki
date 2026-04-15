@@ -103,66 +103,33 @@ class ImageProcessor:
         markdown 中引用为 ![](images/xxx.jpg)
         images_dict 中为 "xxx.jpg": "data:image/jpeg;base64,..."
         """
-        if not images_dict:
-            return markdown
-
-        for filename, base64_full_str in images_dict.items():
-            if not base64_full_str:
-                continue
-
-            try:
-                if "," in base64_full_str:
-                    header, base64_str = base64_full_str.split(",", 1)
-                else:
-                    base64_str = base64_full_str
-
-                image_data = base64.b64decode(base64_str)
-                url = self._upload_image(image_data, filename)
-
-                if url:
-                    # 替换 Markdown 中的引用
-                    # Mineru 输出通常是 ![](images/filename)
-                    target_str = f"images/{filename}"
-                    markdown = markdown.replace(target_str, url)
-            except Exception as e:
-                logger.error(f"Mineru 图片处理失败 ({filename}): {e}")
-
-        return markdown
+        return self._replace_images(markdown, images_dict, prefix="images/")
 
     async def process_paddleocr_content(self, content: str, images_dict: dict) -> str:
         """
         处理 PaddleOCR 的 Images 字典:
-        PaddleOCR 输出格式与 MinerU 略有不同:
-        - 路径前缀是 imgs/ 而不是 images/
-        - 可能使用 HTML <img> 标签而不是 Markdown 语法
-
+        路径前缀是 imgs/ 而不是 images/
         images_dict 格式: {"img_xxx.jpg": "base64_string"}
         """
+        return self._replace_images(content, images_dict, prefix="imgs/")
+
+    def _replace_images(self, content: str, images_dict: dict, prefix: str) -> str:
+        """上传 images_dict 中的图片并替换 content 中的引用"""
         if not images_dict:
             return content
 
         for filename, base64_full_str in images_dict.items():
             if not base64_full_str:
                 continue
-
             try:
-                if "," in base64_full_str:
-                    header, base64_str = base64_full_str.split(",", 1)
-                else:
-                    base64_str = base64_full_str
-
+                base64_str = (
+                    base64_full_str.split(",", 1)[-1] if "," in base64_full_str else base64_full_str
+                )
                 image_data = base64.b64decode(base64_str)
                 url = self._upload_image(image_data, filename)
-
                 if url:
-                    # PaddleOCR 使用 imgs/ 前缀
-                    target_str = f"imgs/{filename}"
-                    content = content.replace(target_str, url)
-
-                    # 也替换不带前缀的情况
-                    content = content.replace(filename, url)
-
+                    content = content.replace(f"{prefix}{filename}", url)
             except Exception as e:
-                logger.error(f"PaddleOCR 图片处理失败 ({filename}): {e}")
+                logger.error(f"图片处理失败 ({filename}): {e}")
 
         return content

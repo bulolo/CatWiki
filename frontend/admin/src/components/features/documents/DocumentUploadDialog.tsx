@@ -114,7 +114,7 @@ export function DocumentUploadDialog({
   const [collectionId, setCollectionId] = useState<string>("")
   const [ocrEnabled, setOcrEnabled] = useState(false)
   const [extractImages, setExtractImages] = useState(false)
-  const [extractTables, setExtractTables] = useState(false)
+  const [extractTables, setExtractTables] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [currentUploadingFile, setCurrentUploadingFile] = useState<string>("")
@@ -153,14 +153,16 @@ export function DocumentUploadDialog({
 
           setProcessors(activeProcessors)
 
-          // 默认选中第一个并同步设置
+          // 默认选中第一个并同步设置，优先恢复上次选择
           if (activeProcessors.length > 0) {
-            const first = activeProcessors[0]
-            setProcessorId(first.id)
-            if (first.config) {
-              setOcrEnabled(first.config.is_ocr ?? false)
-              setExtractImages(first.config.extract_images ?? false)
-              setExtractTables(first.config.extract_tables ?? false)
+            const cachedId = localStorage.getItem("doc_upload_processor_id")
+            const target = (cachedId && activeProcessors.find((p: DocProcessor) => p.id === cachedId))
+              || activeProcessors[0]
+            setProcessorId(target.id)
+            if (target.config) {
+              setOcrEnabled(target.config.is_ocr ?? false)
+              setExtractImages(target.config.extract_images ?? false)
+              setExtractTables(target.config.extract_tables ?? true)
             }
           }
         } catch (error) {
@@ -181,26 +183,52 @@ export function DocumentUploadDialog({
       setCollectionId("")
       setOcrEnabled(false)
       setExtractImages(false)
-      setExtractTables(false)
+      setExtractTables(true)
       setIsUploading(false)
       setUploadProgress(0)
       setCurrentUploadingFile("")
     }
   }, [open])
 
+  const FORMAT_TO_EXT: Record<string, string> = {
+    PDF: ".pdf",
+    Word: ".docx,.doc",
+    PPT: ".pptx,.ppt",
+    Excel: ".xlsx,.xls",
+    HTML: ".html,.htm",
+    Image: ".jpg,.jpeg,.png,.webp,.tiff",
+    Markdown: ".md",
+  }
+  const FORMAT_TO_MIME: Record<string, string[]> = {
+    PDF: ["application/pdf"],
+    Word: ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"],
+    PPT: ["application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/vnd.ms-powerpoint"],
+    Excel: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel"],
+    HTML: ["text/html"],
+    Image: ["image/jpeg", "image/png", "image/webp", "image/tiff"],
+    Markdown: ["text/markdown", "text/plain"],
+  }
+  const selectedProcessor = processors.find(p => p.id === processorId)
+  const selectedTypeInfo = selectedProcessor
+    ? DOC_PROCESSOR_TYPES.find(t => t.value === selectedProcessor.type)
+    : null
+  const acceptTypes = selectedTypeInfo?.formats
+    ? selectedTypeInfo.formats.map(f => FORMAT_TO_EXT[f] || "").filter(Boolean).join(",")
+    : ".pdf"
+  const allowedMimeTypes = selectedTypeInfo?.formats
+    ? selectedTypeInfo.formats.flatMap(f => FORMAT_TO_MIME[f] || [])
+    : ["application/pdf"]
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files)
-      // 简单验证文件类型
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png']
       const validFiles = selectedFiles.filter(f => {
-        if (!allowedTypes.includes(f.type)) {
+        if (!allowedMimeTypes.includes(f.type)) {
           toast.error(t("unsupportedFile", { name: f.name }))
           return false
         }
         return true
       })
-
       setFiles(prev => [...prev, ...validFiles])
     }
   }
@@ -209,9 +237,8 @@ export function DocumentUploadDialog({
     e.preventDefault()
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const selectedFiles = Array.from(e.dataTransfer.files)
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png']
       const validFiles = selectedFiles.filter(f => {
-        if (!allowedTypes.includes(f.type)) {
+        if (!allowedMimeTypes.includes(f.type)) {
           toast.error(t("unsupportedFile", { name: f.name }))
           return false
         }
@@ -232,7 +259,7 @@ export function DocumentUploadDialog({
       const cfg = parseProcessorConfig(selected.config)
       setOcrEnabled(cfg.is_ocr ?? false)
       setExtractImages(cfg.extract_images ?? false)
-      setExtractTables(cfg.extract_tables ?? false)
+      setExtractTables(cfg.extract_tables ?? true)
     }
   }
 
@@ -248,6 +275,7 @@ export function DocumentUploadDialog({
 
     try {
       setIsUploading(true)
+      localStorage.setItem("doc_upload_processor_id", processorId)
       let successCount = 0
       const generatedTasks = []
 
@@ -265,8 +293,8 @@ export function DocumentUploadDialog({
         }, 300)
 
         try {
-          const selectedProcessor = processors.find(p => p.id === processorId)
-          const type = selectedProcessor?.type || "MinerU"
+          const currentProcessor = processors.find(p => p.id === processorId)
+          const type = currentProcessor?.type || "MinerU"
 
           const formData = new FormData()
           formData.append("file", file)
@@ -346,7 +374,7 @@ export function DocumentUploadDialog({
               id="file-upload"
               type="file"
               className="hidden"
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept={acceptTypes}
               multiple
               onChange={handleFileChange}
             />
@@ -356,7 +384,11 @@ export function DocumentUploadDialog({
                 <Upload className="h-6 w-6" />
               </div>
               <p className="font-medium text-slate-600">{t("dropzone")}</p>
-              <p className="text-sm text-slate-400 mt-1">{t("dropzoneHint")}</p>
+              <p className="text-sm text-slate-400 mt-1">
+                {selectedTypeInfo?.formats
+                  ? selectedTypeInfo.formats.join(", ")
+                  : "PDF"}
+              </p>
             </div>
           </div>
 
@@ -364,13 +396,13 @@ export function DocumentUploadDialog({
           {files.length > 0 && (
             <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
               {files.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
-                  <div className="flex items-center gap-3 overflow-hidden">
+                <div key={index} className="flex items-start justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
                     <div className="h-8 w-8 bg-white rounded flex items-center justify-center shrink-0 border border-slate-100">
                       <FileText className="h-4 w-4 text-primary" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium text-sm text-slate-900 truncate">{file.name}</p>
+                      <p className="font-medium text-sm text-slate-900 break-all">{file.name}</p>
                       <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                     </div>
                   </div>
@@ -482,19 +514,14 @@ export function DocumentUploadDialog({
                   />
                 </div>
 
-                {/* Extract Tables (Docling Only) */}
-                {processors.find(p => p.id === processorId)?.type === 'Docling' && (
+                {/* Extract Tables (Docling & MinerU & PaddleOCR) */}
+                {['Docling', 'MinerU', 'PaddleOCR'].includes(processors.find(p => p.id === processorId)?.type || '') && (
                   <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                     <div className="space-y-1">
                       <Label className="text-sm font-medium">{t("extractTables")}</Label>
-                      <p className="text-xs text-slate-500">
-                        {t("extractTablesDesc")}
-                      </p>
+                      <p className="text-xs text-slate-500">{t("extractTablesDesc")}</p>
                     </div>
-                    <Switch
-                      checked={extractTables}
-                      onCheckedChange={setExtractTables}
-                    />
+                    <Switch checked={extractTables} onCheckedChange={setExtractTables} />
                   </div>
                 )}
               </div>

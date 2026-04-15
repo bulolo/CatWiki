@@ -3,12 +3,6 @@
 /* tslint:disable */
 /* eslint-disable */
 export type TenantCreateRequest = {
-    name: string;
-    slug: string;
-    domain?: (string | null);
-    logo_url?: (string | null);
-    description?: (string | null);
-    status?: string;
     max_sites?: number;
     max_documents?: number;
     max_storage_mb?: number;
@@ -17,7 +11,14 @@ export type TenantCreateRequest = {
     platform_resources_allowed?: Array<string>;
     contact_email?: (string | null);
     contact_phone?: (string | null);
-    plan_expires_at: string;
+    advanced_config?: Record<string, any>;
+    plan_expires_at?: (string | null);
+    name: string;
+    slug: string;
+    domain?: (string | null);
+    logo_url?: (string | null);
+    description?: (string | null);
+    status?: string;
     admin_email: string;
     admin_password: string;
     admin_name?: (string | null);

@@ -190,48 +190,30 @@ docker compose logs -f paddleocr-vl-api
 3. 填写配置：
    - **名称**：`PaddleOCR`
    - **类型**：选择 `PaddleOCR`
-   - **API 端点**：`http://localhost:8868`
+   - **API 端点**：`http://localhost:8003` (docker-compose 映射端口)
 4. 点击 **测试连接**
 5. 启用并保存
 
 ## API 接口说明
 
-```bash
-# 图片 OCR
-curl -X POST http://localhost:8868/predict/ocr_system \
-  -F "image=@image.png"
+CatWiki 集成使用 `/layout-parsing` 接口，传入 base64 编码的文件内容：
 
-# 文档解析
-curl -X POST http://localhost:8868/predict/layout_analysis \
-  -F "file=@document.pdf"
+```bash
+curl -X POST http://localhost:8003/layout-parsing \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file": "<base64_encoded_content>",
+    "fileType": 0,
+    "useLayoutDetection": true,
+    "prettifyMarkdown": true,
+    "mergeTables": true
+  }'
 ```
 
-### 识别模式
-
-| 模式 | API 路径 | 说明 |
-|------|----------|------|
-| 通用 OCR | `/predict/ocr_system` | 纯文字识别 |
-| 版面分析 | `/predict/layout_analysis` | 文档结构分析 |
-| 表格识别 | `/predict/table_recognition` | 表格提取 |
-
-## 语言支持
-
-PaddleOCR 支持多种语言，常用语言代码：
-
-| 语言 | 代码 |
-|------|------|
-| 简体中文 | `ch` |
-| 繁体中文 | `chinese_cht` |
-| 英语 | `en` |
-| 日语 | `japan` |
-| 韩语 | `korean` |
-
-使用方式：
-```bash
-curl -X POST http://localhost:8868/predict/ocr_system \
-  -F "image=@image.png" \
-  -F "lang=ch"
-```
+| `fileType` | 说明 |
+|---|---|
+| `0` | PDF 文件 |
+| `1` | 图片文件 |
 
 ## 适用场景
 
@@ -242,15 +224,9 @@ PaddleOCR 特别适合以下场景：
 - 📝 **手写体识别**：手写笔记、表单
 - 🌏 **多语言文档**：中英混排、多语种内容
 
-## 模型选择
+## 模型说明
 
-PaddleOCR 提供多种模型规格：
-
-| 模型 | 大小 | 精度 | 速度 | 适用场景 |
-|------|------|------|------|----------|
-| PP-OCRv4 | 小 | 高 | 快 | 通用场景 |
-| PP-OCRv3 | 中 | 中 | 中 | 平衡方案 |
-| PP-Structure | 大 | 最高 | 慢 | 复杂版面 |
+CatWiki 集成使用 **PaddleOCR-VL-1.5-0.9B** 视觉语言模型，基于 vLLM 推理框架，支持中英文及多语言文档的版面分析和内容提取。该模型无需手动指定语言，由 VLM 自动识别。
 
 ## 常见问题
 
@@ -259,23 +235,14 @@ PaddleOCR 提供多种模型规格：
 尝试以下方案：
 - 提高图片分辨率（建议 DPI ≥ 200）
 - 调整图片对比度
-- 使用预处理去噪
+- 确保 GPU 显存充足（建议 > 8G）
 
-### Q: 中英文混排识别问题？
+### Q: 服务启动慢？
 
-使用多语言模型：
-```bash
--F "lang=ch,en"
-```
-
-### Q: 竖排文字识别不正确？
-
-启用方向检测：
-```bash
--F "use_angle_cls=true"
-```
+PaddleOCR-VL 首次启动需要加载 VLM 模型，通常需要 3-5 分钟。可通过 `docker compose logs -f paddleocr-vlm-server` 查看加载进度。
 
 ## 相关链接
 
 - [PaddleOCR 官方文档](https://www.paddleocr.ai/)
+- [PaddleOCR-VL Docker Compose 部署](https://www.paddleocr.ai/latest/version3.x/pipeline_usage/PaddleOCR-VL.html#41-docker-compose)
 - [PaddleOCR GitHub](https://github.com/PaddlePaddle/PaddleOCR)

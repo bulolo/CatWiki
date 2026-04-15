@@ -92,5 +92,9 @@ export type Document = {
      * 所属合集信息
      */
     collection?: (CollectionInfo | null);
+    /**
+     * 解析元数据
+     */
+    parse_meta?: (Record<string, any> | null);
 };
 

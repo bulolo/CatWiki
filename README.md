@@ -33,6 +33,11 @@
 
 ## 🚀 最近更新
 
+### 2026-04-15 🔧 解析器升级与体验优化 (v1.0.8)
+- ⚡ **异步解析**：Docling 和 MinerU 改为异步提交+轮询模式，解析大文件不再阻塞 Worker。
+- 🆕 **MinerU 3.x 适配**：支持 MinerU 3.0 新异步 API，新增 backend 选择（hybrid-auto-engine / vlm-auto-engine / pipeline 等），标注精度与硬件要求。
+- 🔧 **Docling v1.12.0**：新增 OCR 引擎、PDF 解析后端、处理管线配置项，验证版本 `v1.12.0`。
+
 ### 2026-02-26 🤖 AI 机器人集成
 - 🌐 **网页挂件**: 支持一键嵌入任何网页，提供开箱即用的智能客引导流能力。
 - 🔌 **问答机器人 API**: 深度兼容 OpenAI 协议接口，可对接 Dify、FastGPT 及各类 AI 客户端。
@@ -427,6 +432,12 @@ A: 确保你的访问路径包含站点域名后缀，例如：`http://localhost
 
 ---
 
+## 💋 谁在使用
+ 
+目前已经有许多公司和组织将 **CatWiki** 用于科研、生产和商业产品中。您是否也在使用该项目？[**欢迎在此登记您的公司/组织信息**](https://github.com/bulolo/CatWiki/issues/33)！
+
+---
+ 
 <div align="center">
 
 ## 📮 联系方式

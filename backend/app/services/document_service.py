@@ -159,15 +159,8 @@ class DocumentService:
         """导入文档（上传 -> 云端暂存 -> 解析 -> 创建）并返回 enriched dictionary"""
 
         from app.core.infra.rustfs import get_rustfs_service
-        from app.core.vector.vector_store import VectorStoreManager
 
-        try:
-            active_tenant_id = get_current_tenant()
-            v_mgr = await VectorStoreManager.get_instance()
-            await v_mgr.validate_config(tenant_id=active_tenant_id)
-        except Exception as e:
-            logger.warning(f"⚠️ 导入文档前配置检查失败: {e}")
-            raise BadRequestException(detail=_("doc.import_failed", error=str(e)))
+        active_tenant_id = get_current_tenant()
 
         site = await crud_site.get(self.db, id=site_id)
         if not site:
@@ -175,7 +168,44 @@ class DocumentService:
 
         filename = file.filename or "unknown"
         suffix = Path(filename).suffix.lower()
-        if suffix not in [".pdf", ".jpg", ".jpeg", ".png"]:
+
+        # 根据解析器类型动态判断支持的格式
+        from app.schemas.system_config import DocProcessorType
+
+        processor_supported_suffixes: dict[str, list[str]] = {
+            DocProcessorType.MINERU: [
+                ".pdf",
+                ".docx",
+                ".doc",
+                ".jpg",
+                ".jpeg",
+                ".png",
+                ".webp",
+                ".tiff",
+            ],
+            DocProcessorType.DOCLING: [
+                ".pdf",
+                ".docx",
+                ".doc",
+                ".pptx",
+                ".ppt",
+                ".xlsx",
+                ".xls",
+                ".html",
+                ".htm",
+                ".jpg",
+                ".jpeg",
+                ".png",
+                ".webp",
+                ".tiff",
+                ".md",
+            ],
+            DocProcessorType.PADDLEOCR: [".pdf", ".jpg", ".jpeg", ".png", ".webp", ".tiff"],
+        }
+        allowed_suffixes = processor_supported_suffixes.get(
+            processor_type, [".pdf", ".jpg", ".jpeg", ".png"]
+        )
+        if suffix not in allowed_suffixes:
             raise BadRequestException(detail=_("doc.unsupported_format"))
 
         # 2. 获取处理器配置 (显式获取，mask=False 以带上真实 API Key 到后台任务)
@@ -243,6 +273,7 @@ class DocumentService:
     ):
         """实际执行上传的回调函数"""
         import io
+        from urllib.parse import quote
 
         from app.core.infra.rustfs import get_rustfs_service
 
@@ -253,7 +284,7 @@ class DocumentService:
                 file_data=io.BytesIO(content),
                 file_size=len(content),
                 content_type=content_type,
-                metadata={"original_filename": filename},
+                metadata={"original_filename": quote(filename)},
             )
             if not success:
                 logger.error(f"❌ 异步上传云端失败: {object_name}")

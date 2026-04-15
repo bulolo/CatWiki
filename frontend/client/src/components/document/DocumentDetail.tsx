@@ -229,21 +229,7 @@ export function DocumentDetail({ document, isLoading }: DocumentDetailProps) {
             )}
           </div>
 
-          {/* 底部反馈区域 - 仅在有内容时显示 */}
-          {document.content && (
-            <div className="mt-12 md:mt-20 lg:mt-24 pt-6 md:pt-10 border-t border-slate-100">
-              <div className="bg-slate-50/80 rounded-xl md:rounded-3xl lg:rounded-[2rem] p-5 md:p-8 flex flex-col sm:flex-row items-center justify-between gap-3 md:gap-6 border border-slate-100">
-                <div className="text-center sm:text-left w-full sm:w-auto">
-                  <h4 className="font-bold text-slate-900 mb-1 text-[15px] md:text-lg">{t("wasHelpful")}</h4>
-                  <p className="text-slate-500 text-[13px] md:text-sm leading-relaxed">{t("feedbackDesc")}</p>
-                </div>
-                <div className="flex gap-2.5 md:gap-3 w-full sm:w-auto">
-                  <Button variant="outline" className="flex-1 sm:flex-none px-5 md:px-6 h-10 md:h-11 text-[13px] md:text-sm">{t("notHelpful")}</Button>
-                  <Button className="flex-1 sm:flex-none px-5 md:px-6 h-10 md:h-11 text-[13px] md:text-sm">{t("helpful")}</Button>
-                </div>
-              </div>
-            </div>
-          )}
+
         </div>
       </ScrollArea>
     </div>

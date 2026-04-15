@@ -89,7 +89,13 @@ class ConfigResolver:
                 tenant = await crud_tenant.get(db, id=tenant_id)
                 if not tenant:
                     raise CatWikiError(f"租户 {tenant_id} 不存在")
-                allowed_resources = tenant.platform_resources_allowed or []
+
+                try:
+                    from app.ee.loader import get_ee_tenant_platform_resources
+
+                    allowed_resources = await get_ee_tenant_platform_resources(db, tenant_id)
+                except ImportError:
+                    allowed_resources = ["models", "doc_processors"]
 
             # 1.1 Try Specific Module Key
             specific_key = SECTION_TO_KEY.get(section)

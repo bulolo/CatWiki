@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
+import re
 from pathlib import Path
 
 import httpx
@@ -36,35 +38,35 @@ class MinerUDocProcessor(BaseDocProcessor):
         logger.info(f"MinerUDocProcessor initialized (v3) with {config.name}")
 
     async def is_healthy(self) -> bool:
-        """
-        MinerU 没有标准的 /health 接口，通常使用 /openapi.json 检查服务存活
-        或者尝试访问根路径
-        """
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                # 尝试访问 openapi.json
-                resp = await client.get(f"{self.base_url}/openapi.json")
+                resp = await client.get(f"{self.base_url}/health")
                 if resp.status_code == 200:
-                    return True
-
-                # 回退：尝试访问根路径 (通常是重定向到 /docs)
-                resp = await client.get(f"{self.base_url}/")
-                # 200 OK 或 404 Not Found (服务活着但根路径无内容) 都视为存活
-                # 只要不是 Connection Refused
-                return True
+                    data = resp.json()
+                    return data.get("status") == "healthy"
+                return False
         except Exception as e:
             logger.warning(f"MinerU health check failed: {e}")
             return False
 
+    async def get_version(self) -> str | None:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                resp = await client.get(f"{self.base_url}/health")
+                if resp.status_code == 200:
+                    return resp.json().get("version")
+        except Exception:
+            pass
+        return None
+
     async def process(self, file_path: Path, **kwargs) -> ParsedResult:
         """
-        调用 MinerU API 解析文档
+        调用 MinerU API 解析文档（异步提交+轮询）
 
         API 参考:
-        POST /file_parse
-        Parameters:
-          files: array of binary
-          parse_method: auto | ocr | txt
+        POST /tasks              -> 提交任务，返回 task_id (202)
+        GET  /tasks/{task_id}    -> 轮询状态
+        GET  /tasks/{task_id}/result -> 获取结果
         """
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
@@ -72,17 +74,18 @@ class MinerUDocProcessor(BaseDocProcessor):
         # 获取配置
         processor_config = self.config.model_dump().get("config", {}) or {}
 
+        # kwargs 里的值优先级高于解析器配置（来自批量导入的临时覆盖）
+        if "extract_tables" in kwargs:
+            processor_config = {**processor_config, "table_enable": kwargs["extract_tables"]}
+
         # 提取通用配置并映射到 Mineru 参数
-        # 1. OCR (默认为 True/ocr)
-        is_ocr = processor_config.get("is_ocr", True)
+        # 1. OCR (默认为 False)
+        is_ocr = kwargs.get("ocr_enabled", processor_config.get("is_ocr", False))
         # 2. 图片 (默认为 False)
-        extract_images = processor_config.get("extract_images", False)
+        extract_images = kwargs.get("extract_images", processor_config.get("extract_images", False))
 
         # Mineru 参数映射
-        # parse_method: ocr (强制OCR) | auto (自动)
-        parse_method = "ocr" if is_ocr else "auto"
-
-        url = f"{self.base_url}/file_parse"
+        parse_method = processor_config.get("parse_method") or ("ocr" if is_ocr else "auto")
 
         logger.info(
             f"MinerU processing: {file_path.name}, Method={parse_method}, Images={extract_images}"
@@ -90,108 +93,139 @@ class MinerUDocProcessor(BaseDocProcessor):
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
+                # 提交异步任务
                 with open(file_path, "rb") as f:
-                    # files 字段期望是数组
-                    files = {"files": (file_path.name, f, "application/pdf")}
+                    suffix = file_path.suffix.lower()
+                    mime_map = {
+                        ".pdf": "application/pdf",
+                        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        ".doc": "application/msword",
+                    }
+                    mime_type = mime_map.get(suffix, "application/octet-stream")
+                    files = {"files": (file_path.name, f, mime_type)}
 
                     data = {
                         "parse_method": parse_method,
+                        "lang_list": processor_config.get("lang_list", ["ch", "en"]),
                         "return_md": "true",
                         "return_images": "true" if extract_images else "false",
                     }
-
-                    # 合并其他自定义配置
                     data.update(
                         {
-                            k: v
+                            k: ("true" if v is True else "false" if v is False else v)
                             for k, v in processor_config.items()
-                            if k not in ["is_ocr", "extract_images", "extract_tables"]
+                            if k
+                            not in ["is_ocr", "extract_images", "extract_tables", "parse_method"]
                         }
                     )
 
-                    resp = await client.post(url, files=files, data=data)
+                    resp = await client.post(f"{self.base_url}/tasks", files=files, data=data)
 
-                    if resp.status_code != 200:
-                        error_msg = f"MinerU API Error ({resp.status_code}): {resp.text}"
-                        logger.error(error_msg)
-                        raise ValueError(error_msg)
+                if resp.status_code != 202:
+                    error_msg = f"MinerU API Error ({resp.status_code}): {resp.text}"
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
 
-                    result = resp.json()
+                task_info = resp.json()
+                task_id = task_info.get("task_id")
+                if not task_id:
+                    raise ValueError(f"MinerU async submit failed, no task_id: {task_info}")
 
-                    # MinerU 实际返回格式 (based on logs):
-                    # {
-                    #   "results": {
-                    #     "hash_id": { "md_content": "...", "images": {} }
-                    #   }
-                    # }
-                    markdown_content = ""
-                    images = []
+                logger.info(f"MinerU task submitted: {task_id}")
 
-                    if "results" in result and isinstance(result["results"], dict):
-                        for key, val in result["results"].items():
-                            if isinstance(val, dict):
-                                content = (
-                                    val.get("md_content")
-                                    or val.get("markdown")
-                                    or val.get("content")
-                                )
-                                if content:
-                                    markdown_content = content
-                                    # 如果有多个文件，暂只取第一个有效内容
-                                    images = val.get("images", [])
-                                    break
-
-                    # Fallback strategies
-                    if not markdown_content:
-                        markdown_content = (
-                            result.get("markdown")
-                            or result.get("content")
-                            or result.get("md_content")
-                            or ""
+                # 轮询任务状态
+                loop = asyncio.get_running_loop()
+                poll_timeout = max(self.timeout, 600.0)
+                deadline = loop.time() + poll_timeout
+                while True:
+                    status_resp = await client.get(f"{self.base_url}/tasks/{task_id}")
+                    if status_resp.status_code != 200:
+                        raise ValueError(
+                            f"MinerU poll error ({status_resp.status_code}): {status_resp.text}"
                         )
 
-                    if not markdown_content:
-                        logger.warning(f"MinerU response empty content: {result}")
+                    status_data = status_resp.json()
+                    task_status = status_data.get("status", "")
+                    logger.debug(f"MinerU task {task_id} status: {task_status}")
 
-                    # 处理图片 (上传到 RustFS 并替换链接)
-                    if markdown_content and isinstance(images, dict) and extract_images:
-                        try:
-                            image_processor = ImageProcessor()
-                            markdown_content = await image_processor.process_mineru_content(
-                                markdown_content, images
-                            )
-                            # 图片已处理并嵌入 Markdown，这里清空 images 列表或仅保留作为元数据
-                            # 为了保持一致性，我们不再返回原始 base64 数据
-                            images = []
-                        except Exception as e:
-                            logger.error(f"Image processing failed: {e}")
-                    elif markdown_content and not extract_images:
-                        # 清理未处理的图片引用，避免死链
-                        import re
+                    if task_status in ("done", "success", "completed"):
+                        break
+                    elif task_status in ("failed", "error"):
+                        raise ValueError(f"MinerU task {task_id} failed: {status_data}")
+                    elif loop.time() > deadline:
+                        raise TimeoutError(f"MinerU task {task_id} timed out")
 
-                        # 移除 Markdown 图片语法
-                        markdown_content = re.sub(
-                            r"!\[[^\]]*\]\(images/[^)]+\)", "", markdown_content
-                        )
-                        # 移除 HTML <img> 标签
-                        markdown_content = re.sub(
-                            r'<img\s+[^>]*src=["\']images/[^"\']*["\'][^>]*/?\s*>',
-                            "",
-                            markdown_content,
-                        )
+                    await asyncio.sleep(2)
 
-                    return ParsedResult(
-                        content=markdown_content,
-                        markdown=markdown_content,
-                        images=images if isinstance(images, list) else [],
-                        metadata=result.get("metadata", {}),
+                # 获取结果
+                result_resp = await client.get(f"{self.base_url}/tasks/{task_id}/result")
+                if result_resp.status_code != 200:
+                    raise ValueError(
+                        f"MinerU result error ({result_resp.status_code}): {result_resp.text}"
                     )
 
-        except httpx.TimeoutException:
-            raise TimeoutError("MinerU request timed out")
+                result = result_resp.json()
+
+                # MinerU 实际返回格式 (based on logs):
+                # {
+                #   "results": {
+                #     "hash_id": { "md_content": "...", "images": {} }
+                #   }
+                # }
+                markdown_content = ""
+                images = []
+
+                if "results" in result and isinstance(result["results"], dict):
+                    for _, val in result["results"].items():
+                        if isinstance(val, dict):
+                            content = (
+                                val.get("md_content") or val.get("markdown") or val.get("content")
+                            )
+                            if content:
+                                markdown_content = content
+                                images = val.get("images", [])
+                                break
+
+                # Fallback strategies
+                if not markdown_content:
+                    markdown_content = (
+                        result.get("markdown")
+                        or result.get("content")
+                        or result.get("md_content")
+                        or ""
+                    )
+
+                if not markdown_content:
+                    logger.warning(f"MinerU response empty content: {result}")
+
+                # 处理图片 (上传到 RustFS 并替换链接)
+                if markdown_content and isinstance(images, dict) and extract_images:
+                    try:
+                        image_processor = ImageProcessor()
+                        markdown_content = await image_processor.process_mineru_content(
+                            markdown_content, images
+                        )
+                        images = []
+                    except Exception as e:
+                        logger.error(f"Image processing failed: {e}")
+                elif markdown_content and not extract_images:
+                    markdown_content = re.sub(r"!\[[^\]]*\]\(images/[^)]+\)", "", markdown_content)
+                    markdown_content = re.sub(
+                        r'<img\s+[^>]*src=["\']images/[^"\']*["\'][^>]*/?\s*>',
+                        "",
+                        markdown_content,
+                    )
+
+                return ParsedResult(
+                    content=markdown_content,
+                    markdown=markdown_content,
+                    images=images if isinstance(images, list) else [],
+                    metadata=result.get("metadata", {}),
+                )
+
         except Exception as e:
             logger.error(f"MinerU process failed: {e}", exc_info=True)
-            raise e
+            raise
 
 
 # 注册 MinerU

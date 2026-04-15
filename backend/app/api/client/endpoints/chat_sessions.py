@@ -85,7 +85,7 @@ async def get_session(
     """
     获取会话详情
 
-    返回会话元数据。如需获取完整消息历史，请调用 /chat/completions 或使用 LangGraph API。
+    返回会话元数据。如需获取完整消息历史，请调用 /chat/responses 或使用 LangGraph API。
     """
     session = await service.get_session_by_thread_id(thread_id=thread_id)
 

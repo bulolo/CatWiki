@@ -66,7 +66,9 @@ class DocumentBase(BaseModel):
 class DocumentCreate(DocumentBase):
     """创建文档"""
 
-    pass
+    parse_meta: dict[str, Any] | None = Field(
+        None, description="解析元数据（解析器类型、文件路径等）"
+    )
 
 
 class DocumentUpdate(BaseModel):
@@ -98,6 +100,7 @@ class Document(DocumentBase, BaseSchemaWithTimestamps):
     tenant_id: int | None = Field(None, description="租户ID")
     tenant_slug: str | None = Field(None, description="租户标识")
     collection: CollectionInfo | None = Field(None, description="所属合集信息")
+    parse_meta: dict[str, Any] | None = Field(None, description="解析元数据")
 
 
 class VectorizeRequest(BaseModel):

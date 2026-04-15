@@ -2,6 +2,22 @@
 
 MinerU 是一款高质量的文档解析工具，专注于复杂版面文档的精准解析。它在学术论文、技术手册、扫描件等场景中表现出色。CatWiki 正式集成了 MinerU 作为高性能解析后端。
 
+> [!IMPORTANT]
+> **版本要求：MinerU >= 3.0.0**
+> CatWiki 依赖 MinerU 3.0 引入的 `/health` 接口和 Word 文档支持。请确保部署的 MinerU 版本 >= 3.0.0。
+> 可通过访问 `http://<mineru-ip>:8000/health` 确认，返回 `{"status":"healthy","version":"3.x.x",...}` 即为正确版本。
+>
+> **当前验证版本：3.0.9**
+> CatWiki 当前已在 MinerU **3.0.9** 上完成集成测试，推荐部署此版本。
+
+## 支持的文件格式
+
+| 格式 | 说明 |
+|------|------|
+| PDF | 原生 PDF 及扫描件 |
+| Word (.docx/.doc) | 需要 MinerU >= 3.0.0 |
+| Image (.jpg/.jpeg/.png/.webp/.tiff) | 图片直接 OCR 解析 |
+
 ## 环境要求
 
 在部署 MinerU Docker 之前，请确保您的设备满足以下条件：
@@ -44,7 +60,7 @@ MinerU 官方提供了包含多个服务配置的 `compose.yaml` 文件，您可
    ```
 
 3. **验证部署**：
-   在浏览器中访问 `http://<server-ip>:8000/docs` 查看 Swagger API 文档。如果能正常打开，说明服务已上线。
+   访问 `http://<server-ip>:8000/health`，返回 `{"status":"healthy","version":"3.x.x"}` 说明服务已正常运行。
 
 ### Docker Compose 配置参考
 
@@ -181,10 +197,11 @@ MinerU 特别适合以下场景：
 MinerU 默认使用 vLLM 推理框架，该框架会预分配显存。请确保在启动 `api` 服务时，没有其他大型模型（如本地 LLM）占用过多显存。
 
 ### Q: 如何切换 OCR 语言？
-CatWiki 在集成时默认发送 `auto` 模式。如果特定文档识别不佳，可以在解析器详细配置中开启 `OCR` 选项。
+在管理后台 **设置** → **文档解析** → 编辑解析器，可在"识别语言"中选择需要的语言（支持中文、英文、日文、韩文等多种语言）。默认已选中中文和英文。
 
 ## 相关链接
 
 - [MinerU 官方部署文档](https://opendatalab.github.io/MinerU/zh/quick_start/docker_deployment/)
+- [MinerU Docker Compose 部署](https://opendatalab.github.io/MinerU/zh/quick_start/docker_deployment/#docker-compose)
 - [MinerU GitHub 仓库](https://github.com/opendatalab/MinerU)
 

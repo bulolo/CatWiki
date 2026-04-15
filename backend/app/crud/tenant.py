@@ -16,7 +16,7 @@
 import logging
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.base import CRUDBase
@@ -28,6 +28,19 @@ logger = logging.getLogger(__name__)
 
 class CRUDTenant(CRUDBase[Tenant, TenantCreate, TenantUpdate]):
     """租户 CRUD 操作"""
+
+    def _apply_filters(self, query: Select, **kwargs) -> Select:
+        keyword = kwargs.get("keyword")
+        if keyword:
+            from sqlalchemy import or_
+
+            query = query.where(
+                or_(
+                    Tenant.name.ilike(f"%{keyword}%"),
+                    Tenant.slug.ilike(f"%{keyword}%"),
+                )
+            )
+        return super()._apply_filters(query, **kwargs)
 
     async def get(self, db: AsyncSession, id: Any) -> Tenant | None:
         """获取租户 (带缓存)"""

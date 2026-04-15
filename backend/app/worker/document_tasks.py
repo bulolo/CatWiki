@@ -68,12 +68,23 @@ async def _do_import_parsing(
         process_kwargs = {
             "ocr_enabled": payload.get("ocr_enabled", False),
             "extract_images": payload.get("extract_images", False),
-            "extract_tables": payload.get("extract_tables", False),
+            "extract_tables": payload.get("extract_tables", True),
         }
 
         await TaskService.update_progress(db, task_id, 30.0)
         result = await processor.process(file_path, **process_kwargs)
         await TaskService.update_progress(db, task_id, 70.0)
+
+        parse_meta = {
+            "processor_type": processor_config_obj.type,
+            "processor_name": processor_config_obj.name,
+            "original_filename": payload.get("original_filename", filename),
+            "s3_object_name": payload.get("object_name"),  # 云端暂存路径（任务完成后已删除）
+            "worker_local_path": str(file_path),  # Worker 本地临时路径（任务完成后已删除）
+            "ocr_enabled": process_kwargs["ocr_enabled"],
+            "extract_images": process_kwargs["extract_images"],
+            "extract_tables": process_kwargs["extract_tables"],
+        }
 
         document_in = DocumentCreate(
             title=payload.get("original_filename", filename).rsplit(".", 1)[0],
@@ -83,6 +94,7 @@ async def _do_import_parsing(
             collection_id=payload.get("collection_id"),
             author=payload.get("author"),
             status=DocumentStatus.DRAFT,
+            parse_meta=parse_meta,
         )
 
         document = await crud_document.create(db, obj_in=document_in)

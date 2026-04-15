@@ -2,8 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { TenantSchema } from './TenantSchema';
-export type ApiResponse_TenantSchema_ = {
+import type { TenantEESchema } from './TenantEESchema';
+export type ApiResponse_TenantEESchema_ = {
     /**
      * 响应码，0 表示成功
      */
@@ -15,6 +15,6 @@ export type ApiResponse_TenantSchema_ = {
     /**
      * 响应数据
      */
-    data?: (TenantSchema | null);
+    data?: (TenantEESchema | null);
 };
 

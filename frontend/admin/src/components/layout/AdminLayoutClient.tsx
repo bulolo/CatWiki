@@ -26,11 +26,13 @@ import { ErrorBoundary } from '@/components/ui'
 import { UserMenu, StatePersistence, LanguageSwitcher } from '@/components/layout'
 import { TaskQueuePanel } from '@/components/features/tasks/TaskQueuePanel'
 import { useHealth, useDemoMode } from '@/hooks/useHealth'
+import { useTasks } from '@/contexts/TaskContext'
 import Link from 'next/link'
 import {
   Search,
   Settings,
   ShieldCheck,
+  ListTodo,
   User
 } from "lucide-react"
 import { getUserInfo } from '@/lib/auth'
@@ -84,6 +86,8 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
   const { data: healthData } = useHealth()
   const isDemoMode = useDemoMode()
+  const { tasks, togglePanel } = useTasks()
+  const activeTasks = tasks.filter(t => t.status === 'processing' || t.status === 'pending' || t.status === 'running').length
 
   /* eslint-disable-next-line react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -165,6 +169,21 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
                 <span className="text-xs font-bold">{t("platform")}</span>
+              </button>
+            )}
+
+            {tasks.length > 0 && (
+              <button
+                onClick={togglePanel}
+                className="relative p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-primary transition-colors"
+                title="任务队列"
+              >
+                <ListTodo className="h-5 w-5" />
+                {activeTasks > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {activeTasks}
+                  </span>
+                )}
               </button>
             )}
 

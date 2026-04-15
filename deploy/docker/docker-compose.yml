@@ -86,11 +86,11 @@ services:
       - catwiki-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     # 资源限制
     deploy:
       resources:
@@ -107,7 +107,7 @@ services:
   # 负责数据库迁移和初始化
   # 注意：生产环境建议在部署流程中单独执行，而不是每次部署都运行
   backend-init:
-    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.7}
+    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.8}
     pull_policy: always
     container_name: catwiki-backend-init
     env_file:
@@ -155,7 +155,7 @@ services:
     build:
       context: ../../backend
       dockerfile: Dockerfile.prod
-    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.7}
+    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.8}
     pull_policy: always
     container_name: catwiki-backend
     env_file:
@@ -198,7 +198,7 @@ services:
 
   # 后端 Worker 服务 (处理异步任务)
   worker:
-    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.7}
+    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.8}
     container_name: catwiki-worker
     env_file:
       - .env
@@ -208,6 +208,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rustfs:
         condition: service_healthy
     networks:
       - catwiki-network
@@ -238,12 +240,14 @@ services:
     build:
       context: ../../frontend/admin
       dockerfile: Dockerfile.prod
-    image: bulolo/catwiki-admin:${DOCKER_IMAGE_TAG:-v1.0.7}
+    image: bulolo/catwiki-admin:${DOCKER_IMAGE_TAG:-v1.0.8}
     pull_policy: always
     container_name: catwiki-admin
     environment:
       NODE_ENV: production
       TZ: Asia/Shanghai
+      # ⚠️ 生产环境需改为实际后端域名，如 https://api.yourdomain.com
+      # 浏览器无法访问容器内的 localhost:3000
       NEXT_PUBLIC_API_URL: http://localhost:3000
       NEXT_PUBLIC_CLIENT_URL: http://localhost:8002
       NEXT_PUBLIC_DOCS_URL: http://localhost:8003
@@ -278,12 +282,13 @@ services:
     build:
       context: ../../frontend/client
       dockerfile: Dockerfile.prod
-    image: bulolo/catwiki-client:${DOCKER_IMAGE_TAG:-v1.0.7}
+    image: bulolo/catwiki-client:${DOCKER_IMAGE_TAG:-v1.0.8}
     pull_policy: always
     container_name: catwiki-client
     environment:
       NODE_ENV: production
       TZ: Asia/Shanghai
+      # ⚠️ 生产环境需改为实际后端域名
       NEXT_PUBLIC_API_URL: http://localhost:3000
       NEXT_PUBLIC_DOCS_URL: http://localhost:8003
       NEXT_PUBLIC_ADMIN_URL: http://localhost:8001

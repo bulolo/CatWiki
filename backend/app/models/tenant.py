@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
+from sqlalchemy import Column, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -35,31 +35,6 @@ class Tenant(BaseModel):
         comment="租户状态: active, suspended, trial",
     )
 
-    # 资源限制
-    max_sites = Column(Integer, nullable=False, default=3, comment="最大站点数")
-    max_documents = Column(Integer, nullable=False, default=1000, comment="最大文档数")
-    max_storage_mb = Column(Integer, nullable=False, default=5120, comment="最大存储空间(MB)")
-    max_users = Column(Integer, nullable=False, default=10, comment="最大用户数")
-
-    # 订阅计划
-    plan = Column(
-        String(50),
-        nullable=False,
-        default="starter",
-        comment="订阅计划: starter/pro/custom/demo",
-    )
-    plan_expires_at = Column(DateTime(timezone=True), nullable=False, comment="订阅到期时间")
-    platform_resources_allowed = Column(
-        JSON,
-        nullable=False,
-        default=list,
-        comment="允许使用的平台资源列表: models, doc_processors",
-    )
-
-    # 联系信息
-    contact_email = Column(String(255), nullable=True, comment="联系邮箱")
-    contact_phone = Column(String(50), nullable=True, comment="联系电话")
-
     # 关系
     users = relationship(
         "User",
@@ -75,11 +50,6 @@ class Tenant(BaseModel):
         back_populates="tenant",
         cascade="all, delete-orphan",
     )
-
-    @property
-    def is_demo(self) -> bool:
-        """是否为演示模式"""
-        return self.plan == "demo"
 
     def __repr__(self) -> str:
         return f"<Tenant(id={self.id}, name='{self.name}', slug='{self.slug}')>"

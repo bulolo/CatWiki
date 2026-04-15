@@ -247,10 +247,18 @@ async def get_current_user_with_tenant(
     if tenant_id:
         tenant = await crud_tenant.get(db, id=tenant_id)
         if tenant:
-            request.state.is_demo = tenant.is_demo
+            is_demo = False
+            try:
+                from app.ee.loader import get_ee_tenant_is_demo
+
+                is_demo = await get_ee_tenant_is_demo(db, tenant_id)
+            except ImportError:
+                pass
+
+            request.state.is_demo = is_demo
 
             # 仅针对写方法且有租户目标的情况
-            if request.method in ["POST", "PUT", "PATCH", "DELETE"] and tenant.is_demo:
+            if request.method in ["POST", "PUT", "PATCH", "DELETE"] and is_demo:
                 path = request.url.path
                 if not _is_demo_write_exempt(request.method, path):
                     logger.warning(
@@ -281,7 +289,15 @@ async def is_demo_tenant(
     from app.crud.tenant import crud_tenant
 
     tenant = await crud_tenant.get(db, id=tenant_id)
-    is_demo = bool(tenant and tenant.is_demo)
+    is_demo = False
+    if tenant:
+        try:
+            from app.ee.loader import get_ee_tenant_is_demo
+
+            is_demo = await get_ee_tenant_is_demo(db, tenant_id)
+        except ImportError:
+            pass
+
     request.state.is_demo = is_demo
     return is_demo
 
