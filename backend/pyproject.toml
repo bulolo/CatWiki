@@ -1,6 +1,6 @@
 [project]
 name = "catwiki-backend"
-version = "1.0.8"
+version = "1.0.9"
 description = "CatWiki 后端 API"
 requires-python = ">=3.12"
 dependencies = [

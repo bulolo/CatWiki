@@ -18,7 +18,7 @@ migrate:
 
 # 应用迁移
 upgrade:
-	uv run alembic upgrade head
+	uv run alembic upgrade heads
 
 # 回滚迁移
 downgrade:

@@ -2,8 +2,8 @@ apiVersion: v2
 name: catwiki
 description: CatWiki - 智能知识库管理平台 Helm Chart
 type: application
-version: 1.0.8
-appVersion: "1.0.8"
+version: 1.0.9
+appVersion: "1.0.9"
 keywords:
   - catwiki
   - knowledge-base

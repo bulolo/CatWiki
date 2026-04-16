@@ -73,7 +73,7 @@ help:
 	@echo ""
 	@echo " 📦  [发布同步] (Release & Sync)"
 	@echo "  make publish-ce-images  - 构建 CE 镜像并推送到 Docker Hub (公开仓库)"
-	@echo "  make set-version v=1.0.8 - 统一修改项目版本号 (代码, 配置, 镜像标签)"
+	@echo "  make set-version v=1.0.9 - 统一修改项目版本号 (代码, 配置, 镜像标签)"
 	@echo ""
 	@echo " ⚠️  Windows 用户注意: 请使用 WSL2 或 Git Bash 运行 make 命令"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -132,7 +132,7 @@ dev-db-migrate:
 
 # 数据库迁移: 升级
 dev-db-upgrade:
-	docker compose -f docker-compose.dev.yml exec backend uv run alembic upgrade head
+	docker compose -f docker-compose.dev.yml exec backend uv run alembic upgrade heads
 
 # 数据库终端 (psql)
 dev-db-psql:

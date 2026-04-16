@@ -159,17 +159,7 @@ def set_version(version):
         f'make set-version v={v_num}'
     )
 
-    # 6. README files (更新快速开始中的版本号)
-    readme_files = [
-        'README.md',
-        'README_EN.md'
-    ]
-    for readme_path in readme_files:
-        update_file(
-            readme_path,
-            r'v\d+\.\d+\.\d+',
-            v_tag
-        )
+    # 6. README files — changelog 版本号是历史记录，不自动替换
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

@@ -120,7 +120,7 @@ services:
 
   # 后端初始化服务（只在首次启动或手动触发时运行）
   # 负责：
-  # 1. 运行数据库迁移（alembic upgrade head）
+  # 1. 运行数据库迁移（alembic upgrade heads）
   # 2. 创建初始管理员用户
   # 3. 创建 Demo 站点（医学科普）和初始化医学知识文档
   # 4. 初始化 RustFS 对象存储
@@ -154,7 +154,7 @@ services:
         echo '==========================================' &&
         echo '' &&
         echo '📦 运行数据库迁移...' &&
-        uv run alembic upgrade head &&
+        uv run alembic upgrade heads &&
         echo '✅ 数据库迁移完成' &&
         echo '' &&
         echo '📦 执行系统资源初始化 (知识库 / 对象存储)...' &&

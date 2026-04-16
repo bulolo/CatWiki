@@ -28,7 +28,7 @@ English | [简体中文](./README.md)
 
 ## 🚀 Recent Updates
 
-### 2026-04-15 🔧 Parser Upgrade & UX Improvements (v1.0.8)
+### 2026-04-15 🔧 Parser Upgrade & UX Improvements (v1.0.9)
 - ⚡ **Async Parsing**: Docling and MinerU now use async submit+poll mode, large files no longer block the Worker.
 - 🆕 **MinerU 3.x Support**: Adapted to MinerU 3.0 async API, added backend selection (hybrid-auto-engine / vlm-auto-engine / pipeline etc.) with accuracy and hardware annotations.
 - 🔧 **Docling v1.12.0**: Added OCR engine, PDF backend, and pipeline config options, validated on `v1.12.0`.

@@ -58,10 +58,14 @@ async def get_current_tenant_info(
         logger.warning(f"⚠️ [Tenants] getCurrentTenant: Tenant {tenant_id} not found")
         raise NotFoundException(detail=_("tenant.identified_not_found"))
 
-    schema_data = TenantSchema.model_validate(tenant)
-    logger.info(
-        "🧭 [Tenants] getCurrentTenant: ID=%s, is_demo=%s",
-        tenant.id,
-        schema_data.is_demo,
-    )
-    return ApiResponse.ok(data=schema_data)
+    # EE: 返回含 plan/is_demo 的完整 schema
+    try:
+        from app.ee.services.tenant_service import tenant_service
+
+        ee_tenant = await tenant_service.get_tenant_with_ee_config(db, tenant_id=tenant_id)
+        if ee_tenant:
+            return ApiResponse.ok(data=ee_tenant)
+    except ImportError:
+        pass
+
+    return ApiResponse.ok(data=TenantSchema.model_validate(tenant))

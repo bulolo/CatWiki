@@ -33,7 +33,7 @@
 
 ## 🚀 最近更新
 
-### 2026-04-15 🔧 解析器升级与体验优化 (v1.0.8)
+### 2026-04-15 🔧 解析器升级与体验优化 (v1.0.9)
 - ⚡ **异步解析**：Docling 和 MinerU 改为异步提交+轮询模式，解析大文件不再阻塞 Worker。
 - 🆕 **MinerU 3.x 适配**：支持 MinerU 3.0 新异步 API，新增 backend 选择（hybrid-auto-engine / vlm-auto-engine / pipeline 等），标注精度与硬件要求。
 - 🔧 **Docling v1.12.0**：新增 OCR 引擎、PDF 解析后端、处理管线配置项，验证版本 `v1.12.0`。

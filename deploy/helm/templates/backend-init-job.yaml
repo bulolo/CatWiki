@@ -37,7 +37,7 @@ spec:
               echo '=========================================='
               echo ''
               echo '📦 运行数据库迁移...'
-              uv run --no-sync alembic upgrade head
+              uv run --no-sync alembic upgrade heads
               echo '✅ 数据库迁移完成'
               echo ''
               echo '🔧 执行系统资源初始化 (知识库 / 对象存储)...'
