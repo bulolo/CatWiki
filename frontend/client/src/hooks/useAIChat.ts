@@ -118,12 +118,18 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     }
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      }
+      if (typeof window !== "undefined") {
+        const siteSlug = window.location.pathname.split("/")[2]
+        const token = siteSlug ? sessionStorage.getItem(`site_access_token:${siteSlug}`) : null
+        if (token) headers["X-Site-Access-Token"] = token
+      }
+
       const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/v1/chat/responses`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // X-Tenant-Slug 已通过 requestBody.filter 传递，此处移除 Header
-        },
+        headers,
         body: JSON.stringify(requestBody),
         signal: abortControllerRef.current.signal,
       })
@@ -362,7 +368,11 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
     setIsLoading(true)
     try {
-      const { messages: historyMessages } = await api.chatSession.getMessages(targetThreadId)
+      const { messages: historyMessages } = await api.chatSession.getMessages(
+        targetThreadId,
+        getVisitorId(),
+        selectedSiteId,
+      )
 
       // 转换后端消息格式到前端格式
       // 需要将工具调用信息合并到最终的 AI 回复消息上
@@ -371,11 +381,19 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
       const formattedMessages: Message[] = []
       let pendingToolCalls: Array<{ id: string; function?: { name?: string; arguments?: unknown }; name?: string }> = [] // 暂存工具调用信息
+      // 收集 tool results by tool_call_id
+      const toolResultMap = new Map<string, string>()
+      for (const m of historyMessages) {
+        const msg = m as Record<string, unknown>
+        if (msg.role === "tool" && msg.tool_call_id && msg.content) {
+          toolResultMap.set(msg.tool_call_id as string, msg.content as string)
+        }
+      }
 
       for (let i = 0; i < historyMessages.length; i++) {
         const m = historyMessages[i] as Record<string, unknown>
 
-        // 跳过 tool 角色的消息（工具返回结果）
+        // 跳过 tool 角色的消息（已收集到 toolResultMap）
         if (m.role === "tool") {
           continue
         }
@@ -414,7 +432,8 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
                     ? tc.function.arguments
                     : JSON.stringify(tc.function?.arguments || "{}")
                 },
-                status: "completed" as const
+                status: "completed" as const,
+                result: toolResultMap.get(tc.id),
               }))
             } : {}),
             // 附加该消息对应的引用来源
@@ -443,7 +462,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [selectedSiteId])
 
   return {
     messages,

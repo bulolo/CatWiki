@@ -5,33 +5,33 @@
 import type { BaseHttpRequest } from './core/BaseHttpRequest';
 import type { OpenAPIConfig } from './core/OpenAPI';
 import { FetchHttpRequest } from './core/FetchHttpRequest';
-import { BotService } from './services/BotService';
-import { ChatService } from './services/ChatService';
-import { ChatSessionsService } from './services/ChatSessionsService';
-import { CollectionsService } from './services/CollectionsService';
-import { DocumentsService } from './services/DocumentsService';
-import { EeBotService } from './services/EeBotService';
-import { EeSiteAccessService } from './services/EeSiteAccessService';
-import { FilesService } from './services/FilesService';
-import { HealthService } from './services/HealthService';
-import { SitesService } from './services/SitesService';
+import { ClientBotService } from './services/ClientBotService';
+import { ClientChatService } from './services/ClientChatService';
+import { ClientChatSessionsService } from './services/ClientChatSessionsService';
+import { ClientCollectionsService } from './services/ClientCollectionsService';
+import { ClientDocumentsService } from './services/ClientDocumentsService';
+import { ClientFilesService } from './services/ClientFilesService';
+import { ClientHealthService } from './services/ClientHealthService';
+import { ClientSitesService } from './services/ClientSitesService';
+import { EeClientBotService } from './services/EeClientBotService';
+import { EeClientSitesService } from './services/EeClientSitesService';
 type HttpRequestConstructor = new (config: OpenAPIConfig) => BaseHttpRequest;
 export class CatWikiClientSdk {
-    public readonly bot: BotService;
-    public readonly chat: ChatService;
-    public readonly chatSessions: ChatSessionsService;
-    public readonly collections: CollectionsService;
-    public readonly documents: DocumentsService;
-    public readonly eeBot: EeBotService;
-    public readonly eeSiteAccess: EeSiteAccessService;
-    public readonly files: FilesService;
-    public readonly health: HealthService;
-    public readonly sites: SitesService;
+    public readonly clientBot: ClientBotService;
+    public readonly clientChat: ClientChatService;
+    public readonly clientChatSessions: ClientChatSessionsService;
+    public readonly clientCollections: ClientCollectionsService;
+    public readonly clientDocuments: ClientDocumentsService;
+    public readonly clientFiles: ClientFilesService;
+    public readonly clientHealth: ClientHealthService;
+    public readonly clientSites: ClientSitesService;
+    public readonly eeClientBot: EeClientBotService;
+    public readonly eeClientSites: EeClientSitesService;
     public readonly request: BaseHttpRequest;
     constructor(config?: Partial<OpenAPIConfig>, HttpRequest: HttpRequestConstructor = FetchHttpRequest) {
         this.request = new HttpRequest({
             BASE: config?.BASE ?? '',
-            VERSION: config?.VERSION ?? '1.0.9',
+            VERSION: config?.VERSION ?? '1.1.0',
             WITH_CREDENTIALS: config?.WITH_CREDENTIALS ?? false,
             CREDENTIALS: config?.CREDENTIALS ?? 'include',
             TOKEN: config?.TOKEN,
@@ -40,16 +40,16 @@ export class CatWikiClientSdk {
             HEADERS: config?.HEADERS,
             ENCODE_PATH: config?.ENCODE_PATH,
         });
-        this.bot = new BotService(this.request);
-        this.chat = new ChatService(this.request);
-        this.chatSessions = new ChatSessionsService(this.request);
-        this.collections = new CollectionsService(this.request);
-        this.documents = new DocumentsService(this.request);
-        this.eeBot = new EeBotService(this.request);
-        this.eeSiteAccess = new EeSiteAccessService(this.request);
-        this.files = new FilesService(this.request);
-        this.health = new HealthService(this.request);
-        this.sites = new SitesService(this.request);
+        this.clientBot = new ClientBotService(this.request);
+        this.clientChat = new ClientChatService(this.request);
+        this.clientChatSessions = new ClientChatSessionsService(this.request);
+        this.clientCollections = new ClientCollectionsService(this.request);
+        this.clientDocuments = new ClientDocumentsService(this.request);
+        this.clientFiles = new ClientFilesService(this.request);
+        this.clientHealth = new ClientHealthService(this.request);
+        this.clientSites = new ClientSitesService(this.request);
+        this.eeClientBot = new EeClientBotService(this.request);
+        this.eeClientSites = new EeClientSitesService(this.request);
     }
 }
 

@@ -89,6 +89,32 @@ def create_application() -> FastAPI:
     redoc_url = "/redoc" if settings.ENVIRONMENT != "prod" else None
     openapi_url = "/openapi.json" if settings.ENVIRONMENT != "prod" else None
 
+    openapi_tags = [
+        {"name": "admin-sites"},
+        {"name": "admin-collections"},
+        {"name": "admin-documents"},
+        {"name": "admin-files"},
+        {"name": "admin-users"},
+        {"name": "admin-tenants"},
+        {"name": "admin-system-configs"},
+        {"name": "admin-stats"},
+        {"name": "admin-cache"},
+        {"name": "admin-tasks"},
+        {"name": "admin-health"},
+        {"name": "client-sites"},
+        {"name": "client-collections"},
+        {"name": "client-documents"},
+        {"name": "client-files"},
+        {"name": "client-chat"},
+        {"name": "client-chat-sessions"},
+        {"name": "client-bot"},
+        {"name": "client-health"},
+        {"name": "ee-admin-tenants"},
+        {"name": "ee-admin-sites"},
+        {"name": "ee-client-sites"},
+        {"name": "ee-client-bot"},
+    ]
+
     application = FastAPI(
         title=settings.PROJECT_NAME,
         description=settings.DESCRIPTION,
@@ -96,6 +122,7 @@ def create_application() -> FastAPI:
         openapi_url=openapi_url,
         docs_url=docs_url,
         redoc_url=redoc_url,
+        openapi_tags=openapi_tags,
         lifespan=lifespan,
         debug=settings.DEBUG,
     )
@@ -127,6 +154,14 @@ def create_application() -> FastAPI:
 
     # 注册 Admin API 路由（管理后台）
     application.include_router(admin_router, prefix=settings.ADMIN_API_V1_STR)
+
+    # 注册 EE 路由 (同步加载，确保 Swagger 文档能抓取到)
+    try:
+        from app.ee.api.router import init_ee_routes
+
+        init_ee_routes(application)
+    except Exception as e:
+        logger.error(f"❌ [EE] Failed to initialize EE routes: {e}")
 
     return application
 

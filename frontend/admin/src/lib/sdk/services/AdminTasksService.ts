@@ -14,13 +14,18 @@ export class AdminTasksService {
      * @returns ApiResponse_PaginatedResponse_Task__ Successful Response
      * @throws ApiError
      */
-    public listTasksAdminV1TasksGet({
+    public listAdminTasks({
         page = 1,
         size = 20,
+        isPager = 1,
         siteId,
     }: {
         page?: number,
         size?: number,
+        /**
+         * 是否分页，0=返回全部，1=分页
+         */
+        isPager?: number,
         /**
          * 站点ID
          */
@@ -32,6 +37,7 @@ export class AdminTasksService {
             query: {
                 'page': page,
                 'size': size,
+                'is_pager': isPager,
                 'site_id': siteId,
             },
             errors: {
@@ -45,7 +51,7 @@ export class AdminTasksService {
      * @returns ApiResponse_Task_ Successful Response
      * @throws ApiError
      */
-    public getTaskStatusAdminV1TasksTaskIdGet({
+    public getAdminTask({
         taskId,
     }: {
         taskId: number,

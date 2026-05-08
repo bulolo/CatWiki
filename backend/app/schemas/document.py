@@ -14,7 +14,7 @@
 
 import builtins
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -152,3 +152,21 @@ class VectorRetrieveResult(BaseModel):
     """向量检索结果集"""
 
     list: builtins.list[VectorRetrieveResponse] = Field(..., description="检索结果列表")
+
+
+class AiGenerateRequest(BaseModel):
+    """AI 生成字段请求"""
+
+    content: str = Field(..., min_length=1, description="文章正文内容（前端截断后传入）")
+    fields: builtins.list[Literal["summary", "tags"]] = Field(
+        ..., min_length=1, description="需要生成的字段列表"
+    )
+    summary_max_length: int | None = Field(None, ge=20, le=2000, description="摘要最大字数限制")
+    tags_max_count: int | None = Field(None, ge=1, le=20, description="标签最大个数限制")
+
+
+class AiGenerateResponse(BaseModel):
+    """AI 生成字段响应"""
+
+    summary: str | None = Field(None, description="生成的文章摘要")
+    tags: builtins.list[str] | None = Field(None, description="生成的标签列表")

@@ -157,6 +157,14 @@
   "ToolCall": {
     "search_knowledge_base": "搜索知识库"
   },
+  "ToolResult": {
+    "title": "检索结果",
+    "loading": "加载中...",
+    "empty": "暂无检索结果",
+    "chunks": "个片段",
+    "expand": "展开",
+    "collapse": "收起"
+  },
   "Loading": {
     "default": "正在加载..."
   },

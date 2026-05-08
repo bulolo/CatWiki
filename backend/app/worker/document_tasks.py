@@ -103,6 +103,38 @@ async def _do_import_parsing(
             db, document_id=document.id, status=VectorStatus.NONE
         )
 
+        # AI 自动生成摘要 / 标签（可选，失败不影响导入结果）
+        generate_summary = payload.get("generate_summary", False)
+        generate_tags = payload.get("generate_tags", False)
+        if (generate_summary or generate_tags) and document.content:
+            try:
+                from app.services.document_service import DocumentService
+                from app.services.site_service import SiteService
+                from app.services.system_config_service import SystemConfigService
+
+                fields = []
+                if generate_summary:
+                    fields.append("summary")
+                if generate_tags:
+                    fields.append("tags")
+
+                doc_svc = DocumentService(db, SiteService(db), SystemConfigService(db))
+                ai_result = await doc_svc.ai_generate_fields(
+                    content=document.content[:6000], fields=fields
+                )
+                update_data: dict = {}
+                if generate_summary and ai_result.get("summary"):
+                    update_data["summary"] = ai_result["summary"]
+                if generate_tags and ai_result.get("tags"):
+                    update_data["tags"] = ai_result["tags"]
+                if update_data:
+                    await crud_document.update(db, db_obj=document, obj_in=update_data)
+                    logger.info(
+                        f"✨ [Job:{ctx['job_id']}] AI 生成完成 | 文档 ID: {document.id} | 字段: {list(update_data.keys())}"
+                    )
+            except Exception as e:
+                logger.warning(f"⚠️ [Job:{ctx['job_id']}] AI 生成失败（不影响导入）: {e}")
+
         await TaskService.complete(
             db,
             task_id,

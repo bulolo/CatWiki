@@ -21,7 +21,7 @@ from urllib.parse import quote_plus
 from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_VERSION = "1.0.9"
+DEFAULT_VERSION = "1.1.0"
 
 
 def get_project_version() -> str:
@@ -202,7 +202,6 @@ class Settings(BaseSettings):
         le=50,
         description="触发对话摘要的消息数量阈值",
     )
-
     # RAG 检索配置
     RAG_RECALL_K: int = Field(
         default=50,
@@ -256,6 +255,21 @@ class Settings(BaseSettings):
     PADDLEOCR_BASE_URL: str | None = Field(default=None)
     PADDLEOCR_API_KEY: str | None = Field(default=None)
     PADDLEOCR_ENABLED: bool = Field(default=False)
+
+    # 向量存储引擎配置
+    VECTOR_STORE_TYPE: str = Field(
+        default="postgres",
+        pattern="^(postgres|elasticsearch)$",
+        description="向量存储引擎类型：postgres | elasticsearch",
+    )
+
+    # Elasticsearch 连接配置
+    ES_URL: str = Field(default="http://localhost:9200", description="Elasticsearch 服务地址")
+    ES_USERNAME: str | None = Field(default=None, description="ES Basic Auth 用户名")
+    ES_PASSWORD: str | None = Field(default=None, description="ES Basic Auth 密码")
+    ES_API_KEY: str | None = Field(default=None, description="ES API Key 认证（优先于 Basic Auth）")
+    ES_CA_CERTS: str | None = Field(default=None, description="ES TLS CA 证书路径")
+    ES_VERIFY_CERTS: bool = Field(default=True, description="是否验证 ES TLS 证书")
 
     # 文件上传配置
     UPLOAD_MAX_SIZE: int = Field(

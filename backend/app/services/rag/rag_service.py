@@ -18,7 +18,7 @@ import time
 from app.core.ai.providers.reranker import reranker
 from app.core.common.utils import rag_stats_var
 from app.core.infra.config import settings
-from app.core.vector.vector_store import VectorStoreManager
+from app.core.vector import VectorStoreManager
 from app.schemas.document import VectorRetrieveFilter, VectorRetrieveResponse
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,9 @@ class RAGService:
         执行语义检索（包含 召回 + 重排序）
         """
         # 使用环境变量作为默认值
-        final_top_k = k if k is not None else settings.RAG_RERANK_TOP_K
+        # k = 召回深度（传入 RAG_RECALL_K），rerank_k = 重排后保留数量（传入 RAG_RERANK_TOP_K）
+        recall_top_k = k if k is not None else settings.RAG_RECALL_K
+        final_top_k = rerank_k if rerank_k is not None else settings.RAG_RERANK_TOP_K
         final_threshold = threshold if threshold is not None else settings.RAG_RECALL_THRESHOLD
 
         start_time = time.time()
@@ -50,110 +52,118 @@ class RAGService:
             logger.info(
                 f"🚀 [RAG] Query: '{query}' | Site: {filter.site_id if filter else 'Global'}"
             )
-            # 1. 获取向量索引实例 (支持多租户隔离)
-            vector_store = await VectorStoreManager.get_instance(purpose="初始化向量检索引擎")
-            if not vector_store:
-                logger.error("❌ [RAG] Vector store not initialized")
-                return []
+            # 1. 获取向量存储实例
+            vector_store = await VectorStoreManager.get_instance()
 
-            # 1. 构建动态过滤器
-            filter_dict = {}
+            # 2. 构建过滤器（租户隔离为安全核心，必须注入）
+            from app.core.infra.tenant import get_current_tenant
+
+            current_tenant_id = get_current_tenant()
+            filter_dict: dict = {}
             if filter:
-                # 只有当 site_id > 0 时才过滤站点；0 表示全局搜索
+                # site_id=0 表示全局搜索，不加站点过滤
                 if filter.site_id is not None and filter.site_id > 0:
                     filter_dict["site_id"] = filter.site_id
                 if filter.id is not None:
                     filter_dict["id"] = str(filter.id)
                 if filter.source is not None:
                     filter_dict["source"] = filter.source
-
-            # 2. 决定检索数量与重排序策略
-            # 获取当前租户上下文以获取正确的配置指纹
-            from app.core.infra.tenant import get_current_tenant
-
-            current_tenant_id = get_current_tenant()
-
-            # 强制注入租户ID过滤（安全核心）
             if current_tenant_id is not None:
                 filter_dict["tenant_id"] = current_tenant_id
 
-            # 确定是否使用重排序 (异步校验租户配置)
+            # 3. 确定重排序策略
             reranker_active = await reranker.is_enabled(
                 tenant_id=current_tenant_id, purpose="检查重排服务可用性"
             )
-            env_rerank_enabled = settings.RAG_ENABLE_RERANK
-
-            # 只有在 reranker 实例可用 (有配置) 且业务逻辑请求启用时才真正执行
-            should_apply_rerank = env_rerank_enabled and reranker_active
+            should_apply_rerank = settings.RAG_ENABLE_RERANK and reranker_active
             if enable_rerank is not None:
                 should_apply_rerank = enable_rerank and reranker_active
 
-            # 计算召回深度 recall_k
-            # 如果要重排序，则按照环境变量设定的 RECALL_K 召回，但为保证精排质量，召回深度应至少为 final_top_k 的 2 倍
+            # 4. 计算召回深度：重排时保证候选集至少为输出量的 2 倍，并守住全局上限
             if should_apply_rerank:
-                recall_k = max(settings.RAG_RECALL_K, final_top_k * 2)
+                recall_k = max(recall_top_k, final_top_k * 2)
             else:
-                recall_k = final_top_k
-
-            # 应用全局硬上限保护
+                recall_k = recall_top_k
             recall_k = min(recall_k, settings.RAG_RECALL_MAX)
 
-            # 3. 执行相似度搜索
-            results = await vector_store.similarity_search_with_score(
+            # 5. 执行语义检索（接口引擎无关）
+            results = await vector_store.search(
                 query=query,
                 k=recall_k,
-                filter=filter_dict if filter_dict else None,
+                metadata_filter=filter_dict if filter_dict else None,
                 purpose="执行语义检索 (Recall)",
             )
 
-            # 4. 转换候选集 (直接转换，不进行合并)
+            # 6. 转换候选集
+            # score_comparable=True（PG 余弦相似度）时应用阈值过滤；
+            # score_comparable=False（ES RRF 排名分）时跳过阈值过滤（逐结果决策）
             candidate_list = []
-            if results:
-                for doc, distance in results:
-                    similarity = 1.0 - distance
-                    if similarity < final_threshold:
+            scores_are_comparable = False
+            for item in results:
+                doc = item["doc"]
+                score = item["score"]
+                if item["score_comparable"]:
+                    scores_are_comparable = True
+                    if score < final_threshold:
                         continue
+                candidate_list.append(
+                    {
+                        "content": doc.page_content,
+                        "score": score,
+                        "document_id": int(doc.metadata.get("id", 0)),
+                        "document_title": doc.metadata.get("title"),
+                        "metadata": doc.metadata,
+                        "original_score": score,
+                    }
+                )
 
-                    candidate_list.append(
-                        {
-                            "content": doc.page_content,
-                            "score": similarity,
-                            "document_id": int(doc.metadata.get("id", 0)),
-                            "document_title": doc.metadata.get("title"),
-                            "metadata": doc.metadata,
-                            "original_score": similarity,
-                        }
+            # 6.5 过滤草稿文档：批量查询候选 ID 的发布状态
+            if candidate_list:
+                from app.crud.document import crud_document
+                from app.db.database import AsyncSessionLocal
+
+                candidate_doc_ids = {
+                    item["document_id"] for item in candidate_list if item["document_id"]
+                }
+                async with AsyncSessionLocal() as _db:
+                    published_ids = await crud_document.get_published_ids(
+                        _db, ids=candidate_doc_ids
                     )
+                before = len(candidate_list)
+                candidate_list = [
+                    item for item in candidate_list if item["document_id"] in published_ids
+                ]
+                if len(candidate_list) < before:
+                    logger.debug(f"[RAG] 已过滤草稿文档 {before - len(candidate_list)} 条")
 
-            # 5. 执行重排序 (如果启用)
-            final_list = []
+            # 7. 重排序（如果启用）
             if should_apply_rerank and candidate_list:
-                reranked_results = await reranker.rerank(
+                final_list = await reranker.rerank(
                     query=query,
                     documents=candidate_list,
                     top_n=final_top_k,
                     tenant_id=current_tenant_id,
                     purpose="对召回结果进行精排 (Rerank)",
                 )
-                final_list = reranked_results
             else:
-                # 没启用 Rerank 则按分数排序取 top k
-                candidate_list.sort(key=lambda x: x["score"], reverse=True)
+                # Sort by score only when scores have absolute meaning (PG cosine similarity).
+                # For ES RRF scores, preserve the already-ranked order from the driver.
+                if scores_are_comparable:
+                    candidate_list.sort(key=lambda x: x["score"], reverse=True)
                 final_list = candidate_list[:final_top_k]
 
-            # 6. 转换为响应对象
+            # 8. 转换为响应对象
             response_objects = [VectorRetrieveResponse(**item) for item in final_list]
 
-            # 7. 暂存统计数据并打印单轮 INFO 摘要
             duration = time.time() - start_time
-            recalled_count = len(candidate_list)
-            output_count = len(final_list)
-
             logger.info(
-                f"✨ [RAG] Turn Done | Recall: {recalled_count} -> Filtered: {output_count} | {duration:.3f}s"
+                f"✨ [RAG] Turn Done | Recall: {len(candidate_list)} -> Filtered: {len(final_list)} | {duration:.3f}s"
             )
+
+            # 9. 累计统计数据（供 chat_service 汇总日志使用）
             embedding_model = vector_store.last_resolved_model
             embedding_hash = vector_store.last_resolved_hash
+            vector_backend = vector_store.vector_backend
             rerank_model_name = "disabled"
             if should_apply_rerank:
                 from app.services.config.configuration_service import configuration_service
@@ -163,7 +173,6 @@ class RAGService:
                 )
                 rerank_model_name = rerank_conf.get("model", "N/A")
 
-            # 💡 [精简] 统一字典累加逻辑，避免 if/else 分支冗余
             stats = rag_stats_var.get()
             if stats is None:
                 stats = {}
@@ -178,11 +187,13 @@ class RAGService:
                 {
                     "queries": queries,
                     "site": filter.site_id if filter else "Global",
+                    "vector_backend": vector_backend,
                     "embedding_model": embedding_model,
                     "embedding_hash": embedding_hash,
                     "recalled_count": stats.get("recalled_count", 0) + len(results),
                     "filtered_count": stats.get("filtered_count", 0) + len(candidate_list),
                     "threshold": final_threshold,
+                    "threshold_applied": scores_are_comparable,
                     "rerank_model": rerank_model_name,
                     "output_count": stats.get("output_count", 0) + len(response_objects),
                     "top_k": final_top_k,
@@ -194,11 +205,8 @@ class RAGService:
 
         except Exception as e:
             logger.error(f"❌ [Retrieve] 检索服务严重异常: {str(e)}", exc_info=True)
-            # 根据错误类型提供更具体的提示（可选）
             if "AuthenticationError" in str(e):
                 logger.error("🔑 [Retrieve] 可能是 Embedding 或 Reranker 认证失败")
             elif "ConnectionError" in str(e):
                 logger.error("🌐 [Retrieve] 无法连接到向量数据库或模型服务")
-
-            # 返回空列表以保证下游系统不崩溃，但在日志中留痕
             return []

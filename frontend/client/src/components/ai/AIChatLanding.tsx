@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 import { useAIChat } from "@/hooks"
 import { MessageSources } from "./MessageSources"
 import { ToolCallCard } from "./ToolCallCard"
+import { ToolResultDialog } from "./ToolResultDialog"
 import { ChatHistorySidebar } from "./ChatHistorySidebar"
 import { ClientSite, QuickQuestion } from "@/lib/api-client"
 import { useTranslations } from "next-intl"
@@ -42,7 +43,7 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, quickQue
   const [input, setInput] = useState("")
   const chatContainerRef = useRef<HTMLDivElement>(null)
 
-  const { messages, isLoading, sendMessage, threadId, resetMessages, loadSessionMessages } = useAIChat({
+  const { messages, isLoading, sendMessage, threadId, resetMessages, loadSessionMessages, setMessages } = useAIChat({
     selectedSiteId: siteId,
     selectedTenantId: tenantId,
     onMessageSent: () => setRefreshTrigger(prev => prev + 1)
@@ -61,6 +62,14 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, quickQue
     setInput("")
   }
 
+  // Tool result dialog
+  const [selectedToolCall, setSelectedToolCall] = useState<import("@/types").ToolCall | null>(null)
+  const handleResultFetched = (toolCallId: string, result: string) => {
+    setMessages(messages.map(msg => msg.toolCalls ? {
+      ...msg, toolCalls: msg.toolCalls.map(tc => tc.id === toolCallId ? { ...tc, result } : tc)
+    } : msg))
+  }
+
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
@@ -68,6 +77,7 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, quickQue
   }, [messages])
 
   return (
+    <>
     <div className="flex-1 flex bg-white h-full overflow-hidden relative">
       <ChatHistorySidebar
         siteId={siteId}
@@ -182,7 +192,7 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, quickQue
                       )}>
                         {/* Tool Call 展示 */}
                         {message.role === "assistant" && message.toolCalls && message.toolCalls.length > 0 && (
-                          <ToolCallCard toolCalls={message.toolCalls} />
+                          <ToolCallCard toolCalls={message.toolCalls} onToolCallClick={setSelectedToolCall} />
                         )}
 
                         {/* 消息内容 */}
@@ -244,6 +254,14 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, quickQue
         </div>
       </div>
     </div>
+    <ToolResultDialog
+      open={!!selectedToolCall}
+      onOpenChange={(open) => !open && setSelectedToolCall(null)}
+      toolCall={selectedToolCall}
+      threadId={threadId}
+      siteId={siteId}
+      onResultFetched={handleResultFetched}
+    />
+  </>
   )
 }
-

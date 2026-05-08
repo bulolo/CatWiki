@@ -15,7 +15,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { api } from "@/lib/api-client"
 import { logError } from "@/lib/error-handler"
@@ -23,17 +23,18 @@ import { cn } from "@/lib/utils"
 import { PageLoading, NotFoundState, Input } from "@/components/ui"
 import { AIChatLanding } from "@/components/ai"
 import type { ClientSite } from "@/lib/api-client"
-import { Search, BookOpen, ChevronDown, ExternalLink, Github, Star } from "lucide-react"
+import { Search, BookOpen, ChevronDown, Github, Star } from "lucide-react"
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher"
 
 import { env } from "@/lib/env"
 
 export default function TenantPortalPage() {
   const t = useTranslations("TenantPortal")
-  const router = useRouter()
   const { tenantSlug } = useParams()
   const [sites, setSites] = useState<ClientSite[]>([])
+  const [baseSites, setBaseSites] = useState<ClientSite[]>([])
   const [loading, setLoading] = useState(true)
+  const [hasSites, setHasSites] = useState(false)
   const [selectedSite, setSelectedSite] = useState<ClientSite | null>(null)
   const [isSiteSelectorOpen, setIsSiteSelectorOpen] = useState(false)
   const [keyword, setKeyword] = useState("")
@@ -56,6 +57,9 @@ export default function TenantPortalPage() {
         // 如果没有站点且不是加载中，也视为租户配置问题或不存在
         if (!keyword && (!response.list || response.list.length === 0)) {
           setError({ status: 404, message: t("notFound.title") })
+        } else if (!keyword && response.list && response.list.length > 0) {
+          setHasSites(true)
+          setBaseSites(response.list)
         }
       } catch (err: any) {
         logError(t("loading"), err)
@@ -77,6 +81,7 @@ export default function TenantPortalPage() {
     const handleClickOutside = (event: MouseEvent) => {
       if (selectorRef.current && !selectorRef.current.contains(event.target as Node)) {
         setIsSiteSelectorOpen(false)
+        setKeyword("")
       }
     }
 
@@ -89,7 +94,7 @@ export default function TenantPortalPage() {
     }
   }, [isSiteSelectorOpen])
 
-  if (loading) {
+  if (loading && !hasSites && !error) {
     return <PageLoading text={t("loading")} />
   }
 
@@ -154,7 +159,7 @@ export default function TenantPortalPage() {
           </div>
 
           {/* 站点选择器 */}
-          {sites.length > 0 && (
+          {hasSites && (
             <div className="relative" ref={selectorRef}>
               <button
                 onClick={() => setIsSiteSelectorOpen(!isSiteSelectorOpen)}
@@ -203,6 +208,7 @@ export default function TenantPortalPage() {
                       onClick={() => {
                         setSelectedSite(null)
                         setIsSiteSelectorOpen(false)
+                        setKeyword("")
                       }}
                       className={cn(
                         "w-full p-3 md:p-4 rounded-lg md:rounded-xl text-left transition-all mb-2",
@@ -235,6 +241,7 @@ export default function TenantPortalPage() {
                           onClick={() => {
                             setSelectedSite(site)
                             setIsSiteSelectorOpen(false)
+                            setKeyword("")
                           }}
                           className={cn(
                             "w-full p-3 md:p-4 rounded-lg md:rounded-xl text-left transition-all",
@@ -287,9 +294,9 @@ export default function TenantPortalPage() {
       <AIChatLanding
         siteName={selectedSite?.name}
         siteId={selectedSite?.id}
-        tenantId={selectedSite?.tenant_id || sites[0]?.tenant_id}
+        tenantId={selectedSite?.tenant_id || baseSites[0]?.tenant_id}
         quickQuestions={selectedSite?.quick_questions ?? undefined}
-        allSites={sites}
+        allSites={baseSites}
       />
     </div>
   )

@@ -84,7 +84,7 @@ class CRUDTenant(CRUDBase[Tenant, TenantCreate, TenantUpdate]):
 
         # 1. 清理该租户下所有站点的向量数据
         try:
-            from app.core.vector.vector_store import VectorStoreManager
+            from app.core.vector import VectorStoreManager
 
             vector_mgr = await VectorStoreManager.get_instance()
             await vector_mgr.delete_by_metadata("tenant_id", id)

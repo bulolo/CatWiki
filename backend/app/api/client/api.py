@@ -27,12 +27,12 @@ from app.api.client.endpoints import (
 
 api_router = APIRouter()
 
-api_router.include_router(sites.router, prefix="/sites", tags=["sites"])
-api_router.include_router(collections.router, prefix="/collections", tags=["collections"])
-api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
-api_router.include_router(files.router, prefix="/files", tags=["files"])
-api_router.include_router(chat_sessions.router, prefix="/chat", tags=["chat-sessions"])
-api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
+api_router.include_router(sites.router, prefix="/sites", tags=["client-sites"])
+api_router.include_router(collections.router, prefix="/collections", tags=["client-collections"])
+api_router.include_router(documents.router, prefix="/documents", tags=["client-documents"])
+api_router.include_router(files.router, prefix="/files", tags=["client-files"])
+api_router.include_router(chat_sessions.router, prefix="/chat", tags=["client-chat-sessions"])
+api_router.include_router(chat.router, prefix="/chat", tags=["client-chat"])
 
-api_router.include_router(health.router, prefix="/health", tags=["health"])
-api_router.include_router(bots.router, prefix="/bot", tags=["bot"])
+api_router.include_router(health.router, prefix="/health", tags=["client-health"])
+api_router.include_router(bots.router, prefix="/bot", tags=["client-bot"])

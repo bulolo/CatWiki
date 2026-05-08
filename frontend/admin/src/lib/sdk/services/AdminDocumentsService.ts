@@ -2,6 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { AiGenerateRequest } from '../models/AiGenerateRequest';
+import type { ApiResponse_AiGenerateResponse_ } from '../models/ApiResponse_AiGenerateResponse_';
 import type { ApiResponse_Document_ } from '../models/ApiResponse_Document_';
 import type { ApiResponse_list_dict__ } from '../models/ApiResponse_list_dict__';
 import type { ApiResponse_NoneType_ } from '../models/ApiResponse_NoneType_';
@@ -55,7 +57,7 @@ export class AdminDocumentsService {
          */
         status?: (string | null),
         /**
-         * 向量化状态过滤: none, pending, processing, completed, failed
+         * 向量化状态过滤: none, outdated, pending, processing, completed, failed
          */
         vectorStatus?: (string | null),
         /**
@@ -186,6 +188,7 @@ export class AdminDocumentsService {
     /**
      * Import Document
      * 导入文档 (上传 -> 异步解析 -> 创建)
+     * duplicate_strategy: "skip" = 已存在则跳过, "allow" = 不检测直接上传（默认）
      * @returns ApiResponse_Task_ Successful Response
      * @throws ApiError
      */
@@ -196,7 +199,7 @@ export class AdminDocumentsService {
     }): CancelablePromise<ApiResponse_Task_> {
         return this.httpRequest.request({
             method: 'POST',
-            url: '/admin/v1/documents/import',
+            url: '/admin/v1/documents:import',
             formData: formData,
             mediaType: 'multipart/form-data',
             errors: {
@@ -301,7 +304,30 @@ export class AdminDocumentsService {
     }): CancelablePromise<ApiResponse_VectorRetrieveResult_> {
         return this.httpRequest.request({
             method: 'POST',
-            url: '/admin/v1/documents/retrieve',
+            url: '/admin/v1/documents:retrieve',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Ai Generate Fields
+     * 用 AI 生成文档字段（摘要 / 标签）
+     * - fields: ["summary"] / ["tags"] / ["summary", "tags"]
+     * - content: 由前端截断后的文章正文，不超过调用方设定的字符上限
+     * @returns ApiResponse_AiGenerateResponse_ Successful Response
+     * @throws ApiError
+     */
+    public aiGenerateDocumentFields({
+        requestBody,
+    }: {
+        requestBody: AiGenerateRequest,
+    }): CancelablePromise<ApiResponse_AiGenerateResponse_> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/admin/v1/documents:aiGenerate',
             body: requestBody,
             mediaType: 'application/json',
             errors: {

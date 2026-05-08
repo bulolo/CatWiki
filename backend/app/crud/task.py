@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.base import CRUDBase
@@ -25,6 +25,20 @@ from app.schemas.task import TaskCreate
 class CRUDTask(CRUDBase[Task, TaskCreate, TaskSchema]):
     """任务 CRUD 操作"""
 
+    async def count_by_tenant(
+        self,
+        db: AsyncSession,
+        *,
+        tenant_id: int,
+        site_id: int | None = None,
+    ) -> int:
+        """统计租户的任务总数"""
+        stmt = select(func.count()).select_from(Task).filter(Task.tenant_id == tenant_id)
+        if site_id:
+            stmt = stmt.filter(Task.site_id == site_id)
+        result = await db.execute(stmt)
+        return result.scalar_one()
+
     async def get_multi_by_tenant(
         self,
         db: AsyncSession,
@@ -32,14 +46,16 @@ class CRUDTask(CRUDBase[Task, TaskCreate, TaskSchema]):
         tenant_id: int,
         site_id: int | None = None,
         skip: int = 0,
-        limit: int = 100,
+        limit: int | None = 100,
     ) -> list[Task]:
         """获取租户的任务列表"""
         stmt = select(Task).filter(Task.tenant_id == tenant_id)
         if site_id:
             stmt = stmt.filter(Task.site_id == site_id)
 
-        stmt = stmt.order_by(Task.created_at.desc()).offset(skip).limit(limit)
+        stmt = stmt.order_by(Task.created_at.desc()).offset(skip)
+        if limit is not None:
+            stmt = stmt.limit(limit)
         result = await db.execute(stmt)
         return result.scalars().all()
 

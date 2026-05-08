@@ -61,13 +61,12 @@ export function useChatSessions(options: UseChatSessionsOptions = {}) {
         keyword: currentKeyword || undefined,
         page: pageNum,
         size: currentKeyword ? 20 : 5,  // 搜索时返回更多结果
-        tenantId: options.tenantId || undefined
       })
 
       if (append) {
-        setSessions(prev => [...prev, ...response.items])
+        setSessions(prev => [...prev, ...response.list])
       } else {
-        setSessions(response.items)
+        setSessions(response.list)
       }
       setTotal(response.total)
       setPage(pageNum)
@@ -76,7 +75,7 @@ export function useChatSessions(options: UseChatSessionsOptions = {}) {
     } finally {
       setIsLoading(false)
     }
-  }, [siteId, options.tenantId])
+  }, [siteId])
 
   const searchSessions = useCallback(async (searchKeyword: string) => {
     setKeyword(searchKeyword)
@@ -86,7 +85,7 @@ export function useChatSessions(options: UseChatSessionsOptions = {}) {
 
   const deleteSession = useCallback(async (threadId: string) => {
     try {
-      await api.chatSession.delete(threadId)
+      await api.chatSession.delete(threadId, getVisitorId())
       setSessions(prev => prev.filter(s => s.thread_id !== threadId))
       setTotal(prev => prev - 1)
     } catch (error) {

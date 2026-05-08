@@ -49,7 +49,7 @@ import {
   Globe
 } from "lucide-react"
 import { toast } from "sonner"
-import { api } from "@/lib/api-client"
+import { api, type Task } from "@/lib/api-client"
 import { DOC_PROCESSOR_TYPES, type DocProcessorConfig, DocProcessorType } from "@/types/settings"
 import { CollectionItem } from "@/types"
 import { useTasks } from "@/contexts/TaskContext"
@@ -115,6 +115,9 @@ export function DocumentUploadDialog({
   const [ocrEnabled, setOcrEnabled] = useState(false)
   const [extractImages, setExtractImages] = useState(false)
   const [extractTables, setExtractTables] = useState(true)
+  const [skipDuplicates, setSkipDuplicates] = useState(false)
+  const [generateSummary, setGenerateSummary] = useState(false)
+  const [generateTags, setGenerateTags] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [currentUploadingFile, setCurrentUploadingFile] = useState<string>("")
@@ -184,6 +187,9 @@ export function DocumentUploadDialog({
       setOcrEnabled(false)
       setExtractImages(false)
       setExtractTables(true)
+      setSkipDuplicates(false)
+      setGenerateSummary(false)
+      setGenerateTags(false)
       setIsUploading(false)
       setUploadProgress(0)
       setCurrentUploadingFile("")
@@ -277,7 +283,8 @@ export function DocumentUploadDialog({
       setIsUploading(true)
       localStorage.setItem("doc_upload_processor_id", processorId)
       let successCount = 0
-      const generatedTasks = []
+      const skippedFiles: string[] = []
+      const generatedTasks: Task[] = []
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
@@ -304,10 +311,17 @@ export function DocumentUploadDialog({
           formData.append("ocr_enabled", ocrEnabled.toString())
           formData.append("extract_images", extractImages.toString())
           formData.append("extract_tables", extractTables.toString())
+          formData.append("duplicate_strategy", skipDuplicates ? "skip" : "allow")
+          formData.append("generate_summary", generateSummary.toString())
+          formData.append("generate_tags", generateTags.toString())
 
           const task = await api.document.importDocument(formData)
-          generatedTasks.push(task as any)
-          successCount++
+          if (task) {
+            generatedTasks.push(task)
+            successCount++
+          } else {
+            skippedFiles.push(file.name)
+          }
         } catch (err: unknown) {
           const errMsg = err instanceof Error ? err.message : "Unknown error"
           toast.error(t("uploadFailed", { name: file.name, error: errMsg }))
@@ -320,6 +334,13 @@ export function DocumentUploadDialog({
       if (successCount > 0) {
         toast.success(t("uploadSuccess", { count: successCount }))
         addTasks(generatedTasks)
+      }
+      if (skippedFiles.length > 0) {
+        const preview = skippedFiles.slice(0, 3).join("、")
+        const suffix = skippedFiles.length > 3 ? t("uploadSkippedMore", { count: skippedFiles.length - 3 }) : ""
+        toast.info(t("uploadSkipped", { names: preview + suffix }))
+      }
+      if (successCount > 0 || skippedFiles.length > 0) {
         onOpenChange(false)
       }
 
@@ -350,7 +371,7 @@ export function DocumentUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden gap-0">
+      <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden gap-0 flex flex-col max-h-[90vh]">
         <DialogHeader className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Upload className="h-5 w-5 text-primary" />
@@ -361,7 +382,7 @@ export function DocumentUploadDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 overflow-y-auto flex-1 min-h-0">
           {/* 文件上传区 */}
           <div
             className={`border-2 border-dashed rounded-xl p-8 transition-colors flex flex-col items-center justify-center text-center cursor-pointer ${files.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-slate-200 hover:border-primary/50 hover:bg-slate-50'
@@ -480,9 +501,38 @@ export function DocumentUploadDialog({
             </div>
           </div>
 
+          {/* 同名文件处理 — 选中合集后才显示 */}
+          {collectionId && <div className="space-y-2">
+            <div className="flex items-center justify-between px-3 py-2.5 bg-slate-50 rounded-lg">
+              <div>
+                <Label className="text-sm font-medium">{t("skipDuplicates")}</Label>
+                <p className="text-xs text-slate-500 mt-0.5">{t("skipDuplicatesDesc")}</p>
+              </div>
+              <Switch checked={skipDuplicates} onCheckedChange={setSkipDuplicates} />
+            </div>
+            <div className="flex items-center justify-between px-3 py-2.5 bg-slate-50 rounded-lg">
+              <div>
+                <Label className="text-sm font-medium">{t("generateSummary")}</Label>
+                <p className="text-xs text-slate-500 mt-0.5">{t("generateSummaryDesc")}</p>
+              </div>
+              <Switch checked={generateSummary} onCheckedChange={setGenerateSummary} />
+            </div>
+            <div className="flex items-center justify-between px-3 py-2.5 bg-slate-50 rounded-lg">
+              <div>
+                <Label className="text-sm font-medium">{t("generateTags")}</Label>
+                <p className="text-xs text-slate-500 mt-0.5">{t("generateTagsDesc")}</p>
+              </div>
+              <Switch checked={generateTags} onCheckedChange={setGenerateTags} />
+            </div>
+          </div>}
+
           {
             processorId && ['MinerU', 'Docling', 'PaddleOCR'].includes(processors.find(p => p.id === processorId)?.type || '') && (
               <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400 whitespace-nowrap">{t("parseOptions")}</span>
+                  <div className="flex-1 h-px bg-slate-200" />
+                </div>
                 {/* OCR */}
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                   <div className="space-y-1">
@@ -544,9 +594,9 @@ export function DocumentUploadDialog({
               </div>
             )
           }
-        </div >
+        </div>
 
-        <DialogFooter className="px-6 py-4 bg-slate-50/50 border-t border-slate-100">
+        <DialogFooter className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUploading}>
             {t("cancel")}
           </Button>

@@ -17,7 +17,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import Text, cast, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, load_only
 
@@ -95,6 +95,26 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
 
         return db_obj
 
+    async def get_by_title_collection(
+        self,
+        db: AsyncSession,
+        *,
+        title: str,
+        collection_id: int,
+        tenant_id: int | None,
+    ) -> Document | None:
+        stmt = (
+            select(self.model)
+            .where(
+                self.model.title == title,
+                self.model.collection_id == collection_id,
+                self.model.tenant_id == tenant_id,
+            )
+            .limit(1)
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
     def _apply_filters(
         self,
         query,
@@ -117,13 +137,14 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         if vector_status is not None:
             query = query.where(self.model.vector_status == vector_status)
 
-        # 关键词搜索（支持 title, content, summary）
+        # 关键词搜索（支持 title, content, summary, tags）
         if keyword:
             query = query.where(
                 or_(
                     self.model.title.ilike(f"%{keyword}%"),
                     self.model.content.ilike(f"%{keyword}%"),
                     self.model.summary.ilike(f"%{keyword}%"),
+                    cast(self.model.tags, Text).ilike(f"%{keyword}%"),
                 )
             )
 
@@ -229,6 +250,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         user_agent: str | None = None,
         referer: str | None = None,
         auto_commit: bool = False,
+        background_tasks: Any = None,
     ) -> Document | None:
         """增加浏览量（不支持跨租户更新）
 
@@ -375,6 +397,20 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         if auto_commit:
             await db.commit()
         return result.rowcount
+
+    async def get_published_ids(self, db: AsyncSession, *, ids: set[int]) -> set[int]:
+        """给定一批文档 ID，返回其中状态为 published 的子集"""
+        from app.models.document import DocumentStatus
+
+        if not ids:
+            return set()
+        result = await db.execute(
+            select(Document.id).where(
+                Document.id.in_(ids),
+                Document.status == DocumentStatus.PUBLISHED,
+            )
+        )
+        return {row[0] for row in result.fetchall()}
 
 
 crud_document = CRUDDocument(Document)

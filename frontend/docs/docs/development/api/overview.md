@@ -38,7 +38,7 @@ CatWiki API 遵循 [Google API Design Guide](https://cloud.google.com/apis/desig
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `GET` | `/` | 获取站点列表（分页） | `page`, `size`, `status` (可选) |
+| `GET` | `/` | 获取站点列表（分页） | `page`, `size`, `is_pager` (0=全部/1=分页，默认1), `status` (可选) |
 | `GET` | `/{site_id}` | 获取站点详情 | - |
 | `GET` | `:bySlug/{slug}` | 通过 slug 标识获取站点详情 | - |
 | `POST` | `/` | 创建站点 | `SiteCreate` (name, slug, description 等) |
@@ -50,26 +50,46 @@ CatWiki API 遵循 [Google API Design Guide](https://cloud.google.com/apis/desig
 - 创建/更新时自动检查名称和 slug 唯一性
 - 删除时级联删除所有关联的合集、文档等数据及向量库数据
 
-#### EE 站点访问控制 👑
+#### EE 站点扩展功能 👑
 
 **Admin API** (`/admin/v1/sites`) - [企业版专属]
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `GET` | `/{site_id}/ee-config` | 获取站点 EE 配置（公开状态、密码状态） | - |
-| `PUT` | `/{site_id}/ee-config/access` | 更新站点访问控制（公开展示、访问密码） | `AccessConfigUpdate` (is_public, password) |
+| `GET` | `/{site_id}/ee-config` | 获取站点 EE 配置（完整配置） | - |
+| `PATCH` | `/{site_id}/ee-config` | 更新站点 EE 配置（访问控制、API Bot） | `SiteEEConfigUpdate` |
+| `GET` | `/{site_id}/analytics` | 获取站点数据分析概览 | `days` (1-90，默认 7) |
+| `GET` | `/{site_id}/chat-sessions` | 获取站点 AI 对话会话列表（审计用） | `keyword`, `page`, `size` |
+| `GET` | `/{site_id}/chat-sessions/{thread_id}/messages` | 获取对话完整聊天记录（审计用） | - |
+| `DELETE` | `/{site_id}/chat-sessions/{thread_id}` | 删除对话会话记录 | - |
+
+**`SiteEEConfigUpdate` 结构**:
+```json
+{
+  "access": {
+    "is_public": true,
+    "password": "可选明文密码，后端自动哈希"
+  },
+  "api_bot": {
+    "enabled": false,
+    "api_key": "bot-api-key",
+    "timeout": 60
+  }
+}
+```
 
 **特性**:
-- `is_public`: 控制站点是否在广场中公开展示
-- 切换为公开时自动清除访问密码
+- `access.is_public`: 控制站点是否在广场中公开展示；切换为公开时自动清除访问密码
 - 修改密码时 `password_version` 自增，旧访问凭证自动失效
-- 响应中 `has_password` 仅告知是否设置了密码，不暴露密码哈希
+- `api_bot.enabled`: 控制 EE Bot API (`/v1/bot/chat/completions`) 是否可用
+- `analytics` 接口返回趋势、时段分布、热门文档、来源统计、访客统计、地区分布
+- `chat-sessions` 系列接口供管理员审计使用
 
 #### Client API (`/v1/sites`)
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `GET` | `/` | 获取激活的站点列表（分页） | `page`, `size`, `tenant_id` (可选), `tenant_slug` (可选), `keyword` (可选) |
+| `GET` | `/` | 获取激活的站点列表（分页） | `page`, `size`, `is_pager` (0=全部/1=分页，默认1), `tenant_id` (可选), `tenant_slug` (可选), `keyword` (可选) |
 | `GET` | `/{site_id}` | 获取站点详情 | - |
 | `GET` | `:bySlug/{slug}` | 通过 slug 标识获取站点详情 | - |
 
@@ -87,9 +107,11 @@ CatWiki API 遵循 [Google API Design Guide](https://cloud.google.com/apis/desig
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
+| `GET` | `/{slug}/access-status` | 获取站点访问状态（是否公开、是否需要密码） | - |
 | `POST` | `/{slug}/verify-password` | 验证站点访问密码，返回短期访问 token | `VerifyPasswordRequest` (password) |
 
 **特性**:
+- `access-status` 返回站点是否公开展示及是否设置了访问密码
 - 验证成功返回 JWT 格式的 `access_token`（有效期 24 小时）
 - Token 中包含 `password_version`，管理员改密码后旧 token 自动失效
 - 客户端通过 `X-Site-Access-Token` 请求头携带 token
@@ -103,7 +125,7 @@ CatWiki API 遵循 [Google API Design Guide](https://cloud.google.com/apis/desig
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `GET` | `/` | 获取文档列表（分页） | `page`, `size`, `site_id`, `collection_id`, `status`, `vector_status`, `keyword`, `order_by`, `order_dir`, `exclude_content` |
+| `GET` | `/` | 获取文档列表（分页） | `page`, `size`, `is_pager` (0=全部/1=分页，默认1), `site_id`, `collection_id`, `status`, `vector_status`, `keyword`, `order_by`, `order_dir`, `exclude_content` |
 | `GET` | `/{document_id}` | 获取文档详情 | - |
 | `POST` | `/` | 创建文档 | `DocumentCreate` |
 | `POST` | `/import` | 导入文档（上传→解析→创建） | `file`, `site_id`, `collection_id`, `processor_type`, `ocr_enabled`, `extract_images`, `extract_tables` |
@@ -127,7 +149,7 @@ CatWiki API 遵循 [Google API Design Guide](https://cloud.google.com/apis/desig
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `GET` | `/` | 获取已发布文档列表（分页） | `page`, `size`, `site_id`, `collection_id`, `keyword`, `exclude_content`, `order_by`, `order_dir`, `include_site_info`, `tenant_id` |
+| `GET` | `/` | 获取已发布文档列表（分页） | `page`, `size`, `is_pager` (0=全部/1=分页，默认1), `site_id`, `collection_id`, `keyword`, `exclude_content`, `order_by`, `order_dir`, `include_site_info`, `tenant_id` |
 | `GET` | `/{document_id}` | 获取文档详情（自动增加浏览量） | - |
 
 **特性**:
@@ -144,7 +166,7 @@ CatWiki API 遵循 [Google API Design Guide](https://cloud.google.com/apis/desig
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `GET` | `/` | 获取合集列表 | `page`, `size`, `parent_id` (可选), `site_id` |
+| `GET` | `/` | 获取合集列表 | `page`, `size`, `is_pager` (0=全部/1=分页，默认1), `parent_id` (可选), `site_id` |
 | `GET` | `:tree` | 获取合集树形结构 | `type` (可选：`collection` 仅显示合集), `site_id` |
 | `GET` | `/{collection_id}` | 获取合集详情 | - |
 | `POST` | `/` | 创建合集 | `CollectionCreate` |
@@ -181,7 +203,7 @@ CatWiki 接入 RustFS/MinIO 存储，支持标准对象存储操作。
 | `POST` | `:upload` | 单文件上传 | `file`, `folder` (默认: uploads) |
 | `POST` | `:batchUpload` | 批量上传文件 | `files`, `folder` |
 | `GET` | `/{object_name}:download` | 下载文件 | - |
-| `GET` | `/` | 列出存储文件 | `prefix`, `recursive`, `page`, `size` |
+| `GET` | `/` | 列出存储文件 | `prefix`, `recursive`, `page`, `size`, `is_pager` (0=全部/1=分页，默认1) |
 | `GET` | `/{object_name}:info` | 获取文件详细信息 | - |
 | `GET` | `/{object_name}:presignedUrl` | 获取预签名 URL | `expires_hours` (1-168 小时) |
 | `DELETE` | `/{object_name}` | 删除文件 | - |
@@ -213,12 +235,12 @@ CatWiki 接入 RustFS/MinIO 存储，支持标准对象存储操作。
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `GET` | `/` | 获取用户列表（分页） | `page`, `size`, `role`, `status`, `search`, `site_id`, `order_by`, `order_dir` |
+| `GET` | `/` | 获取用户列表（分页） | `page`, `size`, `is_pager` (0=全部/1=分页，默认1), `role`, `status`, `search`, `site_id`, `order_by`, `order_dir` |
 | `GET` | `/{user_id}` | 获取用户详情 | - |
 | `POST` | `/` | 创建用户 | `UserCreate` |
 | `POST` | `:invite` | 邀请用户（返回临时密码） | `UserInvite` |
 | `PUT` | `/{user_id}` | 更新用户信息（支持更新角色、状态、站点等） | `UserUpdate` |
-| `PUT` | `/{user_id}/password` | 更新用户密码 | `UserUpdatePassword` |
+| `PUT` | `/{user_id}/password` | 更新用户密码 | `UserUpdatePassword` (old_password, new_password) |
 | `POST` | `/{user_id}:resetPassword` | 重置用户密码（生成临时密码） | - |
 | `DELETE` | `/{user_id}` | 删除用户 | - |
 | `POST` | `:login` | 用户登录 | `UserLogin` (email, password) |
@@ -226,8 +248,8 @@ CatWiki 接入 RustFS/MinIO 存储，支持标准对象存储操作。
 **特性**:
 - 角色类型：`admin` (平台管理员), `tenant_admin` (租户管理员), `site_admin` (站点管理员)
 - 状态类型：`active`, `inactive`, `pending`
-- 支持邀请机制，自动生成临时密码
-- 登录返回 JWT Token
+- 创建用户密码最小长度 8 位；邀请用户（`:invite`）自动生成临时密码，无需传密码
+- 登录返回 JWT Token（`UserLoginResponse.token`）
 - 支持按角色、状态、搜索关键词 (`search`)、站点 ID 筛选
 - 权限层级控制：不同角色有不同的查看/操作范围
 
@@ -314,28 +336,31 @@ CatWiki 接入 RustFS/MinIO 存储，支持标准对象存储操作。
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `GET` | `/sessions` | 获取会话列表 | `site_id`, `member_id`, `keyword`, `page`, `size`, `tenant_id` (可选) |
+| `GET` | `/sessions` | 获取会话列表 | `site_id`, `member_id`, `keyword`, `page`, `size`, `is_pager` (0=全部/1=分页，默认1), `tenant_id` (可选) |
 | `GET` | `/sessions/{thread_id}` | 获取会话详情 | - |
 | `GET` | `/sessions/{thread_id}/messages` | 获取会话历史消息 | - |
+| `GET` | `/sessions/{thread_id}/tool-result/{tool_call_id}` | 获取单个工具调用的 RAG 检索结果 | - |
 | `DELETE` | `/sessions/{thread_id}` | 删除会话（同步删除历史） | - |
 
 **特性**:
 - 支持 `keyword` 搜索（标题或内容）
 - 支持按 `member_id` 过滤（String类型）
+- `is_pager=0` 时忽略分页参数，返回全部会话
+- `tool-result` 接口根据 `tool_call_id` 返回对应的 RAG 检索内容
 - 删除接口会同步清理 LangGraph Checkpointer 历史
 
 ---
 
-### 11. AI 对话 (Chat Completions)
+### 11. AI 对话 (Chat Responses)
 
 **Client API** (`/v1/chat`)
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `POST` | `/completions` | 创建聊天补全 (内部接口) | `InternalChatCompletionRequest` |
+| `POST` | `/responses` | 创建 AI 响应 | `ResponsesAPIRequest` |
 
 **特性**:
-- **内部专用接口**，采用精简的单条消息模型
+- 遵循 OpenAI Responses API 规范，含 CatWiki 扩展字段 `filter`
 - 自动集成 RAG 检索
 - 支持流式 (SSE) 和非流式响应
 - 自动提取 `origin` 和 `referer` 请求头用于来源追踪
@@ -376,10 +401,10 @@ CatWiki 接入 RustFS/MinIO 存储，支持标准对象存储操作。
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `GET` | `/` | 获取租户列表 (系统管理员) | `page`, `size` |
+| `GET` | `/` | 获取租户列表 (系统管理员) | `page`, `size`, `keyword` (可选), `is_pager` (0=全部/1=分页，默认1) |
 | `POST` | `/` | 创建租户 | `TenantCreateRequest` (含管理员信息) |
 | `GET` | `/{tenant_id}` | 获取租户详情 | - |
-| `PUT` | `/{tenant_id}` | 更新租户信息 | `TenantUpdate` |
+| `PUT` | `/{tenant_id}` | 更新租户信息 | `TenantEEUpdate` |
 | `DELETE` | `/{tenant_id}` | 级联删除租户所有数据 | - |
 
 **特性**:
@@ -393,13 +418,14 @@ CatWiki 接入 RustFS/MinIO 存储，支持标准对象存储操作。
 
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| `POST` | `/chat/completions` | 站点专用聊天补全 (OpenAI 兼容) | `ChatCompletionRequest`, `Authorization: Bearer <api_key>` |
-| `GET` | `/models` | 列出可用模型 | `Authorization` (可选) |
+| `POST` | `/chat/completions` | 站点专用聊天补全 (OpenAI 兼容) | `OpenAIChatCompletionRequest`, `Authorization: Bearer <api_key>` |
+| `GET` | `/models` | 列出可用模型 | `Authorization: Bearer <api_key>` (可选) |
 
 **特性**:
-- 通过 API Key 认证，绑定到具体站点
-- 自动注入站点过滤器，实现站点级数据隔离
-- 检查站点状态和 API Bot 是否启用
+- 通过 API Key 认证（`Authorization: Bearer <api_key>`），绑定到具体站点
+- `api_key` 在站点 EE 配置的 `api_bot` 中配置，需同时设置 `enabled=true`
+- 严格遵循 OpenAI Chat Completions API 格式（`OpenAIChatCompletionRequest`），可直接用第三方 OpenAI 客户端对接
+- 自动注入站点 RAG 过滤器，实现站点级数据隔离
 
 ---
 

@@ -1,6 +1,6 @@
 [project]
 name = "catwiki-backend"
-version = "1.0.9"
+version = "1.1.0"
 description = "CatWiki 后端 API"
 requires-python = ">=3.12"
 dependencies = [
@@ -22,6 +22,7 @@ dependencies = [
     "langchain-openai>=1.1.7",
     "langchain-core>=1.2.6",
     "langchain-text-splitters>=1.1.0",
+    "elasticsearch[async]>=8.0.0,<9.0.0",
     "langgraph>=1.0.0",
     "langgraph-checkpoint-postgres>=3.0.0",
     "psycopg[binary]>=3.1.0",
@@ -71,3 +72,4 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "app/core/integration/robot/wecom/crypt.py" = ["N803", "N806"]
+"app/core/common/ip2region/*.py" = ["E711", "E722", "E741", "UP004", "UP007", "UP018", "UP020", "UP032", "UP035", "I001"]

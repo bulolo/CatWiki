@@ -8,7 +8,8 @@
 .PHONY: help \
 	dev-init dev-up dev-down dev-rebuild dev-restart dev-restart-backend dev-logs dev-clean dev-db-migrate dev-db-upgrade dev-db-psql gen-sdk license format \
 	prod-init prod-up prod-up-build prod-rebuild prod-down prod-restart prod-restart-backend prod-logs prod-clean prod-docs \
-	set-version publish-ce-github publish-ce-images setup-hooks check-changed check-all smoke-test
+	set-version publish-ce-github publish-ce-images setup-hooks check-changed check-all smoke-test \
+	_check_es_config
 
 # ------------------------------------------------------------------------------
 # 1. 跨平台配置 (Cross-Platform Config)
@@ -39,6 +40,7 @@ help:
 	@echo " 🛠️  [开发环境] (Development Environment)"
 	@echo "  make dev-init           - 初始化环境配置 (复制 .env.example)"
 	@echo "  make dev-up             - 启动开发服务 (前台运行, 查看日志)"
+	@echo "  make dev-up ES=1        - 启动开发服务，含 Elasticsearch"
 	@echo "  make dev-down           - 停止开发容器"
 	@echo "  make dev-rebuild        - 重建并启动开发环境 (后台运行)"
 	@echo "  make dev-restart        - 重启开发环境所有服务"
@@ -53,6 +55,7 @@ help:
 	@echo " 🚀  [生产环境] (Production Environment)"
 	@echo "  make prod-init          - 初始化生产环境配置"
 	@echo "  make prod-up            - 启动生产环境 (后台运行, 拉取远端镜像)"
+	@echo "  make prod-up ES=1       - 同上，额外启动 Elasticsearch 服务"
 	@echo "  make prod-up-build      - 启动生产环境并在本地构建 (后台运行)"
 	@echo "  make prod-rebuild       - 无缓存重新构建并启动生产环境"
 	@echo "  make prod-down          - 停止生产环境"
@@ -73,7 +76,7 @@ help:
 	@echo ""
 	@echo " 📦  [发布同步] (Release & Sync)"
 	@echo "  make publish-ce-images  - 构建 CE 镜像并推送到 Docker Hub (公开仓库)"
-	@echo "  make set-version v=1.0.9 - 统一修改项目版本号 (代码, 配置, 镜像标签)"
+	@echo "  make set-version v=1.1.0 - 统一修改项目版本号 (代码, 配置, 镜像标签)"
 	@echo ""
 	@echo " ⚠️  Windows 用户注意: 请使用 WSL2 或 Git Bash 运行 make 命令"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -81,6 +84,42 @@ help:
 # ------------------------------------------------------------------------------
 # 3. [开发环境] Development Targets
 # ------------------------------------------------------------------------------
+# 可选参数: ES=1 启用 Elasticsearch 服务
+# 示例: make dev-up ES=1
+_ES_PROFILE = $(if $(ES),--profile es,)
+_PROD_ES_PROFILE = $(if $(ES),--profile es,)
+
+# 检查 ES 相关环境变量配置是否与 ES=1 参数一致
+_check_es_config:
+	@if [ ! -f backend/.env ]; then exit 0; fi; \
+	STORE_TYPE=$$(grep -E '^VECTOR_STORE_TYPE=' backend/.env | cut -d= -f2 | tr -d ' \r'); \
+	ES_URL_VAL=$$(grep -E '^ES_URL=' backend/.env | sed 's/^[^=]*=//' | tr -d ' \r'); \
+	if [ "$(ES)" = "1" ]; then \
+		if [ "$$STORE_TYPE" != "elasticsearch" ]; then \
+			echo ""; \
+			echo "❌ [ES 检查] 已指定 ES=1，但 backend/.env 中 VECTOR_STORE_TYPE=$$STORE_TYPE"; \
+			echo "   若要启用 ES 检索，请在 backend/.env 中设置: VECTOR_STORE_TYPE=elasticsearch"; \
+			echo "   若不需要 ES，请去掉 ES=1 参数"; \
+			echo ""; \
+			exit 1; \
+		fi; \
+		if [ -z "$$ES_URL_VAL" ]; then \
+			echo "❌ [ES 检查] ES_URL 未配置，请在 backend/.env 中添加:"; \
+			echo "   ES_URL=http://elasticsearch:9200"; \
+			echo ""; \
+			exit 1; \
+		fi; \
+	else \
+		if [ "$$STORE_TYPE" = "elasticsearch" ]; then \
+			echo ""; \
+			echo "❌ [ES 检查] backend/.env 中 VECTOR_STORE_TYPE=elasticsearch，但未传入 ES=1"; \
+			echo "   后端将尝试连接未启动的 Elasticsearch，建议改用: make dev-up ES=1"; \
+			echo "   若要改回 PGVector，请在 backend/.env 中设置: VECTOR_STORE_TYPE=postgres"; \
+			echo ""; \
+			exit 1; \
+		fi; \
+	fi
+
 # 初始化环境配置
 dev-init:
 	@echo "🔧 [CatWiki] 正在初始化环境配置..."
@@ -91,20 +130,20 @@ dev-init:
 	@echo "✅ [CatWiki] 配置文件初始化完成！"
 
 # 启动服务
-dev-up:
-	docker compose -f docker-compose.dev.yml up --build
+dev-up: _check_es_config
+	docker compose -f docker-compose.dev.yml $(_ES_PROFILE) up --build
 
 # 停止服务
 dev-down:
-	docker compose -f docker-compose.dev.yml down
+	docker compose -f docker-compose.dev.yml $(_ES_PROFILE) down
 
 # 重建并启动服务
-dev-rebuild:
-	docker compose -f docker-compose.dev.yml up -d --build
+dev-rebuild: _check_es_config
+	docker compose -f docker-compose.dev.yml $(_ES_PROFILE) up -d --build
 
 # 重启开发环境所有服务
-dev-restart:
-	docker compose -f docker-compose.dev.yml restart
+dev-restart: _check_es_config
+	docker compose -f docker-compose.dev.yml $(_ES_PROFILE) restart
 
 # 仅重启后端应用 (API + Worker)
 dev-restart-backend:
@@ -112,7 +151,7 @@ dev-restart-backend:
 
 # 查看所有日志
 dev-logs:
-	docker compose -f docker-compose.dev.yml logs -f
+	docker compose -f docker-compose.dev.yml $(_ES_PROFILE) logs -f
 
 # 查看后端日志
 dev-logs-backend:
@@ -123,7 +162,7 @@ dev-clean:
 	@echo "🧹 [开发环境] 正在尝试深度清理开发环境..."
 	@echo "⚠️  警告：此操作将删除所有开发容器相关的数据卷和数据！"
 	@read -p "您确定要继续吗？[y/N] " ans && [ $${ans:-N} = y ] || (echo "❌ 操作已取消"; exit 1)
-	docker compose -f docker-compose.dev.yml down -v
+	docker compose -f docker-compose.dev.yml $(_ES_PROFILE) down -v
 	@echo "✅ 开发环境深度清理完成"
 
 # 数据库迁移: 创建
@@ -161,23 +200,24 @@ prod-init:
 	@echo "⚠️  请务必在运行 'make prod-up' 前修改敏感信息！"
 
 # 启动生产环境
+# 可选参数: ES=1 同时启动 Elasticsearch (示例: make prod-up ES=1)
 prod-up: check-prod-env
 	docker compose -f $(PROD_DIR)/docker-compose.yml pull
-	docker compose -f $(PROD_DIR)/docker-compose.yml up -d
+	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) up -d
 
 # 本地构建并启动生产环境
 prod-up-build: check-prod-env
-	docker compose -f $(PROD_DIR)/docker-compose.yml up -d --build
+	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) up -d --build
 
 # 无缓存重新构建并启动
 prod-rebuild: check-prod-env
 	@echo "🔧 [CatWiki] 无缓存重新构建生产环境..."
-	docker compose -f $(PROD_DIR)/docker-compose.yml build --no-cache
-	docker compose -f $(PROD_DIR)/docker-compose.yml up -d
+	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) build --no-cache
+	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) up -d
 
 # 停止生产环境
 prod-down: check-prod-env
-	docker compose -f $(PROD_DIR)/docker-compose.yml down
+	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) down
 	@if [ -f "$(PROD_DIR)/docker-compose.static.yml" ]; then \
 		docker compose -f $(PROD_DIR)/docker-compose.static.yml down; \
 	fi
@@ -188,7 +228,7 @@ prod-logs: check-prod-env
 	docker compose -f $(PROD_DIR)/docker-compose.yml logs -f
 # 重启生产环境所有服务
 prod-restart: check-prod-env
-	docker compose -f $(PROD_DIR)/docker-compose.yml restart
+	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) restart
 
 # 仅重启后端应用 (API + Worker)
 prod-restart-backend: check-prod-env

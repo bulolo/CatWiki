@@ -25,6 +25,8 @@ from app.core.web.deps import get_current_user_with_tenant
 from app.core.web.exceptions import BadRequestException
 from app.models.user import User
 from app.schemas.document import (
+    AiGenerateRequest,
+    AiGenerateResponse,
     Document,
     DocumentCreate,
     DocumentUpdate,
@@ -34,6 +36,7 @@ from app.schemas.document import (
     VectorRetrieveResult,
 )
 from app.schemas.response import ApiResponse, PaginatedResponse
+from app.schemas.system_config import DocProcessorType
 from app.schemas.task import Task as TaskSchema
 from app.services.document_service import DocumentService, get_document_service
 
@@ -52,7 +55,7 @@ async def list_documents(
     collection_id: int | None = Query(None, description="合集ID"),
     status: str | None = Query(None, description="状态过滤: published, draft"),
     vector_status: str | None = Query(
-        None, description="向量化状态过滤: none, pending, processing, completed, failed"
+        None, description="向量化状态过滤: none, outdated, pending, processing, completed, failed"
     ),
     keyword: str | None = Query(None, description="搜索关键词"),
     order_by: str | None = Query(None, description="排序字段: views, created_at, updated_at"),
@@ -110,7 +113,7 @@ async def create_document(
 
 
 @router.post(
-    "/import",
+    ":import",
     response_model=ApiResponse[TaskSchema],
     status_code=status.HTTP_201_CREATED,
     operation_id="importDocument",
@@ -119,15 +122,19 @@ async def import_document(
     file: UploadFile = File(...),
     site_id: int = Form(...),
     collection_id: int = Form(...),
-    processor_type: str = Form("MinerU"),
+    processor_type: DocProcessorType = Form(DocProcessorType.MINERU),
     ocr_enabled: bool = Form(False),
     extract_images: bool = Form(False),
     extract_tables: bool = Form(True),
+    duplicate_strategy: str = Form("allow"),
+    generate_summary: bool = Form(False),
+    generate_tags: bool = Form(False),
     service: DocumentService = Depends(get_document_service),
     current_user: User = Depends(get_current_user_with_tenant),
 ) -> ApiResponse[TaskSchema]:
     """
     导入文档 (上传 -> 异步解析 -> 创建)
+    duplicate_strategy: "skip" = 已存在则跳过, "allow" = 不检测直接上传（默认）
     """
     task = await service.import_document(
         file=file,
@@ -138,7 +145,12 @@ async def import_document(
         extract_images=extract_images,
         extract_tables=extract_tables,
         current_username=current_user.name or current_user.email,
+        duplicate_strategy=duplicate_strategy,
+        generate_summary=generate_summary,
+        generate_tags=generate_tags,
     )
+    if task is None:
+        return ApiResponse.ok(data=None, msg=_("doc.import_skipped"))
     return ApiResponse.ok(data=task, msg=_("doc.import_queued"))
 
 
@@ -243,7 +255,7 @@ async def get_document_chunks(
 
 
 @router.post(
-    "/retrieve", response_model=ApiResponse[VectorRetrieveResult], operation_id="retrieveDocuments"
+    ":retrieve", response_model=ApiResponse[VectorRetrieveResult], operation_id="retrieveDocuments"
 )
 async def retrieve_vectors(
     request: VectorRetrieveRequest,
@@ -273,3 +285,30 @@ async def retrieve_vectors(
         return ApiResponse.ok(
             data=VectorRetrieveResult(list=[]), msg=_("doc.retrieve_failed", error=str(e))
         )
+
+
+@router.post(
+    ":aiGenerate",
+    response_model=ApiResponse[AiGenerateResponse],
+    operation_id="aiGenerateDocumentFields",
+)
+async def ai_generate_fields(
+    request: AiGenerateRequest,
+    service: DocumentService = Depends(get_document_service),
+    current_user: User = Depends(get_current_user_with_tenant),
+) -> ApiResponse[AiGenerateResponse]:
+    """
+    用 AI 生成文档字段（摘要 / 标签）
+    - fields: ["summary"] / ["tags"] / ["summary", "tags"]
+    - content: 由前端截断后的文章正文，不超过调用方设定的字符上限
+    """
+    result = await service.ai_generate_fields(
+        content=request.content,
+        fields=request.fields,
+        summary_max_length=request.summary_max_length,
+        tags_max_count=request.tags_max_count,
+    )
+    return ApiResponse.ok(
+        data=AiGenerateResponse(**result),
+        msg=_("doc.ai_generate_success"),
+    )

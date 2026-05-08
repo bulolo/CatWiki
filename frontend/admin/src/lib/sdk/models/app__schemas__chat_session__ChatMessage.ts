@@ -34,5 +34,9 @@ export type app__schemas__chat_session__ChatMessage = {
      * 其他元数据
      */
     additional_kwargs?: (Record<string, any> | null);
+    /**
+     * 消息创建时间
+     */
+    created_at?: (string | null);
 };
 

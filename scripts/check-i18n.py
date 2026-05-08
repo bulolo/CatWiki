@@ -34,6 +34,9 @@ def check_project(name, base_dir):
     zh = json.load(open(zh_path, encoding='utf-8'))
     en = json.load(open(en_path, encoding='utf-8'))
 
+    # Pattern to find: const <var> = useTranslations('<namespace>')
+    decl_pattern = re.compile(r'\bconst\s+(\w+)\s*=\s*useTranslations\(["\']([^"\']+)["\']\)')
+
     issues = []
     for root, dirs, files in os.walk(src_dir):
         dirs[:] = [d for d in dirs if d not in ['sdk', 'node_modules', '.next']]
@@ -43,17 +46,31 @@ def check_project(name, base_dir):
             fpath = os.path.join(root, fname)
             content = open(fpath, encoding='utf-8').read()
 
-            t_vars = re.findall(r'\bconst\s+(\w+)\s*=\s*useTranslations\(["\'](\w+)["\']\)', content)
-            if not t_vars:
+            # Find all declarations with their positions
+            declarations = [(m.start(), m.group(1), m.group(2))
+                            for m in decl_pattern.finditer(content)]
+            if not declarations:
                 continue
 
-            for var_name, namespace in t_vars:
-                pattern = rf'\b{re.escape(var_name)}(?:\.rich)?\(\s*["\']([^"\']+)["\']'
-                key_calls = re.findall(pattern, content)
+            short = fpath.replace(src_dir + '/', '')
 
-                zh_ns = zh.get(namespace, {})
-                en_ns = en.get(namespace, {})
-                short = fpath.replace(src_dir + '/', '')
+            for i, (pos, var_name, namespace) in enumerate(declarations):
+                # Scope: from this declaration to the next redeclaration of same var,
+                # or end of file if none.
+                next_redecl = None
+                for j in range(i + 1, len(declarations)):
+                    if declarations[j][1] == var_name:
+                        next_redecl = declarations[j][0]
+                        break
+                scope = content[pos: next_redecl] if next_redecl else content[pos:]
+
+                call_pattern = re.compile(
+                    rf'\b{re.escape(var_name)}(?:\.rich)?\(\s*["\']([^"\']+)["\']'
+                )
+                key_calls = call_pattern.findall(scope)
+
+                zh_ns = resolve_key(zh, namespace) or {}
+                en_ns = resolve_key(en, namespace) or {}
 
                 for key in key_calls:
                     if resolve_key(zh_ns, key) is None:

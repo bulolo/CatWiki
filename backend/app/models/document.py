@@ -15,6 +15,7 @@
 import enum
 
 from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -24,6 +25,7 @@ class VectorStatus(str, enum.Enum):
     """向量化状态枚举"""
 
     NONE = "none"  # 未学习
+    OUTDATED = "outdated"  # 内容已变更，向量数据过期
     PENDING = "pending"  # 待学习（已排队）
     PROCESSING = "processing"  # 学习中
     COMPLETED = "completed"  # 已完成
@@ -80,7 +82,7 @@ class Document(BaseModel):
     reading_time = Column(Integer, default=0, nullable=False, comment="预计阅读时间(分钟)")
 
     # 标签 (JSON数组)
-    tags = Column(JSON, nullable=True, default=list, comment="标签列表")
+    tags = Column(JSONB, nullable=True, default=list, comment="标签列表")
 
     # 解析元数据（导入时记录，用于排查）
     parse_meta = Column(

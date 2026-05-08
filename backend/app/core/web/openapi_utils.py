@@ -16,12 +16,10 @@
 OpenAPI 规范过滤和处理工具
 """
 
-from functools import lru_cache
-
 from fastapi import FastAPI
 
 
-@lru_cache(maxsize=2)  # 只缓存 admin 和 client 两个规范
+# 去掉缓存，确保开发环境下能实时看到 EE 接口变更
 def filter_openapi_by_prefix(app: FastAPI, prefix: str) -> dict:
     """根据路径前缀过滤 OpenAPI 规范
 
@@ -48,13 +46,14 @@ def filter_openapi_by_prefix(app: FastAPI, prefix: str) -> dict:
             if isinstance(details, dict) and "tags" in details:
                 relevant_tags.update(details["tags"])
 
-    # 构建过滤后的规范（浅拷贝，避免深拷贝开销）
+    # 构建过滤后的规范
     filtered_spec = {
         "openapi": full_spec.get("openapi"),
         "info": full_spec.get("info", {}),
         "paths": filtered_paths,
         "components": full_spec.get("components", {}),
-        "tags": [tag for tag in full_spec.get("tags", []) if tag.get("name") in relevant_tags],
+        # 改进点：不再仅仅过滤全局 tags 列表，而是确保所有在路径中用到的标签都被包含进来
+        "tags": [{"name": tag} for tag in relevant_tags],
     }
 
     return filtered_spec

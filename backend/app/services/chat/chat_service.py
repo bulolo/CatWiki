@@ -28,13 +28,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ai.graph import create_agent_graph
 from app.core.ai.graph.checkpointer import get_checkpointer
-from app.core.ai.providers.llm_manager import llm_manager
-from app.core.common.utils import rag_stats_var
-from app.core.infra.config import settings
-from app.core.vector.rag_utils import (
+from app.core.ai.message_utils import (
     convert_tool_call_chunk_to_openai,
     extract_sources_from_messages,
 )
+from app.core.ai.providers.llm_manager import llm_manager
+from app.core.common.utils import rag_stats_var
+from app.core.infra.config import settings
 from app.crud.site import crud_site
 from app.db.database import AsyncSessionLocal, get_db
 from app.db.transaction import transactional
@@ -367,22 +367,35 @@ class ChatService:
             )
 
             async def save_history_task(msgs, content):
-                async with AsyncSessionLocal() as db:
-                    # 在背景任务中创建新的 Service 实例，因为主请求的 session 可能会关闭
-                    from app.services.chat.history_service import ChatHistoryService
-                    from app.services.chat.session_service import ChatSessionService
+                try:
+                    async with AsyncSessionLocal() as db:
+                        # 在背景任务中创建新的 Service 实例，因为主请求的 session 可能会关闭
+                        from app.services.chat.history_service import ChatHistoryService
+                        from app.services.chat.session_service import ChatSessionService
 
-                    bg_session_service = ChatSessionService(db)
-                    bg_history_service = ChatHistoryService(db)
+                        bg_session_service = ChatSessionService(db)
+                        bg_history_service = ChatHistoryService(db)
 
-                    if content:
-                        await bg_session_service.update_assistant_response(
-                            thread_id=thread_id, assistant_message=content
-                        )
-                    if msgs:
-                        await bg_history_service.save_history_from_messages(
-                            thread_id=thread_id, messages=msgs
-                        )
+                        if content:
+                            await bg_session_service.update_assistant_response(
+                                thread_id=thread_id, assistant_message=content
+                            )
+                        if msgs:
+                            saved = await bg_history_service.save_history_from_messages(
+                                thread_id=thread_id, messages=msgs
+                            )
+                            logger.debug(
+                                f"💾 [BackgroundTask] Saved {saved} messages for thread={thread_id}"
+                            )
+                        else:
+                            logger.warning(
+                                f"⚠️ [BackgroundTask] No messages to save for thread={thread_id}"
+                            )
+                except Exception as e:
+                    logger.error(
+                        f"❌ [BackgroundTask] save_history_task failed for thread={thread_id}: {e}",
+                        exc_info=True,
+                    )
 
             background_tasks.add_task(save_history_task, final_messages, persistent_content)
 
@@ -414,7 +427,10 @@ class ChatService:
                     f"   Site     : {stats['site']}\n"
                     f"{'─' * 72}\n"
                     f"   1️⃣  Embedding : {stats['embedding_model']} ({stats['embedding_hash'][:8] if stats['embedding_hash'] else 'N/A'})\n"
-                    f"      Recalled  : {stats['recalled_count']} chunks → {stats['filtered_count']} after threshold ({stats['threshold']})\n"
+                    f"      Backend   : {stats.get('vector_backend', 'N/A')}\n"
+                    f"      Recalled  : {stats['recalled_count']} chunks → "
+                    f"{stats['filtered_count']} "
+                    f"{'after threshold (' + str(stats['threshold']) + ')' if stats.get('threshold_applied') else '(threshold N/A, ranking order)'}\n"
                     f"   2️⃣  Reranker  : {stats['rerank_model']}\n"
                     f"      Output    : {stats['output_count']} results (top_k={stats['top_k']})\n"
                     f"   3️⃣  Chat      : {model_name}\n"
@@ -564,6 +580,10 @@ class ChatService:
                 thread_id=thread_id, role="user", content=input_message
             )
         except Exception as e:
+            from app.core.web.exceptions import CatWikiError
+
+            if isinstance(e, CatWikiError):
+                raise
             logger.error(f"❌ [ChatService] Failed to persist chat session: {e}")
 
         # 6. 准备 Graph 初始状态

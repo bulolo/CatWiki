@@ -15,10 +15,11 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui"
-import { FileText, Users, MessageSquare, Eye, Network, Flame, ChevronRight, Clock, History, Loader2 } from "lucide-react"
-import { useSiteData, useDocuments, useSiteStats } from "@/hooks"
+import { Button, Card, CardContent, CardHeader, CardTitle, Badge } from "@/components/ui"
+import { FileText, Users, MessageSquare, Eye, Network, Flame, ChevronRight, Clock, History, Loader2, Crown, BarChart3 } from "lucide-react"
+import { useSiteData, useDocuments, useSiteStats, useHealth } from "@/hooks"
 import { getRoutePath, useRouteContext } from "@/lib/routing"
 import { cn } from "@/lib/utils"
 import type { Document, RecentSession, TrendData } from "@/lib/api-client"
@@ -50,6 +51,7 @@ export default function AdminHome() {
   const locale = useLocale()
   const currentSite = useSiteData()
   const routeContext = useRouteContext()
+  const router = useRouter()
   const siteId = currentSite.id
 
   // 使用 React Query hooks
@@ -70,6 +72,8 @@ export default function AdminHome() {
   })
 
   const { data: statsData, isLoading: statsLoading, error: statsError } = useSiteStats(siteId)
+  const { data: healthData } = useHealth()
+  const isEnterprise = healthData?.edition === 'enterprise'
 
   const hotDocs = hotDocsData?.documents || []
   const recentDocs = recentDocsData?.documents || []
@@ -93,11 +97,31 @@ export default function AdminHome() {
 
   return (
     <div className="space-y-8 pb-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          {t("title")}
-        </h1>
-        <p className="text-muted-foreground mt-2">{t("subtitle")}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            {t("title")}
+          </h1>
+          <p className="text-muted-foreground mt-2">{t("subtitle")}</p>
+        </div>
+        {isEnterprise ? (
+          <Link href={getRoutePath("/analytics", routeContext.slug)}>
+            <Button variant="outline" size="sm" className="gap-1.5 hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-all">
+              <BarChart3 className="h-3.5 w-3.5" />
+              {t("analytics.viewDetail")}
+              <ChevronRight className="h-3 w-3" />
+            </Button>
+          </Link>
+        ) : (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <BarChart3 className="h-3.5 w-3.5" />
+            {t("analytics.viewDetail")}
+            <Badge className="bg-gradient-to-r from-violet-500 to-purple-600 text-white border-0 text-[10px] font-bold px-1.5 py-0 gap-1 shadow-sm h-4">
+              <Crown className="h-2.5 w-2.5" />
+              {t("eeBadge")}
+            </Badge>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -217,7 +241,12 @@ export default function AdminHome() {
             <div className="divide-y divide-border/30">
               {stats.recentSessions.length > 0 ? (
                 stats.recentSessions.map((session: RecentSession) => (
-                  <div key={session.thread_id} className="p-4 hover:bg-muted/30 transition-colors cursor-default group">
+                  <div key={session.thread_id} className={cn(
+                    "p-4 transition-colors",
+                    isEnterprise ? "hover:bg-muted/30 cursor-pointer group" : "cursor-default"
+                  )}
+                    onClick={isEnterprise ? () => router.push(getRoutePath(`/analytics?tab=chat&thread=${session.thread_id}`, routeContext.slug)) : undefined}
+                  >
                     <div className="flex items-center justify-between mb-1">
                       <h4 className="text-xs font-bold text-slate-700 truncate max-w-[150px]">{session.title || t("recentQA.newChat")}</h4>
                       <span className="text-[10px] font-medium text-slate-400">

@@ -107,24 +107,40 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
   const chatModel = (chatConfig?.mode === 'platform'
     ? aiConfigData?.platform_defaults?.chat?.model
     : chatConfig?.model) || ''
+  const tenantSlug = siteData?.tenant_slug || '...'
+  const siteUrlPrefix = `${env.NEXT_PUBLIC_CLIENT_URL}/${tenantSlug}/`
 
   // 加载站点数据
   useEffect(() => {
     if (siteData && !initialDataRef.current) {
       const bConfig = mergeSiteBotConfig(siteData.bot_config)
 
-      // 从 EE API 加载 api_bot 配置
-      api.apiBotConfig.get(siteId).then((apiBotData) => {
-        bConfig.api_bot = {
-          enabled: apiBotData.enabled,
-          api_key: apiBotData.api_key,
-          timeout: apiBotData.timeout,
-        }
-        setBotConfig({ ...bConfig })
-        initialDataRef.current = { ...initialDataRef.current!, botConfig: { ...bConfig } }
-      }).catch(() => {
-        // CE 版本静默忽略
-      })
+      // 从 EE API 加载全量 EE 配置（访问控制 + 机器人）
+      let eeApi: any = null
+      try { eeApi = require("@/ee/api").eeApi } catch (e) { }
+
+      if (eeApi) {
+        eeApi.sites.getConfig(siteId).then((eeConfig: any) => {
+          // 1. 同步机器人配置
+          bConfig.api_bot = {
+            enabled: eeConfig.api_bot.enabled,
+            api_key: eeConfig.api_bot.api_key,
+            timeout: eeConfig.api_bot.timeout,
+          }
+          setBotConfig({ ...bConfig })
+          
+          // 2. 同步访问控制状态
+          setEeIsPublic(eeConfig.access.is_public)
+          setEeHasPassword(eeConfig.access.has_password)
+          
+          initialDataRef.current = { 
+            ...initialDataRef.current!, 
+            botConfig: { ...bConfig } 
+          }
+        }).catch(() => {
+          // EE 未启用或加载失败
+        })
+      }
 
       setName(siteData.name)
       setSlug(siteData.slug || "")
@@ -150,21 +166,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
     }
   }, [siteData, siteId])
 
-  // EE: 加载站点访问控制配置
-  useEffect(() => {
-    if (!mounted || !isEnterprise || !siteId) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const config = await api.siteEEConfig.get(siteId)
-        if (!cancelled) {
-          setEeIsPublic(config.is_public ?? true)
-          setEeHasPassword(config.has_password ?? false)
-        }
-      } catch { /* not licensed */ }
-    })()
-    return () => { cancelled = true }
-  }, [mounted, isEnterprise, siteId])
+  // (加载逻辑已合并到上方数据加载 useEffect 中)
 
   // 启用/禁用站点立即生效
   const handleToggleActive = async () => {
@@ -182,12 +184,21 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
   // EE: 保存访问控制配置
   const handleSaveAccessConfig = async (updates: { is_public?: boolean; password?: string | null }) => {
     try {
-      const config = await api.siteEEConfig.updateAccess(siteId, updates)
-      setEeIsPublic(config.is_public ?? true)
-      setEeHasPassword(config.has_password ?? false)
+      let eeApi: any = null
+      try { eeApi = require("@/ee/api").eeApi } catch (e) { }
+      if (!eeApi) return
+
+      const config = await eeApi.sites.updateConfig(siteId, {
+        access: {
+          is_public: updates.is_public,
+          password: updates.password || undefined
+        }
+      })
+      setEeIsPublic(config.access.is_public)
+      setEeHasPassword(config.access.has_password)
       setEeNewPassword("")
-      if ((config as any).generated_password) {
-        toast.success(`访问密码已自动设置为：${(config as any).generated_password}，请妥善保存`, { duration: 10000 })
+      if (config.access.generated_password) {
+        toast.success(`访问密码已自动设置为：${config.access.generated_password}，请妥善保存`, { duration: 10000 })
       } else {
         toast.success(t("saveSuccess"))
       }
@@ -236,15 +247,20 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
       }
     })
 
-    const saveApiBot = api.apiBotConfig.update(siteId, {
-      enabled: api_bot.enabled,
-      ...(api_bot.api_key ? { api_key: api_bot.api_key } : {}),
-      timeout: api_bot.timeout,
-    }).catch(() => {
-      // CE 版本静默忽略
-    })
+    let eeApi: any = null
+    try { eeApi = require("@/ee/api").eeApi } catch (e) { }
 
-    Promise.all([saveMain, saveApiBot]).then(([updatedSite]) => {
+    const saveEE = eeApi ? eeApi.sites.updateConfig(siteId, {
+      api_bot: {
+        enabled: api_bot.enabled,
+        api_key: api_bot.api_key,
+        timeout: api_bot.timeout,
+      }
+    }).catch(() => {
+      // EE 未启用静默忽略
+    }) : Promise.resolve()
+
+    Promise.all([saveMain, saveEE]).then(([updatedSite]) => {
       const bConfig = mergeSiteBotConfig((updatedSite as any).bot_config)
       bConfig.api_bot = api_bot
 
@@ -406,9 +422,9 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
                           <div className="flex items-center">
                             <span
                               className="inline-flex items-center px-3 h-9 rounded-l-lg border border-r-0 border-slate-200 bg-slate-50 text-slate-500 text-[10px] font-mono flex-1 min-w-0 overflow-hidden"
-                              title={env.NEXT_PUBLIC_CLIENT_URL}
+                              title={siteUrlPrefix}
                             >
-                              <span className="truncate">{env.NEXT_PUBLIC_CLIENT_URL}</span>/
+                              <span className="truncate">{siteUrlPrefix}</span>
                             </span>
                             <input
                               className="flex h-9 w-[35%] min-w-[80px] rounded-r-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"

@@ -163,7 +163,7 @@ export default function DocumentsPage() {
   const [sortBy, setSortBy] = useState<'created_at' | 'updated_at' | 'views'>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [status, setStatus] = useState<'all' | 'published' | 'draft'>('all')
-  const [vectorStatus, setVectorStatus] = useState<'all' | 'none' | 'pending' | 'processing' | 'completed' | 'failed'>('all')
+  const [vectorStatus, setVectorStatus] = useState<'all' | 'none' | 'outdated' | 'pending' | 'processing' | 'completed' | 'failed'>('all')
 
   // 批量操作状态
   const [selectedDocIds, setSelectedDocIds] = useState<number[]>([])
@@ -300,6 +300,43 @@ export default function DocumentsPage() {
             <Brain className="h-3 w-3 flex-shrink-0" />
             <span>{t("learning.notLearned")}</span>
           </button>
+        )
+      case VectorStatus.OUTDATED:
+        return (
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => vectorizeMutation.mutate(doc.id)}
+              disabled={vectorizeMutation.isPending}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-amber-500 bg-amber-50 hover:bg-amber-100 border border-amber-200/50 transition-all whitespace-nowrap flex-shrink-0"
+              title={t("learning.clickToRelearn_outdated")}
+            >
+              <RefreshCw className="h-2.5 w-2.5 flex-shrink-0" />
+              <span>{t("learning.outdated")}</span>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setViewChunksId(doc.id)
+              }}
+              className="p-1 rounded-md text-slate-400 hover:text-primary hover:bg-primary/5 transition-colors"
+              title={t("list.viewChunks")}
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                if (confirm(t("learning.confirmDeleteVector"))) {
+                  removeVectorMutation.mutate(doc.id)
+                }
+              }}
+              disabled={removeVectorMutation.isPending}
+              className="p-1 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              title={t("list.deleteVector")}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         )
       case VectorStatus.PENDING:
         return (
@@ -1029,6 +1066,7 @@ export default function DocumentsPage() {
                       <SelectContent>
                         <SelectItem value="all">{t("status.all")}</SelectItem>
                         <SelectItem value="none">{t("status.none")}</SelectItem>
+                        <SelectItem value="outdated">{t("status.outdated")}</SelectItem>
                         <SelectItem value="pending">{t("status.pending")}</SelectItem>
                         <SelectItem value="processing">{t("status.processing")}</SelectItem>
                         <SelectItem value="completed">{t("status.completed")}</SelectItem>

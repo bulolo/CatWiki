@@ -110,6 +110,7 @@
       "published": "Published",
       "draft": "Draft",
       "none": "Not Learned",
+      "outdated": "Outdated",
       "pending": "Queuing",
       "processing": "Learning",
       "completed": "Learned",
@@ -117,12 +118,14 @@
     },
     "learning": {
       "notLearned": "Not Learned",
+      "outdated": "Outdated",
       "queuing": "Queuing",
       "learning": "Learning",
       "learned": "Learned",
       "failed": "Failed",
       "clickToCancel": "Click to cancel",
       "clickToRelearn": "Learned, click to relearn",
+      "clickToRelearn_outdated": "Content updated, click to relearn",
       "relearnShort": "Re-learn",
       "confirmDeleteVector": "Are you sure you want to delete the vector data for this document? After deletion, the document will become 'Not Learned'."
     },
@@ -155,7 +158,14 @@
       "errorTitle": "Please enter document title",
       "errorCollection": "Please select a collection",
       "successPublish": "Document published",
-      "successSave": "Draft saved"
+      "successSave": "Draft saved",
+      "aiGenerate": "AI Generate",
+      "aiGenerating": "Generating...",
+      "aiCharLimit": "AI summary max length (chars)",
+      "aiTagsMaxCount": "AI tags max count",
+      "aiContentTooShort": "Content is too short for AI generation",
+      "aiGenerateSummarySuccess": "Summary generated",
+      "aiGenerateTagsSuccess": "Tags generated"
     },
     "editDoc": {
       "title": "Edit Document",
@@ -298,6 +308,7 @@
     "allOrgData": "Manage all organization data",
     "models": "Models",
     "docProcessor": "Doc Processor",
+    "systemEngine": "System Engine",
     "totalTenants": "Total Orgs",
     "Common": {
       "loading": "Loading..."
@@ -380,7 +391,29 @@
     "platformResourceModels": "Models Configuration",
     "platformResourceModelsDesc": "Allow all sites to use platform-shared AI models.",
     "platformResourceParsing": "Document Parsing",
-    "platformResourceParsingDesc": "Allow all sites to use platform-shared parsing resources."
+    "platformResourceParsingDesc": "Allow all sites to use platform-shared parsing resources.",
+    "sysEngine": {
+      "title": "System Engine",
+      "description": "View the current runtime engine configuration and connection status.",
+      "loading": "Loading...",
+      "fetchFailed": "Failed to fetch engine info",
+      "refresh": "Refresh",
+      "system": "System Info",
+      "version": "Version",
+      "environment": "Environment",
+      "edition": "Edition",
+      "vectorStore": "Vector Store",
+      "type": "Engine Type",
+      "backend": "Backend",
+      "connection": "Connection",
+      "pingOk": "Connected",
+      "pingFail": "Unreachable",
+      "database": "Database",
+      "cache": "Cache",
+      "objectStorage": "Object Storage",
+      "bucket": "Bucket",
+      "endpoint": "Endpoint"
+    }
   },
   "Models": {
     "title": "Models",
@@ -436,7 +469,15 @@
     "usingSharedResource": "Using shared AI resources. No configuration needed.",
     "currentModel": "Current Model: ",
     "backToModels": "Back to Models",
-    "kernelVersion": "Kernel v1.0"
+    "kernelVersion": "Kernel v1.0",
+    "extraBody": "Extra Request Body (extra_body)",
+    "extraBodyTip": "JSON format. Leave empty to omit. Recommended: disable thinking for knowledge base use cases. The following are reference examples only — parameters may vary by model, refer to official docs:",
+    "extraBodyClickToFill": "Click to fill",
+    "extraBodyTipVllm": "Qwen3 / DeepSeek-R1-0528 / GLM-4.5 (self-hosted vLLM/SGLang)",
+    "extraBodyTipHosted": "DeepSeek Official API / Kimi K2 / Doubao Seed Thinking / GLM-4.6 (hosted API)",
+    "extraBodyTipHunyuan": "Hunyuan Pro / T1 (Tencent Cloud API)",
+    "extraBodyFormat": "Format",
+    "extraBodyJsonError": "Invalid JSON, please check"
   },
   "DocProcessor": {
     "title": "Doc Processor",
@@ -772,6 +813,7 @@
   "Dashboard": {
     "title": "Dashboard",
     "subtitle": "Overview of your site operations and AI interactions.",
+    "eeBadge": "Enterprise",
     "stats": {
       "totalDocs": "Documents",
       "totalDocsDesc": "Total learned documents",
@@ -794,6 +836,7 @@
     },
     "recentQA": {
       "title": "Recent AI Interactions",
+      "viewAll": "View All",
       "newChat": "New Chat",
       "turns": "{count} turns",
       "empty": "No recent interactions"
@@ -805,12 +848,109 @@
       "views": "{count} views",
       "empty": "No popular content found"
     },
+    "analytics": {
+      "viewDetail": "Detailed Analytics"
+    },
     "recentUpdates": {
       "title": "Recent Updates",
       "subtitle": "Latest document modifications",
       "viewAll": "View All",
       "system": "System",
       "empty": "No recent updates"
+    }
+  },
+  "Analytics": {
+    "title": "Analytics",
+    "subtitle": "Detailed analysis of site browsing data.",
+    "enterpriseBadge": "Enterprise",
+    "days": "d",
+    "tabs": {
+      "traffic": "Traffic Overview",
+      "chat": "Chat Audit"
+    },
+    "empty": "No data available",
+    "stats": {
+      "totalViews": "Total Views",
+      "uniqueVisitors": "Unique Visitors",
+      "topDocCount": "Top Documents",
+      "sourceCount": "Traffic Sources"
+    },
+    "trends": {
+      "title": "View Trends",
+      "views": "Views",
+      "visitors": "Visitors"
+    },
+    "hourly": {
+      "title": "Hourly Distribution"
+    },
+    "referer": {
+      "title": "Traffic Sources",
+      "direct": "Direct"
+    },
+    "topDocs": {
+      "title": "Top Documents"
+    },
+    "visitors": {
+      "title": "Active Visitors",
+      "regionTitle": "Visitor Regions",
+      "ip": "IP Address",
+      "views": "Views"
+    }
+  },
+  "ChatSessions": {
+    "title": "AI Chat Sessions",
+    "subtitle": "View and manage all AI conversation sessions.",
+    "searchPlaceholders": {
+      "all": "Search title, last message, session ID, or visitor...",
+      "text": "Search title or last message...",
+      "thread_id": "Enter session ID...",
+      "member_id": "Enter visitor ID..."
+    },
+    "totalSessions": "{count} sessions",
+    "empty": "No chat sessions found",
+    "untitled": "Untitled Chat",
+    "turns": "{count} turns",
+    "back": "Back to list",
+    "searchFields": {
+      "all": "All",
+      "text": "Content",
+      "threadId": "Session ID",
+      "memberId": "Visitor"
+    },
+    "table": {
+      "title": "Title",
+      "lastMessage": "Last Message",
+      "turns": "Turns",
+      "time": "Updated",
+      "actions": "Actions"
+    },
+    "detail": {
+      "title": "Conversation Detail",
+      "empty": "No messages",
+      "loading": "Loading...",
+      "messages": "messages",
+      "statsUser": "User Messages",
+      "statsAssistant": "AI Replies",
+      "statsSearch": "KB Searches",
+      "duration": "Duration",
+      "statsTime": "Created",
+      "statsTitle": "Statistics",
+      "statsLastActive": "Last Active",
+      "visitor": "Visitor ID",
+      "toolCall": "Knowledge Base Search",
+      "toolResult": "Search Result",
+      "sources": "Sources",
+      "chunks": "chunks",
+      "expand": "Show more",
+      "collapse": "Show less"
+    },
+    "delete": {
+      "title": "Delete Session",
+      "description": "Are you sure you want to delete \"{name}\"?",
+      "warning": "This action cannot be undone. The conversation will be permanently deleted.",
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "deleting": "Deleting..."
     }
   },
   "QuickQuestions": {
@@ -1096,6 +1236,9 @@
     "layoutTopNavUnsupported": "Top nav not supported yet",
     "enableSite": "Enable Site",
     "enableSiteHint": "Site will be accessible when enabled.",
+    "publicSite": "Public Access",
+    "publicSiteHint": "When disabled, a password is required to access the site.",
+    "sitePassword": "Access Password",
     "basicConfig": "Basic Configuration",
     "basicConfigDesc": "Set core information like site name and unique slug.",
     "styleConfig": "Interface & Style",
@@ -1234,7 +1377,16 @@
     "extractTablesDesc": "Recognize table structures and generate structured data.",
     "cancel": "Cancel",
     "processing": "Processing...",
-    "submit": "Start Import ({count})"
+    "submit": "Start Import ({count})",
+    "uploadSkipped": "Skipped (already exists): {names}",
+    "uploadSkippedMore": " and {count} more",
+    "skipDuplicates": "Skip duplicate files",
+    "skipDuplicatesDesc": "Files with the same name will be skipped, checked within the selected collection only",
+    "generateSummary": "Auto-generate summary",
+    "generateSummaryDesc": "AI generates a summary after import completes",
+    "generateTags": "Auto-generate tags",
+    "generateTagsDesc": "AI generates tags after import completes",
+    "parseOptions": "Parse options"
   },
   "VectorRetrieve": {
     "title": "Vector Retrieval Test",

@@ -5,17 +5,19 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
-import { useTranslations, useLocale } from "next-intl"
+import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
-  Save, Send, Image as ImageIcon, Settings as SettingsIcon,
-  Tags, Hash, User, Info, Clock, Plus, Loader2
+  Image as ImageIcon, Settings as SettingsIcon,
+  Tags, Hash, Info, Plus, Loader2, Sparkles
 } from "lucide-react"
+import { toast } from "sonner"
+import { useAiGenerateFields } from "@/hooks/useDocuments"
 import { LazyMarkdownEditor } from "@/components/editor"
 import { CreateCollectionDialog } from "@/components/features/documents/CreateCollectionDialog"
 import {
@@ -24,9 +26,6 @@ import {
 import { TagsInput } from "@/components/ui/TagsInput"
 import { ImageUpload } from "@/components/ui/ImageUpload"
 import type { CollectionTree } from "@/lib/api-client"
-import { DocumentStatus } from "@/lib/api-client"
-import { cn } from "@/lib/utils"
-import { getUserInfo } from "@/lib/auth"
 
 type CollectionTreeWithLevel = CollectionTree & { level?: number }
 
@@ -60,11 +59,49 @@ interface DocumentEditorContentProps {
   isPending: boolean
 }
 
+const AI_SUMMARY_MAX_LENGTH_KEY = 'doc_ai_summary_max_length'
+const AI_SUMMARY_MAX_LENGTH_DEFAULT = 150
+const AI_TAGS_MAX_COUNT_KEY = 'doc_ai_tags_max_count'
+const AI_TAGS_MAX_COUNT_DEFAULT = 8
+const AI_CONTENT_SEND_LIMIT = 6000
+
 /** 左侧编辑器区域 */
 export function DocumentEditorContent({
   form, onChange,
 }: Pick<DocumentEditorContentProps, 'form' | 'onChange'>) {
   const t = useTranslations("Documents")
+  const aiGenerate = useAiGenerateFields()
+
+  const [summaryMaxLength, setSummaryMaxLength] = useState<number>(() => {
+    if (typeof window === 'undefined') return AI_SUMMARY_MAX_LENGTH_DEFAULT
+    const stored = localStorage.getItem(AI_SUMMARY_MAX_LENGTH_KEY)
+    const parsed = stored ? parseInt(stored, 10) : NaN
+    return Number.isNaN(parsed) ? AI_SUMMARY_MAX_LENGTH_DEFAULT : parsed
+  })
+  const [summaryMaxLengthInput, setSummaryMaxLengthInput] = useState(summaryMaxLength.toString())
+
+  const handleGenerateSummary = async () => {
+    const trimmed = form.content.trim()
+    if (trimmed.length < 50) {
+      toast.error(t("newDoc.aiContentTooShort"))
+      return
+    }
+    const content = trimmed.slice(0, AI_CONTENT_SEND_LIMIT)
+    const result = await aiGenerate.mutateAsync({ content, fields: ['summary'], summaryMaxLength })
+    if (result?.summary) {
+      onChange('summary', result.summary)
+      toast.success(t("newDoc.aiGenerateSummarySuccess"))
+    }
+  }
+
+  const handleSummaryMaxLengthChange = (value: string) => {
+    setSummaryMaxLengthInput(value)
+    const parsed = parseInt(value, 10)
+    if (!Number.isNaN(parsed) && parsed > 0) {
+      setSummaryMaxLength(parsed)
+      localStorage.setItem(AI_SUMMARY_MAX_LENGTH_KEY, parsed.toString())
+    }
+  }
 
   return (
     <Card className="border-border/50 shadow-sm overflow-hidden">
@@ -77,9 +114,46 @@ export function DocumentEditorContent({
           onChange={(e) => onChange('title', e.target.value)}
         />
         <div className="space-y-2 pt-2">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Info className="h-3.5 w-3.5" />
-            <span className="text-[11px] font-bold uppercase tracking-wider">{t("newDoc.summary")}</span>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 text-slate-400">
+              <Info className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-bold uppercase tracking-wider">{t("newDoc.summary")}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="text-[10px] text-slate-400 hover:text-slate-600 tabular-nums transition-colors">
+                    {form.summary.length} / {summaryMaxLength}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="end">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-slate-600">{t("newDoc.aiCharLimit")}</p>
+                    <Input
+                      type="number"
+                      min={20}
+                      max={2000}
+                      value={summaryMaxLengthInput}
+                      onChange={(e) => handleSummaryMaxLengthChange(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px] text-primary hover:text-primary/80 gap-1"
+                onClick={handleGenerateSummary}
+                disabled={aiGenerate.isPending}
+              >
+                {aiGenerate.isPending
+                  ? <><Loader2 className="h-3 w-3 animate-spin" />{t("newDoc.aiGenerating")}</>
+                  : <><Sparkles className="h-3 w-3" />{t("newDoc.aiGenerate")}</>
+                }
+              </Button>
+            </div>
           </div>
           <Textarea
             placeholder={t("newDoc.placeholderSummary")}
@@ -108,6 +182,38 @@ export function DocumentEditorSidebar({
 }: DocumentEditorContentProps & { children?: React.ReactNode }) {
   const t = useTranslations("Documents")
   const [isCreateCollectionOpen, setIsCreateCollectionOpen] = useState(false)
+  const aiGenerate = useAiGenerateFields()
+
+  const [tagsMaxCount, setTagsMaxCount] = useState<number>(() => {
+    if (typeof window === 'undefined') return AI_TAGS_MAX_COUNT_DEFAULT
+    const stored = localStorage.getItem(AI_TAGS_MAX_COUNT_KEY)
+    const parsed = stored ? parseInt(stored, 10) : NaN
+    return Number.isNaN(parsed) ? AI_TAGS_MAX_COUNT_DEFAULT : parsed
+  })
+  const [tagsMaxCountInput, setTagsMaxCountInput] = useState(tagsMaxCount.toString())
+
+  const handleGenerateTags = async () => {
+    const trimmed = form.content.trim()
+    if (trimmed.length < 50) {
+      toast.error(t("newDoc.aiContentTooShort"))
+      return
+    }
+    const content = trimmed.slice(0, AI_CONTENT_SEND_LIMIT)
+    const result = await aiGenerate.mutateAsync({ content, fields: ['tags'], tagsMaxCount })
+    if (result?.tags?.length) {
+      onChange('tags', result.tags)
+      toast.success(t("newDoc.aiGenerateTagsSuccess"))
+    }
+  }
+
+  const handleTagsMaxCountChange = (value: string) => {
+    setTagsMaxCountInput(value)
+    const parsed = parseInt(value, 10)
+    if (!Number.isNaN(parsed) && parsed > 0) {
+      setTagsMaxCount(parsed)
+      localStorage.setItem(AI_TAGS_MAX_COUNT_KEY, parsed.toString())
+    }
+  }
 
   return (
     <>
@@ -164,9 +270,46 @@ export function DocumentEditorSidebar({
 
           {/* 标签 */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-slate-500">
-              <Tags className="h-4 w-4" />
-              <label className="text-sm font-bold">{t("config.tags")}</label>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-slate-500">
+                <Tags className="h-4 w-4" />
+                <label className="text-sm font-bold">{t("config.tags")}</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="text-[10px] text-slate-400 hover:text-slate-600 tabular-nums transition-colors">
+                      {form.tags.length} / {tagsMaxCount}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-3" align="end">
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-slate-600">{t("newDoc.aiTagsMaxCount")}</p>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={tagsMaxCountInput}
+                        onChange={(e) => handleTagsMaxCountChange(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] text-primary hover:text-primary/80 gap-1"
+                  onClick={handleGenerateTags}
+                  disabled={aiGenerate.isPending}
+                >
+                  {aiGenerate.isPending
+                    ? <><Loader2 className="h-3 w-3 animate-spin" />{t("newDoc.aiGenerating")}</>
+                    : <><Sparkles className="h-3 w-3" />{t("newDoc.aiGenerate")}</>
+                  }
+                </Button>
+              </div>
             </div>
             <TagsInput value={form.tags} onChange={(v) => onChange('tags', v)} placeholder={t("config.tagsPlaceholder")} />
           </div>

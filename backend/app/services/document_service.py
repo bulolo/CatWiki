@@ -11,7 +11,7 @@ from app.core.common.document_utils import build_collection_map, enrich_document
 from app.core.common.i18n import _
 from app.core.common.utils import NAMESPACE_CATWIKI, Paginator
 from app.core.infra.tenant import get_current_tenant, temporary_tenant_context
-from app.core.vector.vector_store import VectorStoreManager
+from app.core.vector import VectorStoreManager
 from app.core.web.exceptions import BadRequestException, NotFoundException
 from app.crud.collection import crud_collection
 from app.crud.document import crud_document
@@ -44,6 +44,7 @@ class DocumentService:
         """检查文档是否可以向量化"""
         return document.vector_status in (
             VectorStatus.NONE,
+            VectorStatus.OUTDATED,
             VectorStatus.FAILED,
             VectorStatus.COMPLETED,
             VectorStatus.PENDING,  # 允许重新排队，处理可能卡住的任务
@@ -93,6 +94,8 @@ class DocumentService:
                     "source": "document",
                     "id": str(document.id),
                     "title": document.title,
+                    "summary": document.summary or "",
+                    "tags": " ".join(document.tags or []),
                     "author": document.author,
                     "site_id": document.site_id,
                     "collection_id": document.collection_id,
@@ -155,6 +158,9 @@ class DocumentService:
         extract_images: bool,
         extract_tables: bool,
         current_username: str,
+        duplicate_strategy: str = "allow",
+        generate_summary: bool = False,
+        generate_tags: bool = False,
     ) -> Any:
         """导入文档（上传 -> 云端暂存 -> 解析 -> 创建）并返回 enriched dictionary"""
 
@@ -168,6 +174,21 @@ class DocumentService:
 
         filename = file.filename or "unknown"
         suffix = Path(filename).suffix.lower()
+
+        # 重复文件检测：仅在 skip 策略且租户上下文有效时执行
+        if duplicate_strategy == "skip" and active_tenant_id is not None:
+            potential_title = Path(filename).stem
+            existing_doc = await crud_document.get_by_title_collection(
+                self.db,
+                title=potential_title,
+                collection_id=collection_id,
+                tenant_id=active_tenant_id,
+            )
+            if existing_doc is not None:
+                logger.info(
+                    f"[Import] Skipping duplicate: '{potential_title}' already exists in collection {collection_id}"
+                )
+                return None
 
         # 根据解析器类型动态判断支持的格式
         from app.schemas.system_config import DocProcessorType
@@ -255,6 +276,8 @@ class DocumentService:
             "ocr_enabled": ocr_enabled,
             "extract_images": extract_images,
             "extract_tables": extract_tables,
+            "generate_summary": generate_summary,
+            "generate_tags": generate_tags,
         }
 
         task = await TaskService.enqueue_task(
@@ -326,8 +349,6 @@ class DocumentService:
 
         try:
             target_tenant_id = documents[0].tenant_id if documents else None
-            from app.core.vector.vector_store import VectorStoreManager
-
             v_mgr = await VectorStoreManager.get_instance()
             await v_mgr.validate_config(tenant_id=target_tenant_id)
         except Exception as e:
@@ -458,7 +479,29 @@ class DocumentService:
         if not document:
             raise NotFoundException(detail=_("doc.not_found", id=document_id))
 
+        was_vectorized = document.vector_status == VectorStatus.COMPLETED
+        old_vector_fields = (
+            document.content,
+            document.title,
+            document.summary,
+            tuple(document.tags or []),
+        )
+
         document = await crud_document.update(self.db, db_obj=document, obj_in=document_in)
+
+        if was_vectorized:
+            new_vector_fields = (
+                document.content,
+                document.title,
+                document.summary,
+                tuple(document.tags or []),
+            )
+            if new_vector_fields != old_vector_fields:
+                # 向量相关字段变更：标记为过期，由用户手动触发重新向量化
+                await crud_document.update_vector_status(
+                    self.db, document_id=document_id, status=VectorStatus.OUTDATED
+                )
+
         return await enrich_document_dict(document, self.db, crud_collection)
 
     @transactional()
@@ -482,8 +525,6 @@ class DocumentService:
     async def _do_delete_vector(self, document_id: int):
         """实际执行向量删除的回调"""
         try:
-            from app.core.vector.vector_store import VectorStoreManager
-
             vector_store = await VectorStoreManager.get_instance()
             await vector_store.delete_by_metadata(key="id", value=str(document_id))
             logger.info(f"💾 已清理文档 {document_id} 的相关向量数据")
@@ -549,6 +590,7 @@ class DocumentService:
         ip_address: str | None = None,
         user_agent: str | None = None,
         referer: str | None = None,
+        background_tasks: BackgroundTasks | None = None,
     ) -> dict:
         """获取已发布文档详情（客户端，增加浏览量）"""
         document = await crud_document.get_with_related_site(self.db, id=document_id)
@@ -564,11 +606,89 @@ class DocumentService:
             ip_address=ip_address,
             user_agent=user_agent,
             referer=referer,
+            background_tasks=background_tasks,
         )
 
         return await enrich_document_dict(
             document, self.db, crud_collection, include_site_info=True
         )
+
+    async def ai_generate_fields(
+        self,
+        content: str,
+        fields: list[str],
+        summary_max_length: int | None = None,
+        tags_max_count: int | None = None,
+    ) -> dict:
+        """用 LLM 生成文档摘要 / 标签"""
+        from langchain_core.messages import HumanMessage, SystemMessage
+        from pydantic import BaseModel as PydanticBaseModel
+
+        from app.core.ai.providers.llm_manager import llm_manager
+        from app.core.web.exceptions import BadRequestException
+
+        active_tenant_id = get_current_tenant()
+
+        try:
+            llm = await llm_manager.get_model(
+                tenant_id=active_tenant_id,
+                temperature=0.3,
+                purpose="AI 生成文档字段",
+            )
+        except Exception as e:
+            raise BadRequestException(detail=_("doc.ai_llm_unavailable")) from e
+
+        field_instructions = []
+        if "summary" in fields:
+            limit = summary_max_length or 150
+            field_instructions.append(
+                f'- "summary": 用不超过 {limit} 字概括文章核心内容，语言简洁客观，不要以"本文"开头'
+            )
+        if "tags" in fields:
+            count = tags_max_count or 8
+            field_instructions.append(
+                f'- "tags": 提取最多 {count} 个关键词标签，每个标签 2~6 字，以 JSON 数组返回'
+            )
+
+        system_prompt = (
+            "你是一个专业的内容编辑助手。请根据用户提供的文章内容，生成指定字段。\n"
+            "严格以 JSON 格式返回，只包含被要求的字段，不要输出任何多余内容。\n"
+            "字段说明：\n" + "\n".join(field_instructions)
+        )
+        human_prompt = f"请根据以下文章内容生成字段：\n\n{content}"
+
+        annotations: dict = {}
+        defaults: dict = {}
+        if "summary" in fields:
+            annotations["summary"] = str | None
+            defaults["summary"] = None
+        if "tags" in fields:
+            annotations["tags"] = list[str] | None
+            defaults["tags"] = None
+
+        dynamic_schema = type(
+            "GeneratedFields",
+            (PydanticBaseModel,),
+            {"__annotations__": annotations, **defaults},
+        )
+
+        structured_llm = llm.with_structured_output(dynamic_schema)
+
+        try:
+            result = await structured_llm.ainvoke(
+                [SystemMessage(content=system_prompt), HumanMessage(content=human_prompt)]
+            )
+        except Exception as e:
+            raise BadRequestException(detail=_("doc.ai_generate_failed", error=str(e))) from e
+
+        output: dict = {}
+        if "summary" in fields:
+            output["summary"] = getattr(result, "summary", None)
+        if "tags" in fields:
+            raw = getattr(result, "tags", None)
+            output["tags"] = raw if isinstance(raw, list) else []
+
+        return output
 
 
 def get_document_service(

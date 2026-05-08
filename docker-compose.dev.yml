@@ -125,6 +125,9 @@ services:
   # 3. 创建 Demo 站点（医学科普）和初始化医学知识文档
   # 4. 初始化 RustFS 对象存储
   backend-init:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
     image: catwiki-backend-dev
     container_name: catwiki-backend-init
     env_file:
@@ -247,6 +250,9 @@ services:
 
   # 后端 Worker 服务（处理异步任务：解析、向量化等）
   worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
     image: catwiki-backend-dev
     container_name: catwiki-worker-dev
     env_file:
@@ -414,6 +420,52 @@ services:
     tty: true
     restart: unless-stopped
 
+  # Elasticsearch 向量存储服务（可选，按需启动）
+  # 启动命令：make dev-up ES=1
+  # IK 分词器已烤入镜像，无需额外安装步骤
+  elasticsearch:
+    build:
+      context: ./deploy/images/elasticsearch
+      dockerfile: Dockerfile
+    image: catwiki-elasticsearch-dev
+    container_name: catwiki-elasticsearch-dev
+    profiles: ["es"]
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - node.store.allow_mmap=false
+      - TZ=Asia/Shanghai
+      - logger.level=WARN
+      - logger.org.elasticsearch=WARN
+      - logger.org.elasticsearch.deprecation=ERROR
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - catwiki-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
     driver: local
@@ -422,6 +474,8 @@ volumes:
   redis_data:
     driver: local
   rustfs_logs:
+    driver: local
+  es_data:
     driver: local
   pnpm_store:
     driver: local

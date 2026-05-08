@@ -17,7 +17,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from 'next-intl'
 import { useRouter, useParams } from "next/navigation"
-import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription, Tabs, TabsContent, TabsList, TabsTrigger, ImageUpload } from "@/components/ui"
+import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription, Input, Tabs, TabsContent, TabsList, TabsTrigger, ImageUpload } from "@/components/ui"
 import {
   ChevronLeft,
   Save,
@@ -62,6 +62,9 @@ export default function EditSitePage() {
   const [layoutMode, setLayoutMode] = useState<string>("sidebar")
   const [quickQuestions, setQuickQuestions] = useState<QuickQuestion[]>([])
   const [botConfig, setBotConfig] = useState(initialConfigs.bot_config)
+  const [isPublic, setIsPublic] = useState(true) // EE: 是否公开
+  const [password, setPassword] = useState("") // EE: 访问密码
+  const [hasPassword, setHasPassword] = useState(false) // EE: 是否已有密码
   const [mounted, setMounted] = useState(false)
 
   const initialDataRef = useRef<{
@@ -74,6 +77,7 @@ export default function EditSitePage() {
     layoutMode: string
     quickQuestions: QuickQuestion[]
     botConfig: BotConfig
+    isPublic: boolean
   } | null>(null)
 
   // 确保水合一致性
@@ -84,24 +88,42 @@ export default function EditSitePage() {
   // 使用 React Query hooks
   const { data: siteData, isLoading: loading } = useSiteById(siteId)
   const updateSiteMutation = useUpdateSite()
+  
+  // 从站点数据中获取租户标识
+  const tenantSlug = siteData?.tenant_slug || '...'
 
   // 加载站点数据
   useEffect(() => {
     if (siteData && !initialDataRef.current) {
       const bConfig = mergeSiteBotConfig(siteData.bot_config)
 
-      // 从 EE API 加载 api_bot 配置（EE 版本）
-      api.apiBotConfig.get(siteId).then((apiBotData) => {
-        bConfig.api_bot = {
-          enabled: apiBotData.enabled,
-          api_key: apiBotData.api_key,
-          timeout: apiBotData.timeout,
-        }
-        setBotConfig({ ...bConfig })
-        initialDataRef.current = { ...initialDataRef.current!, botConfig: { ...bConfig } }
-      }).catch(() => {
-        // CE 版本或 EE 未启用，api_bot 保持默认值
-      })
+      // 从 EE API 加载全量配置（EE 版本）
+      let eeApi: any = null
+      try { eeApi = require("@/ee/api").eeApi } catch (e) { }
+
+      if (eeApi) {
+        eeApi.sites.getConfig(siteId).then((eeConfig: any) => {
+          // 1. 同步机器人配置
+          bConfig.api_bot = {
+            enabled: eeConfig.api_bot.enabled,
+            api_key: eeConfig.api_bot.api_key,
+            timeout: eeConfig.api_bot.timeout,
+          }
+          setBotConfig({ ...bConfig })
+          
+          // 2. 同步访问控制状态
+          setIsPublic(eeConfig.access.is_public)
+          setHasPassword(eeConfig.access.has_password)
+          
+          initialDataRef.current = { 
+            ...initialDataRef.current!, 
+            botConfig: { ...bConfig },
+            isPublic: eeConfig.access.is_public
+          }
+        }).catch(() => {
+          // EE 未启用或加载失败
+        })
+      }
 
       setName(siteData.name)
       setSlug(siteData.slug || "")
@@ -122,7 +144,8 @@ export default function EditSitePage() {
         themeColor: siteData.theme_color || "blue",
         layoutMode: siteData.layout_mode || "sidebar",
         quickQuestions: siteData.quick_questions || [],
-        botConfig: bConfig
+        botConfig: bConfig,
+        isPublic: true,
       }
     }
   }, [siteData, siteId])
@@ -137,11 +160,13 @@ export default function EditSitePage() {
     description,
     icon,
     isActive,
+    isPublic,
+    password,
     themeColor,
     layoutMode,
     quickQuestions: quickQuestions.filter(q => q.text.trim()),
     botConfig
-  }) !== JSON.stringify(initialDataRef.current)
+  }) !== JSON.stringify({ ...initialDataRef.current, password: "" })
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -174,15 +199,30 @@ export default function EditSitePage() {
       }
     })
 
-    const saveApiBot = api.apiBotConfig.update(siteId, {
-      enabled: api_bot.enabled,
-      ...(api_bot.api_key ? { api_key: api_bot.api_key } : {}),
-      timeout: api_bot.timeout,
-    }).catch(() => {
-      // CE 版本静默忽略
-    })
+    let eeApi: any = null
+    try { eeApi = require("@/ee/api").eeApi } catch (e) { }
 
-    Promise.all([saveMain, saveApiBot]).then(() => {
+    const saveEE = eeApi ? eeApi.sites.updateConfig(siteId, {
+      access: {
+        is_public: isPublic,
+        password: password.trim() || undefined,
+      },
+      api_bot: {
+        enabled: api_bot.enabled,
+        api_key: api_bot.api_key,
+        timeout: api_bot.timeout,
+      }
+    }).then((res: any) => {
+      if (res.access.generated_password) {
+        toast.info(`系统已自动生成访问密码: ${res.access.generated_password}`, { duration: 10000 })
+      }
+      setHasPassword(res.access.has_password)
+      setPassword("")
+    }).catch(() => {
+      // EE 未启用静默忽略
+    }) : Promise.resolve()
+
+    Promise.all([saveMain, saveEE]).then(() => {
       initialDataRef.current = {
         name: name.trim(),
         slug: slug.trim(),
@@ -192,7 +232,8 @@ export default function EditSitePage() {
         themeColor,
         layoutMode,
         quickQuestions: cleanedQuestions,
-        botConfig
+        botConfig,
+        isPublic,
       }
       toast.success(tf("saveSuccess"))
     }).catch(() => {
@@ -344,8 +385,8 @@ export default function EditSitePage() {
                         <div className="space-y-2">
                           <label className="text-sm font-semibold text-slate-700">{tf("siteSlug")}</label>
                           <div className="flex items-center">
-                            <span className="inline-flex items-center px-3 h-10 rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 text-slate-500 text-sm font-mono whitespace-nowrap overflow-hidden max-w-[120px]">
-                              /{slug}
+                            <span className="inline-flex items-center px-3 h-10 rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 text-slate-500 text-sm font-mono whitespace-nowrap overflow-hidden max-w-[200px]" title={`/${tenantSlug}/`}>
+                              /{tenantSlug}/
                             </span>
                             <input
                               className="flex h-10 w-full rounded-r-xl border border-slate-200 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
@@ -446,6 +487,32 @@ export default function EditSitePage() {
                         <div className={`absolute ${isActive ? 'right-1' : 'left-1'} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
                       </div>
                     </div>
+
+                    <div className="flex items-center justify-between p-3 bg-slate-50/50 border border-slate-100 rounded-xl">
+                      <div className="space-y-0.5">
+                        <label className="text-sm font-semibold text-slate-900">{tf("publicSite") || "公开访问"}</label>
+                        <p className="text-xs text-slate-500">{tf("publicSiteHint") || "关闭后需输入密码才能访问站点"}</p>
+                      </div>
+                      <div
+                        className={`w-11 h-6 ${isPublic ? 'bg-primary' : 'bg-slate-200'} rounded-full relative cursor-pointer transition-colors`}
+                        onClick={() => setIsPublic(!isPublic)}
+                      >
+                        <div className={`absolute ${isPublic ? 'right-1' : 'left-1'} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
+                      </div>
+                    </div>
+
+                    {!isPublic && (
+                      <div className="space-y-2 p-3 bg-orange-50/30 border border-orange-100 rounded-xl animate-in slide-in-from-top-1 duration-200">
+                        <label className="text-sm font-semibold text-slate-700">{tf("sitePassword") || "访问密码"}</label>
+                        <Input
+                          type="password"
+                          placeholder={hasPassword ? "****** (已设置，输入新密码可修改)" : "输入站点访问密码"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="bg-white rounded-xl"
+                        />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>

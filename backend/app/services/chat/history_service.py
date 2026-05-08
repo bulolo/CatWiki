@@ -20,7 +20,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMe
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.vector.rag_utils import convert_messages_to_openai, extract_sources_from_messages
+from app.core.ai.message_utils import convert_messages_to_openai, extract_sources_from_messages
 from app.db.database import get_db
 from app.db.transaction import transactional
 from app.models.chat_message import ChatMessage
@@ -53,9 +53,14 @@ class ChatHistoryService:
                 break
 
         if last_human_idx == -1:
-            return 0
+            # No HumanMessage found — all messages are new (from graph execution).
+            # Save everything.
+            new_langchain_messages = messages
+        else:
+            new_langchain_messages = messages[last_human_idx + 1 :]
 
-        new_langchain_messages = messages[last_human_idx + 1 :]
+        if not new_langchain_messages:
+            return 0
         new_openai_messages = convert_messages_to_openai(new_langchain_messages)
 
         saved_count = 0
@@ -148,7 +153,11 @@ class ChatHistoryService:
         # 3. 转换 SQL 消息为 OpenAI 格式渲染，并为每个 AI 回复关联其专属引用
         messages = []
         for i, msg in enumerate(db_messages):
-            msg_dict = {"role": msg.role, "content": msg.content}
+            msg_dict = {
+                "role": msg.role,
+                "content": msg.content,
+                "created_at": msg.created_at.isoformat() if msg.created_at else None,
+            }
             if msg.tool_calls:
                 msg_dict["tool_calls"] = msg.tool_calls
             if msg.tool_call_id:
@@ -168,6 +177,17 @@ class ChatHistoryService:
             messages.append(msg_dict)
 
         return {"thread_id": thread_id, "messages": messages}
+
+    async def get_tool_result(self, thread_id: str, tool_call_id: str) -> str | None:
+        """根据 tool_call_id 获取单条工具调用的返回内容"""
+        result = await self.db.execute(
+            select(ChatMessage.content).where(
+                ChatMessage.thread_id == thread_id,
+                ChatMessage.role == "tool",
+                ChatMessage.tool_call_id == tool_call_id,
+            )
+        )
+        return result.scalar_one_or_none()
 
 
 def get_chat_history_service(db: AsyncSession = Depends(get_db)) -> ChatHistoryService:

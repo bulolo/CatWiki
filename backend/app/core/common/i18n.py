@@ -47,6 +47,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "api.success.save": "保存成功",
         # ========== 文档相关 ==========
         "doc.import_queued": "已加入导入队列",
+        "doc.import_skipped": "文件已存在，已跳过",
         "doc.learn_queued": "已加入学习队列",
         "doc.vector_removed": "已移除向量数据",
         "doc.retrieve_success": "检索成功",
@@ -61,6 +62,9 @@ MESSAGES: dict[str, dict[str, str]] = {
         "doc.learn_failed": "学习失败：{error}",
         "doc.id_list_empty": "文档ID列表不能为空",
         "doc.cannot_relearn": "文档当前状态为 {status}，无法重新学习",
+        "doc.ai_generate_success": "生成成功",
+        "doc.ai_generate_failed": "AI 生成失败：{error}",
+        "doc.ai_llm_unavailable": "AI 模型未配置或不可用，请先在系统设置中配置 AI 模型",
         # ========== 用户相关 ==========
         "user.created": "用户创建成功",
         "user.password_updated": "密码更新成功",
@@ -152,6 +156,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "bot.qa_not_enabled": "该站点的问答机器人功能尚未在后台启用",
         # ========== 会话相关 ==========
         "session.not_found": "会话不存在",
+        "session.access_denied": "无权操作此会话",
     },
     "en": {
         # ========== Exception defaults ==========
@@ -176,6 +181,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "api.success.save": "Saved successfully",
         # ========== Documents ==========
         "doc.import_queued": "Added to import queue",
+        "doc.import_skipped": "File already exists, skipped",
         "doc.learn_queued": "Added to learning queue",
         "doc.vector_removed": "Vector data removed",
         "doc.retrieve_success": "Retrieval successful",
@@ -190,6 +196,9 @@ MESSAGES: dict[str, dict[str, str]] = {
         "doc.learn_failed": "Learning failed: {error}",
         "doc.id_list_empty": "Document ID list cannot be empty",
         "doc.cannot_relearn": "Document status is {status}, cannot re-learn",
+        "doc.ai_generate_success": "Generated successfully",
+        "doc.ai_generate_failed": "AI generation failed: {error}",
+        "doc.ai_llm_unavailable": "AI model is not configured or unavailable. Please configure it in system settings first.",
         # ========== Users ==========
         "user.created": "User created successfully",
         "user.password_updated": "Password updated successfully",
@@ -281,6 +290,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "bot.qa_not_enabled": "The Q&A bot feature for this site has not been enabled in the admin panel",
         # ========== Sessions ==========
         "session.not_found": "Session not found",
+        "session.access_denied": "Access denied for this session",
     },
 }
 

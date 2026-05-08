@@ -134,6 +134,7 @@ const documentApi = {
   list: (params: {
     page?: number
     size?: number
+    isPager?: number
     siteId?: number
     collectionId?: number
     keyword?: string
@@ -143,9 +144,10 @@ const documentApi = {
     includeSiteInfo?: boolean
     tenantId?: number
   } = {}) => {
-    return wrapResponse<Models.PaginatedResponse_Document_>(client.documents.listClientDocuments({
+    return wrapResponse<Models.PaginatedResponse_Document_>(client.clientDocuments.listClientDocuments({
       page: params.page ?? 1,
       size: params.size ?? 10,
+      isPager: params.isPager ?? 1,
       siteId: params.siteId,
       collectionId: params.collectionId,
       keyword: params.keyword,
@@ -162,7 +164,7 @@ const documentApi = {
    * 获取文档详情
    */
   get: (id: number) => {
-    return wrapResponse<Models.Document>(client.documents.getClientDocument({
+    return wrapResponse<Models.Document>(client.clientDocuments.getClientDocument({
       documentId: id,
     }))
   },
@@ -176,7 +178,7 @@ const collectionApi = {
    * 获取目录树形结构
    */
   getTree: (siteId: number, includeDocuments: boolean = false) => {
-    return wrapResponse<Models.CollectionTree[]>(client.collections.getClientCollectionTree({
+    return wrapResponse<Models.CollectionTree[]>(client.clientCollections.getClientCollectionTree({
       siteId,
       includeDocuments
     }))
@@ -190,10 +192,11 @@ const siteApi = {
   /**
    * 获取站点列表
    */
-  list: (params: { page?: number; size?: number; tenantId?: number; tenantSlug?: string; keyword?: string } = {}) => {
-    return wrapResponse<Models.PaginatedResponse_ClientSite_>(client.sites.listClientSites({
+  list: (params: { page?: number; size?: number; isPager?: number; tenantId?: number; tenantSlug?: string; keyword?: string } = {}) => {
+    return wrapResponse<Models.PaginatedResponse_ClientSite_>(client.clientSites.listClientSites({
       page: params.page ?? 1,
       size: params.size ?? 10,
+      isPager: params.isPager ?? 1,
       tenantId: params.tenantId,
       tenantSlug: params.tenantSlug,
       keyword: params.keyword,
@@ -205,7 +208,7 @@ const siteApi = {
    * 获取站点详情
    */
   get: (id: number) => {
-    return wrapResponse<Models.ClientSite>(client.sites.getClientSite({
+    return wrapResponse<Models.ClientSite>(client.clientSites.getClientSite({
       siteId: id,
     }))
   },
@@ -215,7 +218,7 @@ const siteApi = {
    * 通过 slug 获取站点详情
    */
   getBySlug: (slug: string) => {
-    return wrapResponse<Models.ClientSite>(client.sites.getClientSiteBySlug({
+    return wrapResponse<Models.ClientSite>(client.clientSites.getClientSiteBySlug({
       slug,
     }))
   },
@@ -228,34 +231,63 @@ const chatSessionApi = {
   /**
    * 获取会话列表
    */
-  list: (params: { siteId?: number; memberId?: string; keyword?: string; page?: number; size?: number; tenantId?: number } = {}) => {
-    return wrapResponse<Models.ChatSessionListResponse>(client.chatSessions.listChatSessions({
-      siteId: params.siteId,
+  list: (params: { memberId: string; siteId?: number; keyword?: string; page?: number; size?: number; isPager?: number }) => {
+    return wrapResponse<Models.ChatSessionListResponse>(client.clientChatSessions.listChatSessions({
       memberId: params.memberId,
+      siteId: params.siteId,
       keyword: params.keyword,
       page: params.page,
       size: params.size,
-      tenantId: params.tenantId,
+      isPager: params.isPager ?? 1,
     }))
+  },
+
+  /**
+   * 获取单个会话详情
+   */
+  get: (threadId: string, memberId: string, siteId?: number | null) => {
+    return wrapResponse<Models.ChatSessionResponse>(
+      client.clientChatSessions.getChatSession({ threadId, memberId, siteId })
+    )
   },
 
   /**
    * 获取会话详细消息内容
    */
-  getMessages: (threadId: string) => {
+  getMessages: (threadId: string, memberId: string, siteId?: number | null) => {
     return wrapResponse<Models.ChatSessionMessagesResponse>(
-      client.chatSessions.getChatSessionMessages({ threadId })
+      client.clientChatSessions.getChatSessionMessages({ threadId, memberId, siteId })
     )
   },
 
   /**
    * 删除会话
    */
-  delete: (threadId: string) => {
-    return wrapResponse<unknown>(client.chatSessions.deleteChatSession({
-      threadId
+  delete: (threadId: string, memberId: string) => {
+    return wrapResponse<unknown>(client.clientChatSessions.deleteChatSession({
+      threadId,
+      memberId,
     }))
+  },
+
+  /**
+   * 获取单个工具调用的检索结果
+   */
+  getToolResult: (threadId: string, toolCallId: string, memberId: string, siteId?: number | null) => {
+    return wrapResponse<{ tool_call_id: string; content: string }>(
+      client.clientChatSessions.getChatToolResult({ threadId, toolCallId, memberId, siteId })
+    )
   }
+}
+
+// ==================== 文件 API ====================
+
+const fileApi = {
+  getFileInfo: (objectName: string) =>
+    wrapResponse<Models.ApiResponse_dict_['data']>(client.clientFiles.getClientFileInfo({ objectName })),
+
+  getPresignedUrl: (objectName: string, expiresHours?: number) =>
+    wrapResponse<Models.ApiResponse_dict_['data']>(client.clientFiles.getClientPresignedUrl({ objectName, expiresHours })),
 }
 
 // ==================== 状态检查 API ====================
@@ -265,7 +297,7 @@ const healthApi = {
    * 获取系统健康状态和版本信息
    */
   getHealth: () => {
-    return wrapResponse<Models.HealthResponse>(client.health.getClientHealth())
+    return wrapResponse<Models.HealthResponse>(client.clientHealth.getClientHealth())
   }
 }
 
@@ -280,16 +312,24 @@ export const api = {
   collection: collectionApi,
   site: siteApi,
   chatSession: chatSessionApi,
-  bot: client.bot,
+  file: fileApi,
+  bot: client.clientBot,
+  eeBot: client.eeClientBot,
   health: healthApi,
   siteAccess: {
+    getAccessStatus: (slug: string) => {
+      const service = (client as any).eeClientSites
+      if (!service?.getSiteAccessStatus) {
+        return Promise.reject(new HttpError(501, 'Site access control is an EE feature'))
+      }
+      return wrapResponse<Models.ApiResponse_dict_['data']>(service.getSiteAccessStatus({ slug }))
+    },
     verifyPassword: (slug: string, password: string) => {
-      // EE 功能：CE 版本中 eeSiteAccess 服务不存在（gen-sdk 不会生成）
-      const service = (client as any).eeSiteAccess
+      const service = (client as any).eeClientSites
       if (!service?.verifySitePassword) {
         return Promise.reject(new HttpError(501, 'Site access control is an EE feature'))
       }
-      return wrapResponse<{ access_token: string; expires_in: number }>(service.verifySitePassword({
+      return wrapResponse<Models.VerifyPasswordResponse>(service.verifySitePassword({
         slug,
         requestBody: { password },
       }))
@@ -298,4 +338,3 @@ export const api = {
 }
 
 export default api
-

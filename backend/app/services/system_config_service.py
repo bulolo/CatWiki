@@ -216,7 +216,7 @@ class SystemConfigService:
 
         if reload_vector:
             try:
-                from app.core.vector.vector_store import VectorStoreManager
+                from app.core.vector import VectorStoreManager
 
                 manager = await VectorStoreManager.get_instance()
                 await manager.reload_credentials(tenant_id=tenant_id)

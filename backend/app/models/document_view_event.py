@@ -49,6 +49,7 @@ class DocumentViewEvent(Base):
     member_id: Mapped[int | None] = mapped_column(nullable=True, index=True)  # 预留：未来会员系统
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     referer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)  # 访客归属地 (EE 版)
 
     # 创建时间
     created_at: Mapped[datetime] = mapped_column(

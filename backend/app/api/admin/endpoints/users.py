@@ -118,7 +118,7 @@ async def create_user(
     - **name**: 用户名
     - **email**: 邮箱
     - **password**: 密码（至少6位）
-    - **role**: 角色（默认为 editor）
+    - **role**: 角色（默认为 site_admin）
     - **managed_site_ids**: 管理的站点ID列表
     - **avatar_url**: 头像URL（可选）
     """

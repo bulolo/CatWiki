@@ -232,7 +232,7 @@ function toImportDocumentBody(
 
   const processorType = payload.get('processor_type')
   if (typeof processorType === 'string' && processorType.trim() !== '') {
-    body.processor_type = processorType
+    body.processor_type = processorType as Models.DocProcessorType
   }
 
   const ocrEnabled = parseBooleanField(payload.get('ocr_enabled'))
@@ -248,6 +248,21 @@ function toImportDocumentBody(
   const extractTables = parseBooleanField(payload.get('extract_tables'))
   if (extractTables !== undefined) {
     body.extract_tables = extractTables
+  }
+
+  const duplicateStrategy = payload.get('duplicate_strategy')
+  if (typeof duplicateStrategy === 'string' && duplicateStrategy.trim() !== '') {
+    body.duplicate_strategy = duplicateStrategy
+  }
+
+  const generateSummary = parseBooleanField(payload.get('generate_summary'))
+  if (generateSummary !== undefined) {
+    body.generate_summary = generateSummary
+  }
+
+  const generateTags = parseBooleanField(payload.get('generate_tags'))
+  if (generateTags !== undefined) {
+    body.generate_tags = generateTags
   }
 
   return body
@@ -269,10 +284,11 @@ function toUploadedFileInfo(value: unknown): UploadedFileInfo {
 // ==================== API 模块 ====================
 
 const siteApi = {
-  list: (params: { page?: number; size?: number; status?: string } = {}) =>
+  list: (params: { page?: number; size?: number; isPager?: number; status?: string } = {}) =>
     wrapResponse<Models.PaginatedResponse_Site_>(client.adminSites.listAdminSites({
       page: params.page ?? 1,
       size: params.size ?? 10,
+      isPager: params.isPager ?? 1,
       status: params.status,
     })),
 
@@ -295,8 +311,18 @@ const siteApi = {
 
 
 const collectionApi = {
-  list: (params: { siteId: number; parentId?: number }) =>
-    wrapResponse<Models.Collection[]>(client.adminCollections.listAdminCollections(params)),
+  list: async (params: { siteId: number; parentId?: number; page?: number; size?: number; isPager?: number }) => {
+    const result = await wrapResponse<Models.PaginatedResponse_Collection_>(
+      client.adminCollections.listAdminCollections({
+        siteId: params.siteId,
+        parentId: params.parentId,
+        page: params.page ?? 1,
+        size: params.size ?? 20,
+        isPager: params.isPager ?? 0,
+      })
+    )
+    return result?.list ?? []
+  },
 
   getTree: (siteId: number, type?: string) =>
     wrapResponse<Models.CollectionTree[]>(client.adminCollections.getAdminCollectionTree({ siteId, type })),
@@ -315,21 +341,24 @@ const collectionApi = {
 
   moveCollection: (params: {
     collectionId: number
-    requestBody: { target_parent_id: number | null; target_position: number }
-  }) => wrapResponse<void>(client.adminCollections.moveAdminCollection(params)),
+    requestBody: Models.MoveCollectionRequest
+  }) => wrapResponse<Models.Collection>(client.adminCollections.moveAdminCollection(params)),
 }
 
 
 const documentApi = {
   list: (params: {
-    page?: number; size?: number; siteId?: number; collectionId?: number;
+    page?: number; size?: number; isPager?: number; siteId?: number; collectionId?: number;
     status?: string; vectorStatus?: string; keyword?: string;
-    orderBy?: 'views' | 'updated_at'; orderDir?: 'asc' | 'desc'
+    orderBy?: 'views' | 'updated_at'; orderDir?: 'asc' | 'desc';
+    excludeContent?: boolean;
   } = {}) => wrapResponse<Models.PaginatedResponse_Document_>(client.adminDocuments.listAdminDocuments({
     ...params,
     page: params.page ?? 1,
     size: params.size ?? 10,
+    isPager: params.isPager ?? 1,
     orderDir: params.orderDir ?? 'desc',
+    excludeContent: params.excludeContent ?? true,
   })),
 
   get: (id: number) =>
@@ -372,11 +401,21 @@ const documentApi = {
 
   /**
    * 导入文档 (上传 -> 解析 -> 创建)
+   * 返回 Task 表示已入队，返回 null 表示因 duplicate_strategy=skip 被跳过
    */
   importDocument: (formData: Models.Body_importDocument | FormData) => {
     const requestBody = toImportDocumentBody(formData)
-    return wrapResponse<Models.Document>(client.adminDocuments.importDocument({ formData: requestBody }))
+    return wrapResponse<Models.Task | null>(client.adminDocuments.importDocument({ formData: requestBody }))
   },
+
+  /**
+   * AI 生成文档字段（摘要 / 标签）
+   * content 由前端按字符上限截断后传入
+   */
+  aiGenerate: (content: string, fields: Array<'summary' | 'tags'>, summaryMaxLength?: number, tagsMaxCount?: number) =>
+    wrapResponse<Models.AiGenerateResponse>(
+      client.adminDocuments.aiGenerateDocumentFields({ requestBody: { content, fields, summary_max_length: summaryMaxLength, tags_max_count: tagsMaxCount } })
+    ),
 }
 
 
@@ -384,6 +423,7 @@ const userApi = {
   list: (params: {
     page?: number
     size?: number
+    isPager?: number
     role?: Models.UserRole | string
     status?: Models.UserStatus | string
     search?: string
@@ -392,6 +432,7 @@ const userApi = {
     orderDir?: 'asc' | 'desc'
   } = {}) => wrapResponse<Models.PaginatedResponse_UserListItem_>(client.adminUsers.listAdminUsers({
     ...params,
+    isPager: params.isPager ?? 1,
     role: params.role as Models.UserRole | undefined,
     status: params.status as Models.UserStatus | undefined,
   })),
@@ -472,13 +513,17 @@ const fileApi = {
   },
   uploadMultipleFiles: (params: { formData: Models.Body_batchUploadAdminFiles; folder?: string }) =>
     wrapResponse<Models.ApiResponse_dict_['data']>(client.adminFiles.batchUploadAdminFiles(params)),
-  listFiles: (params: { prefix?: string; recursive?: boolean } = {}) =>
-    wrapResponse<Models.ApiResponse_dict_['data']>(client.adminFiles.listAdminFiles(params)),
+  listFiles: (params: { prefix?: string; recursive?: boolean; page?: number; size?: number; isPager?: number } = {}) =>
+    wrapResponse<Models.ApiResponse_dict_['data']>(client.adminFiles.listAdminFiles({
+      ...params,
+      isPager: params.isPager ?? 1,
+    })),
   getFileInfo: (object_name: string) =>
     wrapResponse<Models.ApiResponse_dict_['data']>(client.adminFiles.getAdminFileInfo({ objectName: object_name })),
   getPresignedUrl: (object_name: string, expires_hours?: number) =>
     wrapResponse<Models.ApiResponse_dict_['data']>(client.adminFiles.getAdminPresignedUrl({ objectName: object_name, expiresHours: expires_hours })),
   deleteFile: (object_name: string) => wrapResponse<void>(client.adminFiles.deleteAdminFile({ objectName: object_name })),
+  downloadFile: (object_name: string) => client.adminFiles.downloadAdminFile({ objectName: object_name }),
 }
 
 
@@ -486,13 +531,34 @@ const healthApi = {
   getHealth: () => wrapResponse<Models.HealthResponse>(client.adminHealth.getAdminHealth()),
 }
 
+export interface SystemInfoData {
+  system: { version: string; environment: string; edition: string }
+  database: { connection: string; ping: boolean }
+  vector_store: { backend: string; connection: string; ping: boolean }
+  cache: { backend: string; connection: string; ping: boolean }
+  object_storage: { endpoint: string; bucket: string; ping: boolean }
+}
+
+const systemInfoApi = {
+  get: () => wrapResponse<SystemInfoData>(client.adminSystemInfo.getSystemInfo()),
+}
+
 
 const taskApi = {
-  list: (params: { page?: number; size?: number; siteId?: number } = {}) =>
-    wrapResponse<Models.PaginatedResponse_Task_>(client.adminTasks.listTasksAdminV1TasksGet({
+  list: (params: { page?: number; size?: number; isPager?: number; siteId?: number } = {}) =>
+    wrapResponse<Models.PaginatedResponse_Task_>(client.adminTasks.listAdminTasks({
       ...params,
+      isPager: params.isPager ?? 1,
     })),
-  get: (taskId: number) => wrapResponse<Models.Task>(client.adminTasks.getTaskStatusAdminV1TasksTaskIdGet({ taskId })),
+  get: (taskId: number) => wrapResponse<Models.Task>(client.adminTasks.getAdminTask({ taskId })),
+}
+
+
+const cacheApi = {
+  getStats: () =>
+    wrapResponse<Models.ApiResponse_dict_['data']>(client.adminCache.getAdminCacheStats()),
+  clear: () =>
+    wrapResponse<Models.ApiResponse_dict_['data']>(client.adminCache.clearAdminCache()),
 }
 
 
@@ -506,22 +572,12 @@ export const api = {
   systemConfig: systemConfigApi,
   stats: statsApi,
   file: fileApi,
+  cache: cacheApi,
   health: healthApi,
   task: taskApi,
+  systemInfo: systemInfoApi,
   tenant: {
     getCurrent: () => wrapResponse<Models.TenantSchema | null>(client.adminTenants.getAdminCurrentTenant()),
-  },
-  siteEEConfig: {
-    get: (siteId: number) =>
-      wrapResponse<Models.SiteEEConfigResponse>(client.eeAdminSiteAccess.getSiteEeConfig({ siteId })),
-    updateAccess: (siteId: number, data: Models.AccessConfigUpdate) =>
-      wrapResponse<Models.SiteEEConfigResponse>(client.eeAdminSiteAccess.updateSiteAccessConfig({ siteId, requestBody: data })),
-  },
-  apiBotConfig: {
-    get: (siteId: number) =>
-      wrapResponse<Models.ApiBotConfigResponse>(client.eeAdminApiBot.getApiBotConfig({ siteId })),
-    update: (siteId: number, data: Models.ApiBotConfigUpdate) =>
-      wrapResponse<Models.ApiBotConfigResponse>(client.eeAdminApiBot.updateApiBotConfig({ siteId, requestBody: data })),
   },
 }
 

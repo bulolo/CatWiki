@@ -35,6 +35,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 
+from app.core.ai.message_utils import is_meaningful_message
 from app.core.ai.prompts import (
     FORCE_STOP_PROMPT,
     NO_RESULTS_MESSAGE,
@@ -46,7 +47,6 @@ from app.core.common.utils import (
     log_process_step_card,
 )
 from app.core.infra.config import settings
-from app.core.vector.rag_utils import is_meaningful_message
 from app.schemas.document import VectorRetrieveFilter
 from app.schemas.graph_state import ChatGraphState
 from app.services.rag import RAGService

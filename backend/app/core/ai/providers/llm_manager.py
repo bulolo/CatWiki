@@ -123,6 +123,7 @@ class LLMManager:
             temperature=temperature,
             streaming=True,
             extra_body=extra_body if extra_body else None,
+            timeout=300,
         )
 
         new_llm._usage_metadata = {

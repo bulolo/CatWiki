@@ -7,7 +7,7 @@ import type { ChatSessionResponse } from './ChatSessionResponse';
  * 会话列表响应
  */
 export type ChatSessionListResponse = {
-    items: Array<ChatSessionResponse>;
+    list: Array<ChatSessionResponse>;
     total: number;
     page: number;
     size: number;

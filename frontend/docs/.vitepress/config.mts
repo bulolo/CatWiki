@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
+import pkg from '../package.json' with { type: 'json' }
 
 // https://vitepress.dev/reference/site-config
 export default withMermaid(
@@ -26,7 +27,8 @@ export default withMermaid(
         { text: '知几喵APP', link: '/zhijimiao/intro', activeMatch: '/zhijimiao/' },
         { text: '开发指南', link: '/development/start/quick-start', activeMatch: '/development/' },
         { text: '部署指南', link: '/deployment/guide/docker', activeMatch: '/deployment/' },
-        { text: '关于', link: '/about/project/intro', activeMatch: '/about/' }
+        { text: '关于', link: '/about/project/intro', activeMatch: '/about/' },
+        { text: `v${pkg.version}`, link: `https://github.com/bulolo/CatWiki/releases/tag/v${pkg.version}` }
       ],
 
       sidebar: {
@@ -92,6 +94,7 @@ export default withMermaid(
                 collapsed: false,
                 items: [
                   { text: 'AI对话与知识库检索', link: '/development/tech/ai-chat-architecture' },
+                  { text: '向量数据库架构', link: '/development/tech/vector-store' },
                   { text: 'RustFS 对象存储', link: '/development/tech/rustfs' },
                 ]
               },

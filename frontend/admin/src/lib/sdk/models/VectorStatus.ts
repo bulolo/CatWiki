@@ -7,6 +7,7 @@
  */
 export enum VectorStatus {
     NONE = 'none',
+    OUTDATED = 'outdated',
     PENDING = 'pending',
     PROCESSING = 'processing',
     COMPLETED = 'completed',

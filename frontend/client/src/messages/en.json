@@ -157,6 +157,14 @@
   "ToolCall": {
     "search_knowledge_base": "Search Knowledge Base"
   },
+  "ToolResult": {
+    "title": "Search Results",
+    "loading": "Loading...",
+    "empty": "No results found",
+    "chunks": "chunks",
+    "expand": "Expand",
+    "collapse": "Collapse"
+  },
   "Loading": {
     "default": "Loading..."
   },

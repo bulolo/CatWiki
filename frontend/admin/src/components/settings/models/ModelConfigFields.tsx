@@ -13,10 +13,12 @@
 // limitations under the License.
 
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "next-intl"
-import { ShieldCheck /*, BrainCircuit */ } from "lucide-react"
+import { Eye } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { useState } from "react"
 
 interface ModelConfigFieldsProps {
   type: "chat" | "embedding" | "rerank" | "vl"
@@ -33,22 +35,29 @@ interface ModelConfigFieldsProps {
 
 export function ModelConfigFields({ type, config, onUpdate }: ModelConfigFieldsProps) {
   const t = useTranslations("Models")
-  // const isThinkingEnabled = config.extra_body?.chat_template_kwargs?.enable_thinking ?? false;
   const isVisionEnabled = config.is_vision ?? false;
 
-  /* 思考模式暂时隐藏
-  const handleThinkingChange = (checked: boolean) => {
-    const currentExtraBody = config.extra_body || {};
-    const currentKwargs = currentExtraBody.chat_template_kwargs || {};
-    onUpdate(type, "extra_body", {
-      ...currentExtraBody,
-      chat_template_kwargs: {
-        ...currentKwargs,
-        enable_thinking: checked
-      }
-    });
-  };
-  */
+  const toJsonText = (v: Record<string, any> | null | undefined) =>
+    v && Object.keys(v).length > 0 ? JSON.stringify(v, null, 2) : ""
+
+  const [extraBodyText, setExtraBodyText] = useState(() => toJsonText(config.extra_body))
+  const [jsonError, setJsonError] = useState("")
+
+  const handleExtraBodyChange = (text: string) => {
+    setExtraBodyText(text)
+    if (text.trim() === "") {
+      setJsonError("")
+      onUpdate(type, "extra_body", null)
+      return
+    }
+    try {
+      const parsed = JSON.parse(text)
+      setJsonError("")
+      onUpdate(type, "extra_body", parsed)
+    } catch {
+      setJsonError(t("extraBodyJsonError"))
+    }
+  }
 
   const handleVisionChange = (checked: boolean) => {
     onUpdate(type, "is_vision", checked);
@@ -144,49 +153,63 @@ export function ModelConfigFields({ type, config, onUpdate }: ModelConfigFieldsP
       )}
       {type === "chat" && (
         <div className="space-y-4">
-          {/* 思考模式暂时隐藏 */}
-          {/*
-          <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 flex items-center justify-between transition-all hover:bg-slate-50">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600 shadow-sm">
-                <BrainCircuit className="h-5 w-5" />
-              </div>
-              <div className="space-y-0.5">
-                <Label htmlFor="thinking-mode" className="text-sm font-bold text-slate-800 cursor-pointer">
-                  是否开启思考
-                </Label>
-                <p className="text-[11px] text-slate-500">
-                  调用模型时是否请求思考过程 (extra_body: {`{"chat_template_kwargs": {"enable_thinking": ${isThinkingEnabled}}}`})
-                </p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold text-slate-700">{t("extraBody")}</label>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    const formatted = JSON.stringify(JSON.parse(extraBodyText), null, 2)
+                    setExtraBodyText(formatted)
+                    setJsonError("")
+                  } catch {
+                    setJsonError(t("extraBodyJsonError"))
+                  }
+                }}
+                disabled={!extraBodyText.trim()}
+                className="text-xs text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                {t("extraBodyFormat")}
+              </button>
+            </div>
+            <Textarea
+              value={extraBodyText}
+              onChange={(e) => handleExtraBodyChange(e.target.value)}
+              placeholder={'{\n  "chat_template_kwargs": {\n    "enable_thinking": false\n  }\n}'}
+              className="bg-white font-mono text-xs min-h-[100px] resize-y"
+              spellCheck={false}
+            />
+            {jsonError && <p className="text-xs text-red-500">{jsonError}</p>}
+            <div className="text-xs text-slate-400 space-y-1.5">
+              <p>{t("extraBodyTip")}</p>
+              <div className="space-y-1">
+                <p className="text-slate-500">{t("extraBodyTipVllm")}</p>
+                <pre
+                  className="bg-slate-100 hover:bg-slate-200 rounded px-2 py-1 text-[11px] text-slate-600 font-mono leading-relaxed cursor-pointer transition-colors"
+                  title={t("extraBodyClickToFill")}
+                  onClick={() => handleExtraBodyChange(JSON.stringify({"chat_template_kwargs": {"enable_thinking": false}}, null, 2))}
+                >{`{"chat_template_kwargs": {"enable_thinking": false}}`}</pre>
+                <p className="text-slate-500">{t("extraBodyTipHosted")}</p>
+                <pre
+                  className="bg-slate-100 hover:bg-slate-200 rounded px-2 py-1 text-[11px] text-slate-600 font-mono leading-relaxed cursor-pointer transition-colors"
+                  title={t("extraBodyClickToFill")}
+                  onClick={() => handleExtraBodyChange(JSON.stringify({"thinking": {"type": "disabled"}}, null, 2))}
+                >{`{"thinking": {"type": "disabled"}}`}</pre>
+                <p className="text-slate-500">{t("extraBodyTipHunyuan")}</p>
+                <pre
+                  className="bg-slate-100 hover:bg-slate-200 rounded px-2 py-1 text-[11px] text-slate-600 font-mono leading-relaxed cursor-pointer transition-colors"
+                  title={t("extraBodyClickToFill")}
+                  onClick={() => handleExtraBodyChange(JSON.stringify({"enable_thinking": false}, null, 2))}
+                >{`{"enable_thinking": false}`}</pre>
               </div>
             </div>
-            <Switch
-              id="thinking-mode"
-              checked={isThinkingEnabled}
-              onCheckedChange={handleThinkingChange}
-              className="data-[state=checked]:bg-violet-600"
-            />
           </div>
-          */}
 
           <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 flex items-center justify-between transition-all hover:bg-slate-50">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="lucide lucide-eye"
-                >
-                  <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
+                <Eye className="h-5 w-5" />
               </div>
               <div className="space-y-0.5">
                 <Label htmlFor="vision-support" className="text-sm font-bold text-slate-800 cursor-pointer">

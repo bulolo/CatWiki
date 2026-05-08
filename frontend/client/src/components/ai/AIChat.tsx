@@ -32,6 +32,7 @@ import { Streamdown } from "streamdown"
 import { useAIChat } from "@/hooks"
 import { MessageSources } from "./MessageSources"
 import { ToolCallCard } from "./ToolCallCard"
+import { ToolResultDialog } from "./ToolResultDialog"
 import { useTranslations } from "next-intl"
 
 interface AIChatProps {
@@ -45,7 +46,7 @@ interface AIChatProps {
 
 export function AIChat({ open, onOpenChange, initialQuery, siteId, tenantId, allSites }: AIChatProps) {
   const t = useTranslations("AIChat")
-  const { messages, isLoading, sendMessage } = useAIChat({
+  const { messages, isLoading, sendMessage, threadId, setMessages } = useAIChat({
     initialMessages: [{
       id: "welcome",
       role: "assistant" as const,
@@ -59,6 +60,14 @@ export function AIChat({ open, onOpenChange, initialQuery, siteId, tenantId, all
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   // 用于记录已处理的 initialQuery，避免重复发送
   const processedQueryRef = useRef<string | null>(null)
+
+  // Tool result dialog state
+  const [selectedToolCall, setSelectedToolCall] = useState<import("@/types").ToolCall | null>(null)
+  const handleResultFetched = (toolCallId: string, result: string) => {
+    setMessages(messages.map(msg => msg.toolCalls ? {
+      ...msg, toolCalls: msg.toolCalls.map(tc => tc.id === toolCallId ? { ...tc, result } : tc)
+    } : msg))
+  }
 
   // 自动滚动
   useEffect(() => {
@@ -88,6 +97,7 @@ export function AIChat({ open, onOpenChange, initialQuery, siteId, tenantId, all
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl w-full h-[100vh] md:h-[85vh] flex flex-col p-0 glass-card border-slate-200 shadow-2xl overflow-hidden rounded-none md:rounded-3xl m-0 md:m-auto">
         <DialogHeader className="px-4 md:px-8 pt-6 md:pt-8 pb-3 md:pb-4 border-b border-slate-100 bg-white/50">
@@ -136,7 +146,7 @@ export function AIChat({ open, onOpenChange, initialQuery, siteId, tenantId, all
                   )}>
                     {/* Tool Call 展示 */}
                     {message.role === "assistant" && message.toolCalls && message.toolCalls.length > 0 && (
-                      <ToolCallCard toolCalls={message.toolCalls} />
+                      <ToolCallCard toolCalls={message.toolCalls} onToolCallClick={setSelectedToolCall} />
                     )}
 
                     {/* 消息内容 */}
@@ -195,5 +205,14 @@ export function AIChat({ open, onOpenChange, initialQuery, siteId, tenantId, all
         </form>
       </DialogContent>
     </Dialog>
+    <ToolResultDialog
+      open={!!selectedToolCall}
+      onOpenChange={(open) => !open && setSelectedToolCall(null)}
+      toolCall={selectedToolCall}
+      threadId={threadId}
+      siteId={siteId}
+      onResultFetched={handleResultFetched}
+    />
+    </>
   )
 }

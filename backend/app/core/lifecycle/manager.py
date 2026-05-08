@@ -23,7 +23,8 @@ from app.core.integration.robot.services.dingtalk_app import DingTalkRobotServic
 from app.core.integration.robot.services.feishu_app import FeishuRobotService
 from app.core.integration.robot.services.wecom_smart import WeComSmartService
 from app.core.lifecycle.config import init_system_configs
-from app.core.vector.vector_store import VectorStoreManager
+from app.core.vector import VectorStoreManager
+from app.core.vector.factory import close_vector_store
 from app.services.task_service import TaskService
 
 logger = logging.getLogger(__name__)
@@ -89,8 +90,7 @@ class LifecycleManager:
         await llm_manager.close()
 
         # 2. 关闭向量存储管理器
-        if VectorStoreManager._instance:
-            await VectorStoreManager._instance.close()
+        await close_vector_store()
 
         # 3. 关闭 Checkpointer 连接池
         try:
@@ -155,11 +155,12 @@ class LifecycleManager:
         except Exception as e:
             results["database"] = f"unhealthy: {str(e)}"
 
-        # 2. Vector Store 检查
+        # 2. Vector Store 检查（配置校验 + 实际连通性探测）
         try:
-            vs_manager = await VectorStoreManager.get_instance(purpose="健康检查：向量检索服务")
-            await vs_manager._ensure_initialized(tenant_id=None, purpose="健康检查：初始化向量引擎")
-            results["vector_store"] = "healthy"
+            vs_manager = await VectorStoreManager.get_instance()
+            await vs_manager.validate_config(tenant_id=None)
+            is_alive = await vs_manager.ping()
+            results["vector_store"] = "healthy" if is_alive else "unhealthy: backend unreachable"
         except Exception as e:
             results["vector_store"] = f"unhealthy: {str(e)}"
 

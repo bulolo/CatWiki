@@ -3,7 +3,6 @@ services:
   # PostgreSQL 数据库
   postgres:
     image: pgvector/pgvector:pg18
-    pull_policy: if_not_present
     container_name: catwiki-postgres
     env_file:
       - .env
@@ -15,7 +14,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - catwiki-network
-    restart: unless-stopped
+    restart: always
     logging:
       driver: "json-file"
       options:
@@ -40,7 +39,6 @@ services:
   # Redis 缓存服务
   redis:
     image: redis:8.4.2
-    pull_policy: if_not_present
     container_name: catwiki-redis
     command: redis-server
     healthcheck:
@@ -52,7 +50,7 @@ services:
       - redis_data:/data
     networks:
       - catwiki-network
-    restart: unless-stopped
+    restart: always
     # 生产环境仅供内部网络访问，不映射非本地端口
     # ports:
     #   - "127.0.0.1:6379:6379"
@@ -73,7 +71,6 @@ services:
   # RustFS 对象存储服务
   rustfs:
     image: rustfs/rustfs:1.0.0-alpha.76
-    pull_policy: if_not_present
     container_name: catwiki-rustfs
     env_file:
       - .env
@@ -84,13 +81,18 @@ services:
       - rustfs_logs:/logs
     networks:
       - catwiki-network
-    restart: unless-stopped
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9000/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     # 资源限制
     deploy:
       resources:
@@ -107,7 +109,7 @@ services:
   # 负责数据库迁移和初始化
   # 注意：生产环境建议在部署流程中单独执行，而不是每次部署都运行
   backend-init:
-    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.9}
+    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.1.0}
     pull_policy: always
     container_name: catwiki-backend-init
     env_file:
@@ -155,7 +157,7 @@ services:
     build:
       context: ../../backend
       dockerfile: Dockerfile.prod
-    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.9}
+    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.1.0}
     pull_policy: always
     container_name: catwiki-backend
     env_file:
@@ -171,7 +173,7 @@ services:
         condition: service_healthy
     networks:
       - catwiki-network
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/v1/health"]
       interval: 30s
@@ -198,7 +200,7 @@ services:
 
   # 后端 Worker 服务 (处理异步任务)
   worker:
-    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.0.9}
+    image: bulolo/catwiki-backend:${DOCKER_IMAGE_TAG:-v1.1.0}
     container_name: catwiki-worker
     env_file:
       - .env
@@ -213,7 +215,7 @@ services:
         condition: service_healthy
     networks:
       - catwiki-network
-    restart: unless-stopped
+    restart: always
     command: uv run --no-sync arq app.core.queue.worker_config.WorkerSettings
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f arq || exit 1"]
@@ -240,16 +242,16 @@ services:
     build:
       context: ../../frontend/admin
       dockerfile: Dockerfile.prod
-    image: bulolo/catwiki-admin:${DOCKER_IMAGE_TAG:-v1.0.9}
+    image: bulolo/catwiki-admin:${DOCKER_IMAGE_TAG:-v1.1.0}
     pull_policy: always
     container_name: catwiki-admin
     environment:
       NODE_ENV: production
       TZ: Asia/Shanghai
-      # ⚠️ 生产环境需改为实际后端域名，如 https://api.yourdomain.com
-      # 浏览器无法访问容器内的 localhost:3000
+      # ⚠️ 生产环境需改为实际域名，如 https://api.yourdomain.com
       NEXT_PUBLIC_API_URL: http://localhost:3000
       NEXT_PUBLIC_CLIENT_URL: http://localhost:8002
+      NEXT_PUBLIC_ADMIN_URL: http://localhost:8001
       NEXT_PUBLIC_DOCS_URL: http://localhost:8003
       NEXT_PUBLIC_DEBUG: false
       NEXT_PUBLIC_SENTRY_DSN: ""
@@ -258,7 +260,7 @@ services:
         condition: service_healthy
     networks:
       - catwiki-network
-    restart: unless-stopped
+    restart: always
     # 资源限制
     deploy:
       resources:
@@ -282,23 +284,24 @@ services:
     build:
       context: ../../frontend/client
       dockerfile: Dockerfile.prod
-    image: bulolo/catwiki-client:${DOCKER_IMAGE_TAG:-v1.0.9}
+    image: bulolo/catwiki-client:${DOCKER_IMAGE_TAG:-v1.1.0}
     pull_policy: always
     container_name: catwiki-client
     environment:
       NODE_ENV: production
       TZ: Asia/Shanghai
-      # ⚠️ 生产环境需改为实际后端域名
+      # ⚠️ 生产环境需改为实际域名
       NEXT_PUBLIC_API_URL: http://localhost:3000
-      NEXT_PUBLIC_DOCS_URL: http://localhost:8003
+      NEXT_PUBLIC_CLIENT_URL: http://localhost:8002
       NEXT_PUBLIC_ADMIN_URL: http://localhost:8001
+      NEXT_PUBLIC_DOCS_URL: http://localhost:8003
       NEXT_PUBLIC_DEBUG: false
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - catwiki-network
-    restart: unless-stopped
+    restart: always
     # 资源限制
     deploy:
       resources:
@@ -318,6 +321,48 @@ services:
       - "127.0.0.1:${CLIENT_PORT:-8002}:8002"
 
 
+  # Elasticsearch 向量存储服务（可选，按需启动）
+  # 启动方式: docker compose --profile es up  或  make prod-up ES=1
+  # IK 分词器已烤入镜像，首次启动需本地构建（约需几分钟，视网络而定）
+  elasticsearch:
+    build:
+      context: ../images/elasticsearch
+      dockerfile: Dockerfile
+    image: catwiki-elasticsearch:${DOCKER_IMAGE_TAG:-v1.1.0}
+    pull_policy: build
+    container_name: catwiki-elasticsearch
+    profiles: ["es"]
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+      - node.store.allow_mmap=false
+      - TZ=Asia/Shanghai
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - catwiki-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    restart: always
+
 networks:
   catwiki-network:
     name: catwiki-network
@@ -331,4 +376,6 @@ volumes:
   rustfs_logs:
     driver: local
   redis_data:
+    driver: local
+  es_data:
     driver: local

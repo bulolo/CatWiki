@@ -231,7 +231,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
 
         # 7. 清理向量库数据
         try:
-            from app.core.vector.vector_store import VectorStoreManager
+            from app.core.vector import VectorStoreManager
 
             vector_mgr = await VectorStoreManager.get_instance()
             await vector_mgr.delete_by_metadata("site_id", id)
@@ -303,6 +303,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
                 or_(
                     self.model.name.icontains(keyword),
                     self.model.description.icontains(keyword),
+                    self.model.slug.icontains(keyword),
                 )
             )
 

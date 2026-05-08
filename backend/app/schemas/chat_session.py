@@ -46,7 +46,7 @@ class ChatSessionResponse(ChatSessionBase):
 class ChatSessionListResponse(BaseModel):
     """会话列表响应"""
 
-    items: list[ChatSessionResponse]
+    list: list[ChatSessionResponse]
     total: int
     page: int
     size: int
@@ -70,6 +70,7 @@ class ChatMessage(BaseModel):
     tool_call_id: str | None = Field(None, description="工具调用ID（role=tool时）")
     sources: list[dict] | None = Field(None, description="引用来源列表（每条消息专属）")
     additional_kwargs: dict | None = Field(None, description="其他元数据")
+    created_at: datetime | None = Field(None, description="消息创建时间")
 
 
 class ChatSessionMessagesResponse(BaseModel):

@@ -194,7 +194,7 @@ class RobotOrchestrator:
         user: str,
         content: str,
         background_tasks: BackgroundTasks | None = None,
-        timeout_seconds: int = 90,
+        timeout_seconds: int = 300,
     ) -> str:
         chat_request = ChatCompletionRequest(
             message=content,

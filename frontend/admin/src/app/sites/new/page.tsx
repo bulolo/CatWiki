@@ -17,6 +17,7 @@
 import { useState, useEffect } from "react"
 import { useTranslations } from 'next-intl'
 import { useRouter } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -34,7 +35,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { useCreateSite } from "@/hooks"
-import { env } from "@/lib/env"
+import { api } from "@/lib/api-client"
 import { ImageUpload } from "@/components/ui/ImageUpload"
 
 // 主题色配置
@@ -64,6 +65,14 @@ export default function NewSitePage() {
   const [initAdmin, setInitAdmin] = useState(false)
   const [adminEmail, setAdminEmail] = useState("")
   const [adminPassword, setAdminPassword] = useState("")
+
+  // 获取当前租户标识
+  const { data: tenantData } = useQuery({
+    queryKey: ["current-tenant"],
+    queryFn: () => api.tenant.getCurrent(),
+    staleTime: 10 * 60 * 1000,
+  })
+  const tenantSlug = tenantData?.slug || '...'
 
   // 确保水合一致性
   useEffect(() => {
@@ -179,8 +188,8 @@ export default function NewSitePage() {
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700">{tf("siteSlug")}</label>
                     <div className="flex items-center">
-                      <span className="inline-flex items-center px-3 h-10 rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 text-slate-500 text-sm font-mono whitespace-nowrap overflow-hidden max-w-[120px]">
-                        /{slug}
+                      <span className="inline-flex items-center px-3 h-10 rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 text-slate-500 text-sm font-mono whitespace-nowrap overflow-hidden max-w-[200px]" title={`/${tenantSlug}/`}>
+                        /{tenantSlug}/
                       </span>
                       <input
                         className="flex h-10 w-full rounded-r-xl border border-slate-200 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"

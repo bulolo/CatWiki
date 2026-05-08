@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 
 from app.core.common.i18n import _
 from app.schemas.document import Document
@@ -70,6 +70,7 @@ async def list_published_documents(
 async def get_document(
     document_id: int,
     request: Request,
+    background_tasks: BackgroundTasks,
     service: DocumentService = Depends(get_document_service),
 ) -> ApiResponse[Document]:
     """获取文档详情（客户端，自动增加浏览量并记录浏览事件）"""
@@ -78,5 +79,7 @@ async def get_document(
     user_agent = request.headers.get("user-agent")
     referer = request.headers.get("referer")
 
-    document_dict = await service.get_client_document(document_id, ip_address, user_agent, referer)
+    document_dict = await service.get_client_document(
+        document_id, ip_address, user_agent, referer, background_tasks
+    )
     return ApiResponse.ok(data=document_dict, msg=_("api.success.get"))

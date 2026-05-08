@@ -47,7 +47,7 @@ interface UseDocumentsParams {
   collectionId?: number | string
   searchTerm?: string
   status?: 'published' | 'draft' | 'all'
-  vectorStatus?: 'none' | 'pending' | 'processing' | 'completed' | 'failed' | 'all'
+  vectorStatus?: 'none' | 'outdated' | 'pending' | 'processing' | 'completed' | 'failed' | 'all'
   orderBy?: 'created_at' | 'updated_at' | 'views'
   orderDir?: 'asc' | 'desc'
 }
@@ -72,7 +72,7 @@ export function useDocuments(params: UseDocumentsParams) {
         keyword?: string
         collectionId?: number
         status?: 'published' | 'draft'
-        vectorStatus?: 'none' | 'pending' | 'processing' | 'completed' | 'failed'
+        vectorStatus?: 'none' | 'outdated' | 'pending' | 'processing' | 'completed' | 'failed'
       } = {
         siteId,
         page,
@@ -247,6 +247,16 @@ export function useRemoveVector() {
   return useAdminMutation({
     mutationFn: (documentId: number) => api.document.removeVector(documentId),
     invalidateKeys: [documentKeys.all],
+  })
+}
+
+/**
+ * AI 生成文档字段（摘要 / 标签）
+ */
+export function useAiGenerateFields() {
+  return useAdminMutation({
+    mutationFn: ({ content, fields, summaryMaxLength, tagsMaxCount }: { content: string; fields: Array<'summary' | 'tags'>; summaryMaxLength?: number; tagsMaxCount?: number }) =>
+      api.document.aiGenerate(content, fields, summaryMaxLength, tagsMaxCount),
   })
 }
 

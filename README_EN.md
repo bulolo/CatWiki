@@ -28,6 +28,16 @@ English | [简体中文](./README.md)
 
 ## 🚀 Recent Updates
 
+### 2026-05-09 🔍 Elasticsearch Hybrid Search (v1.1.0)
+
+> 🚨 **Breaking Change**: v1.1.0 is not compatible with existing databases and cannot be upgraded directly from v1.0.x. A fresh deployment is required.
+- 🔍 **Elasticsearch Hybrid Search**: Added ES vector engine support with built-in IK Chinese tokenizer. Combines vector similarity and BM25 keyword search via RRF fusion ranking, significantly improving Chinese semantic recall precision. Enable with `make dev-up ES=1` and switch seamlessly from PGVector.
+- 💬 **Response API Chat Refactor**: Completely rewrote the AI chat core to use the Response API pattern, delivering more stable streaming output and significantly improved concurrency.
+- 🎯 **RAG First-Round Retrieval Optimization**: The first retrieval now uses the user's original query (instead of an AI-rewritten version), reducing rewrite deviation and improving recall hit rates.
+- 🔍 **Client-Side Retrieval Result Viewer**: In the client chat interface, click any tool call entry to expand and inspect the actual document chunks retrieved by AI, including relevance scores.
+- 🔒 **Password-Protected Public Sites**: Support setting access passwords for public knowledge base sites; auto-generates a strong random password when public access is disabled to prevent accidental exposure.
+- ✨ **AI Auto-Generate Summary & Tags**: The document editor supports one-click AI generation for summary and tags separately, with configurable max length and max tag count persisted locally. The batch import dialog adds "Auto-generate summary" and "Auto-generate tags" toggles — generation runs automatically in the background after each file finishes parsing, requiring no manual intervention.
+
 ### 2026-04-15 🔧 Parser Upgrade & UX Improvements (v1.0.9)
 - ⚡ **Async Parsing**: Docling and MinerU now use async submit+poll mode, large files no longer block the Worker.
 - 🆕 **MinerU 3.x Support**: Adapted to MinerU 3.0 async API, added backend selection (hybrid-auto-engine / vlm-auto-engine / pipeline etc.) with accuracy and hardware annotations.

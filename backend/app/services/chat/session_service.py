@@ -14,13 +14,16 @@
 
 import logging
 from datetime import datetime, timedelta
+from typing import Literal
 
 from fastapi import Depends
 from sqlalchemy import desc, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.common.i18n import _
 from app.core.common.utils import Paginator
+from app.core.web.exceptions import ForbiddenException
 from app.db.database import get_db
 from app.db.transaction import transactional
 from app.models.chat_session import ChatSession
@@ -62,12 +65,18 @@ class ChatSessionService:
             session = result.scalar_one_or_none()
 
             if session:
+                if session.member_id != member_id:
+                    raise ForbiddenException(detail=_("session.access_denied"))
+                self.ensure_session_access(
+                    session,
+                    member_id=member_id,
+                    site_id=site_id,
+                    tenant_id=tenant_id,
+                )
                 # 更新现有会话
                 session.last_message = user_message[:200]
                 session.last_message_role = "user"
                 session.message_count += 1
-                if member_id is not None:
-                    session.member_id = member_id
                 logger.info(
                     f"📝 [ChatSession] Updated: thread_id={thread_id}, count={session.message_count}"
                 )
@@ -164,6 +173,7 @@ class ChatSessionService:
         site_id: int | None = None,
         member_id: str | None = None,
         keyword: str | None = None,
+        search_field: Literal["all", "text", "thread_id", "member_id"] = "all",
         page: int = 1,
         size: int = 20,
         is_pager: int = 1,
@@ -173,9 +183,27 @@ class ChatSessionService:
         Args:
             tenant_id: 租户ID过滤
             member_id: 会员ID或访客ID（可选，过滤）
-            keyword: 搜索关键词（可选，匹配标题或最后消息）
+            keyword: 搜索关键词（可选）
+            search_field: 搜索范围，all/text/thread_id/member_id
         """
         from sqlalchemy import or_
+
+        def build_keyword_filter(value: str):
+            if search_field == "text":
+                return or_(
+                    ChatSession.title.ilike(f"%{value}%"),
+                    ChatSession.last_message.ilike(f"%{value}%"),
+                )
+            if search_field == "thread_id":
+                return ChatSession.thread_id.ilike(f"%{value}%")
+            if search_field == "member_id":
+                return ChatSession.member_id.ilike(f"%{value}%")
+            return or_(
+                ChatSession.title.ilike(f"%{value}%"),
+                ChatSession.last_message.ilike(f"%{value}%"),
+                ChatSession.thread_id.ilike(f"%{value}%"),
+                ChatSession.member_id.ilike(f"%{value}%"),
+            )
 
         count_query = select(func.count(ChatSession.id))
         if tenant_id is not None:
@@ -185,11 +213,7 @@ class ChatSessionService:
         if member_id is not None:
             count_query = count_query.where(ChatSession.member_id == member_id)
         if keyword:
-            keyword_filter = or_(
-                ChatSession.title.ilike(f"%{keyword}%"),
-                ChatSession.last_message.ilike(f"%{keyword}%"),
-            )
-            count_query = count_query.where(keyword_filter)
+            count_query = count_query.where(build_keyword_filter(keyword))
 
         count_result = await self.db.execute(count_query)
         total = count_result.scalar() or 0
@@ -203,11 +227,7 @@ class ChatSessionService:
         if member_id is not None:
             query = query.where(ChatSession.member_id == member_id)
         if keyword:
-            keyword_filter = or_(
-                ChatSession.title.ilike(f"%{keyword}%"),
-                ChatSession.last_message.ilike(f"%{keyword}%"),
-            )
-            query = query.where(keyword_filter)
+            query = query.where(build_keyword_filter(keyword))
 
         # 按更新时间倒序，分页
         query = query.order_by(desc(ChatSession.updated_at)).offset(paginator.skip)
@@ -236,10 +256,48 @@ class ChatSessionService:
         )
         return result.scalar_one_or_none()
 
+    @staticmethod
+    def ensure_session_access(
+        session: ChatSession,
+        *,
+        member_id: str | None = None,
+        site_id: int | None = None,
+        tenant_id: int | None = None,
+    ) -> None:
+        """Validate client/admin ownership constraints for an existing session."""
+        if member_id is not None and session.member_id != member_id:
+            raise ForbiddenException(detail=_("session.access_denied"))
+        if site_id is not None and session.site_id != site_id:
+            raise ForbiddenException(detail=_("session.access_denied"))
+        if tenant_id is not None and session.tenant_id != tenant_id:
+            raise ForbiddenException(detail=_("session.access_denied"))
+
+    async def get_session_for_access(
+        self,
+        thread_id: str,
+        *,
+        member_id: str | None = None,
+        site_id: int | None = None,
+        tenant_id: int | None = None,
+    ) -> ChatSession | None:
+        session = await self.get_session_by_thread_id(thread_id=thread_id)
+        if session:
+            self.ensure_session_access(
+                session,
+                member_id=member_id,
+                site_id=site_id,
+                tenant_id=tenant_id,
+            )
+        return session
+
     @transactional()
     async def delete_session_by_thread_id(
         self,
         thread_id: str,
+        *,
+        member_id: str | None = None,
+        site_id: int | None = None,
+        tenant_id: int | None = None,
     ) -> bool:
         """删除会话
 
@@ -255,6 +313,12 @@ class ChatSessionService:
         session = result.scalar_one_or_none()
 
         if session:
+            self.ensure_session_access(
+                session,
+                member_id=member_id,
+                site_id=site_id,
+                tenant_id=tenant_id,
+            )
             await self.db.delete(session)
             # 自动处理提交
             logger.info(f"🗑️ [ChatSession] Deleted: thread_id={thread_id}")
