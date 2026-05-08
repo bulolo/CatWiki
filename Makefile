@@ -207,12 +207,13 @@ prod-up: check-prod-env
 
 # 本地构建并启动生产环境
 prod-up-build: check-prod-env
-	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) up -d --build
+	docker compose -f $(PROD_DIR)/docker-compose.yml build backend admin-frontend client-frontend
+	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) up -d
 
 # 无缓存重新构建并启动
 prod-rebuild: check-prod-env
 	@echo "🔧 [CatWiki] 无缓存重新构建生产环境..."
-	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) build --no-cache
+	docker compose -f $(PROD_DIR)/docker-compose.yml build --no-cache backend admin-frontend client-frontend
 	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) up -d
 
 # 停止生产环境

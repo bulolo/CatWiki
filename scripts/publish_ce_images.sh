@@ -91,6 +91,7 @@ SERVICES=(
   "backend:backend:Dockerfile.prod"
   "admin:frontend/admin:Dockerfile.prod"
   "client:frontend/client:Dockerfile.prod"
+  "elasticsearch:deploy/images/elasticsearch:Dockerfile"
 )
 
 TARGET_SERVICE=$1

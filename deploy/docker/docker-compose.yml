@@ -325,11 +325,8 @@ services:
   # 启动方式: docker compose --profile es up  或  make prod-up ES=1
   # IK 分词器已烤入镜像，首次启动需本地构建（约需几分钟，视网络而定）
   elasticsearch:
-    build:
-      context: ../images/elasticsearch
-      dockerfile: Dockerfile
-    image: catwiki-elasticsearch:${DOCKER_IMAGE_TAG:-v1.1.0}
-    pull_policy: build
+    image: bulolo/catwiki-elasticsearch:${DOCKER_IMAGE_TAG:-v1.1.0}
+    pull_policy: always
     container_name: catwiki-elasticsearch
     profiles: ["es"]
     environment:
