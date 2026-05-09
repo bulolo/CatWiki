@@ -1,10 +1,13 @@
+import json
 import logging
+import re
 import time
 import uuid
 from pathlib import Path
 from typing import Any
 
 from fastapi import BackgroundTasks, Depends, UploadFile
+from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.common.document_utils import build_collection_map, enrich_document_dict
@@ -622,7 +625,6 @@ class DocumentService:
     ) -> dict:
         """用 LLM 生成文档摘要 / 标签"""
         from langchain_core.messages import HumanMessage, SystemMessage
-        from pydantic import BaseModel as PydanticBaseModel
 
         from app.core.ai.providers.llm_manager import llm_manager
         from app.core.web.exceptions import BadRequestException
@@ -650,12 +652,16 @@ class DocumentService:
                 f'- "tags": 提取最多 {count} 个关键词标签，每个标签 2~6 字，以 JSON 数组返回'
             )
 
-        system_prompt = (
-            "你是一个专业的内容编辑助手。请根据用户提供的文章内容，生成指定字段。\n"
-            "严格以 JSON 格式返回，只包含被要求的字段，不要输出任何多余内容。\n"
-            "字段说明：\n" + "\n".join(field_instructions)
-        )
-        human_prompt = f"请根据以下文章内容生成字段：\n\n{content}"
+        messages = [
+            SystemMessage(
+                content=(
+                    "你是一个专业的内容编辑助手。请根据用户提供的文章内容，生成指定字段。\n"
+                    "严格以 JSON 格式返回，只包含被要求的字段，不要输出任何多余内容。\n"
+                    "字段说明：\n" + "\n".join(field_instructions)
+                )
+            ),
+            HumanMessage(content=f"请根据以下文章内容生成字段：\n\n{content}"),
+        ]
 
         annotations: dict = {}
         defaults: dict = {}
@@ -665,30 +671,111 @@ class DocumentService:
         if "tags" in fields:
             annotations["tags"] = list[str] | None
             defaults["tags"] = None
-
         dynamic_schema = type(
             "GeneratedFields",
             (PydanticBaseModel,),
             {"__annotations__": annotations, **defaults},
         )
 
-        structured_llm = llm.with_structured_output(dynamic_schema)
-
+        # 策略 1：function_calling（有约束，最可靠）
+        # 兼容 OpenAI / DeepSeek V3；不兼容 DeepSeek R1 等推理模型
+        # 注：默认 method="json_schema" 使用 OpenAI strict 模式，DeepSeek 不支持，须显式指定
         try:
-            result = await structured_llm.ainvoke(
-                [SystemMessage(content=system_prompt), HumanMessage(content=human_prompt)]
-            )
+            result = await llm.with_structured_output(
+                dynamic_schema, method="function_calling"
+            ).ainvoke(messages)
+            data: dict = {k: getattr(result, k, None) for k in fields}
         except Exception as e:
-            raise BadRequestException(detail=_("doc.ai_generate_failed", error=str(e))) from e
+            # 仅对「模型不支持工具调用」降级到策略 2，网络/鉴权等临时性错误直接抛出
+            if not _is_tool_unsupported_error(e):
+                raise BadRequestException(detail=_("doc.ai_generate_failed", error=str(e))) from e
+            logger.warning(
+                "function_calling not supported by model, falling back to plain text: %s", e
+            )
+            # 策略 2：纯文本回退（兜底 R1 / 其他不支持工具调用的模型）
+            # 此路径依赖模型遵循 prompt 返回 JSON，可靠性较低
+            try:
+                raw_result = await llm.ainvoke(messages)
+            except Exception as e2:
+                raise BadRequestException(detail=_("doc.ai_generate_failed", error=str(e2))) from e2
+            raw_text = raw_result.content if hasattr(raw_result, "content") else str(raw_result)
+            try:
+                data = _extract_json_object(raw_text)
+            except Exception as e2:
+                raise BadRequestException(detail=_("doc.ai_generate_failed", error=str(e2))) from e2
 
         output: dict = {}
         if "summary" in fields:
-            output["summary"] = getattr(result, "summary", None)
+            output["summary"] = data.get("summary") or None
         if "tags" in fields:
-            raw = getattr(result, "tags", None)
+            raw = data.get("tags")
             output["tags"] = raw if isinstance(raw, list) else []
 
         return output
+
+
+def _is_tool_unsupported_error(exc: BaseException) -> bool:
+    """判断异常是否因模型不支持工具调用（400 Bad Request）引起。
+
+    用异常类型而非字符串匹配，避免多语言错误消息或措辞差异导致的误判。
+    - 400 BadRequest：视为工具调用不兼容，允许降级到纯文本策略
+    - 401/403/429/网络类：属于配置或临时性错误，直接抛出不降级
+    """
+    import openai
+
+    # 精确匹配：先排除明确的临时性/配置错误
+    if isinstance(
+        exc,
+        (
+            openai.AuthenticationError,
+            openai.PermissionDeniedError,
+            openai.RateLimitError,
+            openai.APIConnectionError,
+            openai.APITimeoutError,
+        ),
+    ):
+        return False
+    # 400 Bad Request：模型不支持工具调用的典型响应码
+    if isinstance(exc, openai.BadRequestError):
+        return True
+    # 兜底：检查 __cause__ 链（LangChain 可能包装异常）
+    if exc.__cause__ is not None:
+        return _is_tool_unsupported_error(exc.__cause__)
+    return False
+
+
+def _extract_json_object(text: str) -> dict:
+    """从 LLM 返回文本中提取第一个完整 JSON 对象。
+
+    解析顺序：
+    1. 整体直接 parse（模型返回纯 JSON）
+    2. 定位代码块起始位置后，复用括号计数提取（避免非贪婪正则被字符串内 } 截断）
+    3. 从全文第一个 { 用括号计数定位最外层对象
+    """
+    text = text.strip()
+
+    # 1. 整体直接 parse
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # 2 & 3. 统一用括号计数定位最外层 { ... }
+    # 若存在代码块，从代码块内的 { 开始；否则从全文第一个 { 开始
+    code_block = re.search(r"```(?:json)?\s*", text)
+    search_from = code_block.end() if code_block else 0
+    start = text.find("{", search_from)
+    if start == -1:
+        raise ValueError("LLM 响应中未找到 JSON 对象")
+    depth = 0
+    for i, ch in enumerate(text[start:], start):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return json.loads(text[start : i + 1])
+    raise ValueError("LLM 响应中 JSON 括号不匹配")
 
 
 def get_document_service(

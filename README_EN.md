@@ -396,6 +396,53 @@ Parsers are core components in the CatWiki knowledge base platform for **documen
 
 ---
 
+## 🗄️ Vector Database Selection
+
+CatWiki supports two vector engines that can be switched flexibly based on your deployment scale and retrieval accuracy requirements.
+
+### Quick Selection Guide
+
+|  | PGVector | Elasticsearch |
+|---|---|---|
+| **Best For** | Lightweight deployment, small-to-medium knowledge bases | High-accuracy retrieval, Chinese semantic search |
+| **Resource Usage** | Low (reuses PostgreSQL) | Medium (dedicated ES service required) |
+| **Retrieval Method** | Pure vector similarity search | Hybrid: vector + keyword search |
+| **Chinese Support** | Basic tokenization | Built-in IK Chinese tokenizer |
+| **Deployment Complexity** | Low | Medium |
+| **Start Command** | `make dev-up` | `make dev-up ES=1` |
+
+### PGVector — Lightweight Choice
+
+**Choose PGVector if:**
+- Your knowledge base is small-to-medium scale and you prefer not to run an extra service
+- You already use PostgreSQL and want to minimize operational overhead
+- Moderate semantic retrieval accuracy is sufficient for your use case
+
+**Retrieval Flow:** Pure vector search using an HNSW index. Each query is embedded and compared against stored vectors via cosine similarity, returning the Top-K nearest neighbor chunks.
+
+```
+User Query → Embedding Model → Vectorize → HNSW Nearest Neighbor Search → Top-K Chunks → LLM Answer
+```
+
+### Elasticsearch — High-Accuracy Choice
+
+**Choose Elasticsearch if:**
+- Your knowledge base is primarily Chinese and you need high semantic recall accuracy
+- You need both precise keyword matching (e.g., product codes, proper nouns) and semantic understanding
+- You're in a production environment and can afford an independent ES service
+
+**Retrieval Flow:** KNN vector search and BM25 keyword search run in parallel. Results are merged via RRF (Reciprocal Rank Fusion), then the final Top-K chunks are passed to the LLM.
+
+```
+                                ┌─ KNN Vector Search (semantic similarity) ─┐
+User Query → IK tokenize + Embed ─┤                                          ├─ RRF Fusion → Top-K → LLM
+                                └─ BM25 Keyword Search (term frequency)    ─┘
+```
+
+> RRF ranking is based on result position rather than raw scores, elegantly handling the score-scale mismatch between vector similarity and BM25. In practice, hybrid retrieval improves Chinese semantic recall by 15–30% compared to pure vector search.
+
+---
+
 ## 📄 License & Commercial Use
 
 This project is licensed under the **CatWiki Open Source License (Modified Apache 2.0)**. We provide open-source flexibility while protecting the project's brand and commercial rights.

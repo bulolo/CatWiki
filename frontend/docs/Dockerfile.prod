@@ -3,15 +3,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 配置 npm 使用淘宝镜像源
-RUN npm config set registry https://registry.npmmirror.com
-
-# Install foundation dependencies
-RUN apk add --no-cache libc6-compat git
-
-# Install pnpm
-RUN npm install -g pnpm --registry=https://registry.npmmirror.com
-RUN pnpm config set registry https://registry.npmmirror.com
+RUN apk add --no-cache libc6-compat && \
+    npm install -g pnpm --registry=https://registry.npmmirror.com && \
+    pnpm config set registry https://registry.npmmirror.com
 
 # Install dependencies first for better caching
 COPY package.json pnpm-lock.yaml ./
