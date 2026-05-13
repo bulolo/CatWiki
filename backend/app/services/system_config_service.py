@@ -284,7 +284,8 @@ class SystemConfigService:
             messages=[{"role": "user", "content": "Hello"}],
             max_tokens=5,
         )
-        return {"details": f"Response: {response.choices[0].message.content[:20]}..."}
+        content = response.choices[0].message.content or ""
+        return {"details": f"Response: {content[:20]}..."}
 
     @staticmethod
     async def _test_embedding_connection(api_key: str, base_url: str, model: str) -> dict:

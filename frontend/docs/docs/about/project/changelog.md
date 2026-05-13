@@ -2,6 +2,13 @@
 
 CatWiki 始终保持快速演进。在这里，您可以了解到项目的每一个重大改进。
 
+## 2026-05-10 🔧 兼容性修复与构建优化 (v1.1.1)
+
+### 🐛 Bug 修复
+- **AI 摘要/标签兼容 DeepSeek**：修复 langchain-openai 1.x 将 `with_structured_output` 默认切换为 `json_schema` 后，DeepSeek 等不支持 strict 模式的模型报 400 错误的问题。主路径改为 `function_calling`，不支持工具调用的模型（如 DeepSeek R1）自动降级为纯文本 + JSON 提取兜底，降级判断基于 openai 异常类型，避免多语言错误消息误判。
+
+---
+
 ## 2026-05-09 🔍 Elasticsearch 混合检索 & 全面升级 (v1.1.0)
 
 > 🚨 **Breaking Change**：v1.1.0 不兼容旧版数据库，无法从 v1.0.x 直接升级，需全新部署。
