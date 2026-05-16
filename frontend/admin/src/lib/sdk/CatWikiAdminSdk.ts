@@ -7,6 +7,7 @@ import type { OpenAPIConfig } from './core/OpenAPI';
 import { FetchHttpRequest } from './core/FetchHttpRequest';
 import { AdminCacheService } from './services/AdminCacheService';
 import { AdminCollectionsService } from './services/AdminCollectionsService';
+import { AdminDataSourcesService } from './services/AdminDataSourcesService';
 import { AdminDocumentsService } from './services/AdminDocumentsService';
 import { AdminFilesService } from './services/AdminFilesService';
 import { AdminHealthService } from './services/AdminHealthService';
@@ -23,6 +24,7 @@ type HttpRequestConstructor = new (config: OpenAPIConfig) => BaseHttpRequest;
 export class CatWikiAdminSdk {
     public readonly adminCache: AdminCacheService;
     public readonly adminCollections: AdminCollectionsService;
+    public readonly adminDataSources: AdminDataSourcesService;
     public readonly adminDocuments: AdminDocumentsService;
     public readonly adminFiles: AdminFilesService;
     public readonly adminHealth: AdminHealthService;
@@ -39,7 +41,7 @@ export class CatWikiAdminSdk {
     constructor(config?: Partial<OpenAPIConfig>, HttpRequest: HttpRequestConstructor = FetchHttpRequest) {
         this.request = new HttpRequest({
             BASE: config?.BASE ?? '',
-            VERSION: config?.VERSION ?? '1.1.2',
+            VERSION: config?.VERSION ?? '1.1.3',
             WITH_CREDENTIALS: config?.WITH_CREDENTIALS ?? false,
             CREDENTIALS: config?.CREDENTIALS ?? 'include',
             TOKEN: config?.TOKEN,
@@ -50,6 +52,7 @@ export class CatWikiAdminSdk {
         });
         this.adminCache = new AdminCacheService(this.request);
         this.adminCollections = new AdminCollectionsService(this.request);
+        this.adminDataSources = new AdminDataSourcesService(this.request);
         this.adminDocuments = new AdminDocumentsService(this.request);
         this.adminFiles = new AdminFilesService(this.request);
         this.adminHealth = new AdminHealthService(this.request);

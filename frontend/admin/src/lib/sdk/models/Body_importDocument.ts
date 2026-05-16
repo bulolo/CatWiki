@@ -14,5 +14,6 @@ export type Body_importDocument = {
     duplicate_strategy?: string;
     generate_summary?: boolean;
     generate_tags?: boolean;
+    auto_vectorize?: boolean;
 };
 

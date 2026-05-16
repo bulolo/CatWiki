@@ -26,6 +26,10 @@ export type ChatSessionResponse = {
      * 会话标题
      */
     title?: (string | null);
+    /**
+     * 来源渠道: web_chat / wecom_kefu / wecom_app / wecom_smart / dingtalk_app / feishu_app
+     */
+    source?: (string | null);
     id: number;
     /**
      * 最后消息预览

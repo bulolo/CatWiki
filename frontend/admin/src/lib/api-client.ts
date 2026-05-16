@@ -24,22 +24,13 @@ import { env } from './env'
 export * from './sdk/models'
 
 // 内部使用
-import { Models } from './sdk'
+import * as Models from './sdk/models'
 
 // ==================== 配置 ====================
 
 const BASE_URL = env.NEXT_PUBLIC_API_URL
 
 // ==================== 类型定义 ====================
-
-/**
- * 通用 API 响应基类
- */
-export interface ApiResponse<T = unknown> {
-  code: number
-  msg: string
-  data: T
-}
 
 export interface DocumentChunk {
   id?: string | number
@@ -49,7 +40,7 @@ export interface DocumentChunk {
   }
 }
 
-export interface UploadedFileInfo {
+interface UploadedFileInfo {
   url?: string
   object_name?: string
   size?: number
@@ -263,6 +254,11 @@ function toImportDocumentBody(
   const generateTags = parseBooleanField(payload.get('generate_tags'))
   if (generateTags !== undefined) {
     body.generate_tags = generateTags
+  }
+
+  const autoVectorize = parseBooleanField(payload.get('auto_vectorize'))
+  if (autoVectorize !== undefined) {
+    body.auto_vectorize = autoVectorize
   }
 
   return body
@@ -562,6 +558,42 @@ const cacheApi = {
 }
 
 
+// ==================== 数据源 API ====================
+
+const dataSourceApi = {
+  list: () =>
+    wrapResponse<Models.DataSource[]>(client.adminDataSources.listDataSources()),
+
+  create: (data: { name: string; type: 'internal' | 's3'; description?: string; config?: Record<string, unknown> }) =>
+    wrapResponse<Models.DataSource>(client.adminDataSources.createDataSource({ requestBody: data as Models.DataSourceCreate })),
+
+  update: (id: number, data: Models.DataSourceUpdate) =>
+    wrapResponse<Models.DataSource>(client.adminDataSources.updateDataSource({ dsId: id, requestBody: data })),
+
+  delete: (id: number) =>
+    wrapResponse<void>(client.adminDataSources.deleteDataSource({ dsId: id })),
+
+  browse: (id: number, prefix = '') =>
+    wrapResponse<Models.S3FileItem[]>(client.adminDataSources.browseDataSource({ dsId: id, prefix })),
+
+  uploadFile: (id: number, file: File, prefix = '') =>
+    wrapResponse<Models.UploadedFile>(
+      client.adminDataSources.uploadToDataSource({
+        dsId: id,
+        formData: { file, prefix },
+      })
+    ),
+
+  deleteFile: (id: number, key: string) =>
+    wrapResponse<void>(
+      client.adminDataSources.deleteDataSourceFile({ dsId: id, key })
+    ),
+
+  // importFromDataSource SDK 返回 ApiResponse_list_dict__（data?: null），实际是 Task[]，强制转换
+  importFiles: (id: number, req: Models.DataSourceImportRequest) =>
+    wrapResponse<Models.Task[]>(client.adminDataSources.importFromDataSource({ dsId: id, requestBody: req })),
+}
+
 // ==================== 导出 ====================
 
 export const api = {
@@ -579,6 +611,7 @@ export const api = {
   tenant: {
     getCurrent: () => wrapResponse<Models.TenantSchema | null>(client.adminTenants.getAdminCurrentTenant()),
   },
+  dataSource: dataSourceApi,
 }
 
 export default api

@@ -64,7 +64,7 @@ class TestHashString:
 
 class TestIsValidEmail:
     def test_valid_emails(self):
-        assert is_valid_email("user@example.com")
+        assert is_valid_email("user@catwiki.cn")
         assert is_valid_email("user.name@domain.co")
         assert is_valid_email("user+tag@sub.domain.com")
 

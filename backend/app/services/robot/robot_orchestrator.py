@@ -74,7 +74,9 @@ class RobotOrchestrator:
         """
         provider = adapter.get_provider_name()
         provider_id = adapter.get_provider_id()
-        thread_id = self._get_thread_id(provider_id, session.event.from_user, session.event.chat_id)
+        thread_id = self._get_thread_id(
+            provider_id, session.event.from_user, session.event.chat_id, session.event.site_id
+        )
         content = session.event.content.strip()
 
         # 1. 指令预处理 (全局通用)
@@ -84,7 +86,9 @@ class RobotOrchestrator:
             with self._global_lock_mutex:
                 self._global_locks.pop(thread_id, None)
 
-            await self.session_service.delete_session_by_thread_id(thread_id)
+            await self.session_service.delete_session_by_thread_id(
+                thread_id, site_id=session.event.site_id
+            )
 
             await adapter.reply(
                 session, "✅ 已为您清空对话上下文，现在可以开始新的咨询了。", is_finish=True
@@ -208,7 +212,7 @@ class RobotOrchestrator:
         try:
             response = await asyncio.wait_for(
                 self.chat_service.process_chat_request(
-                    chat_request, background_tasks or BackgroundTasks()
+                    chat_request, background_tasks or BackgroundTasks(), source=provider
                 ),
                 timeout=timeout_seconds,
             )
@@ -247,6 +251,7 @@ class RobotOrchestrator:
                 site_id=site_id,
                 user_id=user,
                 message=content,
+                source=provider,
             )
 
             # 2. 启动流式推理并直接 yield 文本
@@ -265,10 +270,17 @@ class RobotOrchestrator:
             logger.error("%s AI 流式推理失败: %s", provider, e, exc_info=True)
             yield self.DEFAULT_ERROR_REPLY
 
-    def _get_thread_id(self, provider_id: str, from_user: str, chat_id: str | None = None) -> str:
+    def _get_thread_id(
+        self,
+        provider_id: str,
+        from_user: str,
+        chat_id: str | None = None,
+        site_id: int | None = None,
+    ) -> str:
         """统一生成机器人会话 ID"""
         target = chat_id or from_user
-        return f"{provider_id}-robot-{target}"
+        prefix = f"s{site_id}-" if site_id else ""
+        return f"{prefix}{provider_id}-robot-{target}"
 
     def _extract_first_message_content(self, response: Any) -> str | None:
         if not hasattr(response, "choices") or not response.choices:

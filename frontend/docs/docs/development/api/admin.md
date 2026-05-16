@@ -11,7 +11,7 @@ Admin API 提供完整的 CRUD 操作和管理功能，需要身份认证。
 ```typescript
 const response = await apiClient.adminUsers.loginAdmin({
   requestBody: {
-    email: "admin@example.com",
+    email: "admin@catwiki.cn",
     password: "admin123"
   }
 })

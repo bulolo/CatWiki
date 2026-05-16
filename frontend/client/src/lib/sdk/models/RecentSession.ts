@@ -10,5 +10,6 @@ export type RecentSession = {
     title: string;
     created_at: string;
     message_count: number;
+    source?: (string | null);
 };
 

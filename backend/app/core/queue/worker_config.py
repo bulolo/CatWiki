@@ -16,6 +16,7 @@ import logging
 
 from arq import func
 
+from app.core.infra.config import settings
 from app.core.queue.redis import redis_settings
 from app.worker.document_tasks import process_import_parsing, process_vectorize
 
@@ -27,12 +28,16 @@ async def startup(ctx):
 
     setup_logging()
     logger.info("🚀 Arq Worker 正在启动...")
-    # 打印已注册的函数名称，方便调试
     registered_funcs = [
         f if isinstance(f, str) else getattr(f, "name", getattr(f, "__name__", str(f)))
         for f in WorkerSettings.functions
     ]
-    logger.info(f"📋 已注册函数: {registered_funcs}")
+    logger.info(
+        f"📋 已注册函数: {registered_funcs} | "
+        f"max_tries={WorkerSettings.max_tries} "
+        f"job_timeout={WorkerSettings.job_timeout}s "
+        f"max_jobs={WorkerSettings.max_jobs}"
+    )
 
 
 async def shutdown(ctx):
@@ -40,7 +45,7 @@ async def shutdown(ctx):
 
 
 class WorkerSettings:
-    """Arq Worker 配置"""
+    """Arq Worker 配置（由 settings 驱动，可通过环境变量调整）"""
 
     functions = [
         func(process_import_parsing, name="process_import_parsing"),
@@ -50,7 +55,6 @@ class WorkerSettings:
     on_startup = startup
     on_shutdown = shutdown
 
-    # 任务重试次数
-    max_tries = 3
-    # 任务超时时间 (秒)
-    job_timeout = 600  # 10 分钟，考虑到 PDF 解析可能较慢
+    max_tries = settings.WORKER_MAX_TRIES
+    job_timeout = settings.WORKER_JOB_TIMEOUT
+    max_jobs = settings.WORKER_MAX_JOBS

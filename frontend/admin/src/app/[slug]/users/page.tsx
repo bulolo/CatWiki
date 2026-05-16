@@ -338,7 +338,7 @@ export default function UsersPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">{t("emailLabel")}</label>
                 <Input
-                  placeholder="user@example.com"
+                  placeholder="user@catwiki.cn"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                 />

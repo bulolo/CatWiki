@@ -21,17 +21,28 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any
 
-# 定义一个特殊的哨兵值，用于区分“未设置”和“显式设置为 None”
+# 定义一个特殊的哨兵值，用于区分"未设置"和"显式设置为 None"
 _UNSET = object()
 _tenant_context: ContextVar[Any] = ContextVar("tenant_id", default=_UNSET)
+_tenant_slug_context: ContextVar[Any] = ContextVar("tenant_slug", default=_UNSET)
 
 
-def set_current_tenant(tenant_id: int | None) -> None:
+def set_current_tenant(tenant_id: int | None, slug: str | None = None) -> None:
     """
-    设置当前请求的租户 ID
+    设置当前请求的租户 ID（以及可选的 slug）
     通常由 FastAPI 依赖项在认证后调用
     """
     _tenant_context.set(tenant_id)
+    if slug is not None:
+        _tenant_slug_context.set(slug)
+
+
+def get_current_tenant_slug() -> str | None:
+    """获取当前请求的租户 slug（用于存储路径隔离）"""
+    val = _tenant_slug_context.get()
+    if val is not _UNSET:
+        return val
+    return None
 
 
 def get_current_tenant() -> int | None:
@@ -62,13 +73,16 @@ def get_current_tenant() -> int | None:
 
 
 @contextmanager
-def temporary_tenant_context(tenant_id: int | None):
+def temporary_tenant_context(tenant_id: int | None, slug: str | None = None):
     """
     临时切换租户上下文 (Context Manager)
     用于在特定代码块中临时使用不同的租户视角 (e.g. 访问全局配置)
     """
     token = _tenant_context.set(tenant_id)
+    slug_token = _tenant_slug_context.set(slug) if slug is not None else None
     try:
         yield
     finally:
         _tenant_context.reset(token)
+        if slug_token is not None:
+            _tenant_slug_context.reset(slug_token)

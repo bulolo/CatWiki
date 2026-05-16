@@ -16,7 +16,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ChatSessionBase(BaseModel):
@@ -27,6 +27,10 @@ class ChatSessionBase(BaseModel):
     tenant_id: int | None = Field(None, description="租户ID")
     member_id: str | None = Field(None, description="会员ID或访客标识")
     title: str | None = Field(None, description="会话标题")
+    source: str | None = Field(
+        None,
+        description="来源渠道: web_chat / wecom_kefu / wecom_app / wecom_smart / dingtalk_app / feishu_app",
+    )
 
 
 class ChatSessionResponse(ChatSessionBase):
@@ -39,8 +43,7 @@ class ChatSessionResponse(ChatSessionBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ChatSessionListResponse(BaseModel):

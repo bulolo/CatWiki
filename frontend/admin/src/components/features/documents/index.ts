@@ -15,5 +15,5 @@
 export { CollectionTree } from './CollectionTree'
 export { CreateCollectionDialog } from './CreateCollectionDialog'
 export { DocumentDirectory } from './DocumentDirectory'
-export { DocumentUploadDialog } from './DocumentUploadDialog'
+export { DocumentImportDialog } from './DocumentImportDialog'
 export { VectorRetrieveModal } from './VectorRetrieveModal'

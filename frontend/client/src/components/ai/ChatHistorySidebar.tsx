@@ -47,7 +47,7 @@ export function ChatHistorySidebar({
 }: ChatHistorySidebarProps) {
   const t = useTranslations("ChatHistory")
   const locale = useLocale()
-  const { sessions, isLoading, deleteSession, refresh, searchSessions } = useChatSessions({ siteId, tenantId })
+  const { sessions, isLoading, deleteSession, clearAllSessions, refresh, searchSessions } = useChatSessions({ siteId, tenantId })
 
   // 监听外部刷新信号
   useEffect(() => {
@@ -81,6 +81,13 @@ export function ChatHistorySidebar({
     }
   }
 
+  const handleClearAll = async () => {
+    if (confirm(t("clearAllConfirm"))) {
+      await clearAllSessions()
+      onNewChat()
+    }
+  }
+
   return (
     <div
       className={cn(
@@ -95,15 +102,28 @@ export function ChatHistorySidebar({
             <HistoryIcon className="h-5 w-5 text-primary" />
             <span>{t("title")}</span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg flex items-center gap-1"
-            onClick={onClose}
-          >
-            <span className="text-xs">{t("close")}</span>
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {sessions.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-1"
+                onClick={handleClearAll}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span className="text-xs">{t("clearAll")}</span>
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg flex items-center gap-1"
+              onClick={onClose}
+            >
+              <span className="text-xs">{t("close")}</span>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* New Chat Button */}

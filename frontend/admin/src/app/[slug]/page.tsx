@@ -45,6 +45,27 @@ const STATS_CONFIG = [
 
 import AISessionChart from "@/components/charts/AISessionChart"
 
+const SOURCE_BADGE_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
+  web_chat:     { bg: "bg-sky-50",     text: "text-sky-700",     dot: "bg-sky-400" },
+  wecom_kefu:   { bg: "bg-green-50",   text: "text-green-700",   dot: "bg-green-500" },
+  wecom_app:    { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
+  wecom_smart:  { bg: "bg-teal-50",    text: "text-teal-700",    dot: "bg-teal-500" },
+  dingtalk_app: { bg: "bg-orange-50",  text: "text-orange-700",  dot: "bg-orange-400" },
+  feishu_app:   { bg: "bg-blue-50",    text: "text-blue-700",    dot: "bg-blue-400" },
+}
+
+function RecentSourceBadge({ source }: { source: string }) {
+  const tc = useTranslations("ChatSessions")
+  const style = SOURCE_BADGE_STYLES[source] ?? { bg: "bg-slate-50", text: "text-slate-500", dot: "bg-slate-400" }
+  const label = tc(`detail.channels.${source}` as any, { defaultValue: source })
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold", style.bg, style.text)}>
+      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", style.dot)} />
+      {label}
+    </span>
+  )
+}
+
 
 export default function AdminHome() {
   const t = useTranslations("Dashboard")
@@ -236,6 +257,14 @@ export default function AdminHome() {
               </div>
               <CardTitle className="text-base font-bold">{t("recentQA.title")}</CardTitle>
             </div>
+            {isEnterprise && (
+              <Link href={getRoutePath("/analytics?tab=chat", routeContext.slug)}>
+                <Button variant="ghost" size="sm" className="h-8 px-3 text-xs font-semibold text-primary hover:bg-primary/5">
+                  {t("recentQA.viewAll")}
+                  <ChevronRight className="ml-1 h-3 w-3" />
+                </Button>
+              </Link>
+            )}
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-border/30">
@@ -253,10 +282,11 @@ export default function AdminHome() {
                         {new Date(session.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <div className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] text-slate-500 font-medium">
-                        {t("recentQA.turns", { count: session.message_count })}
+                        {t("recentQA.messages", { count: session.message_count })}
                       </div>
+                      {session.source && <RecentSourceBadge source={session.source} />}
                     </div>
                   </div>
                 ))

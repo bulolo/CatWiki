@@ -27,13 +27,13 @@ from app.core.common.utils import (
 
 class TestCreateAccessToken:
     def test_creates_token(self):
-        token = create_access_token({"sub": "user@example.com"})
+        token = create_access_token({"sub": "user@catwiki.cn"})
         assert isinstance(token, str)
         assert len(token) > 0
 
     def test_with_custom_expiry(self):
         token = create_access_token(
-            {"sub": "user@example.com"},
+            {"sub": "user@catwiki.cn"},
             expires_delta=timedelta(minutes=5),
         )
         assert isinstance(token, str)
@@ -41,10 +41,10 @@ class TestCreateAccessToken:
 
 class TestDecodeAccessToken:
     def test_decode_valid_token(self):
-        token = create_access_token({"sub": "user@example.com", "role": "admin"})
+        token = create_access_token({"sub": "user@catwiki.cn", "role": "admin"})
         payload = decode_access_token(token)
         assert payload is not None
-        assert payload["sub"] == "user@example.com"
+        assert payload["sub"] == "user@catwiki.cn"
         assert payload["role"] == "admin"
 
     def test_decode_invalid_token(self):
@@ -53,7 +53,7 @@ class TestDecodeAccessToken:
 
     def test_decode_expired_token(self):
         token = create_access_token(
-            {"sub": "user@example.com"},
+            {"sub": "user@catwiki.cn"},
             expires_delta=timedelta(seconds=-1),
         )
         payload = decode_access_token(token)
@@ -62,7 +62,7 @@ class TestDecodeAccessToken:
 
 class TestVerifyToken:
     def test_valid_token(self):
-        token = create_access_token({"sub": "user@example.com"})
+        token = create_access_token({"sub": "user@catwiki.cn"})
         assert verify_token(token) is True
 
     def test_invalid_token(self):
@@ -70,7 +70,7 @@ class TestVerifyToken:
 
     def test_expired_token(self):
         token = create_access_token(
-            {"sub": "user@example.com"},
+            {"sub": "user@catwiki.cn"},
             expires_delta=timedelta(seconds=-1),
         )
         assert verify_token(token) is False

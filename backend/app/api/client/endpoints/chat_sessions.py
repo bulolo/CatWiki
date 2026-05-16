@@ -167,11 +167,34 @@ async def get_tool_result(
 
 
 @router.delete(
+    "/sessions",
+    response_model=ApiResponse[dict],
+    operation_id="clearAllChatSessions",
+)
+async def clear_all_sessions(
+    member_id: str = Query(..., min_length=1, description="访客ID，仅删除该访客的会话"),
+    site_id: int | None = Query(None, description="站点ID，限定删除范围"),
+    service: ChatSessionService = Depends(get_chat_session_service),
+) -> ApiResponse[dict]:
+    """
+    清空指定访客的全部会话
+
+    删除该访客在指定站点（或全局）下的所有会话及 LangGraph checkpoints。
+    """
+    count = await service.delete_all_sessions_by_member(
+        member_id=member_id,
+        site_id=site_id,
+    )
+    return ApiResponse.ok(data={"message": "全部会话已删除", "deleted": count})
+
+
+@router.delete(
     "/sessions/{thread_id}", response_model=ApiResponse[dict], operation_id="deleteChatSession"
 )
 async def delete_session(
     thread_id: str,
     member_id: str = Query(..., min_length=1, description="访客ID，验证会话所有权"),
+    site_id: int | None = Query(None, description="站点ID，验证会话所属站点"),
     service: ChatSessionService = Depends(get_chat_session_service),
 ) -> ApiResponse[dict]:
     """
@@ -180,10 +203,14 @@ async def delete_session(
     删除会话元数据记录，并同步删除 LangGraph Checkpointer 中的消息历史。
     仅允许删除自己（member_id 匹配）的会话。
     """
-    session = await service.get_session_for_access(thread_id=thread_id, member_id=member_id)
+    session = await service.get_session_for_access(
+        thread_id=thread_id, member_id=member_id, site_id=site_id
+    )
 
     if not session:
         raise HTTPException(status_code=404, detail=_("session.not_found"))
 
-    await service.delete_session_by_thread_id(thread_id=thread_id, member_id=member_id)
+    await service.delete_session_by_thread_id(
+        thread_id=thread_id, member_id=member_id, site_id=site_id
+    )
     return ApiResponse.ok(data={"message": "会话已删除", "thread_id": thread_id})

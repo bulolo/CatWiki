@@ -12,7 +12,7 @@
 3. 如果数据库已损坏，使用 `make dev-clean` 重置
 
 默认管理员账号：
-- 📧 邮箱: `admin@example.com`
+- 📧 邮箱: `admin@catwiki.cn`
 - 🔑 密码: `admin123`
 
 ### Q: 如何修改默认服务端口？

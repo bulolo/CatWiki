@@ -189,6 +189,7 @@ export class AdminDocumentsService {
      * Import Document
      * 导入文档 (上传 -> 异步解析 -> 创建)
      * duplicate_strategy: "skip" = 已存在则跳过, "allow" = 不检测直接上传（默认）
+     * auto_vectorize: 解析完成后是否自动入向量库（链一个向量化任务）
      * @returns ApiResponse_Task_ Successful Response
      * @throws ApiError
      */

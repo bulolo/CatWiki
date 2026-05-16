@@ -247,6 +247,8 @@ async def get_current_user_with_tenant(
     if tenant_id:
         tenant = await crud_tenant.get(db, id=tenant_id)
         if tenant:
+            # 同时设置 slug，用于存储路径隔离（路径格式: {slug}/...）
+            set_current_tenant(tenant_id, slug=tenant.slug)
             is_demo = False
             try:
                 from app.ee.loader import get_ee_tenant_is_demo

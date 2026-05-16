@@ -56,8 +56,25 @@ export function useModelConfigLogic(type: RuntimeModelType, onSuccess?: () => vo
     )
   }
 
+  // api_key 看起来还是脱敏占位符 (含 ****)，说明用户没改密钥——
+  // 直接保存即可，后端 _merge_securely 会保留原值，无需再跑一次 test connection
+  // (否则会把脱敏值发去真连，触发 "Missing credentials" 假性失败)
+  const isApiKeyMasked = (key: unknown): boolean =>
+    typeof key === "string" && key.includes("****")
+
   const handleSaveWithCheck = async () => {
     if (mode === "platform") {
+      try {
+        await handleSave(type, { mode })
+        onSuccess?.()
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "Save failed")
+      }
+      return
+    }
+
+    // 用户未改动 api_key (仍是脱敏占位)，跳过测试，直接走保存
+    if (isApiKeyMasked(config.api_key)) {
       try {
         await handleSave(type, { mode })
         onSuccess?.()

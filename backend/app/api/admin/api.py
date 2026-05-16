@@ -17,6 +17,7 @@ from fastapi import APIRouter
 from app.api.admin.endpoints import (
     cache,
     collections,
+    data_sources,
     documents,
     files,
     health,
@@ -46,3 +47,4 @@ api_router.include_router(cache.router, prefix="/cache", tags=["admin-cache"])
 api_router.include_router(health.router, prefix="/health", tags=["admin-health"])
 api_router.include_router(tenants.router, prefix="/tenants", tags=["admin-tenants"])
 api_router.include_router(system_info.router, prefix="/system-info", tags=["admin-system-info"])
+api_router.include_router(data_sources.router, prefix="/data-sources", tags=["admin-data-sources"])

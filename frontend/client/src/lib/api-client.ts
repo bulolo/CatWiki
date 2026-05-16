@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { CatWikiClientSdk } from './sdk/CatWikiClientSdk'
-import { Models } from './sdk'
+import * as Models from './sdk/models'
 import { env } from './env'
 import { ApiError } from './sdk/core/ApiError'
 import type { ApiRequestOptions } from './sdk/core/ApiRequestOptions'
@@ -261,12 +261,23 @@ const chatSessionApi = {
   },
 
   /**
+   * 清空全部会话
+   */
+  clearAll: (memberId: string, siteId?: number | null) => {
+    return wrapResponse<{ deleted: number }>(client.clientChatSessions.clearAllChatSessions({
+      memberId,
+      siteId,
+    }))
+  },
+
+  /**
    * 删除会话
    */
-  delete: (threadId: string, memberId: string) => {
+  delete: (threadId: string, memberId: string, siteId?: number | null) => {
     return wrapResponse<unknown>(client.clientChatSessions.deleteChatSession({
       threadId,
       memberId,
+      siteId,
     }))
   },
 

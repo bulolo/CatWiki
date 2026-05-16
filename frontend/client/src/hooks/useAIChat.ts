@@ -380,7 +380,8 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       // 我们需要把 tool_calls 从第一个 assistant 消息移到最后一个 assistant 消息
 
       const formattedMessages: Message[] = []
-      let pendingToolCalls: Array<{ id: string; function?: { name?: string; arguments?: unknown }; name?: string }> = [] // 暂存工具调用信息
+      let pendingToolCalls: Array<{ id: string; function?: { name?: string; arguments?: unknown }; name?: string }> = []
+      let pendingContent: string[] = [] // 暂存工具调用前的思考内容（部分 LLM 同时输出 content + tool_calls）
       // 收集 tool results by tool_call_id
       const toolResultMap = new Map<string, string>()
       for (const m of historyMessages) {
@@ -400,10 +401,13 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
         // 处理 assistant 消息
         if (m.role === "assistant") {
-          // 如果是 content 为空但有 tool_calls 的消息，暂存 tool_calls
           const toolCallsArr = m.tool_calls as Array<{ id: string; function?: { name?: string; arguments?: unknown }; name?: string }> | undefined
-          if ((!m.content || m.content === "") && toolCallsArr?.length) {
+          // 只要有 tool_calls 就视为工具调用阶段，无论是否同时有 content
+          if (toolCallsArr?.length) {
             pendingToolCalls = [...pendingToolCalls, ...toolCallsArr]
+            if (m.content && (m.content as string).trim()) {
+              pendingContent.push(m.content as string)
+            }
             continue
           }
 
@@ -416,12 +420,14 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
             documentId: c.documentId as number | undefined,
           }))
 
-          // 如果有实际内容，创建消息并附加之前暂存的 tool_calls 和 引用
+          // 合并思考内容与最终回复内容
+          const finalContent = [...pendingContent, (m.content as string) || ""]
+            .filter(Boolean).join("\n\n")
+
           formattedMessages.push({
             id: (m.id as string) || `${targetThreadId}-${i}`,
             role: "assistant" as const,
-            content: (m.content as string) || "",
-            // 合并所有暂存的 tool_calls
+            content: finalContent,
             ...(pendingToolCalls.length > 0 ? {
               toolCalls: pendingToolCalls.map((tc) => ({
                 id: tc.id,
@@ -436,12 +442,11 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
                 result: toolResultMap.get(tc.id),
               }))
             } : {}),
-            // 附加该消息对应的引用来源
             ...(mappedSources.length > 0 ? { sources: mappedSources } : {}),
             additional_kwargs: m.additional_kwargs as Record<string, unknown> | undefined
           })
-          // 清空暂存
           pendingToolCalls = []
+          pendingContent = []
           continue
         }
 

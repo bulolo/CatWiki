@@ -68,6 +68,39 @@ export class ClientChatSessionsService {
         });
     }
     /**
+     * Clear All Sessions
+     * 清空指定访客的全部会话
+     *
+     * 删除该访客在指定站点（或全局）下的所有会话及 LangGraph checkpoints。
+     * @returns ApiResponse_dict_ Successful Response
+     * @throws ApiError
+     */
+    public clearAllChatSessions({
+        memberId,
+        siteId,
+    }: {
+        /**
+         * 访客ID，仅删除该访客的会话
+         */
+        memberId: string,
+        /**
+         * 站点ID，限定删除范围
+         */
+        siteId?: (number | null),
+    }): CancelablePromise<ApiResponse_dict_> {
+        return this.httpRequest.request({
+            method: 'DELETE',
+            url: '/v1/chat/sessions',
+            query: {
+                'member_id': memberId,
+                'site_id': siteId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
      * Get Session
      * 获取会话详情
      *
@@ -117,12 +150,17 @@ export class ClientChatSessionsService {
     public deleteChatSession({
         threadId,
         memberId,
+        siteId,
     }: {
         threadId: string,
         /**
          * 访客ID，验证会话所有权
          */
         memberId: string,
+        /**
+         * 站点ID，验证会话所属站点
+         */
+        siteId?: (number | null),
     }): CancelablePromise<ApiResponse_dict_> {
         return this.httpRequest.request({
             method: 'DELETE',
@@ -132,6 +170,7 @@ export class ClientChatSessionsService {
             },
             query: {
                 'member_id': memberId,
+                'site_id': siteId,
             },
             errors: {
                 422: `Validation Error`,

@@ -12,7 +12,7 @@
   },
   "admin": {
     "name": "CatWiki Admin",
-    "email": "admin@example.com",
+    "email": "admin@catwiki.cn",
     "password": "admin123",
     "role": "admin",
     "status": "active"

@@ -44,6 +44,9 @@ class ChatSession(BaseModel):
     # 用户关联（可选，支持匿名，支持 UUID/VisitorID）
     member_id = Column(String(255), nullable=True, index=True)
 
+    # 来源渠道（web_chat / wecom_kefu / wecom_app / wecom_smart / dingtalk_app / feishu_app）
+    source = Column(String(50), nullable=True, index=True, comment="来源渠道")
+
     # 会话标题（通常取首条用户消息截取）
     title = Column(String(255), nullable=True)
 

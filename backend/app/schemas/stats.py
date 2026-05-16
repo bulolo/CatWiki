@@ -33,6 +33,7 @@ class RecentSession(BaseModel):
     title: str
     created_at: datetime
     message_count: int
+    source: str | None = None
     model_config = {"from_attributes": True}
 
 

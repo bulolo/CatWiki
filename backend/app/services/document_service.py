@@ -164,6 +164,7 @@ class DocumentService:
         duplicate_strategy: str = "allow",
         generate_summary: bool = False,
         generate_tags: bool = False,
+        auto_vectorize: bool = False,
     ) -> Any:
         """导入文档（上传 -> 云端暂存 -> 解析 -> 创建）并返回 enriched dictionary"""
 
@@ -281,6 +282,7 @@ class DocumentService:
             "extract_tables": extract_tables,
             "generate_summary": generate_summary,
             "generate_tags": generate_tags,
+            "auto_vectorize": auto_vectorize,
         }
 
         task = await TaskService.enqueue_task(

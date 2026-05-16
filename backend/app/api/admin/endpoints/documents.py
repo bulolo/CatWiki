@@ -129,12 +129,14 @@ async def import_document(
     duplicate_strategy: str = Form("allow"),
     generate_summary: bool = Form(False),
     generate_tags: bool = Form(False),
+    auto_vectorize: bool = Form(False),
     service: DocumentService = Depends(get_document_service),
     current_user: User = Depends(get_current_user_with_tenant),
 ) -> ApiResponse[TaskSchema]:
     """
     导入文档 (上传 -> 异步解析 -> 创建)
     duplicate_strategy: "skip" = 已存在则跳过, "allow" = 不检测直接上传（默认）
+    auto_vectorize: 解析完成后是否自动入向量库（链一个向量化任务）
     """
     task = await service.import_document(
         file=file,
@@ -148,6 +150,7 @@ async def import_document(
         duplicate_strategy=duplicate_strategy,
         generate_summary=generate_summary,
         generate_tags=generate_tags,
+        auto_vectorize=auto_vectorize,
     )
     if task is None:
         return ApiResponse.ok(data=None, msg=_("doc.import_skipped"))

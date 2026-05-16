@@ -22,9 +22,11 @@ from app.models.site import Site  # noqa
 from app.models.chat_session import ChatSession  # noqa
 from app.models.chat_message import ChatMessage  # noqa
 from app.models.task import Task, TaskStatus as GlobalTaskStatus, TaskType  # noqa
+from app.models.data_source import DataSource  # noqa
 
 __all__ = [
     "BaseModel",
+    "DataSource",
     "Tenant",
     "Site",
     "Collection",

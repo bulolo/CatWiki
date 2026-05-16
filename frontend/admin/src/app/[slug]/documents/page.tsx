@@ -81,7 +81,7 @@ import {
   ChevronLeft,
   Brain,
   Loader2,
-  Sparkles
+  Sparkles,
 } from "lucide-react"
 import {
   useSiteData,
@@ -104,7 +104,7 @@ import {
 } from "@/hooks"
 
 import { env } from "@/lib/env"
-import { CollectionTree, VectorRetrieveModal, DocumentUploadDialog } from "@/components/features/documents"
+import { CollectionTree, VectorRetrieveModal, DocumentImportDialog } from "@/components/features/documents"
 import type { CollectionItem } from "@/types"
 import { getRoutePath, useRouteContext } from "@/lib/routing"
 import {
@@ -150,7 +150,8 @@ export default function DocumentsPage() {
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | undefined>()
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | undefined>()
   const [isCreateCollectionOpen, setIsCreateCollectionOpen] = useState(false)
-  const [isDocumentUploadOpen, setIsDocumentUploadOpen] = useState(false) // New state
+  const [isImportOpen, setIsImportOpen] = useState(false)
+  const [importDefaultTab, setImportDefaultTab] = useState<"upload" | "datasource">("upload")
   const [newCollectionName, setNewCollectionName] = useState("")
 
   const [targetParentId, setTargetParentId] = useState<number | undefined>()
@@ -754,14 +755,14 @@ export default function DocumentsPage() {
 
   return (
     <div className="space-y-4 md:space-y-6 flex flex-col h-full overflow-hidden">
-      <DocumentUploadDialog
-        open={isDocumentUploadOpen}
-        onOpenChange={setIsDocumentUploadOpen}
+      <DocumentImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
         siteId={siteId}
         collections={collections}
+        defaultTab={importDefaultTab}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: documentKeys.lists() })
-          // 如果是在特定合集下上传，也刷新合集树
           queryClient.invalidateQueries({ queryKey: ['collection-tree', siteId] })
         }}
       />
@@ -785,13 +786,14 @@ export default function DocumentsPage() {
               <span className="sm:hidden">{t("actions.batch").slice(0, 2)}</span>
             </Button>
           )}
-          {/* Import Button */}
+          {/* Import Button (统一入口：上传文件 / 从数据源) */}
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
               cancelBatchMode()
-              setIsDocumentUploadOpen(true)
+              setImportDefaultTab("upload")
+              setIsImportOpen(true)
             }}
             className="gap-1.5 md:gap-2 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
           >
@@ -802,8 +804,8 @@ export default function DocumentsPage() {
           <Link href={getRoutePath("/documents/new", routeContext.slug)}>
             <Button size="sm" className="flex items-center gap-1.5 md:gap-2">
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("actions.publish")}</span>
-              <span className="sm:hidden">{t("actions.publish").slice(0, 2)}</span>
+              <span className="hidden sm:inline">{t("actions.create")}</span>
+              <span className="sm:hidden">{t("actions.create").slice(0, 2)}</span>
             </Button>
           </Link>
           <Button

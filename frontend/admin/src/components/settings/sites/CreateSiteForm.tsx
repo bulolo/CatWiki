@@ -294,7 +294,7 @@ export function CreateSiteForm({ onCancel, onSuccess }: CreateSiteFormProps) {
                   <label className="text-sm font-medium text-slate-700">{t("adminEmail")} <span className="text-red-500">*</span></label>
                   <Input
                     className="h-9"
-                    placeholder="admin@example.com"
+                    placeholder="admin@catwiki.cn"
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
                   />

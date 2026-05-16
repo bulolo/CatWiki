@@ -500,6 +500,7 @@ class ChatService:
         model_name: str | None = None,
         temperature: float = 0.7,
         tenant_id: int | None = None,
+        source: str | None = None,
     ) -> tuple[ChatOpenAI, dict, dict, int | None]:
         """
         初始化聊天上下文：解析租户、构建 LLM、持久化首条消息并准备 Graph 状态。
@@ -574,6 +575,7 @@ class ChatService:
                 user_message=input_message,
                 member_id=user_id,
                 tenant_id=tenant_id,
+                source=source,
             )
             # 仅保存最后一条用户输入到我们的历史表
             await self.history_service.save_message(
@@ -608,6 +610,7 @@ class ChatService:
         emit_openai_tool_chunks: bool | None = None,
         suppress_intermediate_tool_text: bool | None = None,
         emit_tool_status_text: bool = False,
+        source: str | None = None,
     ) -> ChatCompletionResponse | StreamingResponse:
         """核心聊天处理逻辑 (ReAct Agent)"""
         from app.core.web.exceptions import CatWikiError
@@ -631,6 +634,7 @@ class ChatService:
                 model_name=request.model,
                 temperature=request.temperature or 0.7,
                 tenant_id=tenant_id_val,
+                source=source,
             )
             # 更新 request 中的 thread_id 以便后续逻辑一致
             current_thread_id = config["configurable"]["thread_id"]
@@ -777,6 +781,7 @@ class ChatService:
                 model_name=request.model,
                 temperature=request.temperature or 0.7,
                 tenant_id=tenant_id_val,
+                source="web_chat",
                 # TODO: max_output_tokens 待 llm_manager.get_model 支持后接入
             )
         except CatWikiError as e:

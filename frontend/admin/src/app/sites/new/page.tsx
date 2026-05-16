@@ -323,7 +323,7 @@ export default function NewSitePage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">{tf("adminEmail")} <span className="text-red-500">*</span></label>
                   <Input
-                    placeholder="admin@example.com"
+                    placeholder="admin@catwiki.cn"
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
                   />

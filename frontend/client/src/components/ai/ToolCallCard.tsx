@@ -33,6 +33,7 @@ interface ToolCallCardProps {
  */
 export function ToolCallCard({ toolCalls, className, onToolCallClick }: ToolCallCardProps) {
   const t = useTranslations("ToolCall")
+  const tResult = useTranslations("ToolResult")
   if (!toolCalls || toolCalls.length === 0) return null
 
   return (
@@ -52,6 +53,14 @@ export function ToolCallCard({ toolCalls, className, onToolCallClick }: ToolCall
         const isRunning = tc.status === "running" || tc.status === "pending"
         const isCompleted = tc.status === "completed"
         const isClickable = isCompleted && !!onToolCallClick
+
+        let chunkCount = 0
+        if (isCompleted && tc.result) {
+          try {
+            const parsed = JSON.parse(tc.result)
+            if (Array.isArray(parsed)) chunkCount = parsed.length
+          } catch { /* ignore */ }
+        }
 
         return (
           <div
@@ -76,6 +85,9 @@ export function ToolCallCard({ toolCalls, className, onToolCallClick }: ToolCall
               {displayName}
               {query && (
                 <span className="opacity-70 ml-1">&quot;{query.length > 15 ? query.slice(0, 15) + "..." : query}&quot;</span>
+              )}
+              {chunkCount > 0 && (
+                <span className="opacity-50 ml-1">· {chunkCount} {tResult("chunks")}</span>
               )}
             </span>
           </div>

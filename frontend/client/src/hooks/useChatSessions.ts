@@ -85,14 +85,26 @@ export function useChatSessions(options: UseChatSessionsOptions = {}) {
 
   const deleteSession = useCallback(async (threadId: string) => {
     try {
-      await api.chatSession.delete(threadId, getVisitorId())
+      await api.chatSession.delete(threadId, getVisitorId(), siteId)
       setSessions(prev => prev.filter(s => s.thread_id !== threadId))
       setTotal(prev => prev - 1)
     } catch (error) {
       console.error("Failed to delete chat session:", error)
       throw error
     }
-  }, [])
+  }, [siteId])
+
+  const clearAllSessions = useCallback(async () => {
+    try {
+      await api.chatSession.clearAll(getVisitorId(), siteId)
+      setSessions([])
+      setTotal(0)
+      setPage(1)
+    } catch (error) {
+      console.error("Failed to clear all chat sessions:", error)
+      throw error
+    }
+  }, [siteId])
 
   useEffect(() => {
     fetchSessions(1, false)
@@ -107,6 +119,7 @@ export function useChatSessions(options: UseChatSessionsOptions = {}) {
     fetchSessions,
     searchSessions,
     deleteSession,
+    clearAllSessions,
     refresh: useCallback(() => fetchSessions(1, false, keyword), [fetchSessions, keyword])
   }
 }

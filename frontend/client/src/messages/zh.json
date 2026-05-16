@@ -138,6 +138,8 @@
     "noMessage": "暂无消息内容",
     "deleteConfirm": "确定要删除这段对话吗？",
     "deleteAria": "删除会话",
+    "clearAll": "清空全部",
+    "clearAllConfirm": "确定要清空全部历史会话吗？此操作不可撤销。",
     "autoSave": "会话记录将自动保存"
   },
   "NotFoundState": {

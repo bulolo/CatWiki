@@ -22,6 +22,7 @@ import { ModelSettingsCard, ModelDetailCard } from "@/components/settings/models
 import { GlobalUsers } from "@/components/settings/users"
 import { GlobalSites, SiteSettings } from "@/components/settings/sites"
 import { DocProcessorSettings } from "./doc-processor/DocProcessorSettings"
+import { DataSourcesPage } from "@/components/features/data-sources/DataSourcesPage"
 import { type SettingsTabId } from "@/types/settings"
 import {
   Settings,
@@ -31,7 +32,8 @@ import {
   Loader2,
   X,
   ChevronLeft,
-  FileText
+  FileText,
+  Database
 } from "lucide-react"
 import { getUserInfo } from "@/lib/auth"
 import { UserRole } from "@/lib/api-client"
@@ -250,6 +252,20 @@ function SettingsContent() {
                   {t("docProcessor")}
                 </TabsTrigger>
               )}
+
+              {(isAdmin || isTenantAdmin) && (
+                <TabsTrigger
+                  value="data-sources"
+                  className={cn(
+                    "w-full justify-start px-3 py-2.5 h-auto text-sm font-medium rounded-lg transition-all",
+                    "data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-slate-200",
+                    "hover:bg-white/60 hover:text-slate-900 text-slate-500"
+                  )}
+                >
+                  <Database className="h-4 w-4 mr-3 opacity-70" />
+                  {t("dataSources")}
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Content Area */}
@@ -283,6 +299,10 @@ function SettingsContent() {
 
                 <TabsContent value="doc-processor" className="mt-0 h-full space-y-6 outline-none">
                   <DocProcessorSettings />
+                </TabsContent>
+
+                <TabsContent value="data-sources" className="mt-0 h-full space-y-6 outline-none">
+                  <DataSourcesPage />
                 </TabsContent>
               </div>
             </div>

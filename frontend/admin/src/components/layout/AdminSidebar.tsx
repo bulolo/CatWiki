@@ -62,7 +62,7 @@ const allMenuItems: MenuItem[] = [
     icon: FileText,
     children: [
       { title: "documentList", href: "/documents" },
-      { title: "publishDocument", href: "/documents/new" },
+      { title: "newDocument", href: "/documents/new" },
     ],
     roles: ["admin", "tenant_admin", "site_admin"] // 所有角色都可见
   },

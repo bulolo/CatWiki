@@ -21,7 +21,7 @@ from urllib.parse import quote_plus
 from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_VERSION = "1.1.2"
+DEFAULT_VERSION = "1.1.3"
 
 
 def get_project_version() -> str:
@@ -74,6 +74,11 @@ class Settings(BaseSettings):
     REDIS_URL: str | None = Field(default=None)
     REDIS_PREFIX: str = Field(default="catwiki:")
     CACHE_DEFAULT_TTL: int = Field(default=300, ge=1)
+
+    # Arq Worker 配置（向量化/导入解析共用同一队列）
+    WORKER_MAX_TRIES: int = Field(default=3, ge=1, description="任务失败重试次数")
+    WORKER_JOB_TIMEOUT: int = Field(default=600, ge=1, description="单任务超时秒数")
+    WORKER_MAX_JOBS: int = Field(default=10, ge=1, description="单进程并发任务数")
 
     @computed_field
     @property
@@ -163,7 +168,8 @@ class Settings(BaseSettings):
     AI_CHAT_API_BASE: str | None = Field(default=None)
     AI_CHAT_MODEL: str | None = Field(default=None)
     AI_CHAT_EXTRA_BODY: str | None = Field(
-        default=None, description="Chat 模型的额外 JSON 配置字符串"
+        default='{"chat_template_kwargs": {"enable_thinking": false}, "thinking": {"type": "disabled"}, "enable_thinking": false}',
+        description="Chat 模型的额外 JSON 配置字符串",
     )
 
     AI_EMBEDDING_API_KEY: str | None = Field(default=None)
@@ -275,7 +281,7 @@ class Settings(BaseSettings):
 
     # 文件上传配置
     UPLOAD_MAX_SIZE: int = Field(
-        default=100 * 1024 * 1024,  # 100MB
+        default=300 * 1024 * 1024,  # 300MB
         description="文件上传最大大小（字节）",
     )
     UPLOAD_ALLOWED_EXTENSIONS: str = Field(

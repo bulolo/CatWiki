@@ -4,13 +4,17 @@ FROM python:3.12-slim
 # 设置工作目录
 WORKDIR /app
 
-# 配置阿里云 apt 镜像源
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources || \
-    sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list || true
+# 配置阿里云 apt 镜像源（网络不通时自动回退到默认源）
+RUN (sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources || \
+    sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list || true) && \
+    apt-get update || \
+    (sed -i 's/mirrors.aliyun.com/deb.debian.org/g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+     sed -i 's/mirrors.aliyun.com/deb.debian.org/g' /etc/apt/sources.list 2>/dev/null || true) && \
+    apt-get update
 
 # 安装系统依赖
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get install -y --no-install-recommends \
     curl \
     postgresql-client \
     procps \

@@ -86,9 +86,6 @@ def transactional() -> Callable[[F], F]:
                 # 核心修复：如果 session 已经在事务中（例如 Depends 注入时的 read 操作导致 autobegin）
                 # 则不能再调用 .begin()，必须使用 .begin_nested()。
                 if db.in_transaction():
-                    logger.debug(
-                        f"⛓️ 发现已有事务 (可能来自前置读取)，开启嵌套/子事务: {func.__name__}"
-                    )
                     async with db.begin_nested():
                         result = await func(*args, **kwargs)
 
@@ -97,24 +94,18 @@ def transactional() -> Callable[[F], F]:
                     # 导致在 on_commit 回调中启动的 Worker 无法查到尚未提交的数据。
                     if is_entry:
                         await db.commit()
-                        logger.debug(f"🚀 顶层事务已通过显式 commit 提交: {func.__name__}")
                 else:
-                    logger.debug(f"🧱 开启新顶层事务: {func.__name__}")
                     async with db.begin():
                         result = await func(*args, **kwargs)
 
                 # 3. 处理提交后回调 (仅在最顶层入口执行)
-                if is_entry:
-                    if "after_commit" in db.info:
-                        callbacks = db.info.pop("after_commit")
-                        logger.debug(f"🚀 事务已提交，开始执行 {len(callbacks)} 个回调...")
-                        for cb, cb_args, cb_kwargs in callbacks:
-                            try:
-                                await cb(*cb_args, **cb_kwargs)
-                            except Exception as e:
-                                logger.error(f"❌ after_commit 回调执行失败: {e}", exc_info=True)
-                    else:
-                        logger.debug(f"✅ 事务已提交，无待执行回调: {func.__name__}")
+                if is_entry and "after_commit" in db.info:
+                    callbacks = db.info.pop("after_commit")
+                    for cb, cb_args, cb_kwargs in callbacks:
+                        try:
+                            await cb(*cb_args, **cb_kwargs)
+                        except Exception as e:
+                            logger.error(f"❌ after_commit 回调执行失败: {e}", exc_info=True)
 
                 return result
 

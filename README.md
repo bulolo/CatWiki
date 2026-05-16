@@ -6,9 +6,9 @@
 
 企业级全栈 AI 知识库平台，集成了现代化的内容管理、深度 AI 智能问答与极致的用户交互体验。
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.136+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-16.1+-000000?logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9+-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18+-336791?logo=postgresql)](https://www.postgresql.org/)
 
 
@@ -32,6 +32,12 @@
 ---
 
 ## 🚀 最近更新
+
+### 2026-05-17 🗂️ S3 数据源与导入流程升级 (v1.1.3)
+- 🗂️ **S3 数据源管理**：系统设置新增 S3 数据源模块（系统内置 RustFS / 外部 S3），可在 admin 内直接浏览目录、上传/删除文件，无需另开对象存储控制台。
+- 📥 **文档导入流程增强**：导入对话框新增「从 S3 数据源」Tab；新增「自动入向量库」开关解析完即自动学习；`.md` / `.txt` 等纯文本以原文直接入库，跳过外部解析器。
+- 🔒 **多租户存储路径隔离**：企业版下文件路径前缀使用 tenant slug（如 `acme-corp/uploads/...`），不再暴露内部数字 ID。
+- 🔍 **聊天审计增强**：会话记录接入来源（网页 / 钉钉 / 飞书 / 企微 / API），支持按来源筛选；admin 审计 UI 与 client 视觉对齐。
 
 ### 2026-05-09 🔍 Elasticsearch 混合检索 (v1.1.0)
 
@@ -62,16 +68,14 @@
 - ⚙️ **ReAct 循环架构**: AI 可自主调用知识库进行多轮检索，持续优化答案质量。
 - 🎨 **工具调用展示**: 前端 AI 对话支持展示完整的多轮检索历程，用户可以看到所有搜索尝试。
 
-### 2026-02-05 🎨 视觉标准化与品牌优化
-- 🚀 **全新品牌域名启用**: 正式启用 [catwiki.ai](https://catwiki.ai) 官方网站与全线品牌域名。
-- 🚀 **文档图片公开化**: 文档解析过程自动提取图片并上传至对象存储，生成永久公开访问链接。
-- 🖼️ **AI 图片回复**: 知识库问答支持图文混排，AI 可直接引用文档中的图片进行回答。
-
-### 2026-02-04 📄 文档解析引擎集成
+### 2026-02-05 📄 文档解析引擎集成与品牌升级
 - 🚀 **MinerU 集成**: 深度对接 MinerU (Magic-PDF) 高质量解析器，支持复杂版面分析和公式提取。
 - 📦 **Docling 集成**: 对接 IBM Docling 解析引擎，提供轻量级高性能文档转换。
 - 🔍 **PaddleOCR 集成**: 深度对接百度 PaddleOCR 引擎，提供业界领先的 OCR 识别精度，尤其在多语言和复杂场景下表现卓越。
 - 🔧 **OCR 动态配置**: 管理后台支持按解析器配置开启/关闭 OCR 识别。
+- 🚀 **文档图片公开化**: 文档解析过程自动提取图片并上传至对象存储，生成永久公开访问链接。
+- 🖼️ **AI 图片回复**: 知识库问答支持图文混排，AI 可直接引用文档中的图片进行回答。
+- 🚀 **全新品牌域名启用**: 正式启用 [catwiki.ai](https://catwiki.ai) 官方网站与全线品牌域名。
 
 > [!TIP]
 > **查看完整更新日志**: 访问 [CatWiki 更新日志](https://docs.catwiki.cn/about/project/changelog) 了解完整版本历史。
@@ -176,7 +180,7 @@
 
 ### 前端技术栈
 - **框架**: Next.js 16 (App Router)
-- **语言**: TypeScript 5.3+
+- **语言**: TypeScript 5.9+
 - **样式**: Tailwind CSS
 - **组件库**: shadcn/ui (基于 Radix UI)
 - **状态管理**: React Hooks
@@ -266,7 +270,7 @@ make dev-up
 > [!WARNING]
 > **关于 `make dev-init`**: 它会重新从模板复制 `backend/.env` 文件，这会覆盖您已有的配置。如果是后续启动，请直接跳过此步使用 `make dev-up`。
 访问：
-- 🎯 **管理后台**: http://localhost:8001 (admin@example.com / admin123)
+- 🎯 **管理后台**: http://localhost:8001 (admin@catwiki.cn / admin123)
 - 💬 **客户端**: http://localhost:8002/default/health
 - 📚 **文档站点**: http://localhost:8003
 - 🛡️ **API 文档**: http://localhost:3000/docs
@@ -354,7 +358,7 @@ make prod-up
 项目采用 **独立初始化容器** (`backend-init`) 模式：
 - **自我检测**: 启动时自动检查数据库版本。
 - **自动迁移**: 自动执行 Alembic 脚本。
-- **预置数据**: 自动创建管理员 (`admin@example.com` / `admin123`) 及医学演示站点。
+- **预置数据**: 自动创建管理员 (`admin@catwiki.cn` / `admin123`) 及医学演示站点。
 
 ### 自动 SDK 同步
 后端 API 变更后，只需一行命令即可更新前端 SDK：

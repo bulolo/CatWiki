@@ -97,6 +97,7 @@ export class EeAdminSitesService {
         siteId,
         keyword,
         searchField = 'all',
+        source,
         page = 1,
         size = 20,
     }: {
@@ -109,6 +110,10 @@ export class EeAdminSitesService {
          * 搜索范围：all=全部，text=标题或最后消息，thread_id=会话ID，member_id=访客标识
          */
         searchField?: 'all' | 'text' | 'thread_id' | 'member_id',
+        /**
+         * 来源渠道过滤：web_chat/wecom_kefu/wecom_app/wecom_smart/dingtalk_app/feishu_app
+         */
+        source?: (string | null),
         page?: number,
         size?: number,
     }): CancelablePromise<ApiResponse_ChatSessionListResponse_> {
@@ -121,6 +126,7 @@ export class EeAdminSitesService {
             query: {
                 'keyword': keyword,
                 'search_field': searchField,
+                'source': source,
                 'page': page,
                 'size': size,
             },

@@ -6,9 +6,9 @@
 
 **Enterprise-grade full-stack AI knowledge base platform, integrating modern content management, deep AI-powered Q&A, and an ultimate user interaction experience.**
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.136+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-16.1+-000000?logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9+-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18+-336791?logo=postgresql)](https://www.postgresql.org/)
 
 
@@ -27,6 +27,12 @@ English | [简体中文](./README.md)
 </div>
 
 ## 🚀 Recent Updates
+
+### 2026-05-17 🗂️ S3 Data Sources & Import Flow Upgrade (v1.1.3)
+- 🗂️ **S3 Data Source Management**: New "S3 Data Sources" module in System Settings (built-in RustFS or external S3); browse directories, upload and delete files directly inside admin, no need to open the object storage console.
+- 📥 **Document Import Enhancements**: The import dialog adds a "From S3 Data Source" tab; new **Auto-Vectorize** toggle chains a vectorization task right after parsing so you skip the manual "start learning" step; `.md` / `.txt` and similar plain-text files are ingested as-is, bypassing external parsers.
+- 🔒 **Tenant-Aware Storage Path**: In Enterprise Edition the storage prefix now uses the **tenant slug** (e.g. `acme-corp/uploads/...`) instead of the numeric tenant ID — object paths and signed URLs no longer leak the internal ID.
+- 🔍 **Chat Audit Enhancements**: Sessions now record their **source channel** (web / DingTalk / Feishu / WeCom / API); the audit list shows a source badge with filter, and admin audit UI aligns visually with the client AI chat.
 
 ### 2026-05-09 🔍 Elasticsearch Hybrid Search (v1.1.0)
 
@@ -57,16 +63,14 @@ English | [简体中文](./README.md)
 - ⚙️ **ReAct Loop Architecture**: AI can autonomously perform multi-turn knowledge base retrieval, continuously refining answer quality.
 - 🎨 **Tool Call Display**: Frontend AI chat now displays the complete multi-turn retrieval history, showing users all search attempts.
 
-### 2026-02-05 🎨 Branding & Visual Standardization
-- 🚀 **Official Brand Domain**: Launched [catwiki.ai](https://catwiki.ai) official website and brand domain family.
-- 🚀 **Public Document Images**: Automatically extract images during document parsing, upload to object storage, and generate public access links.
-- 🖼️ **AI Image Responses**: Knowledge base Q&A supports text-image mixing, allowing AI to directly cite images from documents in answers.
-
-### 2026-02-04 📄 Document Parsing Engine Integration
+### 2026-02-05 📄 Document Parsing & Branding Upgrade
 - 🚀 **MinerU Integration**: Deep integration with MinerU (Magic-PDF) high-quality parser.
 - 📦 **Docling Integration**: Integrated IBM Docling parsing engine.
 - 🔍 **PaddleOCR Integration**: Deeply integrated Baidu's PaddleOCR engine, providing industry-leading recognition accuracy, especially for multi-language and complex documents.
 - 🔧 **Dynamic OCR Config**: Admin dashboard supports enabling/disabling OCR recognition per parser.
+- 🚀 **Public Document Images**: Automatically extract images during document parsing, upload to object storage, and generate public access links.
+- 🖼️ **AI Image Responses**: Knowledge base Q&A supports text-image mixing, allowing AI to directly cite images from documents in answers.
+- 🚀 **Official Brand Domain**: Launched [catwiki.ai](https://catwiki.ai) official website and brand domain family.
 
 > [!TIP]
 > **View Full Changelog**: Visit [CatWiki Changelog](https://docs.catwiki.cn/about/project/changelog) for the complete version history.
@@ -171,7 +175,7 @@ English | [简体中文](./README.md)
 
 ### Frontend Stack
 - **Framework**: Next.js 16 (App Router)
-- **Language**: TypeScript 5.3+
+- **Language**: TypeScript 5.9+
 - **Styling**: Tailwind CSS
 - **Component Library**: shadcn/ui (based on Radix UI)
 - **State Management**: React Hooks
@@ -261,7 +265,7 @@ make dev-up
 > [!WARNING]
 > **About `make dev-init`**: It will recopy `backend/.env` file from template, which will overwrite your existing configuration. For subsequent starts, skip this step and use `make dev-up` directly.
 Visit:
-- 🎯 **Admin Dashboard**: http://localhost:8001 (admin@example.com / admin123)
+- 🎯 **Admin Dashboard**: http://localhost:8001 (admin@catwiki.cn / admin123)
 - 💬 **Client Side**: http://localhost:8002/default/health
 - 📚 **Docs Site**: http://localhost:8003
 - 🛡️ **API Docs**: http://localhost:3000/docs
@@ -331,7 +335,7 @@ The root directory provides a `Makefile` to simplify complex Docker maintenance 
 The project uses a **Standalone Init Container** (`backend-init`) pattern:
 - **Self-detection**: Automatically checks database version on startup.
 - **Auto-migration**: Automatically executes Alembic scripts.
-- **Pre-set Data**: Automatically creates admin account (`admin@example.com` / `admin123`) and medical demo site.
+- **Pre-set Data**: Automatically creates admin account (`admin@catwiki.cn` / `admin123`) and medical demo site.
 
 ### Automatic SDK Sync
 After backend API changes, update the frontend SDK with a single command:

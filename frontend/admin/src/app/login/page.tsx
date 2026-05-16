@@ -179,7 +179,7 @@ export default function LoginPage() {
                 </div>
                 <div className="text-xs">
                   <p className="text-muted-foreground">{t("demoAccount")}</p>
-                  <p className="text-foreground font-mono mt-0.5">admin@example.com / admin123</p>
+                  <p className="text-foreground font-mono mt-0.5">admin@catwiki.cn / admin123</p>
                 </div>
               </div>
             </div>

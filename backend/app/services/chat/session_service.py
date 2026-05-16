@@ -48,6 +48,7 @@ class ChatSessionService:
         user_message: str,
         member_id: str | None = None,
         tenant_id: int | None = None,
+        source: str | None = None,
         _retry_count: int = 0,
     ) -> ChatSession:
         """创建或更新会话记录
@@ -92,6 +93,7 @@ class ChatSessionService:
                     last_message_role="user",
                     message_count=1,
                     tenant_id=tenant_id,
+                    source=source,
                 )
                 self.db.add(session)
                 try:
@@ -174,6 +176,7 @@ class ChatSessionService:
         member_id: str | None = None,
         keyword: str | None = None,
         search_field: Literal["all", "text", "thread_id", "member_id"] = "all",
+        source: str | None = None,
         page: int = 1,
         size: int = 20,
         is_pager: int = 1,
@@ -212,6 +215,8 @@ class ChatSessionService:
             count_query = count_query.where(ChatSession.site_id == site_id)
         if member_id is not None:
             count_query = count_query.where(ChatSession.member_id == member_id)
+        if source is not None:
+            count_query = count_query.where(ChatSession.source == source)
         if keyword:
             count_query = count_query.where(build_keyword_filter(keyword))
 
@@ -226,6 +231,8 @@ class ChatSessionService:
             query = query.where(ChatSession.site_id == site_id)
         if member_id is not None:
             query = query.where(ChatSession.member_id == member_id)
+        if source is not None:
+            query = query.where(ChatSession.source == source)
         if keyword:
             query = query.where(build_keyword_filter(keyword))
 
@@ -343,6 +350,43 @@ class ChatSessionService:
             return True
 
         return False
+
+    async def delete_all_sessions_by_member(
+        self,
+        member_id: str,
+        site_id: int | None = None,
+    ) -> int:
+        """删除指定访客的全部会话（含 LangGraph checkpoints）
+
+        Returns:
+            实际删除的会话数量
+        """
+        query = select(ChatSession).where(ChatSession.member_id == member_id)
+        if site_id is not None:
+            query = query.where(ChatSession.site_id == site_id)
+
+        result = await self.db.execute(query)
+        sessions = result.scalars().all()
+
+        count = 0
+        for session in sessions:
+            await self.db.delete(session)
+            try:
+                from sqlalchemy import text
+
+                for table in ["checkpoints", "checkpoint_blobs", "checkpoint_writes"]:
+                    await self.db.execute(
+                        text(f"DELETE FROM {table} WHERE thread_id = :tid"),
+                        {"tid": session.thread_id},
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"⚠️ [ChatSession] Failed to delete checkpointer data for {session.thread_id}: {e}"
+                )
+            count += 1
+
+        logger.info(f"🗑️ [ChatSession] Bulk deleted {count} sessions for member={member_id}")
+        return count
 
     async def get_stats(
         self,
@@ -473,6 +517,7 @@ class ChatSessionService:
                 "title": s.title,
                 "created_at": s.created_at,
                 "message_count": s.message_count,
+                "source": s.source,
             }
             for s in sessions
         ]
