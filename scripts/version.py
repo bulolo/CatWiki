@@ -114,25 +114,6 @@ def set_version(version):
             ''
         )
 
-    # 4.5 SDK Version (generated files / core config)
-    sdk_files = [
-        'frontend/admin/src/lib/sdk/CatWikiAdminSdk.ts',
-        'frontend/admin/src/lib/sdk/core/OpenAPI.ts',
-        'frontend/client/src/lib/sdk/CatWikiClientSdk.ts',
-        'frontend/client/src/lib/sdk/core/OpenAPI.ts'
-    ]
-    for sdk_path in sdk_files:
-        update_file(
-            sdk_path,
-            r"VERSION: config\?\.VERSION \?\? '[^']+'",
-            f"VERSION: config?.VERSION ?? '{v_num}'"
-        )
-        update_file(
-            sdk_path,
-            r"VERSION: '[^']+'",
-            f"VERSION: '{v_num}'"
-        )
-
     # 5. Helm Chart.yaml files
     chart_files = [
         'deploy/helm/Chart.yaml',

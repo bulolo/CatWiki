@@ -20,7 +20,6 @@ from app.core.infra.config import (
     AI_CHAT_CONFIG_KEY,
     AI_EMBEDDING_CONFIG_KEY,
     AI_RERANK_CONFIG_KEY,
-    AI_VL_CONFIG_KEY,
     DOC_PROCESSOR_CONFIG_KEY,
     settings,
 )
@@ -94,13 +93,6 @@ async def sync_ai_config_to_db():
                 "base_url": settings.AI_RERANK_API_BASE or "",
                 "mode": "custom",
             },
-            "vl": {
-                "provider": "openai-compatible",
-                "model": settings.AI_VL_MODEL or "",
-                "api_key": settings.AI_VL_API_KEY or "",
-                "base_url": settings.AI_VL_API_BASE or "",
-                "mode": "custom",
-            },
         }
 
         # 检查是否至少配置了一个关键变量（如 Chat API Key）
@@ -109,7 +101,6 @@ async def sync_ai_config_to_db():
                 settings.AI_CHAT_API_KEY,
                 settings.AI_EMBEDDING_API_KEY,
                 settings.AI_RERANK_API_KEY,
-                settings.AI_VL_API_KEY,
             ]
         ):
             logger.info("📡 [跳过] 未检测到 AI 相关的环境变量配置。")
@@ -118,12 +109,11 @@ async def sync_ai_config_to_db():
         # 3. 写入数据库 (物理隔离 Key)
 
         try:
-            # 分别写入 4 个 Key
+            # 分别写入 3 个 Key
             configs_to_sync = {
                 AI_CHAT_CONFIG_KEY: ai_config["chat"],
                 AI_EMBEDDING_CONFIG_KEY: ai_config["embedding"],
                 AI_RERANK_CONFIG_KEY: ai_config["rerank"],
-                AI_VL_CONFIG_KEY: ai_config["vl"],
             }
 
             for key, value in configs_to_sync.items():

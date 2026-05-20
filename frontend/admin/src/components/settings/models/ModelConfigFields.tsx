@@ -18,10 +18,11 @@ import { useTranslations } from "next-intl"
 import { Eye } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import type { PrimitiveConfigValue } from "@/contexts/SettingsContext"
 import { useState } from "react"
 
 interface ModelConfigFieldsProps {
-  type: "chat" | "embedding" | "rerank" | "vl"
+  type: "chat" | "embedding" | "rerank"
   config: {
     model: string
     api_key: string
@@ -30,7 +31,7 @@ interface ModelConfigFieldsProps {
     is_vision?: boolean
     extra_body?: Record<string, any> | null
   }
-  onUpdate: (type: "chat" | "embedding" | "rerank" | "vl", field: string, value: any) => void
+  onUpdate: (type: "chat" | "embedding" | "rerank", field: string, value: PrimitiveConfigValue) => void
 }
 
 export function ModelConfigFields({ type, config, onUpdate }: ModelConfigFieldsProps) {

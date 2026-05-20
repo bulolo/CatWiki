@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { Lock, Eye, EyeOff, Loader2 } from "lucide-react"
-import { api } from "@/lib/api-client"
+import { verifySitePassword } from '@/lib/sdk/ee-client-sites'
 
 interface SitePasswordGateProps {
   siteSlug: string
@@ -27,9 +27,13 @@ export function SitePasswordGate({ siteSlug, siteName, hasPassword, onVerified }
     setError("")
 
     try {
-      const result = await api.siteAccess.verifyPassword(siteSlug, password)
-      sessionStorage.setItem(`site_access_token:${siteSlug}`, result.access_token)
-      onVerified()
+      const result = await verifySitePassword(siteSlug, { password })
+      if (result?.access_token) {
+        sessionStorage.setItem(`site_access_token:${siteSlug}`, result.access_token)
+        onVerified()
+      } else {
+        setError(t("passwordError"))
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("passwordError"))
     } finally {

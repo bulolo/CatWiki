@@ -17,12 +17,12 @@
 import { useEffect, useState, useRef } from "react"
 import { useParams } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { api } from "@/lib/api-client"
+import { listClientSites } from '@/lib/sdk/client-sites'
 import { logError } from "@/lib/error-handler"
 import { cn } from "@/lib/utils"
 import { PageLoading, NotFoundState, Input } from "@/components/ui"
 import { AIChatLanding } from "@/components/ai"
-import type { ClientSite } from "@/lib/api-client"
+import type { ClientSite } from '@/lib/sdk/sdk.schemas'
 import { Search, BookOpen, ChevronDown, Github, Star } from "lucide-react"
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher"
 
@@ -39,29 +39,30 @@ export default function TenantPortalPage() {
   const [isSiteSelectorOpen, setIsSiteSelectorOpen] = useState(false)
   const [keyword, setKeyword] = useState("")
   const selectorRef = useRef<HTMLDivElement>(null)
-  const [error, setError] = useState<any>(null)
+  const [error, setError] = useState<unknown>(null)
 
   useEffect(() => {
     const loadSites = async () => {
       try {
         setLoading(true)
         setError(null)
-        const response = await api.site.list({
+        const response = await listClientSites({
           page: 1,
           size: 100,
-          tenantSlug: tenantSlug as string,
-          keyword: keyword || undefined
+          tenant_slug: tenantSlug as string,
+          keyword: keyword || undefined,
         })
-        setSites(response.list || [])
+        const list = response?.list ?? []
+        setSites(list)
 
         // 如果没有站点且不是加载中，也视为租户配置问题或不存在
-        if (!keyword && (!response.list || response.list.length === 0)) {
+        if (!keyword && list.length === 0) {
           setError({ status: 404, message: t("notFound.title") })
-        } else if (!keyword && response.list && response.list.length > 0) {
+        } else if (!keyword && list.length > 0) {
           setHasSites(true)
-          setBaseSites(response.list)
+          setBaseSites(list)
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         logError(t("loading"), err)
         setError(err)
       } finally {

@@ -442,8 +442,6 @@
     "embeddingDesc": "用于将文档转换为向量，实现 AI 语义检索。",
     "rerankTitle": "重排序模型",
     "rerankDesc": "在检索完成后对结果进行精排，大幅提升回答准确度。",
-    "vlTitle": "视觉模型",
-    "vlDesc": "支持图片理解和多模态交互的能力。",
     "selectModel": "选择要配置的模型",
     "selectModelDesc": "点击下方卡片进入对应模型的详细配置页面",
     "recommended": "推荐开启",

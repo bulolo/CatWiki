@@ -10,7 +10,6 @@ from app.core.infra.config import (
     AI_CHAT_CONFIG_KEY,
     AI_EMBEDDING_CONFIG_KEY,
     AI_RERANK_CONFIG_KEY,
-    AI_VL_CONFIG_KEY,
 )
 from app.crud.system_config import crud_system_config
 from app.crud.tenant import crud_tenant
@@ -37,7 +36,7 @@ async def setup_demo_mode():
             if tenant:
                 try:
                     from app.ee.schemas.tenant_ee import TenantEEUpdate
-                    from app.ee.services.tenant_service import tenant_service
+                    from app.ee.services.tenant import tenant_service
 
                     update_data = {
                         "plan": "demo",
@@ -60,7 +59,6 @@ async def setup_demo_mode():
                 "chat": AI_CHAT_CONFIG_KEY,
                 "embedding": AI_EMBEDDING_CONFIG_KEY,
                 "rerank": AI_RERANK_CONFIG_KEY,
-                "vl": AI_VL_CONFIG_KEY,
             }
 
             for section, key in ai_keys.items():

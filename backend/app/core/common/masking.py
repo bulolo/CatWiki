@@ -51,7 +51,7 @@ def mask_bot_config_inplace(config_value: dict) -> None:
         if "secret" in wecom:
             wecom["secret"] = mask_variable(wecom["secret"])
 
-    # 3. Feishu Bot
+    # 2. Feishu Bot
     feishu = config_value.get("feishu_app", {})
     if feishu:
         if "app_id" in feishu:
@@ -59,7 +59,7 @@ def mask_bot_config_inplace(config_value: dict) -> None:
         if "app_secret" in feishu:
             feishu["app_secret"] = mask_variable(feishu["app_secret"])
 
-    # 4. DingTalk Bot
+    # 3. DingTalk Bot
     dingtalk = config_value.get("dingtalk_app", {})
     if dingtalk:
         if "client_id" in dingtalk:
@@ -67,7 +67,7 @@ def mask_bot_config_inplace(config_value: dict) -> None:
         if "client_secret" in dingtalk:
             dingtalk["client_secret"] = mask_variable(dingtalk["client_secret"])
 
-    # 5. WeCom Customer Service
+    # 4. WeCom Customer Service
     wecom_kefu = config_value.get("wecom_kefu", {})
     if wecom_kefu:
         if "corp_id" in wecom_kefu:
@@ -79,7 +79,7 @@ def mask_bot_config_inplace(config_value: dict) -> None:
         if "encoding_aes_key" in wecom_kefu:
             wecom_kefu["encoding_aes_key"] = mask_variable(wecom_kefu["encoding_aes_key"])
 
-    # 6. WeCom App
+    # 5. WeCom App
     wecom_app = config_value.get("wecom_app", {})
     if wecom_app:
         if "corp_id" in wecom_app:

@@ -16,7 +16,7 @@
 
 import { useState, useCallback, useRef } from "react"
 import { env } from "@/lib/env"
-import { api } from "@/lib/api-client"
+import { getChatSessionMessages } from '@/lib/sdk/client-chat-sessions'
 import { useTranslations } from "next-intl"
 import type { Message } from "@/types"
 import { getVisitorId } from "@/lib/visitor"
@@ -368,11 +368,11 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
     setIsLoading(true)
     try {
-      const { messages: historyMessages } = await api.chatSession.getMessages(
-        targetThreadId,
-        getVisitorId(),
-        selectedSiteId,
-      )
+      const session = await getChatSessionMessages(targetThreadId, {
+        member_id: getVisitorId(),
+        site_id: selectedSiteId ?? undefined,
+      })
+      const historyMessages = session?.messages ?? []
 
       // 转换后端消息格式到前端格式
       // 需要将工具调用信息合并到最终的 AI 回复消息上
@@ -384,15 +384,14 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       let pendingContent: string[] = [] // 暂存工具调用前的思考内容（部分 LLM 同时输出 content + tool_calls）
       // 收集 tool results by tool_call_id
       const toolResultMap = new Map<string, string>()
-      for (const m of historyMessages) {
-        const msg = m as Record<string, unknown>
+      for (const msg of historyMessages) {
         if (msg.role === "tool" && msg.tool_call_id && msg.content) {
-          toolResultMap.set(msg.tool_call_id as string, msg.content as string)
+          toolResultMap.set(msg.tool_call_id, msg.content)
         }
       }
 
       for (let i = 0; i < historyMessages.length; i++) {
-        const m = historyMessages[i] as Record<string, unknown>
+        const m = historyMessages[i]
 
         // 跳过 tool 角色的消息（已收集到 toolResultMap）
         if (m.role === "tool") {
@@ -401,18 +400,25 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
         // 处理 assistant 消息
         if (m.role === "assistant") {
-          const toolCallsArr = m.tool_calls as Array<{ id: string; function?: { name?: string; arguments?: unknown }; name?: string }> | undefined
+          const toolCallsArr = m.tool_calls
           // 只要有 tool_calls 就视为工具调用阶段，无论是否同时有 content
           if (toolCallsArr?.length) {
-            pendingToolCalls = [...pendingToolCalls, ...toolCallsArr]
-            if (m.content && (m.content as string).trim()) {
-              pendingContent.push(m.content as string)
+            pendingToolCalls = [
+              ...pendingToolCalls,
+              ...toolCallsArr.map((tc) => tc as {
+                id: string
+                function?: { name?: string; arguments?: unknown }
+                name?: string
+              }),
+            ]
+            if (m.content && m.content.trim()) {
+              pendingContent.push(m.content)
             }
             continue
           }
 
           // 提取消息自带的引用
-          const backendSources = (m.sources || []) as Array<Record<string, unknown>>
+          const backendSources = m.sources ?? []
           const mappedSources = backendSources.map((c) => ({
             id: String(c.id ?? ''),
             title: c.title as string,
@@ -421,11 +427,11 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
           }))
 
           // 合并思考内容与最终回复内容
-          const finalContent = [...pendingContent, (m.content as string) || ""]
+          const finalContent = [...pendingContent, m.content || ""]
             .filter(Boolean).join("\n\n")
 
           formattedMessages.push({
-            id: (m.id as string) || `${targetThreadId}-${i}`,
+            id: m.id || `${targetThreadId}-${i}`,
             role: "assistant" as const,
             content: finalContent,
             ...(pendingToolCalls.length > 0 ? {
@@ -453,9 +459,9 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
         // 处理 user 消息
         if (m.role === "user") {
           formattedMessages.push({
-            id: (m.id as string) || `${targetThreadId}-${i}`,
+            id: m.id || `${targetThreadId}-${i}`,
             role: "user" as const,
-            content: (m.content as string) || "",
+            content: m.content || "",
           })
         }
       }

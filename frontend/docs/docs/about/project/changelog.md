@@ -2,6 +2,159 @@
 
 CatWiki 始终保持快速演进。在这里，您可以了解到项目的每一个重大改进。
 
+## 2026-05-19 ⚡ 全面打磨:对话更快、架构更清晰 (v1.1.4)
+
+这一版没有新增重大功能,核心是**全面打磨内功**——后端架构、性能、可观测性、前端 SDK 一起升级。改动涉及 ~30 个 commit,几个用户能直接感受到的:
+
+- **对话开始更快**:每次对话的初始化阶段从 271ms 降到 51ms
+- **多人并发不再串行**:之前一个对话独占一根数据库连接 10-60 秒,现在毫秒级
+- **长对话载入更顺**:50 轮以上的会话载入由 O(n²) 改为 O(n)
+- **知识库批量入库快好几倍**:向量化并行了(1000 chunks 入库时间 -60~70%)
+- **RAG 故障坦诚**:知识库挂掉时不会"装作没查到",而是明确告诉用户系统有问题
+- **改 AI 配置立刻生效**:不用再等缓存过期或重启
+- **删除独立 VL 视觉模型配置**:现代 chat 模型本身就支持多模态
+
+### ⚡ 性能改进
+
+**AI 配置读取优化(对话热路径最大头)**
+
+一次对话以前要反复读 DB 拿 AI 配置(chat / embedding / rerank 三种模型的 api_key / base_url / model 等),每个请求里光是**对 PostgreSQL 的配置查询就有 8-12 次**。这一版从 4 个层面协同优化,**warm 状态下 AI 配置不再触达 PostgreSQL**——所有命中都从缓存返回(默认走 Redis 亚毫秒响应,未配置 `REDIS_URL` 时自动回退到进程内存):
+
+- **进程级 30 秒缓存**:三种 AI 模型的配置加 30s TTL 缓存。后续请求只要在 30 秒内,直接从内存返回。
+- **三家路径统一**:以前 chat / embedding / rerank 各走各的配置路径(chat 直查、embedding 自建 60 秒缓存、rerank 自己实现),现在统一为「外层 60 秒 + 内层 30 秒」两层结构。Embedding 删除自建的重复缓存,消除"两份缓存不一致"风险。
+- **Rerank 返回值带元信息**:以前对话每跑完 rerank,RAG service 还要**再单独查一次 rerank 配置**,只为日志里写一行 model 名。现在 rerank 直接把 model/hash 跟着结果返一份,RAG service 每次对话省下这第 3 次配置查询。
+- **高并发防"惊群"**:冷启动 / TTL 过期那一瞬间,如果 50 个请求同时到达同一份配置,以前会一起冲 DB。现在加了"同 key 只让 1 个请求真去 fetch,其他 49 个等结果"的机制(内存用 asyncio 锁,Redis 用分布式锁带 30 秒自释放)。
+
+**附带收益**:
+- 坏配置不会被缓存——错误的配置在校验阶段就被拒,缓存层只会装已验证过的数据。后续请求一定拿到的是健康配置。
+- 管理后台改了模型配置**立刻生效**:配置更新触发缓存级联失效,不用等过期或重启。
+- 每次对话内部的初始化阶段(取配置 / 建模型实例 / 建图状态等):**271ms → 51ms**(快 5 倍)。对应下文 timing 仪表盘里的 `init` 字段。
+- 综合以上 + 历史消息批量写、Rerank 元信息复用等优化,**单次对话总 DB 查询数从 17-25 次降到 5-7 次**(剩余的查询都是必须的业务操作:用户认证 / 会话与消息写入 / Checkpointer 状态保存等,不再是配置查询)。
+
+**对话过程其他热路径**
+- **Checkpointer 并发解锁**:对话状态保存(LangGraph Checkpointer)以前会"独占数据库连接 10-60 秒",并发对话之间互相串行。现在改为按需借连接(毫秒级),并发上限不再受连接池大小限制。
+- **历史消息批量写**:对话结束保存历史改成一次 `add_all` 写所有消息,替换之前循环调单条写入(N 次 SAVEPOINT 消失)。
+- **历史消息读单趟扫**:加载会话时本轮引用提取改成单趟 O(n) 扫描,以前是每条 assistant 消息重扫前缀(O(n²))。
+- **删全部会话 SQL 批量化**:从 N 次单删改为 4 次 `ANY()` 批量删。
+- **Rerank HTTP 长连接**:之前每次 rerank 都新建 / 销毁 httpx 客户端,现在保持长连接,生命周期收敛到 app shutdown。
+- **删除人为延迟**:对话流式输出里之前有一段刻意 `asyncio.sleep`(避免某些前端拼接错乱),现在删除——切分本身就提供天然节奏。
+
+**知识库相关**
+- **向量化批次并行**:`aembed_documents` 之前串行打 OpenAI(1000 chunks → 100 次顺序请求)。现在用 Semaphore 限流的 fan-out,**1000 个 chunks 的入库时间缩短 60-70%**。可通过 `AI_EMBEDDING_BATCH_CONCURRENCY` 调整并发数(默认 5)。
+- **趋势统计 SQL 合并**:管理后台日活/周活趋势从 14 次顺序查询合并成 1 次 `date_trunc GROUP BY`。
+
+### 🐛 关键修复
+
+- **🚨 RAG 失败时不再"装作没结果"**(高优先级 bug):向量库 / Embedding / Reranker 任何一环挂掉时,之前会**返回空数组并被 AI 当作"知识库里没有这个"**,导致 AI 一遍遍换关键词重复检索、最后给用户一个看似自信的"找不到"答案。现在区分"系统故障"与"真的空结果":系统故障会立刻告诉 AI 停止重试,坦诚告知用户系统暂时不可用。
+- **Rerank URL 双路径 bug**:管理员粘贴完整 URL(如 DashScope 的特殊路径)时,代码会强制追加 `/rerank` 后缀导致 404。新增 `endpoint_path` 字段作为 escape hatch,可让 admin 的 URL 被原样使用。修复路径同步覆盖了管理后台的"测试连接"按钮,之前测试连接和实际调用走的是两份重复逻辑,容易漂移。
+- **会话来源标签丢失**:并发创建同一会话时,IntegrityError 重试路径没传 `source` 字段,导致部分会话 source 莫名为空。
+- **机器人会话隔离**:thread_id 删除现在严格校验所属站点(防止跨站点删除)。
+
+### 🗑️ 删除独立 VL(视觉语言)模型类型
+
+现代 chat 模型本身就是多模态,独立的 VL 模型配置没有实际价值——之前的 VL 端点从未被运行时调用,只是配置 UI 里多了一项让人困惑。
+
+- 后端删除 `AI_VL_API_KEY/BASE/MODEL` 环境变量和 `AI_VL_CONFIG_KEY` 常量
+- 新增 Alembic 迁移 `ce_drop_ai_vl_config`,自动清理已有租户的 `system_configs.config_key='ai_vl'` 旧数据
+- 管理后台「AI 模型设置」中 VL Tab 移除,只保留 Chat / Embedding / Rerank 三种
+- 想用多模态能力的用户:直接配置一个支持视觉的 chat 模型即可
+
+### 🏗️ 后端架构大规模重构(对二开者友好)
+
+这一版集中清理了多个"过大单体文件"和"命名漂移",对终端用户透明,但显著降低了二开门槛。
+
+**单体文件拆分**(都按 `chat/` 子包约定切成多模块):
+- `document_service.py` **789 行 → 拆成 4 个聚焦模块**(crud / 向量化流水线 / AI 元数据增强 / 文档导入)
+- `system_config_service.py` **488 行 → 拆成 5 个文件**(AI 配置 / 文档处理服务 / 共享 secrets 助手)
+- `chat_service.py` 拆出独立的 chunks 生成器和历史写入器
+- `utils.py` 按主题拆模块(masking / ai_logging / chat_timing / reading_time / 等)
+- Responses API 的 SSE 序列化抽出独立模块,chat_service 只负责业务逻辑
+
+**AI Provider 统一基类**:
+- chat / embedding / rerank 三家以前各写各的缓存、各打各的 usage signal、各自处理冷启动锁。现在统一在 `BaseAIProvider[T]` 基类下,共享 fast-path 命中 + slow-path double-check + 单一 usage 信号入口。子类只需实现 `_fetch_config` + `_build_instance`。
+- 类重命名对齐业界(`LLMManager` → `ChatProvider`,`EmbeddingResolver` → `EmbeddingProvider`),不再用项目内自造的 `Resolver` / `Manager` 不一致词。
+
+**Robot 集成模块清理**:
+- 子目录从 **13 个减到 7 个**:删除空的 `contexts/` / `crypto/` / `registry/`,删除冗余的 `plugins/` 插件系统(4 个文件就为了注册 2 个 resolver,过度设计)
+- WeCom 三种接入(智能机器人 / 客服 / 应用)的 HTTP 客户端统一到共享 `WeComClient`,不再每种各自管理 token
+- WeCom 长连接 starter 命名与飞书 / 钉钉对齐
+- `base.py` 顶部新增架构总览注释,新人能从一个文件了解全局
+
+**命名 / 约定统一**:
+- `app/services/` 下 chat / config / rag / robot / stats / document 全部采用同一种子包约定(`chat/__init__.py` 暴露公共面,内部模块用 bare names)
+- `ai_fields` 重命名为 `enrichment`(语义更准确:这是"内容增强",不是"AI 字段"业务模块)
+- 三处零散的命名漂移统一(其中包括之前发现的两处 service class docstring 错放在 `__init__` 之后,导致 `__doc__` 为 `None` 的 bug)
+
+### 🎨 前端 SDK 整体换栈
+
+**openapi-typescript-codegen → orval + TanStack Query**:之前手写 `useQuery` 调用 SDK 函数,每个端点都要重复 `useQuery({ queryKey: ['xxx'], queryFn: () => sdk.xxx() })`。现在 orval 按 OpenAPI tag 自动生成 React Query hooks:
+
+```typescript
+// 之前
+const { data } = useQuery({ queryKey: ['sites'], queryFn: () => sdk.sites.list({ page: 1 }) })
+
+// 现在
+const { data } = useListAdminSites({ page: 1 })
+```
+
+附带改进:
+- `customFetch` mutator 统一收口 token 注入 / 401 跳转 / ApiResponse envelope 解包,业务侧不再嗅探 `data.data.list` 这种三层嵌套
+- OpenAPI 层把 `ApiResponse_X_` envelope 展平,**类型和运行时完全对齐**
+- 删除中间 barrel(`@/lib/api-client`),业务直 import `@/lib/sdk/<tag>`——新增后端 tag 时业务侧零维护,IDE 跳转直达定义文件
+- 重写 4 份过期开发文档(SDK 使用指南 / Admin API / Client API / 前端开发指南),从旧时代 codegen 的 `apiClient.xxx.yyy()` 风格抢救到 orval 实际风格
+
+升级 react-query 到 `^5.100.11`,顺手清理了 7 个前端零引用依赖(`date-fns` / `@radix-ui/react-{label,select,separator}` / `uuid` 等)。
+
+### 📊 新增对话耗时仪表盘
+
+每次对话结束时,后端日志会打一行结构化耗时数据,方便排查"为什么这次慢":
+
+```
+⏱️ [Timing] thread=thread-xyz init=51ms ttfb=85ms tool_1_start=754ms
+            tool_1_end=1229ms first_token=1832ms graph_done=3002ms total=3006ms
+```
+
+字段含义:`init`(后端准备)/ `ttfb`(首个数据包送出)/ `tool_N_start/end`(第 N 次检索)/ `first_token`(AI 开始打字)/ `graph_done`(LangGraph 推理结束)/ `total`(总耗时)。对话异常时也会打这条日志(带 `error` 标记)。
+
+典型基线(本地测试环境,warm 状态):`init ~50ms / ttfb ~85ms / 检索 ~500ms / 总 ~3s`——大头在上游 LLM 生成 token,符合预期。实际值取决于上游模型 / 网络状况 / 召回深度,差异可能很大。
+
+### 🔇 日志大瘦身
+
+- **单次对话日志:~110 行 → ~50 行**(dev 模式)
+- **生产模式只剩 ~20 行关键业务日志**
+
+具体瘦身:
+- AI 模型缓存命中提示从 6 行卡片改成 1 行:`💬 chat HIT | gpt-4o-mini | hash=56ce98d8 | tenant=1 | purpose=分析意图`
+- 每 60 秒刷一次的整段配置 JSON dump 降级到 DEBUG 级(生产 INFO 模式看不到,改为单行简讯)
+- ReAct 推理循环的多行卡片改为单行进度
+- 工具调用 start/end 高频日志降到 DEBUG 级
+- `/v1/health` 健康检查访问日志彻底过滤(之前每 30 秒刷两行)
+
+容器日志:Redis 默认改为 `warning` 级,RustFS `RUST_LOG=warn`,屏蔽常规 IO 流水。
+
+### 🌐 Responses API usage 字段
+
+对接 OpenAI Responses API 的客户端可以拿到 token 用量了:`input_tokens` / `output_tokens` / `total_tokens` 跟随 `response.completed` event 一起返回,多轮 ReAct 工具调用的多次 LLM 调用 usage 自动聚合。
+
+### 🧹 代码注释审计
+
+经过 5 轮系统扫描,修复 **11 处可证伪的注释/代码不一致**:
+- 注释指向已被重命名 / 删除的函数(`_resolve_url` 实际叫 `resolve_rerank_url` 等)
+- 两处 Service 类的 docstring 被错放在 `__init__` 之后,导致 `__doc__` 为 `None`(同源 copy-paste bug)
+- 文档里残留的"使用 PostgreSQL ARRAY"等误导性实现暗示(实际用逗号分隔 String)
+- 步骤编号断号(两处:1→2→4 / 1→3→4)
+- 死代码 `RetrieveInput` / `GenerateInput` 上一代 graph 架构残留
+- `scripts/version.py` 长期 silent no-op 的 4 条同步路径(指向 codegen 时代已不存在的文件)
+
+### 🔧 其他
+
+- README 新增"Agentic RAG"标签(更准确地描述 ReAct + 知识库的产品形态)
+- Backend ruff 顺手清理(import 排序 / `isinstance` 联合类型)
+- 多行语句压缩到单行(可读性)
+- `make gen-sdk` 末尾示例 import 路径修正(之前指向 `mode=tags-split` 嵌套路径,实际是 `tags` 扁平)
+
+---
+
 ## 2026-05-17 🗂️ S3 数据源与导入流程升级 (v1.1.3)
 
 ### 🗂️ S3 数据源管理（核心新功能）

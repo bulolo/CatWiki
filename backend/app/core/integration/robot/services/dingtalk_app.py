@@ -54,9 +54,10 @@ class DingTalkRobotService:
         self._service_running = False
         with self._workers_lock:
             self._workers.clear()
-        # 工厂单例由 Feishu 或 DingTalk Service 触发 shutdown 均可
-        await RobotFactory.shutdown()
-        logger.info("钉钉 Stream 服务已关闭，工厂及客户端资源已释放")
+        # 不在此处调用 RobotFactory.shutdown()：lifecycle.shutdown 会在所有
+        # robot service 关闭后单独触发一次，避免 3 个 service 各自 shutdown
+        # 工厂的重复调用。
+        logger.info("钉钉 Stream 服务已关闭")
 
     async def refresh(self) -> None:
         if not self._service_running:

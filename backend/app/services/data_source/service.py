@@ -230,7 +230,7 @@ class DataSourceService:
     # ---------- 内部工具 ----------
 
     async def _resolve_processor_config(self, tenant_id: int | None, processor_type: str) -> dict:
-        from app.services.system_config_service import SystemConfigService
+        from app.services.system_config import SystemConfigService
 
         config_svc = SystemConfigService(self.db)
         config_list = await config_svc.get_doc_processor_config(

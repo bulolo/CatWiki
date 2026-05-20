@@ -28,7 +28,7 @@ import { SingleModelConfig } from "./SingleModelConfig"
 import { MODEL_META } from "./constants"
 
 interface ModelDetailCardProps {
-  modelType: "chat" | "embedding" | "rerank" | "vl"
+  modelType: "chat" | "embedding" | "rerank"
   onBack: () => void
 }
 

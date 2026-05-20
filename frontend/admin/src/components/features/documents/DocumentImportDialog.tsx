@@ -34,7 +34,11 @@ import {
   Database, Folder, ChevronRight, ArrowLeft, CheckSquare, Square, Plus,
 } from "lucide-react"
 import { toast } from "sonner"
-import { api, type DataSource, type S3FileItem, type Task } from "@/lib/api-client"
+import { browseDataSource, importFromDataSource, listDataSources } from '@/lib/sdk/admin-data-sources'
+import { importDocument } from '@/lib/sdk/admin-documents'
+import { getAdminDocProcessorConfig } from '@/lib/sdk/admin-system-configs'
+import type { DataSource, S3FileItem, Task } from '@/lib/sdk/sdk.schemas'
+import { toImportDocumentBody } from "@/lib/normalizers"
 import { DOC_PROCESSOR_TYPES, type DocProcessorConfig, DocProcessorType } from "@/types/settings"
 import type { CollectionItem } from "@/types"
 import { useTasks } from "@/contexts/TaskContext"
@@ -58,8 +62,8 @@ function parseProcessorConfig(config: unknown): ProcessorExtraConfig {
 }
 
 function parseDocProcessorType(value: unknown): DocProcessorType {
-  if (value === DocProcessorType.DOCLING || value === DocProcessorType.MINER_U || value === DocProcessorType.PADDLE_OCR) return value
-  return DocProcessorType.MINER_U
+  if (value === 'Docling' as const || value === 'MinerU' as const || value === 'PaddleOCR' as const) return value
+  return 'MinerU' as const
 }
 
 function parseProcessorOrigin(value: unknown): "platform" | "tenant" | undefined {
@@ -197,7 +201,7 @@ export function DocumentImportDialog({
     if (!open) return
     let cancelled = false
     setIsLoadingProcessors(true)
-    api.systemConfig.getDocProcessorConfig()
+    getAdminDocProcessorConfig()
       .then(res => {
         if (cancelled) return
         const list = Array.isArray(res?.processors)
@@ -241,8 +245,9 @@ export function DocumentImportDialog({
   useEffect(() => {
     if (!open || activeTab !== "datasource" || dataSourcesLoaded) return
     setIsLoadingDataSources(true)
-    api.dataSource.list()
-      .then(list => {
+    listDataSources()
+      .then(rawList => {
+        const list = rawList ?? []
         setDataSources(list)
         if (list.length > 0 && !selectedDsIdRef.current) setSelectedDsId(list[0].id)
       })
@@ -258,8 +263,8 @@ export function DocumentImportDialog({
     setIsBrowsing(true)
     setSelectedKeys(new Set())
     try {
-      const items = await api.dataSource.browse(dsId, prefix)
-      setBrowseFiles(items)
+      const items = await browseDataSource(dsId, { prefix })
+      setBrowseFiles(items ?? [])
       setBrowsePrefix(prefix)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t("browseFailed"))
@@ -372,7 +377,7 @@ export function DocumentImportDialog({
           fd.append("generate_summary", String(generateSummary))
           fd.append("generate_tags", String(generateTags))
           fd.append("auto_vectorize", String(autoVectorize))
-          const task = await api.document.importDocument(fd)
+          const task = await importDocument(toImportDocumentBody(fd))
           if (task) generated.push(task)
           else skipped.push(file.name)
         } catch (err: unknown) {
@@ -409,7 +414,7 @@ export function DocumentImportDialog({
     try {
       localStorage.setItem("doc_import_processor_id", processorId)
       const type = selectedProcessor?.type || "MinerU"
-      const tasks = await api.dataSource.importFiles(selectedDsId, {
+      const tasksResp = await importFromDataSource(selectedDsId, {
         keys: Array.from(selectedKeys),
         site_id: siteId,
         collection_id: Number(collectionId),
@@ -422,6 +427,10 @@ export function DocumentImportDialog({
         generate_tags: generateTags,
         auto_vectorize: autoVectorize,
       })
+      // backend ``importFromDataSource`` response_model 标注为 ``dict``（实际返回
+      // ``Task[]``），SDK 由此生成 ``Record<string, unknown> | null``。
+      // 双重 cast 是无奈但必要的（类型完全不同；改善需要后端修 response_model）。
+      const tasks: Task[] = Array.isArray(tasksResp) ? (tasksResp as unknown as Task[]) : []
       if (tasks.length > 0) {
         addTasks(tasks)
         toast.success(t("importSuccess", { count: tasks.length }))

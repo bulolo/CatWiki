@@ -3,16 +3,18 @@
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
 
-"""向量存储管理器 — 组合 EmbeddingResolver + VectorDriver"""
+"""向量存储管理器 — 组合 EmbeddingProvider + VectorDriver"""
 
 import asyncio
 import logging
-from typing import Any, TypedDict
+from typing import TypedDict
 
 from langchain_core.documents import Document as LangChainDocument
 
+from app.core.ai.providers.base import Resolved
+from app.core.ai.providers.embedding import EmbeddingProvider
+from app.core.ai.providers.openai_embeddings import OpenAICompatibleEmbeddings
 from app.core.vector.driver.base import DriverSearchResult, VectorChunk, VectorDriver
-from app.core.vector.embedding_resolver import EmbeddingResolver
 
 logger = logging.getLogger(__name__)
 
@@ -24,20 +26,24 @@ class VectorSearchResult(TypedDict):
 
 
 class VectorStoreManager:
-    """Orchestrates EmbeddingResolver and VectorDriver.
+    """Orchestrates EmbeddingProvider and VectorDriver.
 
     Responsible for:
     - Resolving the correct embeddings instance for the current tenant
     - Ensuring the storage schema is initialised before the first write/read
     - Delegating all actual storage operations to the injected VectorDriver
+    - Caching the most recent embedding resolution so observability layers
+      (RAG pipeline summary card) can read model / hash without re-resolving.
     """
 
-    def __init__(self, resolver: EmbeddingResolver, driver: VectorDriver) -> None:
-        self._resolver = resolver
+    def __init__(self, provider: EmbeddingProvider, driver: VectorDriver) -> None:
+        self._provider = provider
         self._driver = driver
         self._lock = asyncio.Lock()
         # conf_hashes for which schema has already been verified this process lifetime
         self._schema_initialized: set[str] = set()
+        # 最近一次 _get_ready 的解析结果，供观测层读取（替代之前的 ContextVar）
+        self._last_embedding: Resolved[OpenAICompatibleEmbeddings] | None = None
 
     # ──────────────────────────────────────────────────────────────────────
     # Internal: resolve embeddings + ensure schema
@@ -48,18 +54,21 @@ class VectorStoreManager:
         tenant_id: int | None = None,
         force: bool = False,
         purpose: str | None = None,
-    ) -> tuple[Any, dict]:
-        embeddings, conf = await self._resolver.resolve(tenant_id, force=force, purpose=purpose)
-        conf_hash: str = conf.get("_hash", "")
+    ) -> Resolved[OpenAICompatibleEmbeddings]:
+        resolved = await self._provider.resolve(tenant_id, force=force, purpose=purpose)
+        self._last_embedding = resolved
 
+        conf_hash = resolved.hash
         if conf_hash not in self._schema_initialized:
             async with self._lock:
                 if conf_hash not in self._schema_initialized:
-                    dimension = int(conf.get("dimension") or 1024)
+                    # Dimension 在 EmbeddingProvider 的 signal_extras 中以 int 或 None 暴露
+                    raw_dim = resolved.extra.get("Dimension")
+                    dimension = int(raw_dim) if isinstance(raw_dim, int) else 1024
                     await self._driver.ensure_schema(dimension)
                     self._schema_initialized.add(conf_hash)
 
-        return embeddings, conf
+        return resolved
 
     # ──────────────────────────────────────────────────────────────────────
     # Public interface
@@ -71,8 +80,10 @@ class VectorStoreManager:
         ids: list[str],
         storage_batch_size: int = 100,
     ) -> list[str]:
-        embeddings, _ = await self._get_ready()
-        return await self._driver.add_documents(documents, ids, embeddings, storage_batch_size)
+        resolved = await self._get_ready()
+        return await self._driver.add_documents(
+            documents, ids, resolved.instance, storage_batch_size
+        )
 
     async def search(
         self,
@@ -81,9 +92,9 @@ class VectorStoreManager:
         metadata_filter: dict | None = None,
         purpose: str | None = None,
     ) -> list[VectorSearchResult]:
-        embeddings, _ = await self._get_ready(purpose=purpose)
+        resolved = await self._get_ready(purpose=purpose)
         raw: list[DriverSearchResult] = await self._driver.search(
-            query, embeddings, k, metadata_filter
+            query, resolved.instance, k, metadata_filter
         )
         return [
             {"doc": r["doc"], "score": r["score"], "score_comparable": r["score_comparable"]}
@@ -107,15 +118,17 @@ class VectorStoreManager:
 
     async def close(self) -> None:
         await self._driver.close()
-        self._resolver.clear()
+        await self._provider.aclose()
 
-    async def validate_config(self, tenant_id: int | None = None) -> tuple[int | None, dict]:
-        """Kept for backward compatibility — resolves and validates embedding config."""
-        return await self._resolver._get_conf(tenant_id, force=False)
+    async def validate_config(
+        self, tenant_id: int | None = None
+    ) -> Resolved[OpenAICompatibleEmbeddings]:
+        """Resolve and validate embedding config; raises if the upstream config is bad."""
+        return await self._get_ready(tenant_id=tenant_id)
 
     async def reload_credentials(self, tenant_id: int | None = None) -> None:
         """Force-refresh embedding config and clear schema-init cache so next op re-verifies."""
-        await self._resolver.reload(tenant_id)
+        await self._provider.resolve(tenant_id, force=True)
         self._schema_initialized.clear()
 
     @property
@@ -125,9 +138,11 @@ class VectorStoreManager:
         return name.replace("Driver", "") if name.endswith("Driver") else name
 
     @property
-    def last_resolved_model(self) -> str:
-        return self._resolver.last_resolved_model
+    def last_embedding(self) -> Resolved[OpenAICompatibleEmbeddings] | None:
+        """最近一次 ``_get_ready`` 返回的 ``Resolved``，未调用前为 ``None``。
 
-    @property
-    def last_resolved_hash(self) -> str:
-        return self._resolver.last_resolved_hash
+        观测层（RAG pipeline summary card）通过它读 ``.model`` / ``.hash``，
+        不需要重新解析配置。``VectorStoreManager.get_instance()`` 由
+        :mod:`app.core.vector` 包级 shim 提供，不在本类上定义。
+        """
+        return self._last_embedding

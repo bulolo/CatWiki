@@ -12,7 +12,7 @@
 import asyncio
 import logging
 
-from app.core.vector.embedding_resolver import EmbeddingResolver
+from app.core.ai.providers.embedding import embedding_provider
 from app.core.vector.manager import VectorStoreManager
 
 logger = logging.getLogger(__name__)
@@ -34,8 +34,6 @@ async def get_vector_store() -> VectorStoreManager:
 
         from app.core.infra.config import settings
 
-        resolver = EmbeddingResolver()
-
         if settings.VECTOR_STORE_TYPE == "elasticsearch":
             from app.core.vector.driver.elasticsearch import ElasticsearchDriver
 
@@ -50,7 +48,8 @@ async def get_vector_store() -> VectorStoreManager:
                 "可选值：'postgres' | 'elasticsearch'"
             )
 
-        _instance = VectorStoreManager(resolver, driver)
+        # embedding_provider 是模块级单例（与 chat_provider / reranker 同形态）
+        _instance = VectorStoreManager(embedding_provider, driver)
         logger.info(f"[Factory] 向量存储引擎: {settings.VECTOR_STORE_TYPE}")
 
     return _instance

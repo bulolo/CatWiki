@@ -14,7 +14,7 @@ import type { MenuItem } from "@/types"
 import { ThemeProvider, type ThemeColor } from "@/contexts"
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher"
 import { SitePasswordGate } from "@/components/auth/SitePasswordGate"
-import { HttpError } from "@/lib/api-client"
+import { HttpError } from '@/lib/custom-fetch'
 
 function SlugPageContent() {
   const t = useTranslations("SlugPage")

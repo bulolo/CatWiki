@@ -60,7 +60,7 @@ async def get_current_tenant_info(
 
     # EE: 返回含 plan/is_demo 的完整 schema
     try:
-        from app.ee.services.tenant_service import tenant_service
+        from app.ee.services.tenant import tenant_service
 
         ee_tenant = await tenant_service.get_tenant_with_ee_config(db, tenant_id=tenant_id)
         if ee_tenant:

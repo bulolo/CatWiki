@@ -22,7 +22,7 @@ import { useTranslations } from "next-intl"
 import { Streamdown } from "streamdown"
 import { MessageSources } from "./MessageSources"
 import { ScrollArea } from "@/components/ui"
-import type { ClientSite } from "@/lib/api-client"
+import type { ClientSite } from '@/lib/sdk/sdk.schemas'
 
 interface ChatWidgetProps {
   title: string

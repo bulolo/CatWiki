@@ -20,7 +20,7 @@ import { Streamdown } from "streamdown"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui"
 import { Search, CheckCircle2, Loader2, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { api } from "@/lib/api-client"
+import { getChatToolResult } from '@/lib/sdk/client-chat-sessions'
 import { getVisitorId } from "@/lib/visitor"
 import type { ToolCall } from "@/types"
 
@@ -57,13 +57,11 @@ export function ToolResultDialog({ open, onOpenChange, toolCall, threadId, siteI
       // Background task may not have saved yet, retry up to 3 times
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const data = await api.chatSession.getToolResult(
-            threadId,
-            toolCall.id,
-            getVisitorId(),
-            siteId,
-          )
-          const content = data?.content
+          const data = await getChatToolResult(threadId, toolCall.id, {
+            member_id: getVisitorId(),
+            site_id: siteId ?? undefined,
+          })
+          const content = typeof data?.content === 'string' ? data.content : null
           if (content) {
             setResult(content)
             onResultFetched?.(toolCall.id, content)

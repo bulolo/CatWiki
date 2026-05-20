@@ -1,11 +1,11 @@
 // Copyright 2026 CatWiki Authors
-// 
+//
 // Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://github.com/CatWiki/CatWiki/blob/main/LICENSE
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,18 +13,15 @@
 // limitations under the License.
 
 /**
- * 获取菜单树的 Hook
- * 使用 React Query 进行数据缓存和优化
+ * 获取菜单树的 Hook。直接复用 orval 生成的 useGetClientCollectionTree，
+ * select 把后端 CollectionTree 转成前端业务用的 MenuItem。
  */
 
-"use client"
+'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { api } from '@/lib/api-client'
-import { queryKeys } from '@/lib/react-query'
+import { useGetClientCollectionTree } from '@/lib/sdk/client-collections'
+import type { CollectionTree } from '@/lib/sdk/sdk.schemas'
 import type { MenuItem } from '@/types'
-import type { CollectionTree } from '@/lib/api-client'
-import { logError } from '@/lib/error-handler'
 
 /**
  * 将后端返回的树形结构转换为菜单结构
@@ -33,22 +30,19 @@ function convertTreeToMenuItems(tree: CollectionTree[]): MenuItem[] {
   const items: MenuItem[] = []
 
   for (const node of tree) {
-    if (node.type === "collection") {
-      // 递归处理子节点（包括子目录和文档）
+    if (node.type === 'collection') {
       const children = node.children ? convertTreeToMenuItems(node.children) : []
-
       items.push({
         id: node.id.toString(),
         title: node.title,
-        type: "collection" as const,
-        children: children.length > 0 ? children : undefined
+        type: 'collection' as const,
+        children: children.length > 0 ? children : undefined,
       })
-    } else if (node.type === "document") {
-      // 文档节点
+    } else if (node.type === 'document') {
       items.push({
         id: node.id.toString(),
         title: node.title,
-        type: "article" as const,
+        type: 'article' as const,
         views: node.views ?? undefined,
         tags: node.tags || [],
       })
@@ -62,23 +56,15 @@ function convertTreeToMenuItems(tree: CollectionTree[]): MenuItem[] {
  * 根据指定的 siteId 生成菜单树结构的 Hook
  */
 export function useMenuTree(siteId: number | null) {
-  return useQuery({
-    queryKey: queryKeys.collections.tree(siteId!, true),
-    queryFn: async () => {
-      try {
-        // 一次性获取完整的目录树（包含文档节点）
-        const tree = await api.collection.getTree(siteId!, true)
-        // 转换为菜单项
-        return convertTreeToMenuItems(tree)
-      } catch (error) {
-        logError('加载菜单数据', error)
-        throw error
-      }
+  return useGetClientCollectionTree(
+    { site_id: siteId ?? 0, include_documents: true },
+    {
+      query: {
+        enabled: !!siteId,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 15 * 60 * 1000,
+        select: (tree) => (tree ? convertTreeToMenuItems(tree) : []),
+      },
     },
-    enabled: !!siteId,
-    // 菜单树变化不频繁，可以缓存较长时间
-    staleTime: 5 * 60 * 1000, // 5 分钟
-    gcTime: 15 * 60 * 1000, // 15 分钟
-  })
+  )
 }
-

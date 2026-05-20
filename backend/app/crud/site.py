@@ -270,7 +270,7 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
         from sqlalchemy import func, or_, select
         from sqlalchemy.orm import joinedload
 
-        from app.core.common.utils import Paginator
+        from app.core.common.pagination import Paginator
 
         # 构建基础查询条件
         base_filters = [self.model.status == "active"]

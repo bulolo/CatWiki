@@ -21,7 +21,7 @@ from datetime import timedelta
 from fastapi import Depends, UploadFile
 
 from app.core.common.i18n import _
-from app.core.common.utils import Paginator
+from app.core.common.pagination import Paginator
 from app.core.infra.config import settings
 from app.core.infra.rustfs import RustFSService, get_rustfs_service
 from app.core.web.exceptions import (

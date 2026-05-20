@@ -4,7 +4,7 @@
 
 **企业级AI知识库平台**
 
-企业级全栈 AI 知识库平台，集成了现代化的内容管理、深度 AI 智能问答与极致的用户交互体验。
+企业级全栈 AI 知识库平台，基于Agentic RAG，集成了现代化的内容管理、深度 AI 智能问答与极致的用户交互体验。
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.136+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-16.1+-000000?logo=next.js)](https://nextjs.org/)

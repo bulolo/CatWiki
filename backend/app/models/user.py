@@ -66,8 +66,8 @@ class User(BaseModel):
         comment="用户状态",
     )
 
-    # 管理的站点（存储站点 ID 数组）
-    # 注意：PostgreSQL 使用 ARRAY，其他数据库可能需要用 JSON
+    # 管理的站点 ID 列表，逗号分隔字符串存储；读写通过下方 ``managed_sites``
+    # property 与 ``set_managed_sites`` 在 list[int] ↔ "1,2,3" 间转换。
     managed_site_ids = Column(String(500), default="", comment="管理的站点ID列表，逗号分隔")
 
     # 登录信息

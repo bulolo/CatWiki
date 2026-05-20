@@ -30,10 +30,7 @@ import { toast } from "sonner"
 import { useInviteUser, useSitesList } from "@/hooks"
 import { getUserInfo } from "@/lib/auth"
 import { useHealth } from "@/hooks/useHealth"
-import {
-  UserRole,
-  type Site
-} from "@/lib/api-client"
+import { UserRole, type Site } from '@/lib/sdk/sdk.schemas'
 import { useTranslations } from "next-intl"
 
 interface CreateUserFormProps {
@@ -67,12 +64,12 @@ function parseInviteResponse(data: unknown): InviteResponseWithPassword | null {
 export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName }: CreateUserFormProps) {
   const t = useTranslations("CreateUser")
   const [email, setEmail] = useState("")
-  const [role, setRole] = useState<UserRole>(UserRole.SITE_ADMIN)
+  const [role, setRole] = useState<UserRole>('site_admin' as const)
   const [selectedSites, setSelectedSites] = useState<number[]>(fixedSiteId ? [fixedSiteId] : [])
 
   const userInfo = typeof window !== 'undefined' ? getUserInfo() : null
-  const isPlatformAdmin = userInfo?.role === UserRole.ADMIN
-  const isTenantAdmin = userInfo?.role === UserRole.TENANT_ADMIN
+  const isPlatformAdmin = userInfo?.role === 'admin' as const
+  const isTenantAdmin = userInfo?.role === 'tenant_admin' as const
   const { data: healthData } = useHealth()
   const edition = healthData?.edition || 'community'
 
@@ -96,7 +93,7 @@ export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName
     inviteUserMutation.mutate({
       email: email.trim(),
       role: role,
-      managed_site_ids: (role === UserRole.ADMIN || role === UserRole.TENANT_ADMIN) ? [] : selectedSites,
+      managed_site_ids: (role === 'admin' as const || role === 'tenant_admin' as const) ? [] : selectedSites,
     }, {
       onSuccess: (data) => {
         const parsed = parseInviteResponse(data)
@@ -208,12 +205,12 @@ export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
                 <div
-                  className={`border rounded-xl p-4 cursor-pointer transition-all ${role === UserRole.SITE_ADMIN ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 hover:border-slate-300'}`}
-                  onClick={() => setRole(UserRole.SITE_ADMIN)}
+                  className={`border rounded-xl p-4 cursor-pointer transition-all ${role === 'site_admin' as const ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 hover:border-slate-300'}`}
+                  onClick={() => setRole('site_admin' as const)}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className="font-semibold text-sm">{t("siteAdmin")}</span>
-                    {role === UserRole.SITE_ADMIN && <Check className="h-4 w-4 text-primary" />}
+                    {role === 'site_admin' as const && <Check className="h-4 w-4 text-primary" />}
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">
                     {t("siteAdminDesc")}
@@ -221,12 +218,12 @@ export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName
                 </div>
 
                 <div
-                  className={`border rounded-xl p-4 cursor-pointer transition-all ${role === UserRole.TENANT_ADMIN ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 hover:border-slate-300'}`}
-                  onClick={() => setRole(UserRole.TENANT_ADMIN)}
+                  className={`border rounded-xl p-4 cursor-pointer transition-all ${role === 'tenant_admin' as const ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 hover:border-slate-300'}`}
+                  onClick={() => setRole('tenant_admin' as const)}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className="font-semibold text-sm">{t("orgAdmin")}</span>
-                    {role === UserRole.TENANT_ADMIN && <Check className="h-4 w-4 text-primary" />}
+                    {role === 'tenant_admin' as const && <Check className="h-4 w-4 text-primary" />}
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">
                     {edition === 'community'
@@ -237,12 +234,12 @@ export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName
 
                 {edition !== 'community' && !fixedSiteId && isPlatformAdmin && (
                   <div
-                    className={`border rounded-xl p-4 cursor-pointer transition-all ${role === UserRole.ADMIN ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 hover:border-slate-300'}`}
-                    onClick={() => setRole(UserRole.ADMIN)}
+                    className={`border rounded-xl p-4 cursor-pointer transition-all ${role === 'admin' as const ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 hover:border-slate-300'}`}
+                    onClick={() => setRole('admin' as const)}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span className="font-semibold text-sm">{t("sysAdmin")}</span>
-                      {role === UserRole.ADMIN && <Check className="h-4 w-4 text-primary" />}
+                      {role === 'admin' as const && <Check className="h-4 w-4 text-primary" />}
                     </div>
                     <p className="text-xs text-slate-500 leading-relaxed">
                       {t("sysAdminDesc")}
@@ -253,7 +250,7 @@ export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName
             </div>
 
 
-            {(role !== UserRole.ADMIN && role !== UserRole.TENANT_ADMIN) && !fixedSiteId && (
+            {(role !== 'admin' as const && role !== 'tenant_admin' as const) && !fixedSiteId && (
               <div className="mt-6 pt-6 border-t border-slate-100">
                 <label className="text-sm font-medium text-slate-700 block mb-3">
                   {t("assignSites")} <span className="text-slate-500 font-normal">{t("selectedCount", { count: selectedSites.length })}</span>

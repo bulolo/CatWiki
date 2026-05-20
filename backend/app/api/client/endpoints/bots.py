@@ -9,7 +9,7 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.integration.robot.registry.context_registry import get_robot_context
+from app.core.integration.robot.registry import get_robot_context
 from app.core.integration.robot.services.wecom_app import WeComAppService
 from app.core.integration.robot.services.wecom_kefu import WeComKefuService
 from app.db.database import get_db

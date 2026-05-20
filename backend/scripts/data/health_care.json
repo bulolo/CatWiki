@@ -61,13 +61,6 @@
       "apiKey": "",
       "baseUrl": "",
       "mode": "custom"
-    },
-    "vl": {
-      "provider": "openai",
-      "model": "",
-      "apiKey": "",
-      "baseUrl": "",
-      "mode": "custom"
     }
   },
   "collections": [

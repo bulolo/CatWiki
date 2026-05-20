@@ -72,7 +72,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { UserRole, UserStatus, type UserListItem, type Site } from "@/lib/api-client"
+import { UserRole, UserStatus, type UserListItem, type Site } from '@/lib/sdk/sdk.schemas'
 
 
 import {
@@ -136,7 +136,7 @@ export default function UsersPage() {
 
   // 邀请表单状态
   const [inviteEmail, setInviteEmail] = useState("")
-  const [inviteRole, setInviteRole] = useState<UserRole>(UserRole.SITE_ADMIN)
+  const [inviteRole, setInviteRole] = useState<UserRole>('site_admin' as const)
   const [selectedSites, setSelectedSites] = useState<number[]>([])
 
   // React Query hooks
@@ -157,8 +157,8 @@ export default function UsersPage() {
   const total = usersData?.total || 0
 
   const currentUser = getUserInfo()
-  const isSystemAdmin = currentUser?.role === UserRole.ADMIN
-  const isSiteAdmin = currentUser?.role === UserRole.SITE_ADMIN
+  const isSystemAdmin = currentUser?.role === 'admin' as const
+  const isSiteAdmin = currentUser?.role === 'site_admin' as const
 
   // 过滤展示的用户列表
   // 1. 站点管理员不能看到系统管理员
@@ -170,7 +170,7 @@ export default function UsersPage() {
     // 如果是站点管理员
     if (isSiteAdmin) {
       // 不能看到系统管理员
-      if (user.role === UserRole.ADMIN) return false
+      if (user.role === 'admin' as const) return false
 
       // 只能看到自己管理的站点的用户
       const mySites = currentUser?.managed_site_ids || []
@@ -305,7 +305,7 @@ export default function UsersPage() {
 
           // 重置表单
           setInviteEmail("")
-          setInviteRole(UserRole.SITE_ADMIN)
+          setInviteRole('site_admin' as const)
           setSelectedSites([])
         }
       }
@@ -352,15 +352,15 @@ export default function UsersPage() {
                   <SelectContent>
                     {isSystemAdmin && (
                       <>
-                        <SelectItem value={UserRole.ADMIN}>{t("roleSysAdmin")}</SelectItem>
-                        <SelectItem value={UserRole.SITE_ADMIN}>{t("roleSiteAdmin")}</SelectItem>
+                        <SelectItem value={'admin' as const}>{t("roleSysAdmin")}</SelectItem>
+                        <SelectItem value={'site_admin' as const}>{t("roleSiteAdmin")}</SelectItem>
                       </>
                     )}
                   </SelectContent>
                 </Select>
                 <p className="text-[10px] text-muted-foreground">
-                  {inviteRole === UserRole.ADMIN && t("roleSysAdminDesc")}
-                  {inviteRole === UserRole.SITE_ADMIN && t("roleSiteAdminDesc")}
+                  {inviteRole === 'admin' as const && t("roleSysAdminDesc")}
+                  {inviteRole === 'site_admin' as const && t("roleSiteAdminDesc")}
                 </p>
               </div>
 
@@ -460,21 +460,21 @@ export default function UsersPage() {
                     <TableCell>
                       <Badge
                         variant={
-                          user.role === UserRole.ADMIN ? "default" :
-                            user.role === UserRole.TENANT_ADMIN ? "default" :
-                              user.role === UserRole.SITE_ADMIN ? "secondary" : "outline"
+                          user.role === 'admin' as const ? "default" :
+                            user.role === 'tenant_admin' as const ? "default" :
+                              user.role === 'site_admin' as const ? "secondary" : "outline"
                         }
                         className={cn(
                           "font-bold text-[10px] tracking-tight px-2 border-none",
-                          user.role === UserRole.ADMIN ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" :
-                            user.role === UserRole.TENANT_ADMIN ? "bg-violet-500/10 text-violet-600 shadow-sm shadow-violet-500/10" :
-                              user.role === UserRole.SITE_ADMIN ? "bg-amber-500/10 text-amber-600 shadow-sm shadow-amber-500/10" :
+                          user.role === 'admin' as const ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" :
+                            user.role === 'tenant_admin' as const ? "bg-violet-500/10 text-violet-600 shadow-sm shadow-violet-500/10" :
+                              user.role === 'site_admin' as const ? "bg-amber-500/10 text-amber-600 shadow-sm shadow-amber-500/10" :
                                 "bg-muted text-muted-foreground"
                         )}
                       >
-                        {user.role === UserRole.ADMIN ? t("roles.sysAdmin") :
-                          user.role === UserRole.TENANT_ADMIN ? t("roles.orgAdmin") :
-                            user.role === UserRole.SITE_ADMIN ? t("roles.siteAdmin") : user.role}
+                        {user.role === 'admin' as const ? t("roles.sysAdmin") :
+                          user.role === 'tenant_admin' as const ? t("roles.orgAdmin") :
+                            user.role === 'site_admin' as const ? t("roles.siteAdmin") : user.role}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -527,18 +527,18 @@ export default function UsersPage() {
                                 {isSystemAdmin && (
                                   <>
                                     <DropdownMenuItem
-                                      onSelect={() => updateRole(user.id, UserRole.ADMIN)}
+                                      onSelect={() => updateRole(user.id, 'admin' as const)}
                                       className="flex items-center justify-between"
                                     >
                                       <span>{t("roleSysAdmin")}</span>
-                                      {user.role === UserRole.ADMIN && <Check className="h-4 w-4 text-primary" />}
+                                      {user.role === 'admin' as const && <Check className="h-4 w-4 text-primary" />}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                      onSelect={() => updateRole(user.id, UserRole.SITE_ADMIN)}
+                                      onSelect={() => updateRole(user.id, 'site_admin' as const)}
                                       className="flex items-center justify-between"
                                     >
                                       <span>{t("roleSiteAdmin")}</span>
-                                      {user.role === UserRole.SITE_ADMIN && <Check className="h-4 w-4 text-primary" />}
+                                      {user.role === 'site_admin' as const && <Check className="h-4 w-4 text-primary" />}
                                     </DropdownMenuItem>
                                   </>
                                 )}
@@ -579,13 +579,13 @@ export default function UsersPage() {
                           <DropdownMenuItem
                             className="text-orange-600"
                             onSelect={() => {
-                              const newStatus = user.status === UserStatus.ACTIVE ? UserStatus.INACTIVE : UserStatus.ACTIVE
-                              if (confirm(newStatus === UserStatus.INACTIVE ? t("disableConfirm") : t("enableConfirm"))) {
+                              const newStatus = user.status === 'active' as const ? 'inactive' as const : 'active' as const
+                              if (confirm(newStatus === 'inactive' as const ? t("disableConfirm") : t("enableConfirm"))) {
                                 updateStatus(user.id, newStatus)
                               }
                             }}
                           >
-                            {user.status === UserStatus.ACTIVE ? t("disableAccount") : t("enableAccount")}
+                            {user.status === 'active' as const ? t("disableAccount") : t("enableAccount")}
                           </DropdownMenuItem>
 
                           <DropdownMenuItem

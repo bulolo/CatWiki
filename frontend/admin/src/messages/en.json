@@ -442,8 +442,6 @@
     "embeddingDesc": "Used to vectorize documents for semantic search.",
     "rerankTitle": "Rerank",
     "rerankDesc": "Fine-tune search results for higher accuracy.",
-    "vlTitle": "Vision",
-    "vlDesc": "Image understanding and multimodal interaction.",
     "selectModel": "Select Model",
     "selectModelDesc": "Click cards below to configure each model",
     "recommended": "Recommended",

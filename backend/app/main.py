@@ -18,8 +18,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from app.api.admin.api import api_router as admin_router
-from app.api.client.api import api_router as client_router
+from app.api.admin.router import api_router as admin_router
+from app.api.client.router import api_router as client_router
 from app.core.common.logger import setup_logging
 from app.core.infra.config import settings
 from app.core.lifecycle.manager import LifecycleManager

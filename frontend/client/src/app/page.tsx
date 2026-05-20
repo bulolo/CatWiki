@@ -20,7 +20,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { motion, AnimatePresence } from "framer-motion"
-import { api } from "@/lib/api-client"
+import { listClientDocuments } from '@/lib/sdk/client-documents'
+import { listClientSites } from '@/lib/sdk/client-sites'
+import type { Document } from '@/lib/sdk/sdk.schemas'
 import { logError } from "@/lib/error-handler"
 import {
   BookOpen,
@@ -37,14 +39,14 @@ import { PageLoading, Input } from "@/components/ui"
 import { SiteCard } from "@/components/sites"
 import { AIChatLanding } from "@/components/ai"
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher"
-import type { ClientSite } from "@/lib/api-client"
+import type { ClientSite } from '@/lib/sdk/sdk.schemas'
 import { env } from "@/lib/env"
 
 export default function HomePage() {
   const t = useTranslations("HomePage")
   const router = useRouter()
   const [sites, setSites] = useState<ClientSite[]>([])
-  const [popularDocs, setPopularDocs] = useState<any[]>([])
+  const [popularDocs, setPopularDocs] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSite, setSelectedSite] = useState<ClientSite | null>(null)
   const [keyword, setKeyword] = useState("")
@@ -53,32 +55,32 @@ export default function HomePage() {
     const loadSites = async () => {
       try {
         const results = await Promise.allSettled([
-          api.site.list({
+          listClientSites({
             page: 1,
             size: 100,
-            keyword: keyword || undefined
+            keyword: keyword || undefined,
           }),
-          api.document.list({
+          listClientDocuments({
             size: 6,
-            orderBy: 'views',
-            orderDir: 'desc',
-            includeSiteInfo: true
-          })
+            order_by: 'views',
+            order_dir: 'desc',
+            include_site_info: true,
+          }),
         ])
 
         if (results[0].status === 'fulfilled') {
-          setSites(results[0].value.list || [])
+          setSites(results[0].value?.list ?? [])
         } else {
-          logError(results[0].reason, t("plaza.error_load_sites"))
+          logError(t("plaza.error_load_sites"), results[0].reason)
         }
 
         if (results[1].status === 'fulfilled') {
-          setPopularDocs(results[1].value.list || [])
+          setPopularDocs(results[1].value?.list ?? [])
         } else {
-          logError(results[1].reason, t("trending.error_load_docs"))
+          logError(t("trending.error_load_docs"), results[1].reason)
         }
-      } catch (error: any) {
-        logError(error, t("plaza.error_logic"))
+      } catch (error: unknown) {
+        logError(t("plaza.error_logic"), error)
       } finally {
         setLoading(false)
       }
@@ -342,7 +344,7 @@ export default function HomePage() {
 /**
  * 热门文档卡片组件
  */
-const DocCard = ({ doc, onClick }: { doc: any; onClick: () => void }) => {
+const DocCard = ({ doc, onClick }: { doc: Document; onClick: () => void }) => {
   const t = useTranslations("HomePage")
   return (
     <motion.div

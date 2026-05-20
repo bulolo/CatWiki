@@ -38,7 +38,7 @@ from app.schemas.document import (
 from app.schemas.response import ApiResponse, PaginatedResponse
 from app.schemas.system_config import DocProcessorType
 from app.schemas.task import Task as TaskSchema
-from app.services.document_service import DocumentService, get_document_service
+from app.services.document import DocumentService, get_document_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

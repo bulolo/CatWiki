@@ -31,6 +31,9 @@ from app.core.infra.config import settings
 
 logger = logging.getLogger(__name__)
 
+# 高频轮询接口，access 日志会刷屏，跳过即可（uvicorn.access 的过滤器在 main.py 配）
+_ACCESS_LOG_SKIP_PATHS: frozenset[str] = frozenset({"/v1/health"})
+
 
 class RequestLoggingMiddleware:
     """请求日志中间件 (避免使用 BaseHTTPMiddleware 以支持流式响应)"""
@@ -53,7 +56,7 @@ class RequestLoggingMiddleware:
         # 记录请求开始
         path = scope.get("path", "")
         method = scope.get("method", "")
-        # logger.info(f"🚀 {method} {path} [ID: {request_id}]")
+        skip_access_log = path in _ACCESS_LOG_SKIP_PATHS
 
         async def send_wrapper(message):
             if message["type"] == "http.response.start":
@@ -65,11 +68,12 @@ class RequestLoggingMiddleware:
                 headers.append((b"X-Powered-By", b"CatWiki"))
                 message["headers"] = headers
 
-                # 记录请求结束日志
-                status_code = message.get("status")
-                logger.info(
-                    f"{method} {path} - Completed in {process_time:.3f}s - Status: {status_code}"
-                )
+                # 记录请求结束日志（高频轮询接口跳过）
+                if not skip_access_log:
+                    status_code = message.get("status")
+                    logger.info(
+                        f"{method} {path} - Completed in {process_time:.3f}s - Status: {status_code}"
+                    )
 
             await send(message)
 

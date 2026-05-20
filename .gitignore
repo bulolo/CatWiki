@@ -1,3 +1,7 @@
+# SDK 生成临时文件（make gen-sdk 下载 + 跑完清理；commit 不应包含）
+frontend/admin/openapi.json
+frontend/client/openapi.json
+
 # Python
 __pycache__/
 *.py[cod]

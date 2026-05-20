@@ -33,9 +33,8 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { useSiteById, useUpdateSite, useHealth } from "@/hooks"
-import { api } from "@/lib/api-client"
 import { QuickQuestionsConfig } from "@/components/features"
-import type { QuickQuestion } from "@/lib/api-client"
+import type { QuickQuestion } from '@/lib/sdk/sdk.schemas'
 import { SiteBotSettings, SiteUsers } from "@/components/sites"
 import { initialConfigs, type BotConfig } from "@/types/settings"
 import { env } from "@/lib/env"
@@ -103,10 +102,9 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
   const { data: aiConfigData } = useAIConfig('tenant')
 
   // 模型显示逻辑：优先使用租户自定义模型，如果是平台模式则取平台默认模型
-  const chatConfig = aiConfigData?.configs?.chat
-  const chatModel = (chatConfig?.mode === 'platform'
-    ? aiConfigData?.platform_defaults?.chat?.model
-    : chatConfig?.model) || ''
+  const chatConfig = aiConfigData?.configs?.chat as { mode?: string; model?: string } | undefined
+  const platformChat = aiConfigData?.platform_defaults?.chat as { model?: string } | undefined
+  const chatModel = (chatConfig?.mode === 'platform' ? platformChat?.model : chatConfig?.model) || ''
   const tenantSlug = siteData?.tenant_slug || '...'
   const siteUrlPrefix = `${env.NEXT_PUBLIC_CLIENT_URL}/${tenantSlug}/`
 
@@ -175,9 +173,9 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
     try {
       await updateSiteMutation.mutateAsync({ siteId, data: { status: next ? "active" : "disabled" } })
       toast.success(t("saveSuccess"))
-    } catch (e: any) {
+    } catch (e: unknown) {
       setIsActive(!next)
-      toast.error(e.message || t("saveError"))
+      toast.error((e instanceof Error && e.message) || t("saveError"))
     }
   }
 
@@ -202,8 +200,8 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
       } else {
         toast.success(t("saveSuccess"))
       }
-    } catch (e: any) {
-      toast.error(e.message || "保存失败")
+    } catch (e: unknown) {
+      toast.error((e instanceof Error && e.message) || "保存失败")
     }
   }
 

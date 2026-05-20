@@ -163,9 +163,7 @@ async def _do_import_parsing(
         generate_tags = payload.get("generate_tags", False)
         if (generate_summary or generate_tags) and document.content:
             try:
-                from app.services.document_service import DocumentService
-                from app.services.site_service import SiteService
-                from app.services.system_config_service import SystemConfigService
+                from app.services.document import enrich_document_with_llm
 
                 fields = []
                 if generate_summary:
@@ -173,8 +171,7 @@ async def _do_import_parsing(
                 if generate_tags:
                     fields.append("tags")
 
-                doc_svc = DocumentService(db, SiteService(db), SystemConfigService(db))
-                ai_result = await doc_svc.ai_generate_fields(
+                ai_result = await enrich_document_with_llm(
                     content=document.content[:6000], fields=fields
                 )
                 update_data: dict = {}
@@ -307,7 +304,7 @@ async def process_import_parsing(ctx, task_id: int):
 async def _do_vectorize(db: AsyncSession, ctx: dict, task_id: int):
     """执行向量化的库操作 (已在顶层包裹租户上下文)"""
     from app.crud.task import crud_task
-    from app.services.document_service import DocumentService
+    from app.services.document import process_document_vectorization
     from app.services.task_service import TaskService
 
     task = await crud_task.get(db, id=task_id)
@@ -322,7 +319,7 @@ async def _do_vectorize(db: AsyncSession, ctx: dict, task_id: int):
 
     try:
         await TaskService.update_progress(db, task_id, 10.0)
-        await DocumentService.process_vectorization_task(db, doc_id)
+        await process_document_vectorization(db, doc_id)
         await TaskService.complete(db, task_id, result={"msg": "向量化完成"})
         logger.info(f"✅ [Job:{ctx['job_id']}] 任务 {task_id} 向量化成功 | 文档 ID: {doc_id}")
     except Exception as e:

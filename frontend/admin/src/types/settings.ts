@@ -19,16 +19,11 @@
  *    均从 SDK 导入，禁止重复定义
  */
 
-import {
-  type ModelConfig,
-  type DocProcessorConfig as SdkDocProcessorConfig,
-  DocProcessorType,
-  ModelConfig as ModelConfigEnum,
-} from '@/lib/api-client'
+import { type ModelConfig, type DocProcessorConfig as SdkDocProcessorConfig, DocProcessorType, ModelConfig as ModelConfigEnum } from '@/lib/sdk/sdk.schemas'
 
 // ==================== 从 SDK 重新导出 ====================
 export type { ModelConfig }
-export { DocProcessorType }
+export type { DocProcessorType }
 
 // SDK 的 DocProcessorConfig 扩展：增加前端专用 'origin' 字段
 export type DocProcessorConfig = SdkDocProcessorConfig & {
@@ -93,13 +88,12 @@ export type AIConfigs = {
   chat: ModelConfig
   embedding: ModelConfig
   rerank: ModelConfig
-  vl: ModelConfig
   bot_config: BotConfig
 }
 
-export type SettingsTabId = "models" | "chat" | "embedding" | "rerank" | "vl" | "security" | "users" | "sites"
+export type SettingsTabId = "models" | "chat" | "embedding" | "rerank" | "security" | "users" | "sites"
 
-export const MODEL_TYPES = ["chat", "embedding", "rerank", "vl"] as const
+export const MODEL_TYPES = ["chat", "embedding", "rerank"] as const
 
 export const initialConfigs: AIConfigs = {
   chat: {
@@ -127,13 +121,6 @@ export const initialConfigs: AIConfigs = {
     api_key: "",
     base_url: "",
     is_vision: false
-  },
-  vl: {
-    provider: "openai",
-    model: "",
-    api_key: "",
-    base_url: "",
-    is_vision: true
   },
   bot_config: {
     web_widget: {
@@ -198,15 +185,15 @@ export const BAILIAN_BASE = {
 // ============ 文档处理服务配置 ============
 
 export const DOC_PROCESSOR_TYPES: { value: DocProcessorType; label: string; description: string; endpoint: string; docUrl?: string; icon: string; color: string; disabled?: boolean; formats: string[] }[] = [
-  { value: DocProcessorType.MINER_U, label: "MinerU", description: "High-quality document parser", endpoint: "/tasks", docUrl: "https://docs.catwiki.cn/development/parsers/mineru", icon: "/icons/mineru.svg", color: "text-amber-600 bg-amber-50", formats: ["PDF", "Word", "PPT", "Excel", "Image"] },
-  { value: DocProcessorType.DOCLING, label: "Docling", description: "IBM open-source document processing engine (X-Api-Key auth)", endpoint: "/v1/convert/file/async", docUrl: "https://docs.catwiki.cn/development/parsers/docling", icon: "/icons/docling.svg", color: "text-indigo-600 bg-indigo-50", formats: ["PDF", "Word", "PPT", "Excel", "HTML", "Image", "Markdown"] },
-  { value: DocProcessorType.PADDLE_OCR, label: "PaddleOCR", description: "PaddleOCR-VL layout parsing engine", endpoint: "/layout-parsing", docUrl: "https://docs.catwiki.cn/development/parsers/paddleocr", icon: "/icons/paddleocr.svg", color: "text-blue-600 bg-blue-50", formats: ["PDF", "Image"] },
+  { value: 'MinerU' as const, label: "MinerU", description: "High-quality document parser", endpoint: "/tasks", docUrl: "https://docs.catwiki.cn/development/parsers/mineru", icon: "/icons/mineru.svg", color: "text-amber-600 bg-amber-50", formats: ["PDF", "Word", "PPT", "Excel", "Image"] },
+  { value: 'Docling' as const, label: "Docling", description: "IBM open-source document processing engine (X-Api-Key auth)", endpoint: "/v1/convert/file/async", docUrl: "https://docs.catwiki.cn/development/parsers/docling", icon: "/icons/docling.svg", color: "text-indigo-600 bg-indigo-50", formats: ["PDF", "Word", "PPT", "Excel", "HTML", "Image", "Markdown"] },
+  { value: 'PaddleOCR' as const, label: "PaddleOCR", description: "PaddleOCR-VL layout parsing engine", endpoint: "/layout-parsing", docUrl: "https://docs.catwiki.cn/development/parsers/paddleocr", icon: "/icons/paddleocr.svg", color: "text-blue-600 bg-blue-50", formats: ["PDF", "Image"] },
 ]
 
 export const initialDocProcessorConfig: DocProcessorConfig = {
   id: "",
   name: "",
-  type: DocProcessorType.MINER_U,
+  type: 'MinerU' as const,
   base_url: "",
   api_key: "",
   enabled: true,

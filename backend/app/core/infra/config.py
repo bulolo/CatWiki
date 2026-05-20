@@ -21,7 +21,7 @@ from urllib.parse import quote_plus
 from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_VERSION = "1.1.3"
+DEFAULT_VERSION = "1.1.4"
 
 
 def get_project_version() -> str:
@@ -70,7 +70,11 @@ class Settings(BaseSettings):
     DB_POOL_RECYCLE: int = Field(default=3600, ge=300)
 
     # Redis 配置（缓存/分布式锁）
-    REDIS_ENABLED: bool = Field(default=False)
+    # 默认开启，与 .env.example / docker-compose.dev.yml 拉起的 redis 服务对齐。
+    # 安全网: get_cache() 会同时检查 REDIS_URL 是否设置（见 core/infra/cache.py），
+    # REDIS_URL=None 时会自动 fallback 到 InMemoryCache —— 测试 / 干净 checkout
+    # 即使不显式关 REDIS_ENABLED 也不会因为找不到 Redis 而启动失败。
+    REDIS_ENABLED: bool = Field(default=True)
     REDIS_URL: str | None = Field(default=None)
     REDIS_PREFIX: str = Field(default="catwiki:")
     CACHE_DEFAULT_TTL: int = Field(default=300, ge=1)
@@ -182,14 +186,16 @@ class Settings(BaseSettings):
         le=2048,
         description="Embedding API 单次请求的最大文本数量，不同服务商限制不同（如阿里云 10，OpenAI 2048）",
     )
+    AI_EMBEDDING_BATCH_CONCURRENCY: int = Field(
+        default=5,
+        ge=1,
+        le=32,
+        description="批量 embedding 时同时在飞的 batch 数；提供商若有 QPS 限制需要相应下调",
+    )
 
     AI_RERANK_API_KEY: str | None = Field(default=None)
     AI_RERANK_API_BASE: str | None = Field(default=None)
     AI_RERANK_MODEL: str | None = Field(default=None)
-
-    AI_VL_API_KEY: str | None = Field(default=None)
-    AI_VL_API_BASE: str | None = Field(default=None)
-    AI_VL_MODEL: str | None = Field(default=None)
 
     # Agent 配置
     AGENT_MAX_ITERATIONS: int = Field(
@@ -333,7 +339,6 @@ settings = Settings(_env_file=get_env_files())
 AI_CHAT_CONFIG_KEY = "ai_chat"
 AI_EMBEDDING_CONFIG_KEY = "ai_embedding"
 AI_RERANK_CONFIG_KEY = "ai_rerank"
-AI_VL_CONFIG_KEY = "ai_vl"
 
 DOC_PROCESSOR_CONFIG_KEY = "doc_processor_config"
 SYSTEM_INTEGRITY_KEY = "system_integrity"

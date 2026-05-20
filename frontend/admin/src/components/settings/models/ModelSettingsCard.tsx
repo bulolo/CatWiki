@@ -25,7 +25,6 @@ import { CircuitBoard } from "lucide-react"
 import { ManualModeConfig } from "./ManualModeConfig"
 import { ShieldCheck } from "lucide-react"
 import { type SettingsTabId } from "@/types/settings"
-import api from "@/lib/api-client"
 import { useState, useEffect } from "react"
 
 interface ModelSettingsCardProps {

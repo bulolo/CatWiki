@@ -19,10 +19,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, Loader2, FileText, Brain, Info } from "lucide-react"
-import { api } from "@/lib/api-client"
+import { retrieveDocuments } from '@/lib/sdk/admin-documents'
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import type { VectorRetrieveResponse } from "@/lib/api-client"
+import type { VectorRetrieveResponse } from '@/lib/sdk/sdk.schemas'
 
 interface VectorRetrieveModalProps {
   open: boolean
@@ -66,7 +66,7 @@ export function VectorRetrieveModal({ open, onOpenChange, siteId }: VectorRetrie
     setIsLoading(true)
     setHasRetrieved(true)
     try {
-      const res = await api.document.retrieveVectors({
+      const res = await retrieveDocuments({
         query: query.trim(),
         k: limit,
         threshold,
@@ -75,7 +75,7 @@ export function VectorRetrieveModal({ open, onOpenChange, siteId }: VectorRetrie
           id: filterId.trim() || undefined,
         },
         enable_rerank: enableRerank,
-        rerank_k: rerankK || limit
+        rerank_k: rerankK || limit,
       })
       const resultList = Array.isArray(res?.list) ? (res.list as VectorRetrieveResponse[]) : []
       setResults(resultList)

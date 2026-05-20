@@ -42,7 +42,7 @@ services:
     image: redis:8.4.2
     pull_policy: if_not_present
     container_name: catwiki-redis-dev
-    command: redis-server
+    command: redis-server --loglevel warning
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -80,6 +80,7 @@ services:
       - ./backend/.env
     environment:
       TZ: Asia/Shanghai
+      RUST_LOG: warn   # tracing 标准等级；屏蔽 INFO 流水日志
     ports:
       # RustFS API 端口
       - "9000:9000"

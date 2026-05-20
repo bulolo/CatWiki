@@ -51,8 +51,8 @@ class FeishuRobotService:
         self._service_running = False
         with self._workers_lock:
             self._workers.clear()
-        await RobotFactory.shutdown()
-        logger.info("飞书长连接服务已标记关闭，已释放工厂及客户端资源")
+        # RobotFactory.shutdown 由 lifecycle 在所有 robot service 关闭后统一触发
+        logger.info("飞书长连接服务已标记关闭")
 
     async def refresh(self) -> None:
         if not self._service_running:
@@ -234,8 +234,6 @@ class FeishuRobotService:
             event=inbound_event, config=FeishuAdapterConfig(app_id=app_id, app_secret=app_secret)
         )
 
-        # 调用统一编排流程
-        # 注意：这里不再需要手动创建 db session，orchestrate_as_task 内部会处理推理逻辑
         await RobotOrchestrator.orchestrate_as_task(
             adapter=adapter,
             session=session,

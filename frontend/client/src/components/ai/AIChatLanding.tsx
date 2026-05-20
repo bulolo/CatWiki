@@ -24,7 +24,7 @@ import { MessageSources } from "./MessageSources"
 import { ToolCallCard } from "./ToolCallCard"
 import { ToolResultDialog } from "./ToolResultDialog"
 import { ChatHistorySidebar } from "./ChatHistorySidebar"
-import { ClientSite, QuickQuestion } from "@/lib/api-client"
+import { ClientSite, QuickQuestion } from '@/lib/sdk/sdk.schemas'
 import { useTranslations } from "next-intl"
 
 

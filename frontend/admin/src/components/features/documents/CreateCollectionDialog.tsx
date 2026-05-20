@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useCreateCollection } from "@/hooks"
-import type { CollectionTree, CollectionCreate } from "@/lib/api-client"
+import type { CollectionTree, CollectionCreate } from '@/lib/sdk/sdk.schemas'
 
 interface CreateCollectionDialogProps {
   siteId: number

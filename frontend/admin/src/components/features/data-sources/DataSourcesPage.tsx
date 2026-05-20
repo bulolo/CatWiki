@@ -31,7 +31,8 @@ import {
   FolderOpen, Folder, FileText, ChevronRight, ArrowLeft, RefreshCw, Upload,
 } from "lucide-react"
 import { toast } from "sonner"
-import { api, type DataSource, type S3FileItem } from "@/lib/api-client"
+import { browseDataSource, createDataSource, deleteDataSource, deleteDataSourceFile, listDataSources, updateDataSource, uploadToDataSource } from '@/lib/sdk/admin-data-sources'
+import type { DataSource, DataSourceCreate, DataSourceUpdate, S3FileItem } from '@/lib/sdk/sdk.schemas'
 
 function formatSize(bytes: number | null | undefined): string {
   if (bytes == null) return ""
@@ -89,8 +90,8 @@ export function DataSourcesPage() {
   const load = useCallback(async () => {
     setIsLoading(true)
     try {
-      const list = await api.dataSource.list()
-      setSources(list)
+      const list = await listDataSources()
+      setSources(list ?? [])
     } catch {
       toast.error(t("loadFailed"))
     } finally {
@@ -157,10 +158,10 @@ export function DataSourcesPage() {
         : { root_prefix: form.root_prefix }
 
       if (editingId) {
-        await api.dataSource.update(editingId, { name: form.name, description: form.description || undefined, config })
+        await updateDataSource(editingId, { name: form.name, description: form.description || undefined, config } as DataSourceUpdate)
         toast.success(t("updateSuccess"))
       } else {
-        await api.dataSource.create({ name: form.name, type: form.type, description: form.description || undefined, config })
+        await createDataSource({ name: form.name, type: form.type, description: form.description || undefined, config } as DataSourceCreate)
         toast.success(t("createSuccess"))
       }
       handleCancel()
@@ -175,7 +176,7 @@ export function DataSourcesPage() {
   const handleDelete = async (id: number) => {
     setDeletingId(id)
     try {
-      await api.dataSource.delete(id)
+      await deleteDataSource(id)
       toast.success(t("deleteSuccess"))
       setSources(prev => prev.filter(s => s.id !== id))
       if (browsingId === id) {
@@ -191,8 +192,8 @@ export function DataSourcesPage() {
   const doBrowse = useCallback(async (dsId: number, prefix: string) => {
     setIsBrowsing(true)
     try {
-      const items = await api.dataSource.browse(dsId, prefix)
-      setBrowseFiles(items)
+      const items = await browseDataSource(dsId, { prefix })
+      setBrowseFiles(items ?? [])
       setBrowsePrefix(prefix)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t("browseFailed"))
@@ -244,7 +245,7 @@ export function DataSourcesPage() {
 
     setIsUploading(true)
     try {
-      await api.dataSource.uploadFile(browsingId, file, browsePrefix)
+      await uploadToDataSource(browsingId, { file, prefix: browsePrefix })
       toast.success(t("uploadSuccess", { name: file.name }))
       doBrowse(browsingId, browsePrefix)
     } catch (err: unknown) {
@@ -260,7 +261,7 @@ export function DataSourcesPage() {
 
     setDeletingKey(item.path)
     try {
-      await api.dataSource.deleteFile(browsingId, item.path)
+      await deleteDataSourceFile(browsingId, { key: item.path })
       toast.success(t("deleteFileSuccess"))
       setBrowseFiles(prev => prev.filter(f => f.path !== item.path))
     } catch (err: unknown) {

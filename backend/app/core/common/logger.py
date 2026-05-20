@@ -99,3 +99,29 @@ def setup_logging() -> None:
     ]
     for logger_name in noisy_loggers:
         logging.getLogger(logger_name).setLevel(logging.WARNING)
+
+    # uvicorn 自带的 access log 会把每次健康检查/轮询接口都打一行；
+    # 自家 middleware 已经覆盖了业务接口，这里只过滤高频轮询路径。
+    _attach_uvicorn_access_filter()
+
+
+class _SkipNoisyAccessPaths(logging.Filter):
+    """uvicorn.access 行过滤器：丢掉指定路径的 access 记录。
+
+    uvicorn.access 的 format 是 '%(client_addr)s - "%(request_line)s" %(status_code)s'。
+    request_line 形如 'GET /v1/health HTTP/1.1'，直接对 message 字符串子串匹配即可。
+    """
+
+    SKIP_TOKENS: tuple[str, ...] = (" /v1/health ",)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return not any(token in msg for token in self.SKIP_TOKENS)
+
+
+def _attach_uvicorn_access_filter() -> None:
+    """给 uvicorn.access logger 挂上 path 黑名单过滤器（幂等）。"""
+    access_logger = logging.getLogger("uvicorn.access")
+    # 避免重复添加（开发热重载场景 setup_logging 可能跑多次）
+    if not any(isinstance(f, _SkipNoisyAccessPaths) for f in access_logger.filters):
+        access_logger.addFilter(_SkipNoisyAccessPaths())

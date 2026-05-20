@@ -25,8 +25,12 @@ from app.schemas.chat_session import (
     ChatSessionResponse,
 )
 from app.schemas.response import ApiResponse
-from app.services.chat.history_service import ChatHistoryService, get_chat_history_service
-from app.services.chat.session_service import ChatSessionService, get_chat_session_service
+from app.services.chat import (
+    ChatHistoryService,
+    ChatSessionService,
+    get_chat_history_service,
+    get_chat_session_service,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -85,7 +89,7 @@ async def get_session(
     """
     获取会话详情
 
-    返回会话元数据。如需获取完整消息历史，请调用 /chat/responses 或使用 LangGraph API。
+    返回会话元数据。如需获取完整消息历史，请调用 GET /chat/sessions/{thread_id}/messages。
     """
     session = await service.get_session_for_access(
         thread_id=thread_id,

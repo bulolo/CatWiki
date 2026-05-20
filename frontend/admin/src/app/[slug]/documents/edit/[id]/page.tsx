@@ -11,12 +11,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, Save, Send, ExternalLink, Clock, User, Info, Loader2, Database } from "lucide-react"
 import { useTranslations, useLocale } from "next-intl"
-import { DocumentStatus } from "@/lib/api-client"
+import type { DocumentStatus } from '@/lib/sdk/sdk.schemas'
 import { toast } from "sonner"
 import { getRoutePath, useRouteContext } from "@/lib/routing"
-import { useSiteData, useDocument, useCollectionTree, useUpdateDocument, documentKeys } from "@/hooks"
+import { useSiteData, useDocument, useCollectionTree, useUpdateDocument } from "@/hooks"
 import { cn } from "@/lib/utils"
-import { api } from "@/lib/api-client"
+import { deleteAdminFile } from '@/lib/sdk/admin-files'
 import { env } from "@/lib/env"
 import { useQueryClient } from "@tanstack/react-query"
 import {
@@ -40,7 +40,7 @@ export default function EditDocumentPage() {
     title: "", summary: "", tags: [], coverImage: null, collectionId: "", content: "",
   })
   const [originalCoverImage, setOriginalCoverImage] = useState<string | null>(null)
-  const [status, setStatus] = useState<DocumentStatus>(DocumentStatus.DRAFT)
+  const [status, setStatus] = useState<DocumentStatus>('draft' as const)
 
   const updateField = <K extends keyof DocumentFormData>(field: K, value: DocumentFormData[K]) => {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -65,7 +65,7 @@ export default function EditDocumentPage() {
         content: document.content || "",
       })
       setOriginalCoverImage(coverImg)
-      if (document.status === DocumentStatus.DRAFT || document.status === DocumentStatus.PUBLISHED) {
+      if (document.status === 'draft' as const || document.status === 'published' as const) {
         setStatus(document.status)
       }
     }
@@ -103,14 +103,14 @@ export default function EditDocumentPage() {
             const url = new URL(originalCoverImage)
             const pathParts = url.pathname.split('/').filter(Boolean)
             const objectName = pathParts.length > 1 ? pathParts.slice(1).join('/') : pathParts.join('/')
-            await api.file.deleteFile(objectName)
+            await deleteAdminFile(objectName)
           } catch {
             // 删除失败不影响主流程
           }
         }
 
-        await queryClient.invalidateQueries({ queryKey: documentKeys.lists(), refetchType: 'all' })
-        toast.success(targetStatus === DocumentStatus.PUBLISHED ? t("newDoc.successPublish") : t("newDoc.successSave"))
+        await queryClient.invalidateQueries({ queryKey: ['/admin/v1/documents'], refetchType: 'all' })
+        toast.success(targetStatus === 'published' as const ? t("newDoc.successPublish") : t("newDoc.successSave"))
         router.push(getRoutePath("/documents", routeContext.slug))
       }
     })
@@ -150,10 +150,10 @@ export default function EditDocumentPage() {
           <Button variant="outline" className="flex items-center gap-2 h-11 px-6" onClick={handlePreview}>
             <ExternalLink className="h-4 w-4" />{t("editDoc.preview")}
           </Button>
-          <Button variant="outline" className="flex items-center gap-2 h-11 px-6" onClick={() => handleSave(DocumentStatus.DRAFT)} disabled={updateDocumentMutation.isPending}>
+          <Button variant="outline" className="flex items-center gap-2 h-11 px-6" onClick={() => handleSave('draft' as const)} disabled={updateDocumentMutation.isPending}>
             <Save className="h-4 w-4" />{t("newDoc.saveDraft")}
           </Button>
-          <Button className="flex items-center gap-2 h-11 px-8" onClick={() => handleSave(DocumentStatus.PUBLISHED)} disabled={updateDocumentMutation.isPending}>
+          <Button className="flex items-center gap-2 h-11 px-8" onClick={() => handleSave('published' as const)} disabled={updateDocumentMutation.isPending}>
             {updateDocumentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {updateDocumentMutation.isPending ? t("newDoc.saving") : t("editDoc.saveAndPublish")}
           </Button>
@@ -171,11 +171,11 @@ export default function EditDocumentPage() {
             siteId={siteId} isPending={updateDocumentMutation.isPending}
           >
             <MetaRow icon={Info} label={t("editDoc.status")}>
-              <Badge variant={status === DocumentStatus.PUBLISHED ? "default" : "outline"} className={cn(
+              <Badge variant={status === 'published' as const ? "default" : "outline"} className={cn(
                 "text-[10px] font-bold border-none",
-                status === DocumentStatus.PUBLISHED ? "bg-emerald-50 text-emerald-600" : "bg-white border-slate-200 text-slate-500"
+                status === 'published' as const ? "bg-emerald-50 text-emerald-600" : "bg-white border-slate-200 text-slate-500"
               )}>
-                {status === DocumentStatus.PUBLISHED ? t("config.published") : t("config.draft")}
+                {status === 'published' as const ? t("config.published") : t("config.draft")}
               </Badge>
             </MetaRow>
             <MetaRow icon={Clock} label={t("editDoc.lastUpdated")}>

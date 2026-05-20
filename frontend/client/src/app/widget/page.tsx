@@ -18,9 +18,9 @@ import { useSearchParams } from "next/navigation"
 import { useState, useEffect, Suspense } from "react"
 import { ChatWidget } from "@/components/ai"
 
-import { api } from "@/lib/api-client"
+import { getClientSite } from '@/lib/sdk/client-sites'
 import { useTranslations } from "next-intl"
-import type { ClientSite } from "@/lib/api-client"
+import type { ClientSite } from '@/lib/sdk/sdk.schemas'
 
 interface WebWidgetConfig {
   title?: string
@@ -48,12 +48,12 @@ function WidgetContent() {
     if (siteId) {
       const sid = parseInt(siteId);
       if (!isNaN(sid)) {
-        api.site.get(sid).then((res) => {
+        getClientSite(sid).then((res) => {
           setSite(res)
-          if (res.web_widget) {
+          if (res?.web_widget) {
             setSiteConfig(res.web_widget as WebWidgetConfig)
           }
-        }).catch(err => {
+        }).catch((err: unknown) => {
           console.error("Failed to fetch site config:", err);
         }).finally(() => {
           setIsReady(true)

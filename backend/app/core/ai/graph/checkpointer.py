@@ -78,19 +78,24 @@ async def close_checkpointer_pool() -> None:
 async def get_checkpointer() -> AsyncGenerator[AsyncPostgresSaver, None]:
     """获取 Checkpointer 上下文管理器
 
+    [关键] AsyncPostgresSaver 持有 *pool* 而非单根连接，内部每次读写经
+    ``pool.connection()`` 临时借一根连接 (~毫秒级)，操作完归还。
+    与原先"整条流式期间独占一根连接"相比，并发上限不再受 ``max_size`` 限制。
+
+    为何每请求新建实例而不复用单例：``AsyncPostgresSaver.__init__`` 会创建
+    一个 ``asyncio.Lock``，所有该实例上的 checkpoint 操作都共享这把锁，
+    复用单例会让跨请求的写入彼此串行化。每请求新建实例代价极低
+    （仅几个对象引用 + 一把 Lock），却保留了真正的并发。
+
     使用方式:
         async with get_checkpointer() as checkpointer:
             graph = create_agent_graph(checkpointer=checkpointer)
             result = await graph.ainvoke(state, config)
-
-    Yields:
-        AsyncPostgresSaver 实例
     """
     pool = await init_checkpointer_pool()
-
-    async with pool.connection() as conn:
-        checkpointer = AsyncPostgresSaver(conn)
-        yield checkpointer
+    # AsyncPostgresSaver 既接受 AsyncConnection 也接受 AsyncConnectionPool；
+    # 传 pool 时其内部 get_connection 会按操作借/还连接。
+    yield AsyncPostgresSaver(pool)
 
 
 async def setup_checkpointer_tables() -> None:

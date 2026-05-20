@@ -6,7 +6,8 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { api, type Task } from '@/lib/api-client'
+import { getAdminTask } from '@/lib/sdk/admin-tasks'
+import type { Task } from '@/lib/sdk/sdk.schemas'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
@@ -43,16 +44,18 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         tasks.map(async (task) => {
           if (task.status === 'pending' || task.status === 'processing' || task.status === 'running') {
             try {
-              const latest = await api.task.get(task.id)
-              
+              const latest = await getAdminTask(task.id)
+              if (!latest) return task
+
               // Handle completion to notify
+              const payload = (latest.payload ?? {}) as Record<string, string | undefined>
               if (latest.status === 'completed') {
                 isAnyCompleted = true
-                toast.success(t('docCompleted', { name: latest.payload?.filename || t('taskFallback', { id: latest.id }) }))
+                toast.success(t('docCompleted', { name: payload.filename || t('taskFallback', { id: latest.id }) }))
               }
               if (latest.status === 'failed') {
                 isAnyCompleted = true
-                toast.error(t('docFailed', { name: latest.payload?.filename || t('taskFallback', { id: latest.id }), error: latest.error || 'Unknown error' }))
+                toast.error(t('docFailed', { name: payload.filename || t('taskFallback', { id: latest.id }), error: latest.error || 'Unknown error' }))
               }
 
               return latest

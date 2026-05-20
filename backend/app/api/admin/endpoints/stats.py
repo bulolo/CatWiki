@@ -23,7 +23,7 @@ from app.core.web.deps import get_current_user_with_tenant
 from app.models.user import User
 from app.schemas.response import ApiResponse
 from app.schemas.stats import SiteStats
-from app.services.stats.stats_service import StatsService, get_stats_service
+from app.services.stats import StatsService, get_stats_service
 
 router = APIRouter()
 

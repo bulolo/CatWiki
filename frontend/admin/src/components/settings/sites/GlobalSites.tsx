@@ -40,7 +40,7 @@ import { useSite } from "@/contexts/SiteContext"
 import { useDeleteSite } from "@/hooks"
 
 import { cn } from "@/lib/utils"
-import type { Site } from "@/lib/api-client"
+import type { Site } from '@/lib/sdk/sdk.schemas'
 
 
 import { CreateSiteForm } from "./CreateSiteForm"

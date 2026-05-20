@@ -15,7 +15,7 @@
 /**
  * 全局类型定义
  *
- * ⚠️ 规范：与后端交互的数据类型统一从 @/lib/api-client (SDK) 导入
+ * ⚠️ 规范：与后端交互的数据类型直接从 @/lib/sdk/sdk.schemas 导入
  *    此文件仅存放前端 UI 展示层专用类型
  */
 
@@ -30,32 +30,6 @@ export interface CollectionItem {
   status?: string
   views?: number
   tags?: string[]
-}
-
-// 统计数据类型（Dashboard 展示）
-export interface StatItem {
-  title: string
-  value: string
-  description: string
-  color: string
-  bg: string
-}
-
-export interface HotDoc {
-  title: string
-  views: number
-  category: string
-}
-
-export interface UpdateItem {
-  title: string
-  time: string
-}
-
-export interface SiteStats {
-  stats: StatItem[]
-  hotDocs: HotDoc[]
-  updates: UpdateItem[]
 }
 
 // 目录项类型（用于拖拽排序 UI）

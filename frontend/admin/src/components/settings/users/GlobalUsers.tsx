@@ -62,7 +62,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { CreateUserForm } from "./CreateUserForm"
-import { UserRole, UserStatus, type UserListItem, type Site } from "@/lib/api-client"
+import { UserRole, UserStatus, type UserListItem, type Site } from '@/lib/sdk/sdk.schemas'
 import { useTranslations } from "next-intl"
 
 
@@ -126,7 +126,7 @@ export function GlobalUsers() {
   const users = usersData?.users || []
 
   const currentUser = getUserInfo()
-  const isSystemAdmin = currentUser?.role === UserRole.ADMIN
+  const isSystemAdmin = currentUser?.role === 'admin' as const
 
   const handleStartCreate = () => {
     const params = new URLSearchParams(searchParams.toString())
@@ -182,7 +182,7 @@ export function GlobalUsers() {
   }
 
   const updateStatus = async (userId: number, status: UserStatus, userName: string) => {
-    const action = status === UserStatus.ACTIVE ? t("statusEnable") : t("statusDisable")
+    const action = status === 'active' as const ? t("statusEnable") : t("statusDisable")
     if (!confirm(t("statusConfirm", { action }))) return
 
     updateUserStatusMutation.mutate({
@@ -261,14 +261,14 @@ export function GlobalUsers() {
       <TableCell
         className={cn(
           "relative group/cell p-0",
-          user.role !== UserRole.ADMIN && "cursor-pointer hover:bg-muted/50 transition-colors"
+          user.role !== 'admin' as const && "cursor-pointer hover:bg-muted/50 transition-colors"
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        {user.role === UserRole.ADMIN || user.role === UserRole.TENANT_ADMIN ? (
+        {user.role === 'admin' as const || user.role === 'tenant_admin' as const ? (
           <div className="w-full h-full px-4 py-3 min-h-[50px] flex flex-wrap gap-1 items-center relative pr-8">
             <span className="text-xs text-muted-foreground">
-              {user.role === UserRole.ADMIN ? rolesT("allPlatform") : (isCommunity ? rolesT("allSites") : rolesT("allOrg"))}
+              {user.role === 'admin' as const ? rolesT("allPlatform") : (isCommunity ? rolesT("allSites") : rolesT("allOrg"))}
             </span>
           </div>
         ) : (
@@ -433,21 +433,21 @@ export function GlobalUsers() {
                       <TableCell>
                         <Badge
                           variant={
-                            user.role === UserRole.ADMIN ? "default" :
-                              user.role === UserRole.TENANT_ADMIN ? "secondary" :
-                                user.role === UserRole.SITE_ADMIN ? "outline" : "outline"
+                            user.role === 'admin' as const ? "default" :
+                              user.role === 'tenant_admin' as const ? "secondary" :
+                                user.role === 'site_admin' as const ? "outline" : "outline"
                           }
                           className={cn(
                             "font-bold text-[10px] tracking-tight px-2 border-none",
-                            user.role === UserRole.ADMIN ? "bg-primary text-primary-foreground" :
-                              user.role === UserRole.TENANT_ADMIN ? "bg-violet-500/10 text-violet-600" :
-                                user.role === UserRole.SITE_ADMIN ? "bg-amber-500/10 text-amber-600" :
+                            user.role === 'admin' as const ? "bg-primary text-primary-foreground" :
+                              user.role === 'tenant_admin' as const ? "bg-violet-500/10 text-violet-600" :
+                                user.role === 'site_admin' as const ? "bg-amber-500/10 text-amber-600" :
                                   "bg-muted text-muted-foreground"
                           )}
                         >
-                          {user.role === UserRole.ADMIN ? (isCommunity ? t("roles.superAdmin") : t("roles.sysAdmin")) :
-                            user.role === UserRole.TENANT_ADMIN ? (isCommunity ? t("roles.superAdmin") : t("roles.orgAdmin")) :
-                              user.role === UserRole.SITE_ADMIN ? t("roles.siteAdmin") : t("roles.unknown")}
+                          {user.role === 'admin' as const ? (isCommunity ? t("roles.superAdmin") : t("roles.sysAdmin")) :
+                            user.role === 'tenant_admin' as const ? (isCommunity ? t("roles.superAdmin") : t("roles.orgAdmin")) :
+                              user.role === 'site_admin' as const ? t("roles.siteAdmin") : t("roles.unknown")}
                         </Badge>
                       </TableCell>
                       <UserSitesCell user={user} />
@@ -455,13 +455,13 @@ export function GlobalUsers() {
                         <div className="flex items-center gap-1.5">
                           <span className={cn(
                             "w-2 h-2 rounded-full",
-                            user.status === UserStatus.ACTIVE ? "bg-emerald-500" : "bg-slate-300"
+                            user.status === 'active' as const ? "bg-emerald-500" : "bg-slate-300"
                           )} />
                           <span className={cn(
                             "text-xs font-bold",
-                            user.status === UserStatus.ACTIVE ? "text-emerald-600" : "text-slate-400"
+                            user.status === 'active' as const ? "text-emerald-600" : "text-slate-400"
                           )}>
-                             {user.status === UserStatus.ACTIVE ? t("status.active") : t("status.inactive")}
+                             {user.status === 'active' as const ? t("status.active") : t("status.inactive")}
                           </span>
                         </div>
                       </TableCell>
@@ -491,25 +491,25 @@ export function GlobalUsers() {
                                     {(healthData?.edition !== 'community') && (
                                        <DropdownMenuItem 
                                         className="flex items-center justify-between rounded-xl px-3 py-2"
-                                        onClick={() => updateRole(user.id, UserRole.ADMIN)}
+                                        onClick={() => updateRole(user.id, 'admin' as const)}
                                        >
                                          <span className="text-sm font-medium">{t("roles.sysAdmin")}</span>
-                                         {user.role === UserRole.ADMIN && <Check className="h-4 w-4 text-primary" />}
+                                         {user.role === 'admin' as const && <Check className="h-4 w-4 text-primary" />}
                                        </DropdownMenuItem>
                                     )}
                                     <DropdownMenuItem 
                                       className="flex items-center justify-between rounded-xl px-3 py-2"
-                                      onClick={() => updateRole(user.id, UserRole.TENANT_ADMIN)}
+                                      onClick={() => updateRole(user.id, 'tenant_admin' as const)}
                                     >
                                       <span className="text-sm font-medium">{t("roles.orgAdmin")}</span>
-                                      {user.role === UserRole.TENANT_ADMIN && <Check className="h-4 w-4 text-primary" />}
+                                      {user.role === 'tenant_admin' as const && <Check className="h-4 w-4 text-primary" />}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem 
                                       className="flex items-center justify-between rounded-xl px-3 py-2"
-                                      onClick={() => updateRole(user.id, UserRole.SITE_ADMIN)}
+                                      onClick={() => updateRole(user.id, 'site_admin' as const)}
                                     >
                                       <span className="text-sm font-medium">{t("roles.siteAdmin")}</span>
-                                      {user.role === UserRole.SITE_ADMIN && <Check className="h-4 w-4 text-primary" />}
+                                      {user.role === 'site_admin' as const && <Check className="h-4 w-4 text-primary" />}
                                     </DropdownMenuItem>
                                   </DropdownMenuSubContent>
                                 </DropdownMenuPortal>
@@ -526,10 +526,10 @@ export function GlobalUsers() {
 
                             <DropdownMenuSeparator className="my-1.5 opacity-40" />
 
-                            {user.status === UserStatus.ACTIVE ? (
+                            {user.status === 'active' as const ? (
                               <DropdownMenuItem 
                                 className="flex items-center gap-2 rounded-xl px-2 py-2 text-slate-500 hover:text-slate-700 cursor-pointer"
-                                onClick={() => updateStatus(user.id, UserStatus.INACTIVE, user.name)}
+                                onClick={() => updateStatus(user.id, 'inactive' as const, user.name)}
                               >
                                 <Slash className="h-4 w-4 opacity-70" />
                                 <span className="text-sm font-medium">{t("actions.disableAccount")}</span>
@@ -537,7 +537,7 @@ export function GlobalUsers() {
                             ) : (
                               <DropdownMenuItem 
                                 className="flex items-center gap-2 rounded-xl px-2 py-2 text-emerald-600 hover:text-emerald-700 cursor-pointer"
-                                onClick={() => updateStatus(user.id, UserStatus.ACTIVE, user.name)}
+                                onClick={() => updateStatus(user.id, 'active' as const, user.name)}
                               >
                                 <Check className="h-4 w-4 opacity-70" />
                                 <span className="text-sm font-medium">{t("actions.enableAccount")}</span>

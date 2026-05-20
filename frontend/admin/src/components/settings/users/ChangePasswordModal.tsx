@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Lock, Eye, EyeOff, Shield, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { api } from "@/lib/api-client"
+import { updateAdminUserPassword } from '@/lib/sdk/admin-users'
 import { getUserInfo } from "@/lib/auth"
 import { logError } from "@/lib/error-handler"
 
@@ -78,7 +78,7 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
         return
       }
 
-      await api.user.updatePassword(user.id, {
+      await updateAdminUserPassword(user.id, {
         old_password: oldPassword,
         new_password: newPassword,
       })

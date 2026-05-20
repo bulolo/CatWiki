@@ -76,62 +76,60 @@ Client API 不需要身份认证，可以直接访问。
 
 ## 💡 使用示例
 
-### 获取站点信息
+> 前端通过 orval 生成的函数 / hooks 调用,具体规范见 [SDK 使用指南](/development/tech/sdk-usage)。`ApiResponse` envelope 已在 SDK 层展平,业务侧无 `response.data` 二次嵌套。
+
+### 获取站点列表
 
 ```typescript
-const response = await apiClient.sites.listClientSites({
-  page: 1,
-  size: 10
-})
+import { useListClientSites } from '@/lib/sdk/client-sites'
 
-const sites = response.data.list
+const { data } = useListClientSites({ page: 1, size: 10 })
+const sites = data?.list
 ```
 
 ### 获取文档列表
 
 ```typescript
-const response = await apiClient.documents.listClientDocuments({
+import { useListClientDocuments } from '@/lib/sdk/client-documents'
+
+const { data } = useListClientDocuments({
   siteId: 1,
   page: 1,
   size: 20,
-  excludeContent: true  // 不返回内容，加速加载
+  excludeContent: true, // 不返回内容,加速加载
 })
-
-const docs = response.data.list
+const docs = data?.list
 ```
 
 ### 获取文档详情
 
 ```typescript
-const response = await apiClient.documents.getClientDocument({
-  documentId: 1
-})
+import { useGetClientDocument } from '@/lib/sdk/client-documents'
 
-const doc = response.data
+const { data: doc } = useGetClientDocument(documentId)
 ```
 
 ### 通过 slug 获取站点
 
 ```typescript
-const response = await apiClient.sites.getClientSiteBySlug({
-  slug: "my-site"
-})
+import { useGetClientSiteBySlug } from '@/lib/sdk/client-sites'
 
-const site = response.data
+const { data: site } = useGetClientSiteBySlug('my-site')
 ```
 
 ### 获取会话列表
 
 ```typescript
-const response = await apiClient.chatSessions.listChatSessions({
-  siteId: 1, // 按站点拉取
+import { useListChatSessions } from '@/lib/sdk/client-chat-sessions'
+
+const { data } = useListChatSessions({
+  siteId: 1,
   keyword: "搜索内容",
   memberId: "user-123",
   page: 1,
-  size: 20
+  size: 20,
 })
-
-const sessions = response.data.items
+const sessions = data?.items
 ```
 
 ### AI 对话

@@ -17,7 +17,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from app.core.common.i18n import _
 from app.schemas.document import Document
 from app.schemas.response import ApiResponse, PaginatedResponse
-from app.services.document_service import DocumentService, get_document_service
+from app.services.document import DocumentService, get_document_service
 
 router = APIRouter()
 

@@ -23,50 +23,44 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { toast } from "sonner"
 import { useTranslations } from "next-intl"
 import { useAIConfig, useUpdateAIConfig } from "@/hooks"
-import type { AIConfigUpdate } from "@/lib/api-client"
-import { ModelConfig } from "@/lib/api-client"
+import type { AIConfigResponse, AIConfigUpdate, ModelConfig } from '@/lib/sdk/sdk.schemas'
 import { type AIConfigs, initialConfigs, MODEL_TYPES } from "@/types/settings"
 
 type RuntimeModelType = typeof MODEL_TYPES[number]
-type PrimitiveConfigValue = string | number | boolean | Record<string, unknown>
+export type PrimitiveConfigValue = string | number | boolean | null | Record<string, unknown>
 const EMPTY_RECORD: Record<string, unknown> = {}
 
 import { isRecord } from "@/lib/utils"
 
-// 深度合并函数
-const deepMerge = (target: Record<string, unknown>, source: unknown): Record<string, unknown> => {
-  if (!source) return target
+// 深度合并函数：泛型保持 target 的具体类型，运行时把 source 的字段覆盖上去。
+// 不约束 T extends Record，避免 typed interface（如 ModelConfig）传入时报错 ——
+// typed interface 实际就是 string-key 字典，TS 的严格性不应阻碍合并语义。
+const deepMerge = <T extends object>(target: T, source: unknown): T => {
   if (!isRecord(source)) return target
 
-  const result = { ...target }
+  const result: Record<string, unknown> = { ...(target as Record<string, unknown>) }
   for (const key in source) {
     const sourceValue = source[key]
-    const targetValue = target[key]
+    const targetValue = result[key]
     if (isRecord(sourceValue) && !Array.isArray(sourceValue)) {
       result[key] = deepMerge(isRecord(targetValue) ? targetValue : EMPTY_RECORD, sourceValue)
     } else {
       result[key] = sourceValue !== undefined && sourceValue !== null ? sourceValue : targetValue
     }
   }
-  return result
+  return result as T
 }
 
 // 统一配置合并逻辑
 const mergeAIConfigs = (backendData: unknown, initial: AIConfigs): AIConfigs => {
   if (!isRecord(backendData)) return initial
 
-  const parseSection = <T extends Record<string, unknown>>(section: unknown, initialSection: T): T => {
-    if (!isRecord(section)) return initialSection
-    return deepMerge(initialSection, section) as T
-  }
-
   return {
     ...initial,
-    chat: parseSection(backendData.chat, initial.chat),
-    embedding: parseSection(backendData.embedding, initial.embedding),
-    rerank: parseSection(backendData.rerank, initial.rerank),
-    vl: parseSection(backendData.vl, initial.vl),
-    bot_config: parseSection(backendData.bot_config, initial.bot_config),
+    chat: deepMerge(initial.chat, backendData.chat),
+    embedding: deepMerge(initial.embedding, backendData.embedding),
+    rerank: deepMerge(initial.rerank, backendData.rerank),
+    bot_config: deepMerge(initial.bot_config, backendData.bot_config),
   }
 }
 
@@ -86,11 +80,11 @@ function toApiModelConfig(config: AIConfigs[RuntimeModelType]): AIConfigUpdate["
     },
     is_vision: config.is_vision ?? false,
     mode: config.mode === "platform"
-      ? ModelConfig.mode.PLATFORM
+      ? "platform"
       : config.mode === "custom"
-        ? ModelConfig.mode.CUSTOM
+        ? "custom"
         : undefined
-  }
+  } as AIConfigUpdate["chat"]
 }
 
 
@@ -126,8 +120,8 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
   const { data: aiConfigData, isLoading } = useAIConfig(scope)
   const updateAIConfigMutation = useUpdateAIConfig(scope)
 
-  // [✨ 亮点] 统一的状态更新逻辑，确保初始加载和保存后逻辑一致
-  const updateStateFromResponse = (data: any) => {
+  // 统一的状态更新逻辑：确保初始加载和保存后两条路径一致。
+  const updateStateFromResponse = (data: AIConfigResponse | null | undefined) => {
     if (!data) return
 
     // 1. 更新模型配置 (configs 只包含 chat/embedding 等项目)
@@ -191,8 +185,7 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
       aiConfig = {
         chat: toApiModelConfig(configs.chat),
         embedding: toApiModelConfig(configs.embedding),
-        rerank: toApiModelConfig(configs.rerank),
-        vl: toApiModelConfig(configs.vl)
+        rerank: toApiModelConfig(configs.rerank)
       }
     }
 
@@ -211,7 +204,7 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
   const revertToSavedConfig = (modelType: RuntimeModelType) => {
     setConfigs(prev => ({
       ...prev,
-      [modelType]: deepMerge({}, savedConfigs[modelType] as Record<string, unknown>) as AIConfigs[RuntimeModelType]
+      [modelType]: deepMerge(initialConfigs[modelType], savedConfigs[modelType]),
     }))
   }
 
@@ -227,8 +220,8 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
         .map(k => `${k}:${normalize(record[k])}`)
         .join('|')
     }
-    const currentStr = normalize({ chat: configs.chat, embedding: configs.embedding, rerank: configs.rerank, vl: configs.vl, bot_config: configs.bot_config })
-    const savedStr = normalize({ chat: savedConfigs.chat, embedding: savedConfigs.embedding, rerank: savedConfigs.rerank, vl: savedConfigs.vl, bot_config: savedConfigs.bot_config })
+    const currentStr = normalize({ chat: configs.chat, embedding: configs.embedding, rerank: configs.rerank, bot_config: configs.bot_config })
+    const savedStr = normalize({ chat: savedConfigs.chat, embedding: savedConfigs.embedding, rerank: savedConfigs.rerank, bot_config: savedConfigs.bot_config })
     return currentStr !== savedStr
   })()
 

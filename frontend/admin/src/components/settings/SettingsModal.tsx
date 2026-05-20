@@ -36,7 +36,7 @@ import {
   Database
 } from "lucide-react"
 import { getUserInfo } from "@/lib/auth"
-import { UserRole } from "@/lib/api-client"
+import { UserRole } from '@/lib/sdk/sdk.schemas'
 import { Button, Card, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui"
 import { cn } from "@/lib/utils"
 
@@ -62,8 +62,8 @@ function SettingsContent() {
     const checkRole = async () => {
       const user = await getUserInfo()
       if (user) {
-        setIsAdmin(user.role === UserRole.ADMIN)
-        setIsTenantAdmin(user.role === UserRole.TENANT_ADMIN)
+        setIsAdmin(user.role === 'admin' as const)
+        setIsTenantAdmin(user.role === 'tenant_admin' as const)
         // Check if user is site admin for current site if in site settings mode
         if (siteId) {
           // This would typically involve checking site permissions
@@ -106,13 +106,13 @@ function SettingsContent() {
   }
 
   const handleSelectModel = (model: SettingsTabId) => {
-    if (model === "chat" || model === "embedding" || model === "rerank" || model === "vl") {
+    if (model === "chat" || model === "embedding" || model === "rerank") {
       setSelectedModel(model)
     }
   }
 
   const handleBackToModels = useCallback(() => {
-    if (selectedModel === "chat" || selectedModel === "embedding" || selectedModel === "rerank" || selectedModel === "vl") {
+    if (selectedModel === "chat" || selectedModel === "embedding" || selectedModel === "rerank") {
       revertToSavedConfig(selectedModel)
     }
     setSelectedModel(null)
@@ -280,7 +280,7 @@ function SettingsContent() {
                 </TabsContent>
 
                 <TabsContent value="models" className="mt-0 h-full space-y-6 outline-none">
-                  {selectedModel && (selectedModel === "chat" || selectedModel === "embedding" || selectedModel === "rerank" || selectedModel === "vl") ? (
+                  {selectedModel && (selectedModel === "chat" || selectedModel === "embedding" || selectedModel === "rerank") ? (
                     <div key="detail" className="animate-in fade-in slide-in-from-right-4 duration-300">
                       <ModelDetailCard
                         modelType={selectedModel}

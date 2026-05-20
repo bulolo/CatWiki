@@ -47,7 +47,7 @@ export function ManualModeConfig({ onSelectModel, activeTab }: ManualModeConfigP
         </p>
         <div className="grid grid-cols-2 gap-4">
           {MODEL_TYPES_LIST.map((item) => {
-            const type = item.id as "chat" | "embedding" | "rerank" | "vl"
+            const type = item.id as "chat" | "embedding" | "rerank"
             // @ts-ignore
             const conf = savedConfigs[type]
             const isPlatform = platformFallback[type] || conf?.mode === 'platform'

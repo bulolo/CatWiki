@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy import select
 
 from app.core.integration.robot.base import MessageDeduplicator, RobotSession
-from app.core.integration.robot.connections.wecom_longconn import start_wecom_smart_longconn_client
+from app.core.integration.robot.connections.wecom_longconn import start_longconn_client
 from app.core.integration.robot.factory import RobotFactory
 from app.core.integration.robot.types.wecom_smart import WeComSmartLongConnConfig
 from app.db.database import AsyncSessionLocal
@@ -51,7 +51,7 @@ class WeComSmartService:
         self._service_running = False
         with self._workers_lock:
             self._workers.clear()
-        await RobotFactory.shutdown()
+        # RobotFactory.shutdown 由 lifecycle 在所有 robot service 关闭后统一触发
         logger.info("企业微信智能机器人长连接服务已关闭")
 
     async def refresh(self) -> None:
@@ -158,14 +158,14 @@ class WeComSmartService:
                     self._app_loop,
                 )
             elif cmd == "aibot_event_callback":
-                # 获取事件类型并处理（如进入会话提示欢迎语）
+                # TODO: 解析事件类型（如 enter_session 触发欢迎语），当前不处理
                 pass
 
         retry_delay = 5
         while self._is_worker_active(config.site_id, generation, config):
             started_at = _time.monotonic()
             try:
-                asyncio.run(start_wecom_smart_longconn_client(config=config, on_event=_on_event))
+                asyncio.run(start_longconn_client(config=config, on_event=_on_event))
             except Exception as e:
                 if isinstance(e, websockets.exceptions.ConnectionClosed):
                     logger.info("企微智能机器人长连接已断开: site_id=%s", config.site_id)

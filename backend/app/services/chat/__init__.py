@@ -2,40 +2,35 @@
 #
 # Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 # you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     https://github.com/CatWiki/CatWiki/blob/main/LICENSE
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
+"""chat 子包 —— 聊天链路核心服务与协议序列化。
+
+外部调用方应当**只**从本包顶层 import，不要直接引用子模块（``from
+app.services.chat import ChatService`` 而非 ``from
+app.services.chat.service import ChatService``），这样未来子模块重命名 / 拆分时
+不会泄漏到调用方。
+
+子模块结构：
+
+| 文件 | 内容 |
+|---|---|
+| ``service``     | ``ChatService`` —— 聊天编排，DI 服务（FastAPI Depends 入口）|
+| ``session``     | ``ChatSessionService`` —— 会话 CRUD，DI 服务 |
+| ``history``     | ``ChatHistoryService`` —— 消息持久化，DI 服务 |
+| ``tasks``       | 背景任务，``persist_chat_turn`` 等（FastAPI BackgroundTasks 喂的对象）|
+| ``completions`` | OpenAI ``/v1/chat/completions`` chunk 构造与文本切分辅助 |
+| ``responses``   | OpenAI ``/v1/responses`` SSE 翻译层 |
 """
-chat 子包 - 聊天相关服务
 
-提供以下服务:
-- ChatSessionService: 会话 CRUD 和统计
-- ChatHistoryService: 消息持久化
-- ChatService: 聊天核心逻辑
-"""
-
-from app.services.chat.chat_service import ChatService, get_chat_service  # noqa: F401
-from app.services.chat.history_service import (  # noqa: F401
-    ChatHistoryService,
-    get_chat_history_service,
-)
-from app.services.chat.session_service import (  # noqa: F401
-    ChatSessionService,
-    get_chat_session_service,
-)
+from app.services.chat.history import ChatHistoryService, get_chat_history_service
+from app.services.chat.service import ChatService, get_chat_service
+from app.services.chat.session import ChatSessionService, get_chat_session_service
 
 __all__ = [
+    "ChatService",
+    "get_chat_service",
     "ChatSessionService",
     "get_chat_session_service",
     "ChatHistoryService",
     "get_chat_history_service",
-    "ChatService",
-    "get_chat_service",
 ]

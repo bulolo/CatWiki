@@ -59,7 +59,6 @@ class AIModelConfig(BaseConfigModel):
     chat: ModelConfig = Field(..., description="对话模型配置")
     embedding: ModelConfig = Field(..., description="向量模型配置")
     rerank: ModelConfig = Field(..., description="重排序模型配置")
-    vl: ModelConfig = Field(..., description="视觉模型配置")
 
 
 # ============ 系统配置 CRUD Schema ============
@@ -110,7 +109,6 @@ class AIConfigUpdate(BaseConfigModel):
     chat: ModelConfig | None = Field(default=None, description="对话模型配置")
     embedding: ModelConfig | None = Field(default=None, description="向量模型配置")
     rerank: ModelConfig | None = Field(default=None, description="重排序模型配置")
-    vl: ModelConfig | None = Field(default=None, description="视觉模型配置")
 
 
 class AIConfigResponse(BaseConfigModel):
@@ -124,7 +122,7 @@ class AIConfigResponse(BaseConfigModel):
 class TestConnectionRequest(BaseConfigModel):
     """测试连接请求"""
 
-    model_type: Literal["chat", "embedding", "rerank", "vl"] = Field(..., description="模型类型")
+    model_type: Literal["chat", "embedding", "rerank"] = Field(..., description="模型类型")
     config: ModelConfig = Field(..., description="模型配置")
 
 

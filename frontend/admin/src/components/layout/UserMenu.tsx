@@ -33,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { getUserInfo, logout } from "@/lib/auth"
-import { UserRole } from "@/lib/api-client"
+import { UserRole } from '@/lib/sdk/sdk.schemas'
 import { toast } from "sonner"
 import { ChangePasswordModal } from "@/components/settings/users/ChangePasswordModal"
 
@@ -63,11 +63,11 @@ export function UserMenu() {
   // 获取显示的职业/角色
   const getRoleLabel = (role?: string) => {
     switch (role) {
-      case UserRole.ADMIN:
+      case 'admin' as const:
         return t("sysAdmin")
-      case UserRole.TENANT_ADMIN:
+      case 'tenant_admin' as const:
         return t("tenantAdmin")
-      case UserRole.SITE_ADMIN:
+      case 'site_admin' as const:
         return t("siteAdmin")
       default:
         return t("regularUser")

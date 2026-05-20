@@ -41,19 +41,24 @@ class WeComSmartLongConnRegistry:
         return False
 
 
-async def start_wecom_smart_longconn_client(
+async def start_longconn_client(
     *,
     config: WeComSmartLongConnConfig,
     on_event: Callable[[str, dict[str, Any]], None],
 ) -> None:
-    """启动企业微信智能机器人单次长连接 (WebSocket)，断开后直接返回，由调用方负责重连。"""
+    """启动企业微信智能机器人单次长连接 (WebSocket)，断开后直接返回，由调用方负责重连。
+
+    注：callback 签名与 DingTalk / Feishu 的 ``start_longconn_client`` 不同 ——
+    本平台原生事件按 ``cmd`` 区分多种类型（aibot_msg_callback / aibot_event_callback
+    等），所以回调签名是 ``(cmd, data)`` 而非 ``(data)``。
+    """
     uri = "wss://openws.work.weixin.qq.com"
     bot_id = config.bot_id
     secret = config.secret
     site_id = config.site_id
 
     async with websockets.connect(uri, ping_interval=None, ping_timeout=None) as websocket:
-        # 1. 发送订阅请求
+        # 发送订阅请求
         req_id = str(uuid.uuid4())
         subscribe_req = {
             "cmd": "aibot_subscribe",

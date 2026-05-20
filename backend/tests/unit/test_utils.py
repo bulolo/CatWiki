@@ -18,8 +18,8 @@
 
 from datetime import datetime
 
+from app.core.common.pagination import Paginator
 from app.core.common.utils import (
-    Paginator,
     format_datetime,
     generate_token,
     get_vector_id,

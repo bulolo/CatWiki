@@ -32,7 +32,7 @@ import {
 import { toast } from "sonner"
 import { useSiteById, useUpdateSite } from "@/hooks"
 import { QuickQuestionsConfig } from "@/components/features"
-import { api, type QuickQuestion } from "@/lib/api-client"
+import type { QuickQuestion } from '@/lib/sdk/sdk.schemas'
 import { SiteBotSettings, SiteUsers } from "@/components/sites"
 import { initialConfigs, type BotConfig } from "@/types/settings"
 import { env } from "@/lib/env"

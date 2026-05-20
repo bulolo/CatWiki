@@ -36,8 +36,8 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter, usePathname, useParams, useSearchParams } from "next/navigation"
-import type { Site } from "@/lib/api-client"
-import { UserRole } from "@/lib/api-client"
+import type { Site } from '@/lib/sdk/sdk.schemas'
+import { UserRole } from '@/lib/sdk/sdk.schemas'
 import { setLastSiteSlug, getUserInfo } from "@/lib/auth"
 import { useSite } from "@/contexts/SiteContext"
 
@@ -50,7 +50,7 @@ function SiteSwitcherComponent() {
   const [open, setOpen] = useState(false)
   // 检查权限
   const currentUser = typeof window !== 'undefined' ? getUserInfo() : null
-  const canManageSites = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.TENANT_ADMIN || currentUser?.role === UserRole.SITE_ADMIN
+  const canManageSites = currentUser?.role === 'admin' as const || currentUser?.role === 'tenant_admin' as const || currentUser?.role === 'site_admin' as const
 
   // 使用 SiteContext 获取站点列表
   const { sites, isLoadingSites } = useSite()

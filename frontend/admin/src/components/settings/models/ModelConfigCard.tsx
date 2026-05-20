@@ -21,7 +21,7 @@
 import { Badge } from "@/components/ui/badge"
 import { useTranslations } from "next-intl"
 import { LucideIcon } from "lucide-react"
-import type { ModelConfig } from "@/lib/api-client"
+import type { ModelConfig } from '@/lib/sdk/sdk.schemas'
 
 interface ModelConfigCardProps {
   id: string

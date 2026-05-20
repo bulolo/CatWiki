@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus, Trash2, GripVertical, Sparkles } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import type { QuickQuestion } from "@/lib/api-client"
+import type { QuickQuestion } from '@/lib/sdk/sdk.schemas'
 
 interface QuickQuestionsConfigProps {
   questions: QuickQuestion[]

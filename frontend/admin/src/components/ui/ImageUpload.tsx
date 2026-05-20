@@ -21,7 +21,8 @@ import { ImageIcon, Loader2, Camera, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
-import { api } from "@/lib/api-client"
+import { uploadAdminFile } from '@/lib/sdk/admin-files'
+import { toUploadedFileInfo } from "@/lib/normalizers"
 import imageCompression from 'browser-image-compression'
 
 interface ImageUploadProps {
@@ -133,10 +134,11 @@ export function ImageUpload({
       setIsUploading(true)
 
       // 上传文件
-      const uploadedData = await api.file.uploadFile({
-        formData: { file: fileToUpload },
-        folder: 'covers' // 封面图专用文件夹
-      })
+      const rawResp = await uploadAdminFile(
+        { file: fileToUpload },
+        { folder: 'covers' }, // 封面图专用文件夹
+      )
+      const uploadedData = toUploadedFileInfo(rawResp)
       const uploadedUrl = uploadedData.url || uploadedData.object_name
       if (!uploadedUrl) {
         throw new Error(t("uploadMissingUrl"))

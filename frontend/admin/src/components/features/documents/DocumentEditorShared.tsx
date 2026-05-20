@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select"
 import { TagsInput } from "@/components/ui/TagsInput"
 import { ImageUpload } from "@/components/ui/ImageUpload"
-import type { CollectionTree } from "@/lib/api-client"
+import type { CollectionTree } from '@/lib/sdk/sdk.schemas'
 
 type CollectionTreeWithLevel = CollectionTree & { level?: number }
 

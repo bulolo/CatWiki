@@ -20,7 +20,8 @@ import { MdEditor } from 'md-editor-rt'
 import 'md-editor-rt/lib/style.css'
 import styles from './MarkdownEditor.module.css'
 import { toast } from 'sonner'
-import { api } from '@/lib/api-client'
+import { uploadAdminFile } from '@/lib/sdk/admin-files'
+import { toUploadedFileInfo } from '@/lib/normalizers'
 
 import imageCompression from 'browser-image-compression'
 
@@ -79,11 +80,8 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
           )
 
           // 上传图片
-          const uploadRes = await api.file.uploadFile({
-            formData: {
-              file: fileToUpload,
-            },
-          })
+          const rawResp = await uploadAdminFile({ file: fileToUpload })
+          const uploadRes = toUploadedFileInfo(rawResp)
           if (!uploadRes.url) {
             throw new Error(t("uploadMissingUrl"))
           }

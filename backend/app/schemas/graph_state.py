@@ -28,29 +28,20 @@ class ChatGraphState(TypedDict):
 
     Attributes:
         messages: 对话消息列表，使用 add_messages reducer 支持追加
-        context: 检索到的上下文内容
         sources: 引用来源列表
-        should_retrieve: 是否需要执行检索（用于路由判断）
-        rewritten_query: 改写后的查询（用于优化检索）
+        summary: 对话摘要，用于长期记忆
+        site_id: 站点ID上下文 (0=全局)
+        iteration_count: 工具调用迭代计数，用于限制最大循环次数
+        consecutive_empty_count: 连续空结果计数，用于智能终止
+        source_offset: 跨工具调用累计的全局 source_index 起点
+        seen_tool_hashes: 已见过的工具返回内容哈希集合，用于 O(1) 重复检测
     """
 
     messages: Annotated[list[BaseMessage], add_messages]
     sources: list[dict]
-    summary: str  # 对话摘要，用于长期记忆
-    site_id: int | None  # 站点ID上下文 (0=全局)
-    iteration_count: int  # 工具调用迭代计数，用于限制最大循环次数
-    consecutive_empty_count: int  # 连续空结果计数，用于智能终止
-
-
-class RetrieveInput(TypedDict):
-    """检索节点输入"""
-
-    query: str
-    filter: dict | None
-
-
-class GenerateInput(TypedDict):
-    """生成节点输入"""
-
-    messages: list[BaseMessage]
-    context: str
+    summary: str
+    site_id: int | None
+    iteration_count: int
+    consecutive_empty_count: int
+    source_offset: int
+    seen_tool_hashes: list[str]

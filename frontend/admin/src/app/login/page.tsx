@@ -60,6 +60,7 @@ export default function LoginPage() {
       password
     }, {
       onSuccess: (data) => {
+        if (!data) return
         const { token, user } = data
 
         // 使用统一的登录函数保存认证状态

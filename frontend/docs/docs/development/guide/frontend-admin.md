@@ -68,17 +68,25 @@ pnpm dev
 
 ### SDK 使用原则
 
-所有的后端交互都应通过 `src/lib/sdk` 提供的方法进行。
+所有的后端交互都应通过 `src/lib/sdk/<tag>` 中 orval 生成的函数 / hooks 进行。优先使用 react-query hooks(自动接入缓存 / refetch / invalidation):
 
 ```typescript
-import { apiClient } from '@/lib/sdk'
+import { useListAdminSites, createAdminSite } from '@/lib/sdk/admin-sites'
+import type { Site, SiteCreate } from '@/lib/sdk/sdk.schemas'
 
-// 示例：获取站点列表
-const fetchSites = async () => {
-  const sites = await apiClient.sites.listSites()
-  return sites
+// 推荐:hooks 形式 —— 自动缓存 + refetch
+function SiteList() {
+  const { data } = useListAdminSites({ page: 1 })
+  return <ul>{data?.list.map(s => <li key={s.id}>{s.name}</li>)}</ul>
+}
+
+// 命令式调用 fetcher 函数(form submit / loader 场景)
+async function handleCreate(payload: SiteCreate) {
+  const site: Site = await createAdminSite(payload)
 }
 ```
+
+详见 [SDK 使用指南](/development/tech/sdk-usage)。
 
 ### 添加新组件
 

@@ -16,12 +16,14 @@ import asyncio
 import logging
 from typing import Any
 
-from app.core.ai.providers.llm_manager import llm_manager
+from app.core.ai.providers.chat import chat_provider
 from app.core.infra.rustfs import init_rustfs
-from app.core.integration.robot.plugins import load_plugins
 from app.core.integration.robot.services.dingtalk_app import DingTalkRobotService
 from app.core.integration.robot.services.feishu_app import FeishuRobotService
 from app.core.integration.robot.services.wecom_smart import WeComSmartService
+from app.core.integration.robot.wecom_internals import (
+    register_resolvers as register_wecom_resolvers,
+)
 from app.core.lifecycle.config import init_system_configs
 from app.core.vector import VectorStoreManager
 from app.core.vector.factory import close_vector_store
@@ -60,8 +62,8 @@ class LifecycleManager:
         # VectorStore 现在采用懒加载策略，首次检索时自动初始化
         pass
 
-        # 5. 加载机器人插件
-        load_plugins()
+        # 5. 注册企业微信 context resolver（受 ROBOT_PLUGIN_ALLOWLIST 控制）
+        register_wecom_resolvers()
 
         # 6. 启动集成服务
         try:
@@ -86,8 +88,16 @@ class LifecycleManager:
         """应用关闭时的核心组件卸载"""
         logger.info("🛑 [Lifecycle] Stopping core components...")
 
-        # 1. 关闭 LLM 管理器
-        await llm_manager.close()
+        # 1. 关闭 Chat Provider
+        await chat_provider.aclose()
+
+        # 1.5 关闭 Reranker 常驻 HTTP 客户端
+        try:
+            from app.core.ai.providers.reranker import reranker
+
+            await reranker.aclose()
+        except Exception as e:
+            logger.warning(f"⚠️ [Lifecycle] Reranker aclose failed: {e}")
 
         # 2. 关闭向量存储管理器
         await close_vector_store()
@@ -115,6 +125,22 @@ class LifecycleManager:
             await WeComSmartService.get_instance().shutdown()
         except Exception as e:
             logger.warning(f"⚠️ [Lifecycle] WeCom Smart LongConn shutdown failed: {e}")
+
+        # 4.5 所有 robot service 关闭完毕后，统一释放 adapter / client 资源
+        try:
+            from app.core.integration.robot.factory import RobotFactory
+
+            await RobotFactory.shutdown()
+        except Exception as e:
+            logger.warning(f"⚠️ [Lifecycle] RobotFactory shutdown failed: {e}")
+
+        # 4.6 关闭企业微信共享 HTTP 客户端（send/sync + gettoken）
+        try:
+            from app.core.integration.robot.clients.wecom import WeComClient
+
+            await WeComClient.aclose()
+        except Exception as e:
+            logger.warning(f"⚠️ [Lifecycle] WeComClient aclose failed: {e}")
 
         # 5. 关闭缓存服务
         try:
@@ -183,9 +209,9 @@ class LifecycleManager:
 
         # 5. LLM 检查 (仅检查连通性/配置加载)
         try:
-            from app.core.ai.providers.llm_manager import llm_manager
+            from app.core.ai.providers.chat import chat_provider
 
-            await llm_manager.get_model(tenant_id=None, purpose="健康检查：模型连通性测试")
+            await chat_provider.get_model(tenant_id=None, purpose="健康检查：模型连通性测试")
             results["llm"] = "healthy"
         except Exception as e:
             results["llm"] = f"unhealthy: {str(e)}"

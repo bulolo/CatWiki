@@ -165,7 +165,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         auto_commit: bool = False,
     ) -> ModelType:
         """
-        创建记录（支持自动填充 tenant_id）
+        创建记录。基类不自动注入 tenant_id；需要租户隔离的子类（如 CRUDDocument）
+        应在自己的 ``create`` override 中从当前上下文取 ``tenant_id`` 并填充。
 
         参数:
             db: 数据库会话

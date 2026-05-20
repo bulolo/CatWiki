@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.common.i18n import _
 from app.core.common.masking import mask_bot_config_inplace
-from app.core.common.utils import Paginator
+from app.core.common.pagination import Paginator
 from app.core.infra.cache import cached, get_cache
 from app.core.integration.robot.services.dingtalk_app import DingTalkRobotService
 from app.core.integration.robot.services.feishu_app import FeishuRobotService

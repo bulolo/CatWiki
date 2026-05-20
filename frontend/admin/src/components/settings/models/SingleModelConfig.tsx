@@ -27,7 +27,7 @@ import { PlatformModeView } from "./PlatformModeView"
 import { ModelConfigFields } from "./ModelConfigFields"
 
 interface SingleModelConfigProps {
-  type: "chat" | "embedding" | "rerank" | "vl"
+  type: "chat" | "embedding" | "rerank"
   onSuccess?: () => void
 }
 

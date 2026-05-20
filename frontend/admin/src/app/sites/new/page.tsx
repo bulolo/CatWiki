@@ -17,7 +17,6 @@
 import { useState, useEffect } from "react"
 import { useTranslations } from 'next-intl'
 import { useRouter } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -35,7 +34,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { useCreateSite } from "@/hooks"
-import { api } from "@/lib/api-client"
+import { useGetAdminCurrentTenant } from '@/lib/sdk/admin-tenants'
 import { ImageUpload } from "@/components/ui/ImageUpload"
 
 // 主题色配置
@@ -67,10 +66,8 @@ export default function NewSitePage() {
   const [adminPassword, setAdminPassword] = useState("")
 
   // 获取当前租户标识
-  const { data: tenantData } = useQuery({
-    queryKey: ["current-tenant"],
-    queryFn: () => api.tenant.getCurrent(),
-    staleTime: 10 * 60 * 1000,
+  const { data: tenantData } = useGetAdminCurrentTenant({
+    query: { staleTime: 10 * 60 * 1000 },
   })
   const tenantSlug = tenantData?.slug || '...'
 

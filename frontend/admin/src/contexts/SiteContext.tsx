@@ -32,7 +32,7 @@ import { createContext, useContext, ReactNode, useMemo } from "react"
 import { useParams, usePathname } from "next/navigation"
 import { useSitesList, useSiteBySlug } from "@/hooks/useSites"
 import { getUserInfo } from "@/lib/auth"
-import { type Site, UserRole } from "@/lib/api-client"
+import { type Site, UserRole } from '@/lib/sdk/sdk.schemas'
 
 interface SiteContextType {
   // 当前路由的 slug
@@ -83,7 +83,7 @@ export function SiteProvider({ children }: { children: ReactNode }) {
     if (!currentUser) return []
     // System Admins and Tenant Admins see all sites
     // (For Tenant Admins, the backend already filters sites by tenant_id)
-    if (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.TENANT_ADMIN) {
+    if (currentUser.role === 'admin' as const || currentUser.role === 'tenant_admin' as const) {
       return allSites
     }
     // Others (Site Admins) only see explicitly managed sites
@@ -103,12 +103,12 @@ export function SiteProvider({ children }: { children: ReactNode }) {
 
   const value: SiteContextType = {
     slug,
-    currentSite,
+    currentSite: currentSite ?? undefined,
     isLoadingSite,
-    siteError,
+    siteError: siteError as Error | null,
     sites,
     isLoadingSites,
-    sitesError,
+    sitesError: sitesError as Error | null,
     refetchSite,
     refetchSites,
   }

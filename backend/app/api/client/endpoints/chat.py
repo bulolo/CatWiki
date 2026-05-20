@@ -18,7 +18,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.responses import StreamingResponse
 
 from app.schemas.chat import ResponsesAPIRequest, ResponsesAPIResponse
-from app.services.chat.chat_service import ChatService, get_chat_service
+from app.services.chat import ChatService, get_chat_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

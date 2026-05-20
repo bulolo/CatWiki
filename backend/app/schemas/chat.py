@@ -228,6 +228,18 @@ class ResponseOutputItem(BaseModel):
     content: list[ResponseOutputContent]
 
 
+class ResponsesAPIUsage(BaseModel):
+    """OpenAI Responses API spec usage 对象。
+
+    与 ``ChatCompletionUsage`` 字段名不同 —— Responses API 用 ``input/output``，
+    Chat Completions 用 ``prompt/completion``。两边按各自 spec 单独定义，不复用。
+    """
+
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+
+
 class ResponsesAPIResponse(BaseModel):
     id: str  # 同时作为下次请求的 previous_response_id
     object: str = "response"
@@ -235,4 +247,4 @@ class ResponsesAPIResponse(BaseModel):
     status: str = "completed"
     model: str
     output: list[ResponseOutputItem]
-    usage: ChatCompletionUsage | None = None
+    usage: ResponsesAPIUsage | None = None

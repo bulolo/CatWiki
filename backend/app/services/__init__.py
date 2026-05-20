@@ -8,14 +8,14 @@ from app.services.chat import (
 )
 from app.services.collection_service import CollectionService, get_collection_service
 from app.services.config import configuration_service
-from app.services.document_service import DocumentService, get_document_service
+from app.services.document import DocumentService, get_document_service
 from app.services.file_service import FileService, get_file_service
 from app.services.health_service import HealthService, get_health_service
 from app.services.rag import RAGService
 from app.services.robot import RobotOrchestrator, get_robot_orchestrator
 from app.services.site_service import SiteService, get_site_service
 from app.services.stats import StatsService, get_stats_service
-from app.services.system_config_service import (
+from app.services.system_config import (
     SystemConfigService,
     get_system_config_service,
 )

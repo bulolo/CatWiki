@@ -27,7 +27,6 @@ from app.core.infra.config import (
     AI_CHAT_CONFIG_KEY,
     AI_EMBEDDING_CONFIG_KEY,
     AI_RERANK_CONFIG_KEY,
-    AI_VL_CONFIG_KEY,
 )
 from app.crud.collection import crud_collection
 from app.crud.document import crud_document
@@ -183,7 +182,6 @@ class TenantSeeder(BaseSeeder):
             "chat": AI_CHAT_CONFIG_KEY,
             "embedding": AI_EMBEDDING_CONFIG_KEY,
             "rerank": AI_RERANK_CONFIG_KEY,
-            "vl": AI_VL_CONFIG_KEY,
         }
 
         for section, key in ai_keys.items():

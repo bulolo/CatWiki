@@ -22,7 +22,7 @@
 "use client"
 
 import { useSite } from "@/contexts/SiteContext"
-import type { Site } from "@/lib/api-client"
+import type { Site } from '@/lib/sdk/sdk.schemas'
 
 const defaultSite: Site = {
   id: 0,

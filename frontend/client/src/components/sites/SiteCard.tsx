@@ -16,7 +16,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { BookOpen, ExternalLink, MessageCircle, Star, Users } from "lucide-react"
-import { ClientSite } from "@/lib/api-client"
+import { ClientSite } from '@/lib/sdk/sdk.schemas'
 import { cn } from "@/lib/utils"
 import { useTranslations } from "next-intl"
 

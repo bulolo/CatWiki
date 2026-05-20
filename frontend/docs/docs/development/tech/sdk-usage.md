@@ -1,97 +1,124 @@
-# API SDK 与 客户端使用指南
+# 前端 SDK 使用指南
 
-CatWiki 的 API 调用体系分为两层：底层的 **自动生成 SDK** 与上层的 **手动封装客户端 (API Client)**。
+CatWiki 前端通过 `make gen-sdk` 基于后端 OpenAPI 自动生成 TypeScript SDK,使用 [orval](https://orval.dev/) (mode=tags + react-query) 产出。
 
-## 1. 架构深度解析
+## 1. 生成与产物
 
-为了平衡开发效率与代码健壮性，我们采用了两层架构：
+```bash
+make gen-sdk
+```
 
-### 底层：自动生成 SDK (`@/lib/sdk`)
-- **来源**：通过 `make gen-sdk` 工具基于后端的 OpenAPI (Swagger) 定义自动生成。
-- **职责**：提供原始接口定义。Admin 端生成 `CatWikiAdminSdk`，Client 端生成 `CatWikiClientSdk`。
-- **注意**：**不要手动修改此目录下的任何代码**。
+依赖运行中的后端(默认 `http://localhost:3000`)。脚本会:
 
-### 上层：封装客户端 (`@/lib/api-client`)
-- **职责**：
-    - **单例化**：预配置 `BASE_URL` 并初始化 SDK 实例。
-    - **认证注入**：Admin 端自动注入 Bearer Token。
-    - **统一拦截**：处理 401 自动跳转等逻辑。
-    - **类型重导出**：导出 `Models` 命名空间，提供完整的类型提示。
+1. 拉 `/openapi-admin.json` 和 `/openapi-client.json`
+2. 规范化 OpenAPI 3.1 binary 字段、展平 `ApiResponse_X` envelope
+3. 调用各项目内的 `orval.config.ts`,按 OpenAPI tag 拆分生成
 
----
+产物布局(`frontend/admin/src/lib/sdk/` 与 `frontend/client/src/lib/sdk/`):
 
-## 2. 引入与使用
+```
+sdk/
+  admin-sites.ts          # 每个 OpenAPI tag 一个文件
+  admin-documents.ts      # 内含 fetcher + queryKey + useQuery/useMutation hooks
+  ee-admin-sites.ts       # ee-* 前缀为 EE 专属 tag
+  ...
+  sdk.schemas.ts          # 所有 schema 类型(Site / Document / ...)
+```
 
-**推荐方式**：统一使用封装好的 `api` 对象，并配合 `Models` 命名空间使用类型。
+> ⚠️ **不要手动修改 `sdk/` 下任何文件** —— 下次 `make gen-sdk` 会被 `clean: true` 全量覆盖。
 
-### 示例代码
+## 2. 在业务代码中使用
+
+**直接从 `@/lib/sdk/<tag>` import**,无 barrel,无包装层。tag 名一目了然反映 API 归属:
+
 ```typescript
-import { api, Models } from '@/lib/api-client' 
+// 函数 + hooks(自动按 tag 分文件)
+import {
+  listAdminSites,
+  useListAdminSites,
+  useCreateAdminSite,
+  getListAdminSitesQueryKey,
+} from '@/lib/sdk/admin-sites'
 
-// 1. 调用接口
-const sites = await api.site.list({ page: 1 })
+// Schema 类型(统一在 sdk.schemas)
+import type { Site, SiteCreate, SiteUpdate } from '@/lib/sdk/sdk.schemas'
 
-// 2. 使用类型 (推荐 Models 命名空间)
-const newSite: Models.SiteCreate = {
-  name: '我的新站点',
-  slug: 'my-site'
+// 业务异常类型
+import { ApiError } from '@/lib/custom-fetch'      // admin
+import { HttpError } from '@/lib/custom-fetch'     // client
+```
+
+### 调用风格
+
+orval 同时产 fetcher 函数和 react-query hooks,**绝大多数场景用 hooks**:
+
+```tsx
+function SiteList() {
+  const { data, isLoading } = useListAdminSites({ page: 1, size: 20 })
+  // data 已是解包后的业务数据(custom-fetch mutator 剥过 ApiResponse envelope)
+  // 类型也已展平,无 data.data 嵌套
+  return <ul>{data?.list.map(s => <li key={s.id}>{s.name}</li>)}</ul>
 }
 ```
 
----
-
-## 3. 分端说明 (Admin vs Client)
-
-底层 SDK 在生成的服务命名上存在细微差别：
-
-| 特性 | 管理端 (Admin) | 展示端 (Client) |
-| :--- | :--- | :--- |
-| **生成的类名** | `CatWikiAdminSdk` | `CatWikiClientSdk` |
-| **服务命名空间** | `adminSites`, `adminDocuments`... | `sites`, `documents`... |
-| **认证方式** | 必须携带 Token | 默认公开访问 |
-
----
-
-## 4. 扩展指南：如何增加新的 API？
-
-如果你在后端新增了一个接口（例如 `GET /admin/sites/my-action`）：
-
-1.  **同步 SDK**：
-    ```bash
-    make gen-sdk
-    ```
-2.  **完善封装**：在 `lib/api-client.ts` 中找到对应的模块进行封装。
-    ```typescript
-    // 以 Admin 端为例
-    const siteApi = {
-      // ...
-      myNewAction: (id: number) => 
-        wrapResponse<Models.ActionResult>(client.adminSites.myNewAction({ id })),
-    }
-    ```
-3.  **UI 调用**：
-    ```typescript
-    const res = await api.site.myNewAction(123)
-    ```
-
----
-
-## 5. 类型安全最佳实践
-
-**强烈建议** 使用 `Models` 命名空间，而不是从深层路径引入。
+仅在 hook 外(loader / 事件 handler / 命令式调用)用 fetcher 函数:
 
 ```typescript
-// ✅ 推荐：由 api-client 统一导出的命名空间
-import { Models } from '@/lib/api-client'
-type Site = Models.Site
-
-// ❌ 不推荐：路径依赖过深且不可控
-import type { Site } from '@/lib/sdk/models/Site'
+async function handleSubmit(payload: SiteCreate) {
+  const site = await createAdminSite(payload)
+  // ...
+}
 ```
 
----
+### Mutation + invalidation
 
-## 6. 常见问题
+orval 自动生成 `getListAdminSitesQueryKey()`,和 hook 的 `queryKey` 一致,**直接复用**避免手维护 key:
 
-**Q: 运行 `make gen-sdk` 报错？**
-A: 请确保后端服务已启动（`make dev-up`），因为脚本需要访问 `http://localhost:3000/openapi-admin.json` 获取最新的接口定义。
+```tsx
+const qc = useQueryClient()
+const { mutate } = useCreateAdminSite({
+  mutation: {
+    onSuccess: () => qc.invalidateQueries({ queryKey: getListAdminSitesQueryKey() }),
+  },
+})
+```
+
+## 3. 设计要点
+
+### 为什么不要 barrel(`@/lib/api-client`)
+
+历史上业务侧统一从 `@/lib/api-client` 转发,但已废弃。原因:
+
+- **静默漏失**:后端新增 tag 时 barrel 不会自动更新,业务 import 找不到只能等代码审查发现
+- **失去 tree-shaking 保证**:`export *` 在某些链路会牵连整个 tag 文件进 chunk
+- **隐藏归属**:`from '@/lib/api-client'` 看不出调用打到哪个域
+
+`@/lib/sdk/<tag>` 路径自带语义,新增 tag 零维护。
+
+### ApiResponse envelope 在 OpenAPI 层展平
+
+后端响应统一裹 `{ code, msg, data }`。`generate_sdk.py` 在 spec 落盘前会把所有 `$ref: ApiResponse_X_` 替换为其 `data` 字段的 schema,同时 `custom-fetch.ts` 在运行时也剥一次 envelope。**类型与运行时对齐**,业务侧零 `data.data` 嵌套。
+
+### 文件 / 二进制字段
+
+FastAPI 0.115+ 输出 OpenAPI 3.1 `contentMediaType` 表达 multipart 文件。orval 8.x 仍只识别 3.0 的 `format: binary`,脚本会就地改写,业务侧 `File` / `Blob` 类型正确无需绕。
+
+## 4. 后端新增接口的流程
+
+1. 后端加路由,确保 `tags=["xxx"]` 设置正确
+2. 重启 backend(或确保 dev 模式 hot reload 生效)
+3. `make gen-sdk`
+4. 业务侧直接 `import { useXxxYyy } from '@/lib/sdk/xxx'`
+
+无需任何手动 barrel / 封装层维护。
+
+## 5. 常见问题
+
+**Q: `make gen-sdk` 报连接错误?**
+A: 后端没在 `http://localhost:3000` 上响应。先 `make dev-up`,或设置 `SDK_API_URL` 指向实际后端地址。
+
+**Q: 生成后 tsc 报某 schema 类型缺失?**
+A: 确认后端是否将该 schema 真正暴露给了对应 prefix(admin / client)。`filter_openapi_by_prefix` 只暴露被路由引用的 schema。
+
+**Q: 已经有 fetcher 函数为什么还要 hook?**
+A: hook 自动接入 react-query 的缓存、refetch、stale time 体系,绝大多数场景应优先 hook。fetcher 仅用于命令式调用(form submit / loader / 串行依赖)。

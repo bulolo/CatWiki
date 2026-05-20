@@ -4,28 +4,21 @@ Admin API 提供完整的 CRUD 操作和管理功能，需要身份认证。
 
 ## 🔐 认证
 
-所有 Admin API 都需要 JWT Token 认证。
+所有 Admin API 都需要 JWT Token 认证。前端通过 orval 生成的 SDK 调用,Token 由 `src/lib/custom-fetch.ts` mutator 自动从存储读取并注入 `Authorization` 头,业务侧无需手动拼。
 
-### 获取 Token
+### 登录获取 Token
 
 ```typescript
-const response = await apiClient.adminUsers.loginAdmin({
-  requestBody: {
-    email: "admin@catwiki.cn",
-    password: "admin123"
-  }
-})
+import { loginAdmin } from '@/lib/sdk/admin-users'
 
-const token = response.data.token
+const { token } = await loginAdmin({ email: "admin@catwiki.cn", password: "admin123" })
+// token 已被 lib/auth.ts 持久化,后续所有 SDK 调用自动携带
 ```
 
-### 使用 Token
+### 直接发请求(非 SDK 场景)
 
 ```typescript
-// 在请求头中添加 Token
-headers: {
-  'Authorization': `Bearer ${token}`
-}
+headers: { 'Authorization': `Bearer ${token}` }
 ```
 
 ---

@@ -22,7 +22,7 @@ import { FileText, Users, MessageSquare, Eye, Network, Flame, ChevronRight, Cloc
 import { useSiteData, useDocuments, useSiteStats, useHealth } from "@/hooks"
 import { getRoutePath, useRouteContext } from "@/lib/routing"
 import { cn } from "@/lib/utils"
-import type { Document, RecentSession, TrendData } from "@/lib/api-client"
+import type { Document, RecentSession, TrendData } from '@/lib/sdk/sdk.schemas'
 
 
 // 统计图标映射

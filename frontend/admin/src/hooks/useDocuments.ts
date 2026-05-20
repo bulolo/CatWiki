@@ -1,11 +1,11 @@
 // Copyright 2026 CatWiki Authors
-// 
+//
 // Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://github.com/CatWiki/CatWiki/blob/main/LICENSE
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,32 +13,17 @@
 // limitations under the License.
 
 /**
- * React Query hooks for Document management
+ * React Query hooks for Document management.
+ *
+ * 调用 orval 生成的 functions / hooks。queryKey 由 orval 自动算
+ * （``getListAdminDocumentsQueryKey()``），不再手维护。
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, VectorStatus } from '@/lib/api-client'
-import type {
-  Document,
-  DocumentCreate,
-  DocumentUpdate,
-  VectorizeResponse
-} from '@/lib/api-client'
+import { useQueryClient } from '@tanstack/react-query'
+import { aiGenerateDocumentFields, batchVectorizeAdminDocuments, createAdminDocument, deleteAdminDocument, getListAdminDocumentsQueryKey, removeAdminDocumentVector, updateAdminDocument, useGetAdminDocument, useListAdminDocuments, vectorizeAdminDocument } from '@/lib/sdk/admin-documents'
+import { VectorStatus, type Document, type DocumentCreate, type DocumentUpdate, type ListAdminDocumentsParams } from '@/lib/sdk/sdk.schemas'
 import { isAuthenticated } from '@/lib/auth'
 import { useAdminMutation } from './useAdminMutation'
-
-// ==================== Query Keys ====================
-
-export const documentKeys = {
-  all: ['documents'] as const,
-  lists: () => [...documentKeys.all, 'list'] as const,
-  list: (siteId: number, filters?: Omit<UseDocumentsParams, 'siteId'> & { page?: number; size?: number }) =>
-    [...documentKeys.lists(), siteId, filters] as const,
-  details: () => [...documentKeys.all, 'detail'] as const,
-  detail: (id: number) => [...documentKeys.details(), id] as const,
-}
-
-// ==================== Hooks ====================
 
 interface UseDocumentsParams {
   siteId: number
@@ -53,64 +38,49 @@ interface UseDocumentsParams {
 }
 
 /**
- * 获取文档列表
- * 当有文档处于 pending 或 processing 状态时，自动每 2 秒轮询一次
+ * 获取文档列表（按 list / pagination.total 拆分返回）。
+ * pending / processing 状态时自动 2s 轮询。
  */
 export function useDocuments(params: UseDocumentsParams) {
   const { siteId, page = 1, size = 20, ...filters } = params
-  const isAuth = isAuthenticated()
 
-  return useQuery({
-    queryKey: documentKeys.list(siteId, { page, size, ...filters }),
-    queryFn: async () => {
-      const apiParams: {
-        siteId: number
-        page: number
-        size: number
-        orderBy?: 'views' | 'updated_at'
-        orderDir?: UseDocumentsParams['orderDir']
-        keyword?: string
-        collectionId?: number
-        status?: 'published' | 'draft'
-        vectorStatus?: 'none' | 'outdated' | 'pending' | 'processing' | 'completed' | 'failed'
-      } = {
-        siteId,
-        page,
-        size,
-        orderDir: filters.orderDir,
-        keyword: filters.searchTerm,
-      }
+  const apiParams: ListAdminDocumentsParams = {
+    site_id: siteId,
+    page,
+    size,
+    order_dir: filters.orderDir,
+    keyword: filters.searchTerm,
+  }
+  if (filters.orderBy === 'views' || filters.orderBy === 'updated_at') {
+    apiParams.order_by = filters.orderBy
+  }
+  if (filters.collectionId !== undefined && filters.collectionId !== null) {
+    const parsedCollectionId = Number(filters.collectionId)
+    if (!Number.isNaN(parsedCollectionId)) {
+      apiParams.collection_id = parsedCollectionId
+    }
+  }
+  if (filters.status && filters.status !== 'all') apiParams.status = filters.status
+  if (filters.vectorStatus && filters.vectorStatus !== 'all') {
+    apiParams.vector_status = filters.vectorStatus
+  }
 
-      if (filters.orderBy === 'views' || filters.orderBy === 'updated_at') {
-        apiParams.orderBy = filters.orderBy
-      }
-
-      if (filters.collectionId !== undefined && filters.collectionId !== null) {
-        const parsedCollectionId = Number(filters.collectionId)
-        if (!Number.isNaN(parsedCollectionId)) {
-          apiParams.collectionId = parsedCollectionId
-        }
-      }
-
-      if (filters.status && filters.status !== 'all') apiParams.status = filters.status
-      if (filters.vectorStatus && filters.vectorStatus !== 'all') apiParams.vectorStatus = filters.vectorStatus
-
-      const data = await api.document.list(apiParams)
-      return {
-        documents: data.list || [],
-        total: data.pagination?.total || 0,
-      }
-    },
-
-    enabled: !!siteId && isAuth,
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
-    refetchInterval: (query) => {
-      const data = query.state.data
-      const hasProcessing = data?.documents?.some(
-        (doc: Document) => doc.vector_status === VectorStatus.PENDING || doc.vector_status === VectorStatus.PROCESSING
-      )
-      return hasProcessing ? 2000 : false
+  return useListAdminDocuments(apiParams, {
+    query: {
+      enabled: !!siteId && isAuthenticated(),
+      staleTime: 0,
+      gcTime: 5 * 60 * 1000,
+      select: (data) => ({
+        documents: data?.list ?? [],
+        total: data?.pagination?.total ?? 0,
+      }),
+      refetchInterval: (query) => {
+        const data = query.state.data as { documents: Document[]; total: number } | undefined
+        const hasProcessing = data?.documents?.some(
+          (doc) => doc.vector_status === 'pending' || doc.vector_status === 'processing',
+        )
+        return hasProcessing ? 2000 : false
+      },
     },
   })
 }
@@ -119,23 +89,21 @@ export function useDocuments(params: UseDocumentsParams) {
  * 获取单个文档详情
  */
 export function useDocument(id: number | undefined) {
-  const isAuth = isAuthenticated()
-
-  return useQuery({
-    queryKey: documentKeys.detail(id!),
-    queryFn: () => api.document.get(id!),
-    enabled: !!id && isAuth,
-    staleTime: 5 * 60 * 1000,
+  return useGetAdminDocument(id ?? 0, {
+    query: {
+      enabled: !!id && isAuthenticated(),
+      staleTime: 5 * 60 * 1000,
+    },
   })
 }
 
 /**
  * 创建文档
  */
-export function useCreateDocument(siteId: number) {
+export function useCreateDocument(_siteId: number) {
   return useAdminMutation({
-    mutationFn: (data: DocumentCreate) => api.document.create(data),
-    invalidateKeys: [documentKeys.lists()],
+    mutationFn: (data: DocumentCreate) => createAdminDocument(data),
+    invalidateKeys: [getListAdminDocumentsQueryKey()],
   })
 }
 
@@ -145,62 +113,58 @@ export function useCreateDocument(siteId: number) {
 export function useUpdateDocument() {
   return useAdminMutation({
     mutationFn: ({ documentId, data }: { documentId: number; data: DocumentUpdate }) =>
-      api.document.update(documentId, data),
-    onSuccess: (updatedDoc, variables, context, mutation) => {
-      // 获取 queryClient 进行更细粒度的失效
-      // 注意：useAdminMutation 内部已经处理了基础的 onSuccess 回调
-    },
-    // 手动指定需要失效的 key
-    invalidateKeys: [documentKeys.all],
+      updateAdminDocument(documentId, data),
+    invalidateKeys: [['/admin/v1/documents']],
   })
 }
 
 /**
  * 批量删除文档
  */
-export function useBatchDeleteDocuments(siteId: number) {
+export function useBatchDeleteDocuments(_siteId: number) {
   return useAdminMutation({
     mutationFn: async (ids: number[]) => {
-      await Promise.all(ids.map(id => api.document.delete(id)))
+      await Promise.all(ids.map((id) => deleteAdminDocument(id)))
       return ids
     },
-    invalidateKeys: [documentKeys.lists()],
+    invalidateKeys: [getListAdminDocumentsQueryKey()],
   })
 }
 
 /**
  * 删除文档（带乐观更新）
  */
-export function useDeleteDocument(siteId: number) {
-
+export function useDeleteDocument(_siteId: number) {
   const queryClient = useQueryClient()
 
   return useAdminMutation({
-    mutationFn: (id: number) => api.document.delete(id),
+    mutationFn: (id: number) => deleteAdminDocument(id),
     onMutate: async (deletedId) => {
-      await queryClient.cancelQueries({ queryKey: documentKeys.lists() })
-      const previousData = queryClient.getQueriesData({ queryKey: documentKeys.lists() })
+      const listKey = getListAdminDocumentsQueryKey()
+      await queryClient.cancelQueries({ queryKey: listKey })
+      const previousData = queryClient.getQueriesData({ queryKey: listKey })
 
       queryClient.setQueriesData(
-        { queryKey: documentKeys.lists() },
-        (old: { documents?: Document[]; total?: number } | undefined) => {
-        if (!old) return old
-        return {
-          ...old,
-          documents: old.documents?.filter((doc: Document) => doc.id !== deletedId) || [],
-          total: (old.total || 0) - 1,
-        }
-      })
+        { queryKey: listKey },
+        (old: { list?: Document[]; pagination?: { total?: number } } | undefined) => {
+          if (!old) return old
+          return {
+            ...old,
+            list: old.list?.filter((doc) => doc.id !== deletedId) ?? [],
+            pagination: { ...old.pagination, total: (old.pagination?.total ?? 0) - 1 },
+          }
+        },
+      )
       return { previousData }
     },
-    onError: (error, deletedId, context) => {
+    onError: (_error, _deletedId, context) => {
       if (context?.previousData) {
         context.previousData.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data)
         })
       }
     },
-    invalidateKeys: [documentKeys.lists()],
+    invalidateKeys: [getListAdminDocumentsQueryKey()],
   })
 }
 
@@ -209,44 +173,41 @@ export function useDeleteDocument(siteId: number) {
  */
 export function useBatchUpdateDocuments() {
   return useAdminMutation({
-    mutationFn: async ({ documentIds, data }: { documentIds: number[]; data: DocumentUpdate }) => {
-      await Promise.all(documentIds.map(id => api.document.update(id, data)))
+    mutationFn: async ({
+      documentIds,
+      data,
+    }: {
+      documentIds: number[]
+      data: DocumentUpdate
+    }) => {
+      await Promise.all(documentIds.map((id) => updateAdminDocument(id, data)))
       return { documentIds, data }
     },
-    invalidateKeys: [documentKeys.lists()],
+    invalidateKeys: [getListAdminDocumentsQueryKey()],
   })
 }
 
 // ==================== 向量化相关 Hooks ====================
 
-/**
- * 向量化单个文档
- */
 export function useVectorizeDocument() {
   return useAdminMutation({
-    mutationFn: (documentId: number) => api.document.vectorizeSingle(documentId),
-    invalidateKeys: [documentKeys.all],
+    mutationFn: (documentId: number) => vectorizeAdminDocument(documentId),
+    invalidateKeys: [['/admin/v1/documents']],
   })
 }
 
-/**
- * 批量向量化文档
- */
 export function useBatchVectorizeDocuments() {
   return useAdminMutation({
-    mutationFn: (documentIds: number[]) => api.document.vectorize(documentIds),
-    invalidateKeys: [documentKeys.lists()],
-
+    mutationFn: (documentIds: number[]) =>
+      batchVectorizeAdminDocuments({ document_ids: documentIds }),
+    invalidateKeys: [getListAdminDocumentsQueryKey()],
   })
 }
 
-/**
- * 移除文档向量
- */
 export function useRemoveVector() {
   return useAdminMutation({
-    mutationFn: (documentId: number) => api.document.removeVector(documentId),
-    invalidateKeys: [documentKeys.all],
+    mutationFn: (documentId: number) => removeAdminDocumentVector(documentId),
+    invalidateKeys: [['/admin/v1/documents']],
   })
 }
 
@@ -255,10 +216,24 @@ export function useRemoveVector() {
  */
 export function useAiGenerateFields() {
   return useAdminMutation({
-    mutationFn: ({ content, fields, summaryMaxLength, tagsMaxCount }: { content: string; fields: Array<'summary' | 'tags'>; summaryMaxLength?: number; tagsMaxCount?: number }) =>
-      api.document.aiGenerate(content, fields, summaryMaxLength, tagsMaxCount),
+    mutationFn: ({
+      content,
+      fields,
+      summaryMaxLength,
+      tagsMaxCount,
+    }: {
+      content: string
+      fields: Array<'summary' | 'tags'>
+      summaryMaxLength?: number
+      tagsMaxCount?: number
+    }) =>
+      aiGenerateDocumentFields({
+        content,
+        fields,
+        summary_max_length: summaryMaxLength,
+        tags_max_count: tagsMaxCount,
+      }),
   })
 }
 
-// 导出 VectorStatus 枚举
-export { VectorStatus }
+export type { VectorStatus }

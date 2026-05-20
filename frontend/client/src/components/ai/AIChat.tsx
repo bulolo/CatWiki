@@ -27,7 +27,7 @@ import {
 } from "@/components/ui"
 import { Send, Bot, User, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { ClientSite } from "@/lib/api-client"
+import type { ClientSite } from '@/lib/sdk/sdk.schemas'
 import { Streamdown } from "streamdown"
 import { useAIChat } from "@/hooks"
 import { MessageSources } from "./MessageSources"

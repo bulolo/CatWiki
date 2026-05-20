@@ -19,7 +19,6 @@ OpenAPI 规范过滤和处理工具
 from fastapi import FastAPI
 
 
-# 去掉缓存，确保开发环境下能实时看到 EE 接口变更
 def filter_openapi_by_prefix(app: FastAPI, prefix: str) -> dict:
     """根据路径前缀过滤 OpenAPI 规范
 

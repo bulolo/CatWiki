@@ -5,10 +5,7 @@ import logging
 import xml.etree.ElementTree as ET
 from typing import Any
 
-import httpx
-
 from app.core.integration.robot.base import MessageDeduplicator, RobotInboundEvent, RobotSession
-from app.core.integration.robot.common.wecom.utils import WeComTokenManager
 from app.models.site import Site
 from app.services.robot import RobotOrchestrator
 
@@ -29,41 +26,28 @@ def _safe_create_task(coro, *, name: str | None = None) -> asyncio.Task:
 class WeComAppService:
     """企业微信应用(机器人)业务逻辑。"""
 
-    _token_manager = WeComTokenManager()
     _deduplicator = MessageDeduplicator()
-    _http_client: httpx.AsyncClient | None = None
-
-    @classmethod
-    def _get_http_client(cls) -> httpx.AsyncClient:
-        if cls._http_client is None or cls._http_client.is_closed:
-            cls._http_client = httpx.AsyncClient(timeout=10.0)
-        return cls._http_client
 
     @classmethod
     async def send_message(
         cls, corp_id: str, secret: str, agent_id: str | int, to_user: str, content: str
     ) -> None:
-        """调用企业微信 API 发送应用消息 (支持多租户配置)"""
+        """调用企业微信 API 发送应用消息 (支持多租户配置)。
+
+        HTTP / token / errcode 由 ``WeComClient.send_app_message`` 统一处理；
+        本方法仅在异常时打日志，不重新抛（webhook 回调路径不希望因为发送失败
+        导致整体回包失败）。
+        """
+        from app.core.integration.robot.clients.wecom import WeComClient
+
         try:
-            token = await cls._token_manager.get_access_token(corp_id, secret)
-            client = cls._get_http_client()
-            body = {
-                "touser": to_user,
-                "msgtype": "text",
-                "agentid": agent_id,
-                "text": {"content": content},
-                "safe": 0,
-                "enable_id_trans": 0,
-                "enable_duplicate_check": 0,
-            }
-            resp = await client.post(
-                "https://qyapi.weixin.qq.com/cgi-bin/message/send",
-                params={"access_token": token},
-                json=body,
+            await WeComClient.send_app_message(
+                corp_id=corp_id,
+                secret=secret,
+                agent_id=agent_id,
+                to_user=to_user,
+                content=content,
             )
-            data = resp.json()
-            if data.get("errcode") != 0:
-                logger.error("发送企业微信应用消息失败: %s", data)
         except Exception as e:
             logger.error("发送企业微信应用消息发生异常: %s", e)
 
@@ -107,11 +91,9 @@ class WeComAppService:
                 xml_tree.find("AgentID").text if xml_tree.find("AgentID") is not None else None
             )
 
-            # 1. 去重逻辑
             if cls._deduplicator.check_and_log_duplicate(site.id, msg_id, "企业微信应用"):
                 return "success"
 
-            # 2. 处理文本消息
             if msg_type == "text":
                 content_node = xml_tree.find("Content")
                 content = content_node.text if content_node is not None else ""

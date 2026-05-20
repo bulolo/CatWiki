@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import hashlib
 import json
 import logging
+import time
 from typing import Any
 
 from app.core.infra.config import (
     AI_CHAT_CONFIG_KEY,
     AI_EMBEDDING_CONFIG_KEY,
     AI_RERANK_CONFIG_KEY,
-    AI_VL_CONFIG_KEY,
 )
 from app.core.infra.tenant import temporary_tenant_context
 from app.core.web.exceptions import BadRequestException, CatWikiError
@@ -34,10 +35,33 @@ SECTION_TO_KEY = {
     "chat": AI_CHAT_CONFIG_KEY,
     "embedding": AI_EMBEDDING_CONFIG_KEY,
     "rerank": AI_RERANK_CONFIG_KEY,
-    "vl": AI_VL_CONFIG_KEY,
 }
 
-MODEL_TYPES = ["chat", "embedding", "rerank", "vl"]
+MODEL_TYPES = ["chat", "embedding", "rerank"]
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Process-level cache for resolve_section
+#
+# Why: resolve_section may open 2-3 AsyncSessionLocal() per call (tenant lookup,
+# specific config, platform fallback). Several hot-path callers (ChatProvider,
+# EmbeddingProvider, log_ai_stack, EE bot) all hit it on every request. A short
+# TTL absorbs those reads without changing failure semantics — DB errors still
+# bubble up rather than being cached.
+#
+# Invalidation is wired through ConfigResolver.invalidate(), which the
+# configuration_service.clear_cache hook calls after admin updates.
+# ──────────────────────────────────────────────────────────────────────────────
+_RESOLVE_TTL: float = 30.0
+_resolve_cache: dict[tuple[str, int | None], tuple[dict[str, Any], float]] = {}
+_resolve_locks: dict[tuple[str, int | None], asyncio.Lock] = {}
+
+
+def _get_resolve_lock(key: tuple[str, int | None]) -> asyncio.Lock:
+    lock = _resolve_locks.get(key)
+    if lock is None:
+        lock = asyncio.Lock()
+        _resolve_locks[key] = lock
+    return lock
 
 
 class ConfigResolver:
@@ -78,8 +102,57 @@ class ConfigResolver:
                 return {}
 
     @classmethod
-    async def resolve_section(cls, section: str, tenant_id: int | None = None) -> dict[str, Any]:
-        """Resolve a specific configuration section (e.g., 'chat', 'embedding')."""
+    async def resolve_section(
+        cls,
+        section: str,
+        tenant_id: int | None = None,
+        *,
+        force: bool = False,
+    ) -> dict[str, Any]:
+        """Resolve a specific configuration section (e.g., 'chat', 'embedding').
+
+        Results are cached at process level for `_RESOLVE_TTL` seconds.
+        Pass `force=True` to bypass the cache and refresh.
+        """
+        cache_key = (section, tenant_id)
+
+        # Fast path: no lock when serving from a still-fresh cache entry.
+        if not force:
+            cached = _resolve_cache.get(cache_key)
+            if cached is not None and (time.monotonic() - cached[1]) < _RESOLVE_TTL:
+                return cached[0]
+
+        # Slow path: per-key lock + double-check to coalesce concurrent fills.
+        async with _get_resolve_lock(cache_key):
+            if not force:
+                cached = _resolve_cache.get(cache_key)
+                if cached is not None and (time.monotonic() - cached[1]) < _RESOLVE_TTL:
+                    return cached[0]
+            result = await cls._resolve_section_uncached(section, tenant_id)
+            _resolve_cache[cache_key] = (result, time.monotonic())
+            return result
+
+    @staticmethod
+    def invalidate(tenant_id: int | None = -1) -> None:
+        """Drop cached entries.
+
+        - invalidate() or invalidate(-1): clear everything (default, mirrors
+          configuration_service.clear_cache sentinel).
+        - invalidate(tenant_id=tid): clear all 4 sections for one tenant.
+        - invalidate(tenant_id=None): clear platform-level entries.
+        """
+        if tenant_id == -1:
+            _resolve_cache.clear()
+            return
+        for sec in MODEL_TYPES:
+            _resolve_cache.pop((sec, tenant_id), None)
+
+    @classmethod
+    async def _resolve_section_uncached(
+        cls, section: str, tenant_id: int | None = None
+    ) -> dict[str, Any]:
+        """Inner implementation. Always hits the DB; callers should go through
+        `resolve_section` to benefit from the process-level cache."""
 
         # 1. Tenant Level
         if tenant_id:
@@ -108,7 +181,7 @@ class ConfigResolver:
                 # 如果是必选模块 (chat/embedding)，则报错
                 if section in ["chat", "embedding"]:
                     raise CatWikiError(f"未配置 '{section}' 模块，请联系管理员配置模型")
-                # 如果是可选模块 (rerank/vl)，返回禁用状态
+                # 如果是可选模块 (rerank)，返回禁用状态
                 return {
                     "mode": "custom",
                     "enabled": False,
@@ -196,7 +269,6 @@ class ConfigResolver:
                 "chat": "模型对话",
                 "embedding": "向量化",
                 "rerank": "重排序 (Rerank)",
-                "vl": "视觉理解 (VL)",
             }.get(section, section)
             raise BadRequestException(f"已开启自定义{type_display}模式，但未配置 API Key。")
 
@@ -207,7 +279,7 @@ class ConfigResolver:
             from app.core.common.masking import mask_sensitive_data
 
             stack = {}
-            for section in ["chat", "embedding", "rerank", "vl"]:
+            for section in ["chat", "embedding", "rerank"]:
                 try:
                     conf = await cls.resolve_section(section, tenant_id)
                     stack[section] = mask_sensitive_data(conf)

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { MessageSquare, Layers, RefreshCw, Eye } from "lucide-react"
+import { MessageSquare, Layers, RefreshCw } from "lucide-react"
 import { SettingsTabId } from "@/types/settings"
 import type { LucideIcon } from "lucide-react"
 
@@ -29,7 +29,7 @@ export interface ModelMeta {
   recommended?: boolean
 }
 
-export const MODEL_META: Record<"chat" | "embedding" | "rerank" | "vl", ModelMeta> = {
+export const MODEL_META: Record<"chat" | "embedding" | "rerank", ModelMeta> = {
   chat: {
     id: "chat",
     titleKey: "chatTitle",
@@ -65,18 +65,6 @@ export const MODEL_META: Record<"chat" | "embedding" | "rerank" | "vl", ModelMet
     descKey: "rerankDesc",
     required: false,
     recommended: true
-  },
-  vl: {
-    id: "vl",
-    titleKey: "vlTitle",
-    subtitle: "Vision Model",
-    icon: Eye,
-    color: "bg-orange-50",
-    iconColor: "text-orange-500",
-    iconBg: "bg-orange-500/10",
-    descKey: "vlDesc",
-    required: false,
-    recommended: false
   }
 }
 

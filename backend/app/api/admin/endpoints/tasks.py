@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.common.i18n import _
-from app.core.common.utils import Paginator
+from app.core.common.pagination import Paginator
 from app.core.web.deps import get_current_user_with_tenant, get_effective_tenant_id
 from app.core.web.exceptions import NotFoundException
 from app.crud.task import crud_task

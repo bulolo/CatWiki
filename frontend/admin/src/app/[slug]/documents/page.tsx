@@ -96,7 +96,6 @@ import {
   useUpdateCollection,
   useDeleteCollection,
   useDebounce,
-  documentKeys,
   useVectorizeDocument,
   useBatchVectorizeDocuments,
   useRemoveVector,
@@ -107,15 +106,11 @@ import { env } from "@/lib/env"
 import { CollectionTree, VectorRetrieveModal, DocumentImportDialog } from "@/components/features/documents"
 import type { CollectionItem } from "@/types"
 import { getRoutePath, useRouteContext } from "@/lib/routing"
-import {
-  type Collection as APICollection,
-  type CollectionCreate,
-  type Document,
-  type CollectionTree as APICollectionTree,
-  type DocumentChunk,
-  DocumentStatus,
-  api
-} from "@/lib/api-client"
+import { listAdminCollections, moveAdminCollection } from '@/lib/sdk/admin-collections'
+import { getAdminDocumentChunks } from '@/lib/sdk/admin-documents'
+import type { Collection as APICollection, CollectionCreate, CollectionTree as APICollectionTree, Document, DocumentStatus } from '@/lib/sdk/sdk.schemas'
+import type { DocumentChunk } from "@/lib/normalizers"
+import { normalizeChunks } from "@/lib/normalizers"
 import { cn } from "@/lib/utils"
 
 // 转换集合树为 CollectionItem 的辅助函数
@@ -223,7 +218,8 @@ export default function DocumentsPage() {
     queryKey: ['document-chunks', viewChunksId],
     queryFn: async () => {
       if (!viewChunksId) return []
-      return api.document.listChunks(viewChunksId)
+      const raw = await getAdminDocumentChunks(viewChunksId)
+      return normalizeChunks(raw)
     },
 
     enabled: !!viewChunksId
@@ -287,11 +283,11 @@ export default function DocumentsPage() {
 
   // 渲染向量化状态
   const renderVectorStatus = (doc: Document) => {
-    const vectorStatus = doc.vector_status || VectorStatus.NONE
+    const vectorStatus = doc.vector_status || 'none' as const
     const vectorError = doc.vector_error
 
     switch (vectorStatus) {
-      case VectorStatus.NONE:
+      case 'none' as const:
         return (
           <button
             onClick={() => vectorizeMutation.mutate(doc.id)}
@@ -302,7 +298,7 @@ export default function DocumentsPage() {
             <span>{t("learning.notLearned")}</span>
           </button>
         )
-      case VectorStatus.OUTDATED:
+      case 'outdated' as const:
         return (
           <div className="flex items-center gap-1.5">
             <button
@@ -339,7 +335,7 @@ export default function DocumentsPage() {
             </button>
           </div>
         )
-      case VectorStatus.PENDING:
+      case 'pending' as const:
         return (
           <Badge
             variant="outline"
@@ -351,7 +347,7 @@ export default function DocumentsPage() {
             {t("learning.queuing")}
           </Badge>
         )
-      case VectorStatus.PROCESSING:
+      case 'processing' as const:
         return (
           <Badge
             variant="outline"
@@ -361,7 +357,7 @@ export default function DocumentsPage() {
             {t("learning.learning")}
           </Badge>
         )
-      case VectorStatus.COMPLETED:
+      case 'completed' as const:
         return (
           <div className="flex items-center gap-1.5">
             <button
@@ -408,7 +404,7 @@ export default function DocumentsPage() {
             </button>
           </div>
         )
-      case VectorStatus.FAILED:
+      case 'failed' as const:
         return (
           <button
             onClick={() => vectorizeMutation.mutate(doc.id)}
@@ -494,15 +490,14 @@ export default function DocumentsPage() {
       const targetParentIdNum = targetParentId ? parseInt(targetParentId) : null
 
       // 获取目标父级下的所有兄弟集合（用于计算插入位置）
-      const { api } = await import("@/lib/api-client")
-
-      const siblingsRaw = await api.collection.list({
-        siteId,
-        parentId: targetParentIdNum === null ? undefined : targetParentIdNum
+      const siblingsResp = await listAdminCollections({
+        site_id: siteId,
+        parent_id: targetParentIdNum === null ? undefined : targetParentIdNum,
+        is_pager: 0,
       })
 
       // 过滤掉当前拖拽的合集，按 order 排序
-      const siblings = siblingsRaw
+      const siblings = (siblingsResp?.list ?? [])
         .filter((c: APICollection) => c.id !== collectionIdNum)
         .sort((a: APICollection, b: APICollection) => (a.order || 0) - (b.order || 0))
 
@@ -525,12 +520,9 @@ export default function DocumentsPage() {
       }
 
       // 调用后端移动接口
-      await api.collection.moveCollection({
-        collectionId: collectionIdNum,
-        requestBody: {
-          target_parent_id: targetParentIdNum,
-          target_position: targetPosition
-        }
+      await moveAdminCollection(collectionIdNum, {
+        target_parent_id: targetParentIdNum,
+        target_position: targetPosition,
       })
 
 
@@ -540,7 +532,7 @@ export default function DocumentsPage() {
       refetchCollections()
 
       // 刷新文档列表，因为合集结构改变了，文档列表可能受影响
-      queryClient.invalidateQueries({ queryKey: documentKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: ['/admin/v1/documents'] })
 
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : t("error.collectionMoveFailed")
@@ -605,7 +597,7 @@ export default function DocumentsPage() {
       setSelectedDocumentId(undefined)
       setCurrentPage(1)
       // 刷新文档列表
-      queryClient.invalidateQueries({ queryKey: documentKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: ['/admin/v1/documents'] })
       return
     }
 
@@ -620,7 +612,7 @@ export default function DocumentsPage() {
       setSelectedDocumentId(undefined)
       setCurrentPage(1)
       // 强制刷新文档列表，因为合集结构可能已经改变
-      queryClient.invalidateQueries({ queryKey: documentKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: ['/admin/v1/documents'] })
     }
   }
 
@@ -719,7 +711,7 @@ export default function DocumentsPage() {
 
     batchUpdateMutation.mutate({
       documentIds: selectedDocIds,
-      data: { status: DocumentStatus.PUBLISHED }
+      data: { status: 'published' as const }
     }, {
       onSuccess: () => {
         toast.success(t("batchBar.publishSuccess"))
@@ -736,7 +728,7 @@ export default function DocumentsPage() {
 
     batchUpdateMutation.mutate({
       documentIds: selectedDocIds,
-      data: { status: DocumentStatus.DRAFT }
+      data: { status: 'draft' as const }
     }, {
       onSuccess: () => {
         toast.success(t("batchBar.unpublishSuccess"))
@@ -762,7 +754,7 @@ export default function DocumentsPage() {
         collections={collections}
         defaultTab={importDefaultTab}
         onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: documentKeys.lists() })
+          queryClient.invalidateQueries({ queryKey: ['/admin/v1/documents'] })
           queryClient.invalidateQueries({ queryKey: ['collection-tree', siteId] })
         }}
       />
@@ -1326,7 +1318,7 @@ export default function DocumentsPage() {
                                   {t("status.draft")}
                                 </div>
                               )}
-                              {doc.vector_status === VectorStatus.COMPLETED && (
+                              {doc.vector_status === 'completed' as const && (
                                 <div className="px-2 py-0.5 rounded bg-blue-500/90 backdrop-blur-sm text-white text-xs font-medium">
                                   {t("status.completed")}
                                 </div>

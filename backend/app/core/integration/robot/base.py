@@ -1,3 +1,24 @@
+"""Robot 集成层基类与通用数据类型。
+
+整个 ``robot/`` 子树按职责分层，新接手时先看这里：
+
+| 子目录 | 职责 | 典型类 / 函数 |
+|---|---|---|
+| ``base``            | 抽象基类 + 共享数据类型（本文件）| ``BaseRobotAdapter`` / ``RobotInboundEvent`` / ``RobotSession`` / ``MessageDeduplicator`` |
+| ``factory``         | 平台名 → adapter 实例的单例工厂 | ``RobotFactory.get_adapter(platform)`` |
+| ``adapters/``       | ``BaseRobotAdapter`` 的平台实现：消息解析 + 回复 | ``DingTalkAdapter`` / ``FeishuAdapter`` / ``WeCom*Adapter`` |
+| ``services/``       | 长跑后台单例：维护 longconn 连接、事件分发、与 RobotOrchestrator 集成 | ``DingTalkRobotService`` 等 |
+| ``clients/``        | 平台 HTTP SDK 客户端 wrapper（Token 缓存、原生 API 调用）| ``DingTalkClient`` / ``FeishuClient`` |
+| ``connections/``    | 长连接 starter（lark_oapi / dingtalk_stream 等的薄封装）| ``start_longconn_client`` |
+| ``types/``          | 平台特定的 Pydantic 配置类型 | ``DingTalkStreamConfig`` 等 |
+| ``registry``        | Plugin-style context resolver 注册表（``site_id`` → 平台 ctx）| ``register_robot_context_resolver`` / ``get_robot_context`` |
+| ``wecom_internals/``| 企微专用 helper：context / XML crypto / SDK utils + resolver 注册 | ``register_resolvers()`` / ``WXBizXmlMsgCrypt`` 等 |
+
+Adapter vs Service：``Adapter`` 是无状态的接口实现（解析 + 回复），由 ``factory``
+按平台名按需返回；``Service`` 是有状态的长跑单例（``startup`` / ``shutdown``
+生命周期，``_workers`` 维护多站点连接），由 lifecycle 在 app 启动时唤起。
+"""
+
 import abc
 from dataclasses import dataclass, field
 from typing import Any

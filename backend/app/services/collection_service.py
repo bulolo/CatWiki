@@ -18,7 +18,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.common.i18n import _
-from app.core.common.utils import Paginator
+from app.core.common.pagination import Paginator
 from app.core.web.exceptions import (
     BadRequestException,
     ForbiddenException,

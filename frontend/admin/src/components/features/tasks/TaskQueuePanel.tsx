@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { X, Minus, Loader2, CheckCircle2, AlertCircle, ChevronUp } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { type Task } from '@/lib/api-client'
+import type { Task } from '@/lib/sdk/sdk.schemas'
 import { cn } from '@/lib/utils'
 import { DOC_PROCESSOR_TYPES } from '@/types/settings'
 
@@ -124,8 +124,10 @@ export function TaskQueuePanel() {
 
             <div className="max-h-[300px] overflow-y-auto p-2 space-y-1 custom-scrollbar">
               {tasks.map((task) => {
-                const filename = task.payload?.filename || task.payload?.original_filename || t("taskFallback", { id: task.id })
-                const processorType = task.payload?.processor_config?.type
+                const payload = (task.payload ?? {}) as Record<string, unknown>
+                const filename = (payload.filename as string) || (payload.original_filename as string) || t("taskFallback", { id: task.id })
+                const processorConfig = payload.processor_config as { type?: string } | undefined
+                const processorType = processorConfig?.type
                 const processorInfo = processorType
                   ? DOC_PROCESSOR_TYPES.find(p => p.value === processorType)
                   : null

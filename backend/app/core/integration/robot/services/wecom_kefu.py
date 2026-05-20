@@ -4,10 +4,8 @@ import time
 import xml.etree.ElementTree as ET
 from typing import Any
 
-import httpx
-
 from app.core.integration.robot.base import MessageDeduplicator, RobotInboundEvent, RobotSession
-from app.core.integration.robot.common.wecom.utils import WeComTokenManager
+from app.core.integration.robot.clients.wecom import WeComClient
 from app.models.site import Site
 from app.services.robot import RobotOrchestrator
 
@@ -28,25 +26,17 @@ def _safe_create_task(coro, *, name: str | None = None) -> asyncio.Task:
 class WeComKefuService:
     """企业微信客服业务逻辑。"""
 
-    _token_manager = WeComTokenManager()
     _deduplicator = MessageDeduplicator()
-    _http_client: httpx.AsyncClient | None = None
-    # 消息游标缓存，key: open_kfid
+    # 消息游标缓存，key 形如 ``{site_id}:{open_kfid}``
     _cursors: dict[str, str] = {}
     _MAX_CURSORS = 500
 
-    # 同步锁，防止同一个客服 ID 多个同步任务同时运行
+    # 同步锁，确保同一 (site, kfid) 同时只有一个 sync_messages 任务
     _sync_locks: dict[str, asyncio.Lock] = {}
     _MAX_SYNC_LOCKS = 500
-    # 记录是否已发送欢迎语，避免同一会话重复发送 (可选)
+    # 欢迎语去重：1 分钟窗口内同一会话只发一次
     _welcome_sent: dict[str, float] = {}
     _MAX_WELCOME_CACHE = 5000
-
-    @classmethod
-    def _get_http_client(cls) -> httpx.AsyncClient:
-        if cls._http_client is None or cls._http_client.is_closed:
-            cls._http_client = httpx.AsyncClient(timeout=10.0)
-        return cls._http_client
 
     @classmethod
     def _get_lock(cls, site_id: int, open_kfid: str) -> asyncio.Lock:
@@ -96,7 +86,6 @@ class WeComKefuService:
                 return
 
             try:
-                token = await cls._token_manager.get_access_token(corp_id, secret)
                 has_more = True
                 current_token = notification_token
 
@@ -109,20 +98,16 @@ class WeComKefuService:
                     cursor_key = f"{site.id}:{open_kfid}"
                     cursor = cls._cursors.get(cursor_key, "")
 
-                    client = cls._get_http_client()
-                    body = {"limit": 100, "open_kfid": open_kfid}
-                    if cursor:
-                        body["cursor"] = cursor
-                    if current_token:
-                        body["token"] = current_token
-                    resp = await client.post(
-                        "https://qyapi.weixin.qq.com/cgi-bin/kf/sync_msg",
-                        params={"access_token": token},
-                        json=body,
+                    data = await WeComClient.sync_kefu_messages(
+                        corp_id=corp_id,
+                        secret=secret,
+                        open_kfid=open_kfid,
+                        cursor=cursor or None,
+                        token=current_token,
+                        limit=100,
                     )
-                    data = resp.json()
                     if data.get("errcode") != 0:
-                        logger.error("同步客服消息失败: %s", data)
+                        # errcode 已由 WeComClient 打 error log，这里只需中断轮次
                         break
 
                     new_cursor = data.get("next_cursor")
@@ -197,29 +182,23 @@ class WeComKefuService:
     async def send_message(
         cls, corp_id: str, secret: str, open_kfid: str, external_userid: str, content: str
     ) -> None:
-        """调用微信客服 API 发送消息"""
+        """调用微信客服 API 发送消息。
+
+        HTTP / token / errcode 由 ``WeComClient.send_kefu_message`` 统一处理。
+        """
         try:
             from app.core.common.utils import strip_markdown
 
-            # [✨ 亮点] 微信客服接口原生不支持 Markdown，发送文本回复前需剥离格式
+            # 微信客服接口原生不支持 Markdown，发送前需剥离格式
             clean_content = strip_markdown(content)
 
-            token = await cls._token_manager.get_access_token(corp_id, secret)
-            client = cls._get_http_client()
-            body = {
-                "touser": external_userid,
-                "open_kfid": open_kfid,
-                "msgtype": "text",
-                "text": {"content": clean_content},
-            }
-            resp = await client.post(
-                "https://qyapi.weixin.qq.com/cgi-bin/kf/send_msg",
-                params={"access_token": token},
-                json=body,
+            await WeComClient.send_kefu_message(
+                corp_id=corp_id,
+                secret=secret,
+                to_user=external_userid,
+                open_kfid=open_kfid,
+                content=clean_content,
             )
-            data = resp.json()
-            if data.get("errcode") != 0:
-                logger.error("发送微信客服消息失败: %s", data)
         except Exception as e:
             logger.error("发送微信客服消息发生异常: %s", e)
 
@@ -257,11 +236,9 @@ class WeComKefuService:
             msg_type = xml_tree.find("MsgType").text
             msg_id = xml_tree.find("MsgId").text if xml_tree.find("MsgId") is not None else None
 
-            # 1. 去重逻辑
             if cls._deduplicator.check_and_log_duplicate(site.id, msg_id, "微信客服"):
                 return "success"
 
-            # 微信客服消息事件类型
             if msg_type == "event":
                 event_node = xml_tree.find("Event")
                 event = event_node.text if event_node is not None else ""
@@ -274,7 +251,6 @@ class WeComKefuService:
                     token_node = xml_tree.find("Token")
                     token = token_node.text if token_node is not None else ""
                     if open_kfid:
-                        # 开启后台任务异步拉取
                         _safe_create_task(
                             cls.sync_messages(
                                 site=site,
@@ -286,8 +262,7 @@ class WeComKefuService:
                         )
                     return "success"
 
-            # 具体的客服消息内容
-            # 这里处理最常见的文本消息
+            # 直接客服文本消息（非 kf_msg_or_event 事件）
             from_user_node = xml_tree.find("ExternalUserID")
             from_user = from_user_node.text if from_user_node is not None else None
 

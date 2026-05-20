@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.common.auth import create_access_token
 from app.core.common.i18n import _
-from app.core.common.utils import Paginator
+from app.core.common.pagination import Paginator
 from app.core.infra.config import settings
 from app.core.web.exceptions import (
     BadRequestException,

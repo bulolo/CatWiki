@@ -19,9 +19,10 @@
 4. 自动对话摘要 (长期记忆)
 """
 
+import hashlib
 import json
 import logging
-from typing import Literal
+from typing import Annotated, Literal
 
 from langchain_core.messages import (
     HumanMessage,
@@ -33,7 +34,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
-from langgraph.prebuilt import ToolNode
+from langgraph.prebuilt import InjectedState, ToolNode
 
 from app.core.ai.message_utils import is_meaningful_message
 from app.core.ai.prompts import (
@@ -42,14 +43,11 @@ from app.core.ai.prompts import (
     SUMMARIZE_PROMPT,
     SYSTEM_PROMPT,
 )
-from app.core.common.utils import (
-    log_ai_usage_signal,
-    log_process_step_card,
-)
+from app.core.common.ai_logging import log_process_step_card
 from app.core.infra.config import settings
 from app.schemas.document import VectorRetrieveFilter
 from app.schemas.graph_state import ChatGraphState
-from app.services.rag import RAGService
+from app.services.rag import RAGRetrievalError, RAGService
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +60,11 @@ MAX_ITERATIONS = settings.AGENT_MAX_ITERATIONS
 
 
 @tool
-async def search_knowledge_base(query: str, config: RunnableConfig) -> str:
+async def search_knowledge_base(
+    query: str,
+    config: RunnableConfig,
+    state: Annotated[dict, InjectedState],
+) -> str:
     """在知识库中搜索相关信息。
 
     当用户的问题需要事实依据、文档支持或你不知道答案时，**必须**使用此工具。
@@ -75,36 +77,23 @@ async def search_knowledge_base(query: str, config: RunnableConfig) -> str:
         JSON 格式的字符串，包含搜索结果列表。
         每个结果包含 'content' (内容摘录) 和 'metadata' (包含 title, document_id 等)。
     """
-    # 获取站点上下文和消息历史以计算偏移量
+    # 站点 / 租户上下文从 RunnableConfig 取
     site_id = config.get("configurable", {}).get("site_id")
+    tenant_id = config.get("configurable", {}).get("tenant_id")
 
-    # 计算全局偏移量：统计历史消息中所有检索结果的总数
-    # 这样能保证索引在整个会话中全局唯一且递增，避免历史记录加载时出现序号冲突
-    messages = config.get("configurable", {}).get("messages", [])
-    offset = 0
-    if messages:
-        for msg in messages:
-            if isinstance(msg, ToolMessage) and msg.name == "search_knowledge_base":
-                try:
-                    prev_results = json.loads(msg.content)
-                    if isinstance(prev_results, list):
-                        offset += len(prev_results)
-                except Exception:
-                    continue
+    # 全局 source_index 起点由 graph state 维护（每次 tool 跑完后由 tools_wrapper_node 累加）
+    # 而非每次重新扫描历史消息 —— 避免每次工具调用 O(n) JSON 解析。
+    offset = int(state.get("source_offset", 0) or 0)
 
     logger.debug(
         f"🔧 [Tool] search_knowledge_base: query='{query}', site_id={site_id}, offset={offset}"
     )
 
     try:
-        # 获取租户上下文 (适配公共访问)
-        tenant_id = config.get("configurable", {}).get("tenant_id")
-
         from app.core.infra.tenant import temporary_tenant_context
 
         # 使用临时租户上下文包裹检索调用，确保 RAGService 能够获取正确的配置和过滤条件
         with temporary_tenant_context(tenant_id):
-            # 执行检索
             retrieved_docs = await RAGService.retrieve(
                 query=query,
                 k=settings.RAG_RECALL_K,
@@ -161,21 +150,22 @@ async def search_knowledge_base(query: str, config: RunnableConfig) -> str:
         # 为了让 AI 绝对不会数错，我们在返回的字符串中显式标注
         return json.dumps(results, ensure_ascii=False)
 
+    except RAGRetrievalError as e:
+        # 系统级失败（向量库/Embedding/Reranker 不可用）—— 与"召回为空"区分开。
+        # 返回明确标记的提示语，agent 应据此停止重试并向用户致歉，而不是换关键词重试。
+        logger.warning(f"⚠️ [Tool] RAG retrieval unavailable: {e}")
+        return (
+            "[系统提示] 知识库检索服务暂时不可用。"
+            "请基于已有上下文如实回答用户，并建议稍后重试或联系管理员；"
+            "不要换关键词重复尝试本工具。"
+        )
     except Exception as e:
         logger.error(f"❌ [Tool] Knowledge base search failed: {e}", exc_info=True)
-        return f"搜索知识库时出错: {str(e)}"
+        return "[系统提示] 检索发生未知异常。请基于已有上下文如实回答用户；不要重复调用本工具。"
 
 
 # 工具列表
 tools = [search_knowledge_base]
-
-
-# =============================================================================
-# 辅助函数：引用提取
-# =============================================================================
-
-
-# extract_citations_from_messages moved to app.core.rag_utils
 
 
 # =============================================================================
@@ -201,31 +191,14 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
 
     # 2. 定义节点
     async def agent_node(state: ChatGraphState, config: RunnableConfig) -> dict:
-        """Agent 决策节点"""
+        """Agent 决策节点
+
+        observability：本节点不再单独打 chat usage signal。
+        ChatProvider.get_model() 在请求初始化时已经记录了一次实例命中；
+        每轮的工具/迭代进度由 tools_wrapper_node 的 log_process_step_card 反映；
+        端到端 timing 与 RAG Pipeline 汇总卡片由 ChatService 在流结束时输出。
+        """
         logger.debug("🤖 [Agent] Thinking...")
-
-        # [优化] 如果模型实例携带了元数据，则在此处触发一次日志卡片，显示当前意图
-        if hasattr(model, "_usage_metadata"):
-            meta = model._usage_metadata
-            # 根据消息历史判断当前是“初次分析”还是“生成结果”
-            # 注意：langgraph 中 state["messages"] 包含历史，如果最后一条是 Human 则为初次分析
-            # 如果包含 ToolMessage，说明已经检索过
-            has_tool_output = any(isinstance(m, ToolMessage) for m in state["messages"])
-            purpose = (
-                "汇总检索结果并生成最终回复"
-                if has_tool_output
-                else "分析意图并拟定执行计划 (含检索词生成)"
-            )
-
-            log_ai_usage_signal(
-                "chat",
-                meta["model"],
-                meta["h"],
-                is_hit=True,
-                tenant_id=meta["tenant_id"],
-                extra=meta["extra"],
-                purpose=purpose,
-            )
 
         messages = list(state["messages"])
 
@@ -282,7 +255,7 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
     # 3. 构建图
     graph_builder = StateGraph(ChatGraphState)
 
-    # 工具节点包装器：递增迭代计数 + 检测空结果
+    # LangGraph 提供的标准工具调度节点；wrapper 在外面再包一层状态维护
     tool_node = ToolNode(tools)
 
     # 连续空结果终止阈值（从配置读取）
@@ -290,9 +263,18 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
     summary_trigger_count = settings.AGENT_SUMMARY_TRIGGER_MSG_COUNT
 
     async def tools_wrapper_node(state: ChatGraphState, config: RunnableConfig) -> dict:
-        """工具节点包装器，执行工具并追踪迭代计数和空结果"""
+        """工具节点包装器：执行工具并维护迭代/去重/source_offset 状态。
+
+        核心状态变量：
+        - iteration_count：迭代次数 (硬上限 MAX_ITERATIONS)
+        - consecutive_empty_count：连续空结果计数 (硬上限 max_consecutive_empty)
+        - source_offset：跨工具调用累计的 source_index 起点
+        - seen_tool_hashes：已见工具输出的 md5 哈希集合，O(1) 查重
+        """
         current_count = state.get("iteration_count", 0)
         consecutive_empty = state.get("consecutive_empty_count", 0)
+        current_offset = int(state.get("source_offset", 0) or 0)
+        seen_hashes = list(state.get("seen_tool_hashes") or [])
 
         # 检查是否触及中止阈值
         if current_count >= MAX_ITERATIONS or consecutive_empty >= max_consecutive_empty:
@@ -319,38 +301,49 @@ def create_agent_graph(checkpointer=None, model: ChatOpenAI = None):
 
         # 正常执行工具
         result = await tool_node.ainvoke(state, config)
-
-        # 递增迭代计数
         result["iteration_count"] = current_count + 1
 
-        # 检测工具返回是否为空结果
+        # 解析最后一条 ToolMessage 一次，用于：(a) 判定空结果 (b) 计数新增文档 (c) 哈希查重
         is_empty_result = False
         duplicate_tool_result = False
-        if result.get("messages"):
-            last_tool_msg = result["messages"][-1]
-            if last_tool_msg:
-                content = getattr(last_tool_msg, "content", "")
-                if content == NO_RESULTS_MESSAGE or "未找到相关文档" in content or content == "[]":
-                    is_empty_result = True
+        docs_added = 0
 
-                # 检测“重复工具结果”：若本次工具输出与历史已出现过的输出完全一致，
-                # 说明 Agent 可能在同一轮重复检索相同信息，后续应尽快收敛到最终回答。
-                for hist_msg in reversed(state.get("messages", [])):
-                    if not isinstance(hist_msg, ToolMessage):
-                        continue
-                    hist_content = getattr(hist_msg, "content", "")
-                    if hist_content and hist_content == content:
-                        duplicate_tool_result = True
-                        break
+        last_tool_msg = (result.get("messages") or [None])[-1]
+        content = getattr(last_tool_msg, "content", "") if last_tool_msg else ""
+
+        if content == NO_RESULTS_MESSAGE:
+            is_empty_result = True
+        elif content:
+            # 只解析最新一条 (O(content_size))，不再扫历史 (避免 O(n × content))
+            try:
+                parsed = json.loads(content)
+                if isinstance(parsed, list):
+                    docs_added = len(parsed)
+                    if docs_added == 0:
+                        is_empty_result = True
+            except (json.JSONDecodeError, TypeError):
+                # 非 JSON 内容（如错误字符串）—— 视作非真实结果，不计入 offset
+                pass
+
+        # O(1) 重复检测：用稳定哈希 (md5) 代替整串相等比较
+        if content:
+            content_hash = hashlib.md5(content.encode("utf-8")).hexdigest()
+            if content_hash in seen_hashes:
+                duplicate_tool_result = True
+            else:
+                seen_hashes.append(content_hash)
 
         if duplicate_tool_result:
             logger.warning("⚠️ [Graph] Duplicate tool output detected, forcing convergence.")
-            # 直接拉满连续空计数，下一次若仍尝试工具调用将触发强制停止。
+            # 直接拉满连续空计数，下一次若仍尝试工具调用将触发强制停止
             result["consecutive_empty_count"] = max_consecutive_empty
         else:
             result["consecutive_empty_count"] = consecutive_empty + 1 if is_empty_result else 0
 
-        # [优化] 使用显眼的进度卡片展示 Iteration 进度
+        # 把 source_offset / seen_tool_hashes 写回 state，供下一轮使用
+        result["source_offset"] = current_offset + docs_added
+        result["seen_tool_hashes"] = seen_hashes
+
         log_process_step_card(
             "graph",
             "Reasoning Loop",

@@ -18,11 +18,7 @@ JWT 认证工具函数单元测试
 
 from datetime import timedelta
 
-from app.core.common.utils import (
-    create_access_token,
-    decode_access_token,
-    verify_token,
-)
+from app.core.common.auth import create_access_token, decode_access_token, verify_token
 
 
 class TestCreateAccessToken:

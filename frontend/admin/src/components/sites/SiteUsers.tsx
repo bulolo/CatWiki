@@ -71,7 +71,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { UserRole, UserStatus, type UserListItem } from "@/lib/api-client"
+import { UserRole, UserStatus, type UserListItem } from '@/lib/sdk/sdk.schemas'
 
 
 import {
@@ -128,7 +128,7 @@ export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
   const total = usersData?.total || 0
 
   const currentUser = getUserInfo()
-  const isSystemAdmin = currentUser?.role === UserRole.ADMIN
+  const isSystemAdmin = currentUser?.role === 'admin' as const
 
   // 处理移除站点权限（如果移除当前站点，用户就不再出现在这个列表里了，类似于删除）
   const handleRemoveFromSite = async (userId: number, currentSites: number[]) => {
@@ -291,31 +291,31 @@ export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
                     <TableCell>
                       <Badge
                         variant={
-                          user.role === UserRole.ADMIN ? "default" :
-                            user.role === UserRole.TENANT_ADMIN ? "default" :
-                              user.role === UserRole.SITE_ADMIN ? "secondary" : "outline"
+                          user.role === 'admin' as const ? "default" :
+                            user.role === 'tenant_admin' as const ? "default" :
+                              user.role === 'site_admin' as const ? "secondary" : "outline"
                         }
                         className={cn(
                           "font-bold text-[10px] tracking-tight px-2 border-none",
-                          user.role === UserRole.ADMIN ? "bg-primary text-primary-foreground" :
-                            user.role === UserRole.TENANT_ADMIN ? "bg-violet-500/10 text-violet-600" :
-                              user.role === UserRole.SITE_ADMIN ? "bg-amber-500/10 text-amber-600" :
+                          user.role === 'admin' as const ? "bg-primary text-primary-foreground" :
+                            user.role === 'tenant_admin' as const ? "bg-violet-500/10 text-violet-600" :
+                              user.role === 'site_admin' as const ? "bg-amber-500/10 text-amber-600" :
                                 "bg-muted text-muted-foreground"
                         )}
                       >
-                        {user.role === UserRole.ADMIN ? t("roleSysAdmin") :
-                          user.role === UserRole.TENANT_ADMIN ? t("roleTenantAdmin") :
-                            user.role === UserRole.SITE_ADMIN ? t("roleSiteAdmin") : user.role}
+                        {user.role === 'admin' as const ? t("roleSysAdmin") :
+                          user.role === 'tenant_admin' as const ? t("roleTenantAdmin") :
+                            user.role === 'site_admin' as const ? t("roleSiteAdmin") : user.role}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         <span className={cn(
                           "w-2 h-2 rounded-full",
-                          user.status === UserStatus.ACTIVE ? "bg-emerald-500" : "bg-slate-300"
+                          user.status === 'active' as const ? "bg-emerald-500" : "bg-slate-300"
                         )} />
                         <span className="text-xs text-muted-foreground">
-                          {user.status === UserStatus.ACTIVE ? t("active") : t("disabled")}
+                          {user.status === 'active' as const ? t("active") : t("disabled")}
                         </span>
 
                       </div>
@@ -351,11 +351,11 @@ export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
                               <DropdownMenuSubContent className="w-48">
                                 {isSystemAdmin && (
                                   <DropdownMenuItem
-                                    onSelect={() => updateRole(user.id, UserRole.SITE_ADMIN)}
+                                    onSelect={() => updateRole(user.id, 'site_admin' as const)}
                                     className="flex items-center justify-between"
                                   >
                                     <span>{t("roleSiteAdmin")}</span>
-                                    {user.role === UserRole.SITE_ADMIN && <Check className="h-4 w-4 text-primary" />}
+                                    {user.role === 'site_admin' as const && <Check className="h-4 w-4 text-primary" />}
                                   </DropdownMenuItem>
                                 )}
 
@@ -375,16 +375,16 @@ export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
                           <DropdownMenuItem
                             className="text-orange-600 flex items-center gap-2"
                             onSelect={() => {
-                              const newStatus = user.status === UserStatus.ACTIVE ? UserStatus.INACTIVE : UserStatus.ACTIVE
-                              if (confirm(newStatus === UserStatus.INACTIVE ? t("disableConfirm") : t("enableConfirm"))) {
+                              const newStatus = user.status === 'active' as const ? 'inactive' as const : 'active' as const
+                              if (confirm(newStatus === 'inactive' as const ? t("disableConfirm") : t("enableConfirm"))) {
                                 updateStatus(user.id, newStatus)
                               }
                             }}
                           >
                             <div className="w-4 h-4 flex items-center justify-center">
-                              <span className={cn("w-2 h-2 rounded-full", user.status === UserStatus.ACTIVE ? "bg-orange-500" : "bg-emerald-500")} />
+                              <span className={cn("w-2 h-2 rounded-full", user.status === 'active' as const ? "bg-orange-500" : "bg-emerald-500")} />
                             </div>
-                            {user.status === UserStatus.ACTIVE ? t("disableAccount") : t("enableAccount")}
+                            {user.status === 'active' as const ? t("disableAccount") : t("enableAccount")}
                           </DropdownMenuItem>
 
 

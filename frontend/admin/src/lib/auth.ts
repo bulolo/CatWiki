@@ -31,7 +31,7 @@
  * - 添加 SameSite 保护
  */
 
-import type { UserResponse } from '@/lib/api-client'
+import type { UserResponse } from '@/lib/sdk/sdk.schemas'
 
 // ==================== 类型定义 ====================
 

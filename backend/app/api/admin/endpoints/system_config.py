@@ -33,7 +33,7 @@ from app.schemas.system_config import (
     TestConnectionRequest,
     TestDocProcessorRequest,
 )
-from app.services.system_config_service import SystemConfigService, get_system_config_service
+from app.services.system_config import SystemConfigService, get_system_config_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

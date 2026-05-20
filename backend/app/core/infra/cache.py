@@ -62,19 +62,31 @@ class BaseCache(ABC):
     async def get_or_set(self, key: str, func: Callable[..., Any], ttl: int | None = None) -> Any:
         """
         [封装逻辑] 先获取缓存，若缺失则执行函数并写入缓存。
+
+        防惊群：冷启动 / TTL 过期瞬间，N 个并发请求会同时检测到 miss。
+        通过 per-key 锁 + double-check 把 fetcher 调用收敛为 1 次。
+        InMemoryCache 用 asyncio.Lock；RedisCache 用分布式锁（30s 自释放，
+        防止 worker 崩溃造成永久阻塞）。
         """
         val = await self.get(key, default=_UNDEFINED)
         if val is not _UNDEFINED:
             return val
 
-        # 执行业务逻辑
-        if asyncio.iscoroutinefunction(func):
-            result = await func()
-        else:
-            result = func()
+        lock = self.lock(f"cache_fill:{key}", timeout=30)
+        async with lock:
+            # Double-check after acquiring the lock — the previous holder may
+            # have already filled the cache while we were waiting.
+            val = await self.get(key, default=_UNDEFINED)
+            if val is not _UNDEFINED:
+                return val
 
-        await self.set(key, result, ttl=ttl)
-        return result
+            if asyncio.iscoroutinefunction(func):
+                result = await func()
+            else:
+                result = func()
+
+            await self.set(key, result, ttl=ttl)
+            return result
 
     @abstractmethod
     async def delete(self, key: str) -> None:

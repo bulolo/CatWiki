@@ -1,11 +1,11 @@
 // Copyright 2026 CatWiki Authors
-// 
+//
 // Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://github.com/CatWiki/CatWiki/blob/main/LICENSE
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,9 +16,8 @@
  * React Query hooks for User management
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api-client'
-import type { UserResponse, UserRole, UserStatus, UserCreate, UserInvite, UserUpdate } from '@/lib/api-client'
+import { createAdminUser, deleteAdminUser, getListAdminUsersQueryKey, inviteAdminUser, loginAdmin, resetAdminUserPassword, updateAdminUser, useGetAdminUser, useListAdminUsers } from '@/lib/sdk/admin-users'
+import type { ListAdminUsersParams, UserCreate, UserInvite, UserRole, UserStatus, UserUpdate } from '@/lib/sdk/sdk.schemas'
 import { isAuthenticated } from '@/lib/auth'
 import { useAdminMutation } from './useAdminMutation'
 
@@ -33,32 +32,30 @@ interface UseUsersParams {
   orderDir?: 'asc' | 'desc'
 }
 
-// ==================== Query Keys ====================
-
-export const userKeys = {
-  all: ['users'] as const,
-  lists: () => [...userKeys.all, 'list'] as const,
-  list: (filters?: UseUsersParams) => [...userKeys.lists(), filters] as const,
-  details: () => [...userKeys.all, 'detail'] as const,
-  detail: (id: number) => [...userKeys.details(), id] as const,
-}
-
-// ==================== Hooks ====================
-
 /**
- * 获取用户列表
+ * 获取用户列表（解开成 {users, total}）
  */
 export function useUsers(params: UseUsersParams = {}) {
-  const isAuth = isAuthenticated()
+  const apiParams: ListAdminUsersParams = {
+    page: params.page,
+    size: params.size,
+    role: params.role as UserRole | undefined,
+    status: params.status as UserStatus | undefined,
+    search: params.search,
+    site_id: params.siteId,
+    order_by: params.orderBy,
+    order_dir: params.orderDir,
+  }
 
-  return useQuery({
-    queryKey: userKeys.list(params),
-    queryFn: () => api.user.list(params).then((res) => ({
-      users: res.list || [],
-      total: res.pagination?.total || 0,
-    })),
-    enabled: isAuth,
-    staleTime: 3 * 60 * 1000,
+  return useListAdminUsers(apiParams, {
+    query: {
+      enabled: isAuthenticated(),
+      staleTime: 3 * 60 * 1000,
+      select: (data) => ({
+        users: data?.list ?? [],
+        total: data?.pagination?.total ?? 0,
+      }),
+    },
   })
 }
 
@@ -66,13 +63,11 @@ export function useUsers(params: UseUsersParams = {}) {
  * 获取单个用户详情
  */
 export function useUser(userId: number | undefined) {
-  const isAuth = isAuthenticated()
-
-  return useQuery({
-    queryKey: userKeys.detail(userId!),
-    queryFn: () => api.user.get(userId!),
-    enabled: !!userId && isAuth,
-    staleTime: 5 * 60 * 1000,
+  return useGetAdminUser(userId ?? 0, {
+    query: {
+      enabled: !!userId && isAuthenticated(),
+      staleTime: 5 * 60 * 1000,
+    },
   })
 }
 
@@ -81,8 +76,8 @@ export function useUser(userId: number | undefined) {
  */
 export function useCreateUser() {
   return useAdminMutation({
-    mutationFn: (data: UserCreate) => api.user.create(data),
-    invalidateKeys: [userKeys.lists()],
+    mutationFn: (data: UserCreate) => createAdminUser(data),
+    invalidateKeys: [getListAdminUsersQueryKey()],
   })
 }
 
@@ -91,10 +86,9 @@ export function useCreateUser() {
  */
 export function useInviteUser() {
   return useAdminMutation({
-    mutationFn: (data: UserInvite) => api.user.invite(data),
-    invalidateKeys: [userKeys.lists()],
+    mutationFn: (data: UserInvite) => inviteAdminUser(data),
+    invalidateKeys: [getListAdminUsersQueryKey()],
     // 邀请通常需要特殊处理返回的临时密码，由 caller 处理 onSuccess
-    // 错误也由 caller 处理 (CreateUserForm)
     errorMsg: () => undefined,
   })
 }
@@ -105,8 +99,8 @@ export function useInviteUser() {
 export function useUpdateUser() {
   return useAdminMutation({
     mutationFn: ({ userId, data }: { userId: number; data: UserUpdate }) =>
-      api.user.update(userId, data),
-    invalidateKeys: [userKeys.all],
+      updateAdminUser(userId, data),
+    invalidateKeys: [['/admin/v1/users']],
   })
 }
 
@@ -116,9 +110,8 @@ export function useUpdateUser() {
 export function useUpdateUserRole() {
   return useAdminMutation({
     mutationFn: ({ userId, role }: { userId: number; role: UserRole }) =>
-      api.user.update(userId, { role }),
-
-    invalidateKeys: [userKeys.all],
+      updateAdminUser(userId, { role }),
+    invalidateKeys: [['/admin/v1/users']],
   })
 }
 
@@ -127,9 +120,14 @@ export function useUpdateUserRole() {
  */
 export function useUpdateUserSites() {
   return useAdminMutation({
-    mutationFn: ({ userId, managed_site_ids }: { userId: number; managed_site_ids: number[] }) =>
-      api.user.update(userId, { managed_site_ids }),
-    invalidateKeys: [userKeys.all],
+    mutationFn: ({
+      userId,
+      managed_site_ids,
+    }: {
+      userId: number
+      managed_site_ids: number[]
+    }) => updateAdminUser(userId, { managed_site_ids }),
+    invalidateKeys: [['/admin/v1/users']],
   })
 }
 
@@ -139,9 +137,8 @@ export function useUpdateUserSites() {
 export function useUpdateUserStatus() {
   return useAdminMutation({
     mutationFn: ({ userId, status }: { userId: number; status: UserStatus }) =>
-      api.user.update(userId, { status }),
-
-    invalidateKeys: [userKeys.all],
+      updateAdminUser(userId, { status }),
+    invalidateKeys: [['/admin/v1/users']],
   })
 }
 
@@ -150,7 +147,7 @@ export function useUpdateUserStatus() {
  */
 export function useResetUserPassword() {
   return useAdminMutation({
-    mutationFn: (userId: number) => api.user.resetPassword(userId),
+    mutationFn: (userId: number) => resetAdminUserPassword(userId),
   })
 }
 
@@ -159,8 +156,8 @@ export function useResetUserPassword() {
  */
 export function useDeleteUser() {
   return useAdminMutation({
-    mutationFn: (userId: number) => api.user.delete(userId),
-    invalidateKeys: [userKeys.lists()],
+    mutationFn: (userId: number) => deleteAdminUser(userId),
+    invalidateKeys: [getListAdminUsersQueryKey()],
   })
 }
 
@@ -169,8 +166,6 @@ export function useDeleteUser() {
  */
 export function useLogin() {
   return useAdminMutation({
-    mutationFn: (data: { email: string; password: string }) => api.user.login(data),
-    // 登录通常不显示通用 successMsg，由 caller 处理跳转
+    mutationFn: (data: { email: string; password: string }) => loginAdmin(data),
   })
 }
-
