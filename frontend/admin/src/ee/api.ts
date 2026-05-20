@@ -1,14 +1,12 @@
 /**
  * CE stub for ee/api.ts
- * 
- * 社区版占位模块，提供与 EE 版相同的导出签名，
- * 所有功能均为空实现。
- * 
- * 维护规则：当 ee/api.ts 新增 export 时，同步在此添加对应的空实现。
+ *
+ * 社区版占位模块。维护规则:
+ *   - 直接被调用的 symbol(如 injectEEHeaders、tenantApi.xxx())要补 noop。
+ *   - 被业务侧用 `if (xxx) { ... }` truthy 判断的 symbol —— 不要 stub,
+ *     让 require 解构出 undefined,if 自动短路。常见就是 eeApi。
+ *     若 stub 成 `{}`,truthy 会进 if 分支然后访问 `.sites.foo` 炸掉。
  */
 export const injectEEHeaders = () => {};
 export const tenantApi = {} as any;
-// EE 版 ee/api.ts 还导出了一个 eeApi 聚合对象(含 tenant / sites / chatSessions
-// 三个子命名空间)。业务代码统一通过 require + try/catch 取用,所以即使这里只
-// 给个空 object,运行时 `eeApi?.sites?.xxx` 会安全降级到 undefined。
-export const eeApi = {} as any;
+// eeApi 故意不导出 —— 见上方维护规则。
