@@ -8,3 +8,7 @@
  */
 export const injectEEHeaders = () => {};
 export const tenantApi = {} as any;
+// EE 版 ee/api.ts 还导出了一个 eeApi 聚合对象(含 tenant / sites / chatSessions
+// 三个子命名空间)。业务代码统一通过 require + try/catch 取用,所以即使这里只
+// 给个空 object,运行时 `eeApi?.sites?.xxx` 会安全降级到 undefined。
+export const eeApi = {} as any;

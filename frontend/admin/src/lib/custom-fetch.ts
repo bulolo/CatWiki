@@ -70,14 +70,17 @@ function buildHeaders(init?: HeadersInit, token?: string): Headers {
     headers.set('Authorization', `Bearer ${token}`)
   }
 
-  // EE: 注入租户选择 header（CE 构建里 @/ee/api 不存在，require + try/catch 兜底）
+  // EE: 注入租户选择 header。
+  // EE 构建里 @/ee/api 实现真正的 injectEEHeaders；CE 构建里它是个 noop stub
+  // (frontend/admin/src/ee/_ce_stubs/api.ts),require 不会抛,injectEEHeaders 调用
+  // 是空操作。try/catch 仅作为 EE 模块被进一步剥离时的额外保险。
   try {
     const { injectEEHeaders } = require('@/ee/api')
     const tmp: Record<string, string> = {}
     injectEEHeaders(tmp)
     for (const [k, v] of Object.entries(tmp)) headers.set(k, v)
   } catch {
-    /* CE 构建无 EE 模块，正常 */
+    /* 极端兜底:EE 模块 / stub 都不存在时静默忽略 */
   }
 
   return headers

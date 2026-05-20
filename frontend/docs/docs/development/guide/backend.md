@@ -79,10 +79,6 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 3000
 - **代码格式化**: `make format` (运行 ruff 对后端代码进行格式化与 lint 修复)
 - **License 注入**: `make license` (自动为所有 `.py`, `.ts`, `.tsx`, `.go` 文件注入 License Header)
 - **生成 SDK**: `make gen-sdk` (修改 Pydantic schemas 后必跑)
-
-### 3. CE (社区版) 同步
-- **同步代码**: `make sync-ce` (将 EE 代码同步并过滤生成 CE 版)
-- **发布代码**: `make publish-ce-github` (推送至 GitHub 公开仓库)
 - **发布镜像**: `make publish-ce-images` (构建 CE 镜像并推送到 Docker Hub)
 
 ---

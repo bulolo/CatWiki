@@ -4,8 +4,8 @@ set -e
 # ==============================================================================
 # CatWiki CE 镜像打包并推送到 Docker Hub 的脚本
 #
-# 请在 ce 分支上运行此脚本。
-# 前提：已运行过 make sync-ce 生成 ce 分支。
+# 必须在 ce 分支上构建。脚本会自动切换到 ce 分支(切换前要求工作树干净),
+# 跑完后切回原分支。CE 用户本来就在 ce 分支:零切换。
 #
 # 环境变量 (可选，未设置时会交互式输入):
 #   DOCKERHUB_USERNAME  - Docker Hub 用户名
@@ -32,16 +32,30 @@ if [ "$VERSION" != "latest" ]; then
 fi
 echo "=========================================="
 
-# ---- 分支检查 ----
-CURRENT_BRANCH=$(git branch --show-current)
-if [ "$CURRENT_BRANCH" != "ce" ]; then
-    echo ""
-    echo "❌ 错误：当前分支为 ${CURRENT_BRANCH}，由于安全原因，发布 CE 镜像必须在 'ce' 分支运行。"
-    echo "   这样可以确保企业版 (EE) 代码不会由于配置误操作而泄露到公共仓库。"
-    echo "   请先执行: git checkout ce"
-    exit 1
+# ---- 分支自动切换 ----
+# 安全原因:必须在 ce 分支构建,避免 EE 代码因配置误操作泄露到公共镜像。
+# 非 ce 分支时:工作树必须干净 -> 记下原分支 -> 自动 checkout ce -> 脚本结束
+# 时通过 trap 切回原分支(无论成功失败)。
+ORIGINAL_BRANCH=$(git branch --show-current)
+if [ "$ORIGINAL_BRANCH" != "ce" ]; then
+    if [ -n "$(git status --porcelain)" ]; then
+        echo ""
+        echo "❌ 当前分支 ${ORIGINAL_BRANCH} 有未提交改动,无法自动切到 ce 分支。"
+        echo "   请先 commit / stash,或手动 git checkout ce 后重试。"
+        exit 1
+    fi
+    if ! git rev-parse --verify ce >/dev/null 2>&1; then
+        echo ""
+        echo "❌ 本地没有 ce 分支。先运行 'git fetch origin ce:ce' 取远端 ce 分支,"
+        echo "   或在 EE 分支跑 'make sync-ce' 生成 ce 分支。"
+        exit 1
+    fi
+    echo "🔀 自动切换 ${ORIGINAL_BRANCH} → ce(脚本结束时会切回 ${ORIGINAL_BRANCH})..."
+    git checkout ce
+    # 注册 trap:无论 exit 状态如何都切回原分支
+    trap 'echo "↩️  切回 ${ORIGINAL_BRANCH}..." && git checkout "$ORIGINAL_BRANCH" >/dev/null 2>&1' EXIT
 fi
-echo "✅ 分支安全校验通过: ${CURRENT_BRANCH}"
+echo "✅ 当前在 ce 分支,准备构建"
 
 # ---- 架构配置 ----
 PLATFORMS=${PLATFORMS:-"linux/amd64,linux/arm64"}

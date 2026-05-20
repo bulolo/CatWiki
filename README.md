@@ -345,7 +345,6 @@ make prod-up
 | 命令 | 说明 |
 |------|------|
 | `make set-version v=1.0.0` | **版本管理**：统一修改项目版本号 (代码、镜像、标签) |
-| `make sync-ce` | **同步 CE**：(EE-only) 从企业版源码构建并脱敏生成开源版 |
 | `make license` | **注入授权**：自动为全量源文件追加 License Header |
 | `make setup-hooks` | **配置 Hooks**：安装 Git Hooks 以启用自动化规范检查 |
 | `make publish-ce-images`| **发布镜像**：构建社区版 Docker 镜像并推送到仓库 |
