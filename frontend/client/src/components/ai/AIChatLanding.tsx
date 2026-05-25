@@ -14,17 +14,16 @@
 
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import { Sparkles, MessageSquare, Bot, ArrowRight, BookOpen, Plus, History as HistoryIcon } from "lucide-react"
+import { useState, useCallback } from "react"
+import { Sparkles, Bot, ArrowRight, BookOpen, Plus, History as HistoryIcon } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui"
-import { Streamdown } from "streamdown"
-import { cn } from "@/lib/utils"
-import { useAIChat } from "@/hooks"
-import { MessageSources } from "./MessageSources"
-import { ToolCallCard } from "./ToolCallCard"
+import { useAIChat, useChatAutoScroll, useToolCallState } from "@/hooks"
+import { CHAT_SESSIONS_KEY } from "@/hooks/useChatSessions"
+import { MessageList } from "./MessageList"
 import { ToolResultDialog } from "./ToolResultDialog"
 import { ChatHistorySidebar } from "./ChatHistorySidebar"
-import { ClientSite, QuickQuestion } from '@/lib/sdk/sdk.schemas'
+import type { ClientSite, QuickQuestion } from "@/lib/sdk/sdk.schemas"
 import { useTranslations } from "next-intl"
 
 
@@ -32,28 +31,41 @@ interface AIChatLandingProps {
   siteName?: string
   siteId?: number | null
   tenantId?: number | null
+  tenantSlug?: string | null
+  siteSlug?: string | null
   quickQuestions?: QuickQuestion[]
   allSites?: ClientSite[]
 }
 
-export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, quickQuestions: propQuickQuestions, allSites }: AIChatLandingProps) {
+const QUICK_QUESTION_ICONS = [
+  <Sparkles key="0" className="h-4 w-4 text-amber-500" />,
+  <BookOpen key="1" className="h-4 w-4 text-blue-500" />,
+  <Sparkles key="2" className="h-4 w-4 text-purple-500" />,
+]
+
+export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, tenantSlug, siteSlug, quickQuestions: propQuickQuestions, allSites }: AIChatLandingProps) {
   const t = useTranslations("AIChatLanding")
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [input, setInput] = useState("")
-  const chatContainerRef = useRef<HTMLDivElement>(null)
+  const queryClient = useQueryClient()
 
+  const onMessageSent = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: [CHAT_SESSIONS_KEY] }),
+    [queryClient],
+  )
   const { messages, isLoading, sendMessage, threadId, resetMessages, loadSessionMessages, setMessages } = useAIChat({
     selectedSiteId: siteId,
     selectedTenantId: tenantId,
-    onMessageSent: () => setRefreshTrigger(prev => prev + 1)
+    tenantSlug,
+    siteSlug,
+    onMessageSent,
   })
+  const chatContainerRef = useChatAutoScroll(messages)
+  const { selectedToolCall, setSelectedToolCall, handleResultFetched } = useToolCallState(setMessages)
 
-  // Use props or default to empty array (or fallback logic if needed, but per plan we use dynamic)
-  // Logic from page.tsx: Sparkles, BookOpen, Sparkles
   const quickQuestions = propQuickQuestions?.slice(0, 3).map((q, idx) => ({
     text: q.text,
-    icon: idx === 0 ? <Sparkles className="h-4 w-4 text-amber-500" /> : idx === 1 ? <BookOpen className="h-4 w-4 text-blue-500" /> : <Sparkles className="h-4 w-4 text-purple-500" />,
+    icon: QUICK_QUESTION_ICONS[idx],
   })) ?? []
 
   const handleSend = (text: string) => {
@@ -62,28 +74,12 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, quickQue
     setInput("")
   }
 
-  // Tool result dialog
-  const [selectedToolCall, setSelectedToolCall] = useState<import("@/types").ToolCall | null>(null)
-  const handleResultFetched = (toolCallId: string, result: string) => {
-    setMessages(messages.map(msg => msg.toolCalls ? {
-      ...msg, toolCalls: msg.toolCalls.map(tc => tc.id === toolCallId ? { ...tc, result } : tc)
-    } : msg))
-  }
-
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-    }
-  }, [messages])
-
   return (
     <>
     <div className="flex-1 flex bg-white h-full overflow-hidden relative">
       <ChatHistorySidebar
         siteId={siteId}
-        tenantId={tenantId}
         currentThreadId={threadId}
-        refreshTrigger={refreshTrigger}
         onSelectSession={(tid) => {
           loadSessionMessages(tid)
         }}
@@ -164,74 +160,20 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, quickQue
             </div>
           ) : (
             <div ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-4 md:space-y-8 pb-32 pt-4 scroll-smooth pr-2 scrollbar-hide">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex gap-3 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500",
-                    message.role === "user" ? "flex-row-reverse" : "flex-row"
-                  )}
-                >
-                  <div className={cn(
-                    "w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
-                    message.role === "assistant" ? "bg-primary text-white" : "bg-white border border-slate-200 text-slate-600"
-                  )}>
-                    {message.role === "assistant" ? <Sparkles className="h-4 w-4 md:h-5 md:w-5" /> : <MessageSquare className="h-4 w-4 md:h-5 md:w-5" />}
-                  </div>
-
-                  <div className="flex flex-col gap-2 max-w-[85%]">
-                    <div className={cn(
-                      "rounded-2xl md:rounded-3xl px-4 md:px-6 py-3 md:py-4 shadow-sm",
-                      message.role === "user"
-                        ? "bg-primary text-white"
-                        : "bg-slate-50 border border-slate-100"
-                    )}>
-                      <div className={cn(
-                        "text-sm md:text-[16px] leading-relaxed",
-                        message.role === "assistant" ? "prose prose-slate max-w-none prose-p:leading-relaxed" : ""
-                      )}>
-                        {/* Tool Call 展示 */}
-                        {message.role === "assistant" && message.toolCalls && message.toolCalls.length > 0 && (
-                          <ToolCallCard toolCalls={message.toolCalls} onToolCallClick={setSelectedToolCall} />
-                        )}
-
-                        {/* 消息内容 */}
-                        {message.role === "assistant" && !message.content && !message.toolCalls?.length ? (
-                          <div className="flex gap-1 md:gap-1.5 items-center py-2 h-6">
-                            <div className="w-1 h-1 md:w-1.5 md:h-1.5 bg-slate-400 rounded-full animate-bounce" />
-                            <div className="w-1 h-1 md:w-1.5 md:h-1.5 bg-slate-400 rounded-full animate-bounce delay-75" />
-                            <div className="w-1 h-1 md:w-1.5 md:h-1.5 bg-slate-400 rounded-full animate-bounce delay-150" />
-                          </div>
-                        ) : message.content ? (
-                          <Streamdown isAnimating={isLoading && message.role === "assistant" && message.status === "streaming"}>
-                            {message.content}
-                          </Streamdown>
-                        ) : null}
-                      </div>
-                    </div>
-                    <MessageSources sources={message.sources} allSites={allSites} />
-                  </div>
-                </div>
-              ))}
-              {isLoading && messages[messages.length - 1]?.role === "user" && (
-                <div className="flex gap-3 md:gap-6 animate-pulse">
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-primary/20 flex items-center justify-center">
-                    <Bot className="h-4 w-4 md:h-5 md:w-5 text-primary/40" />
-                  </div>
-                  <div className="bg-slate-50 border border-slate-100 rounded-2xl md:rounded-3xl px-6 md:px-8 py-4 md:py-6 w-24 md:w-32 flex gap-1 md:gap-1.5 items-center">
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-primary/40 rounded-full animate-bounce" />
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-primary/40 rounded-full animate-bounce delay-75" />
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-primary/40 rounded-full animate-bounce delay-150" />
-                  </div>
-                </div>
-              )}
+              <MessageList
+                messages={messages}
+                isLoading={isLoading}
+                allSites={allSites}
+                onToolCallClick={setSelectedToolCall}
+                variant="full"
+              />
             </div>
           )}
 
           {/* 底部输入框 */}
           <div className="absolute bottom-6 md:bottom-8 lg:bottom-10 left-0 w-full px-4 md:px-6 pointer-events-none">
             <form
-              onSubmit={(e) => { e.preventDefault(); handleSend(input); }}
+              onSubmit={(e) => { e.preventDefault(); handleSend(input) }}
               className="max-w-3xl mx-auto w-full glass-card p-1.5 md:p-2 rounded-2xl md:rounded-3xl lg:rounded-[2rem] border-slate-200/50 shadow-2xl pointer-events-auto flex items-center gap-2"
             >
                <input

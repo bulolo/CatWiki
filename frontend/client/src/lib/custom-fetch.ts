@@ -19,7 +19,8 @@
  * client 端不存在登录态，401 不做跳转，原样抛给上层。
  */
 
-import { env } from './env'
+import { env } from "./env"
+import { getCurrentRouteSiteAccessToken } from "./site-access-token"
 
 const BASE_URL = env.NEXT_PUBLIC_API_URL
 
@@ -30,7 +31,7 @@ const BASE_URL = env.NEXT_PUBLIC_API_URL
 export class HttpError extends Error {
   constructor(public readonly status: number, message: string) {
     super(message)
-    this.name = 'HttpError'
+    this.name = "HttpError"
   }
 }
 
@@ -39,31 +40,25 @@ function buildHeaders(init?: HeadersInit): Headers {
 
   // App 状态指纹
   let isInitialized = false
-  if (typeof document !== 'undefined') {
+  if (typeof document !== "undefined") {
     try {
-      const node = document.getElementById('cw-sys-mount')
+      const node = document.getElementById("cw-sys-mount")
       if (node) {
         const style = window.getComputedStyle(node)
         isInitialized =
-          style.display !== 'none' &&
-          style.visibility !== 'hidden' &&
+          style.display !== "none" &&
+          style.visibility !== "hidden" &&
           parseFloat(style.opacity) > 0.1
       }
     } catch {
       /* ignore */
     }
   }
-  headers.set('X-App-State', isInitialized ? '0x4f4b' : '0x4b4f')
-  headers.set('X-Client-Origin', typeof window !== 'undefined' ? window.location.origin : '')
+  headers.set("X-App-State", isInitialized ? "0x4f4b" : "0x4b4f")
+  headers.set("X-Client-Origin", typeof window !== "undefined" ? window.location.origin : "")
 
-  // EE 站点访问 token（URL 第二段是站点 slug）
-  if (typeof window !== 'undefined') {
-    const siteSlug = window.location.pathname.split('/')[2]
-    if (siteSlug) {
-      const token = sessionStorage.getItem(`site_access_token:${siteSlug}`)
-      if (token) headers.set('X-Site-Access-Token', token)
-    }
-  }
+  const token = getCurrentRouteSiteAccessToken()
+  if (token) headers.set("X-Site-Access-Token", token)
 
   return headers
 }
@@ -93,25 +88,25 @@ export async function customFetch<T>(url: string, init?: RequestInit): Promise<T
 
   if (!res.ok) {
     const msg =
-      (body && typeof body === 'object' && 'msg' in body && typeof body.msg === 'string'
+      (body && typeof body === "object" && "msg" in body && typeof body.msg === "string"
         ? body.msg
-        : typeof body === 'string'
+        : typeof body === "string"
           ? body
-          : null) || res.statusText || 'Request failed'
+          : null) || res.statusText || "Request failed"
     throw new HttpError(res.status, msg)
   }
 
   if (
     body &&
-    typeof body === 'object' &&
-    'code' in body &&
-    typeof (body as { code: unknown }).code === 'number'
+    typeof body === "object" &&
+    "code" in body &&
+    typeof (body as { code: unknown }).code === "number"
   ) {
     const envelope = body as { code: number; msg?: string; data?: unknown }
     if (envelope.code === 0) {
       return envelope.data as T
     }
-    throw new HttpError(res.status, envelope.msg || 'Operation failed')
+    throw new HttpError(res.status, envelope.msg || "Operation failed")
   }
 
   return body as T

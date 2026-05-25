@@ -15,21 +15,13 @@
 "use client"
 
 import { useState } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui"
+import { Button, Input, Label } from "@/components/ui"
 import { Lock, Eye, EyeOff, Shield, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { updateAdminUserPassword } from '@/lib/sdk/admin-users'
+import { updateAdminUserPassword } from "@/lib/sdk/admin-users"
 import { getUserInfo } from "@/lib/auth"
-import { logError } from "@/lib/error-handler"
+import { logger } from "@/lib/logger"
 
 import { useTranslations } from "next-intl"
 
@@ -88,7 +80,7 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
       // 重置并关闭
       handleClose()
     } catch (error: unknown) {
-      logError(t("title"), error)
+      logger.error(`[${t("title")}]`, error)
       toast.error(error instanceof Error ? error.message : t("failed"))
     } finally {
 

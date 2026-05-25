@@ -3,7 +3,7 @@
  * Do not edit manually.
  * CatWiki Client API
  * 客户端 API - 仅提供已发布内容的只读访问
- * OpenAPI spec version: 1.1.4
+ * OpenAPI spec version: 1.1.5
  */
 import {
   useMutation,
@@ -26,9 +26,11 @@ import type {
 
 import type {
   GetSiteAccessStatus200,
+  GetSiteAccessStatusParams,
   HTTPValidationError,
   VerifyPasswordRequest,
-  VerifyPasswordResponse
+  VerifyPasswordResponse,
+  VerifySitePasswordParams
 } from './sdk.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -39,21 +41,30 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 
-export const getGetSiteAccessStatusUrl = (slug: string,) => {
+export const getGetSiteAccessStatusUrl = (slug: string,
+    params?: GetSiteAccessStatusParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/client/sites/${slug}/access-status`
+  return stringifiedParams.length > 0 ? `/v1/client/sites/${slug}/access-status?${stringifiedParams}` : `/v1/client/sites/${slug}/access-status`
 }
 
 /**
  * 客户端接口：获取站点的访问状态（是否公开、是否需要密码）
  * @summary Get Site Access Status
  */
-export const getSiteAccessStatus = async (slug: string, options?: RequestInit): Promise<GetSiteAccessStatus200> => {
+export const getSiteAccessStatus = async (slug: string,
+    params?: GetSiteAccessStatusParams, options?: RequestInit): Promise<GetSiteAccessStatus200> => {
 
-  return customFetch<GetSiteAccessStatus200>(getGetSiteAccessStatusUrl(slug),
+  return customFetch<GetSiteAccessStatus200>(getGetSiteAccessStatusUrl(slug,params),
   {
     ...options,
     method: 'GET'
@@ -66,23 +77,25 @@ export const getSiteAccessStatus = async (slug: string, options?: RequestInit): 
 
 
 
-export const getGetSiteAccessStatusQueryKey = (slug: string,) => {
+export const getGetSiteAccessStatusQueryKey = (slug: string,
+    params?: GetSiteAccessStatusParams,) => {
     return [
-    `/v1/client/sites/${slug}/access-status`
+    `/v1/client/sites/${slug}/access-status`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetSiteAccessStatusQueryOptions = <TData = Awaited<ReturnType<typeof getSiteAccessStatus>>, TError = HTTPValidationError>(slug: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteAccessStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetSiteAccessStatusQueryOptions = <TData = Awaited<ReturnType<typeof getSiteAccessStatus>>, TError = HTTPValidationError>(slug: string,
+    params?: GetSiteAccessStatusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteAccessStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetSiteAccessStatusQueryKey(slug);
+  const queryKey =  queryOptions?.queryKey ?? getGetSiteAccessStatusQueryKey(slug,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSiteAccessStatus>>> = ({ signal }) => getSiteAccessStatus(slug, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSiteAccessStatus>>> = ({ signal }) => getSiteAccessStatus(slug,params, { signal, ...requestOptions });
 
 
 
@@ -96,7 +109,8 @@ export type GetSiteAccessStatusQueryError = HTTPValidationError
 
 
 export function useGetSiteAccessStatus<TData = Awaited<ReturnType<typeof getSiteAccessStatus>>, TError = HTTPValidationError>(
- slug: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteAccessStatus>>, TError, TData>> & Pick<
+ slug: string,
+    params: undefined |  GetSiteAccessStatusParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteAccessStatus>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getSiteAccessStatus>>,
           TError,
@@ -106,7 +120,8 @@ export function useGetSiteAccessStatus<TData = Awaited<ReturnType<typeof getSite
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetSiteAccessStatus<TData = Awaited<ReturnType<typeof getSiteAccessStatus>>, TError = HTTPValidationError>(
- slug: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteAccessStatus>>, TError, TData>> & Pick<
+ slug: string,
+    params?: GetSiteAccessStatusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteAccessStatus>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getSiteAccessStatus>>,
           TError,
@@ -116,7 +131,8 @@ export function useGetSiteAccessStatus<TData = Awaited<ReturnType<typeof getSite
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetSiteAccessStatus<TData = Awaited<ReturnType<typeof getSiteAccessStatus>>, TError = HTTPValidationError>(
- slug: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteAccessStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ slug: string,
+    params?: GetSiteAccessStatusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteAccessStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -124,11 +140,12 @@ export function useGetSiteAccessStatus<TData = Awaited<ReturnType<typeof getSite
  */
 
 export function useGetSiteAccessStatus<TData = Awaited<ReturnType<typeof getSiteAccessStatus>>, TError = HTTPValidationError>(
- slug: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteAccessStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ slug: string,
+    params?: GetSiteAccessStatusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteAccessStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetSiteAccessStatusQueryOptions(slug,options)
+  const queryOptions = getGetSiteAccessStatusQueryOptions(slug,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -140,12 +157,20 @@ export function useGetSiteAccessStatus<TData = Awaited<ReturnType<typeof getSite
 
 
 
-export const getVerifySitePasswordUrl = (slug: string,) => {
+export const getVerifySitePasswordUrl = (slug: string,
+    params?: VerifySitePasswordParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/client/sites/${slug}/verify-password`
+  return stringifiedParams.length > 0 ? `/v1/client/sites/${slug}/verify-password?${stringifiedParams}` : `/v1/client/sites/${slug}/verify-password`
 }
 
 /**
@@ -153,9 +178,10 @@ export const getVerifySitePasswordUrl = (slug: string,) => {
  * @summary Verify Site Password
  */
 export const verifySitePassword = async (slug: string,
-    verifyPasswordRequest: VerifyPasswordRequest, options?: RequestInit): Promise<VerifyPasswordResponse | null> => {
+    verifyPasswordRequest: VerifyPasswordRequest,
+    params?: VerifySitePasswordParams, options?: RequestInit): Promise<VerifyPasswordResponse | null> => {
 
-  return customFetch<VerifyPasswordResponse | null>(getVerifySitePasswordUrl(slug),
+  return customFetch<VerifyPasswordResponse | null>(getVerifySitePasswordUrl(slug,params),
   {
     ...options,
     method: 'POST',
@@ -168,8 +194,8 @@ export const verifySitePassword = async (slug: string,
 
 
 export const getVerifySitePasswordMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifySitePassword>>, TError,{slug: string;data: VerifyPasswordRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof verifySitePassword>>, TError,{slug: string;data: VerifyPasswordRequest}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifySitePassword>>, TError,{slug: string;data: VerifyPasswordRequest;params?: VerifySitePasswordParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifySitePassword>>, TError,{slug: string;data: VerifyPasswordRequest;params?: VerifySitePasswordParams}, TContext> => {
 
 const mutationKey = ['verifySitePassword'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -181,10 +207,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifySitePassword>>, {slug: string;data: VerifyPasswordRequest}> = (props) => {
-          const {slug,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifySitePassword>>, {slug: string;data: VerifyPasswordRequest;params?: VerifySitePasswordParams}> = (props) => {
+          const {slug,data,params} = props ?? {};
 
-          return  verifySitePassword(slug,data,requestOptions)
+          return  verifySitePassword(slug,data,params,requestOptions)
         }
 
 
@@ -202,11 +228,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
  * @summary Verify Site Password
  */
 export const useVerifySitePassword = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifySitePassword>>, TError,{slug: string;data: VerifyPasswordRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifySitePassword>>, TError,{slug: string;data: VerifyPasswordRequest;params?: VerifySitePasswordParams}, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof verifySitePassword>>,
         TError,
-        {slug: string;data: VerifyPasswordRequest},
+        {slug: string;data: VerifyPasswordRequest;params?: VerifySitePasswordParams},
         TContext
       > => {
       return useMutation(getVerifySitePasswordMutationOptions(options), queryClient);

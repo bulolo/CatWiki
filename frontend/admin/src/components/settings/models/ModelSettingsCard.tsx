@@ -19,7 +19,7 @@
 
 "use client"
 
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui"
 import { useTranslations } from "next-intl"
 import { CircuitBoard } from "lucide-react"
 import { ManualModeConfig } from "./ManualModeConfig"

@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { Metadata } from 'next'
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
-import './globals.css'
-import { AdminLayoutClient } from '@/components/layout/AdminLayoutClient'
+import type { Metadata } from "next"
+import { NextIntlClientProvider } from "next-intl"
+import { getLocale, getMessages } from "next-intl/server"
+import "./globals.css"
+import { AdminLayoutClient } from "@/components/layout/AdminLayoutClient"
 
 // 使用系统字体栈，避免 Google Fonts 网络问题
-const fontSans = 'font-sans'
+const fontSans = "font-sans"
 
 export const metadata: Metadata = {
   title: {
-    default: 'CatWiki Admin',
-    template: '%s | CatWiki Admin',
+    default: "CatWiki Admin",
+    template: "%s | CatWiki Admin",
   },
-  description: 'CatWiki Admin - AI Knowledge Base Platform',
-  keywords: ['knowledge base', 'document management', 'Wiki', 'CatWiki'],
+  description: "CatWiki Admin - AI Knowledge Base Platform",
+  keywords: ["knowledge base", "document management", "Wiki", "CatWiki"],
 }
 
 /**
@@ -42,8 +42,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const locale = await getLocale();
-  const messages = await getMessages();
+  const locale = await getLocale()
+  const messages = await getMessages()
 
   return (
     <html lang={locale} suppressHydrationWarning>

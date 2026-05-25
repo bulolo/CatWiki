@@ -82,11 +82,12 @@ async def list_active_sites(
 )
 async def get_site_by_slug(
     slug: str,
+    tenant_slug: str | None = Query(None, description="租户标识"),
     service: SiteService = Depends(get_site_service),
     db: AsyncSession = Depends(get_db),
 ) -> ApiResponse[ClientSite]:
     """通过 slug 获取站点详情（客户端）"""
-    site = await service.get_client_site(slug=slug)
+    site = await service.get_client_site(slug=slug, tenant_slug=tenant_slug)
     return await _build_response(site, db)
 
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { LazyMarkdownEditor } from './LazyMarkdownEditor'
-export { MarkdownEditor } from './MarkdownEditor'
-export { EditorSkeleton } from './EditorSkeleton'
+export { LazyMarkdownEditor } from "./LazyMarkdownEditor"
+export { MarkdownEditor } from "./MarkdownEditor"
+export { EditorSkeleton } from "./EditorSkeleton"
 

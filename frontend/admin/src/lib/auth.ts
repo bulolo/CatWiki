@@ -31,7 +31,8 @@
  * - 添加 SameSite 保护
  */
 
-import type { UserResponse } from '@/lib/sdk/sdk.schemas'
+import type { UserResponse } from "@/lib/sdk/sdk.schemas"
+import { logger } from "./logger"
 
 // ==================== 类型定义 ====================
 
@@ -42,11 +43,11 @@ interface TokenData {
 
 // ==================== 常量配置 ====================
 
-const TOKEN_KEY = 'auth_token_data'
-const AUTH_COOKIE_NAME = 'isAuthenticated'
-const USER_INFO_KEY = 'userInfo'
-const LAST_SITE_SLUG_KEY = 'lastSiteSlug'
-const SELECTED_TENANT_ID_KEY = 'selectedTenantId'
+const TOKEN_KEY = "auth_token_data"
+const AUTH_COOKIE_NAME = "isAuthenticated"
+const USER_INFO_KEY = "userInfo"
+const LAST_SITE_SLUG_KEY = "lastSiteSlug"
+const SELECTED_TENANT_ID_KEY = "selectedTenantId"
 
 // Token 默认有效期：7 天
 const TOKEN_EXPIRES_DAYS = 7
@@ -62,7 +63,7 @@ const COOKIE_EXPIRES_DAYS = 7
  * @returns token 字符串，如果不存在或已过期则返回 null
  */
 export function getToken(): string | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === "undefined") return null
 
   try {
     const dataStr = localStorage.getItem(TOKEN_KEY)
@@ -78,7 +79,7 @@ export function getToken(): string | null {
 
     return data.token
   } catch (error) {
-    console.error('Failed to get token:', error)
+    logger.error("Failed to get token:", error)
     clearToken()
     return null
   }
@@ -89,8 +90,8 @@ export function getToken(): string | null {
  * @param token - JWT token
  * @param expiresInMs - 过期时间（毫秒），默认 7 天
  */
-export function setToken(token: string, expiresInMs: number = TOKEN_EXPIRES_MS) {
-  if (typeof window === 'undefined') return
+function setToken(token: string, expiresInMs: number = TOKEN_EXPIRES_MS) {
+  if (typeof window === "undefined") return
 
   try {
     const data: TokenData = {
@@ -102,45 +103,16 @@ export function setToken(token: string, expiresInMs: number = TOKEN_EXPIRES_MS) 
     // 同步设置认证状态 Cookie
     setAuthCookie(true)
   } catch (error) {
-    console.error('Failed to set token:', error)
+    logger.error("Failed to set token:", error)
   }
 }
 
 /**
  * 清除 token
  */
-export function clearToken() {
-  if (typeof window === 'undefined') return
+function clearToken() {
+  if (typeof window === "undefined") return
   localStorage.removeItem(TOKEN_KEY)
-}
-
-/**
- * 检查 token 是否即将过期（1小时内）
- */
-export function isTokenExpiringSoon(): boolean {
-  if (typeof window === 'undefined') return false
-
-  try {
-    const dataStr = localStorage.getItem(TOKEN_KEY)
-    if (!dataStr) return true
-
-    const data: TokenData = JSON.parse(dataStr)
-    const oneHourFromNow = Date.now() + 60 * 60 * 1000
-
-    return data.expiresAt < oneHourFromNow
-  } catch {
-    return true
-  }
-}
-
-/**
- * 刷新 token 过期时间
- */
-export function refreshTokenExpiry() {
-  const token = getToken()
-  if (token) {
-    setToken(token, TOKEN_EXPIRES_MS)
-  }
 }
 
 // ==================== Cookie 管理 ====================
@@ -149,16 +121,16 @@ export function refreshTokenExpiry() {
  * 设置认证状态 Cookie
  * 注意：此 Cookie 仅用于 middleware 检查，不存储敏感信息
  */
-export function setAuthCookie(isAuthenticated: boolean) {
-  if (typeof document === 'undefined') return
+function setAuthCookie(isAuthenticated: boolean) {
+  if (typeof document === "undefined") return
 
   const expires = new Date()
   expires.setDate(expires.getDate() + COOKIE_EXPIRES_DAYS)
 
   // 安全配置
-  const isSecure = window.location.protocol === 'https:'
-  const secure = isSecure ? 'Secure;' : ''
-  const sameSite = 'Lax' // 使用 Lax 以获得更好的兼容性，Strict 可能过于严格
+  const isSecure = window.location.protocol === "https:"
+  const secure = isSecure ? "Secure;" : ""
+  const sameSite = "Lax" // 使用 Lax 以获得更好的兼容性，Strict 可能过于严格
 
   document.cookie = `${AUTH_COOKIE_NAME}=${isAuthenticated}; path=/; expires=${expires.toUTCString()}; ${secure} SameSite=${sameSite}`
 }
@@ -166,22 +138,22 @@ export function setAuthCookie(isAuthenticated: boolean) {
 /**
  * 获取认证状态 Cookie
  */
-export function getAuthCookie(): boolean {
-  if (typeof document === 'undefined') return false
+function getAuthCookie(): boolean {
+  if (typeof document === "undefined") return false
 
-  const cookies = document.cookie.split(';')
+  const cookies = document.cookie.split(";")
   const authCookie = cookies.find(cookie =>
     cookie.trim().startsWith(`${AUTH_COOKIE_NAME}=`)
   )
 
-  return authCookie?.split('=')[1] === 'true'
+  return authCookie?.split("=")[1] === "true"
 }
 
 /**
  * 清除认证状态 Cookie
  */
-export function clearAuthCookie() {
-  if (typeof document === 'undefined') return
+function clearAuthCookie() {
+  if (typeof document === "undefined") return
 
   document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
 }
@@ -192,7 +164,7 @@ export function clearAuthCookie() {
  * 获取用户信息
  */
 export function getUserInfo(): UserResponse | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === "undefined") return null
 
   const userInfo = localStorage.getItem(USER_INFO_KEY)
   if (!userInfo) return null
@@ -200,7 +172,7 @@ export function getUserInfo(): UserResponse | null {
   try {
     return JSON.parse(userInfo) as UserResponse
   } catch (error) {
-    console.error('Failed to parse user info:', error)
+    logger.error("Failed to parse user info:", error)
     return null
   }
 }
@@ -208,21 +180,21 @@ export function getUserInfo(): UserResponse | null {
 /**
  * 设置用户信息
  */
-export function setUserInfo(user: UserResponse) {
-  if (typeof window === 'undefined') return
+function setUserInfo(user: UserResponse) {
+  if (typeof window === "undefined") return
 
   try {
     localStorage.setItem(USER_INFO_KEY, JSON.stringify(user))
   } catch (error) {
-    console.error('Failed to set user info:', error)
+    logger.error("Failed to set user info:", error)
   }
 }
 
 /**
  * 清除用户信息
  */
-export function clearUserInfo() {
-  if (typeof window === 'undefined') return
+function clearUserInfo() {
+  if (typeof window === "undefined") return
   localStorage.removeItem(USER_INFO_KEY)
 }
 
@@ -232,7 +204,7 @@ export function clearUserInfo() {
  * 获取最近访问的站点标识
  */
 export function getLastSiteSlug(): string | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === "undefined") return null
   return localStorage.getItem(LAST_SITE_SLUG_KEY)
 }
 
@@ -240,7 +212,7 @@ export function getLastSiteSlug(): string | null {
  * 设置最近访问的站点标识
  */
 export function setLastSiteSlug(slug: string) {
-  if (typeof window === 'undefined') return
+  if (typeof window === "undefined") return
   localStorage.setItem(LAST_SITE_SLUG_KEY, slug)
 }
 
@@ -250,7 +222,7 @@ export function setLastSiteSlug(slug: string) {
  * 获取当前选中的租户 ID (仅管理员)
  */
 export function getSelectedTenantId(): number | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === "undefined") return null
   const id = localStorage.getItem(SELECTED_TENANT_ID_KEY)
   return id ? parseInt(id, 10) : null
 }
@@ -259,7 +231,7 @@ export function getSelectedTenantId(): number | null {
  * 设置当前选中的租户 ID (仅管理员)
  */
 export function setSelectedTenantId(id: number | null) {
-  if (typeof window === 'undefined') return
+  if (typeof window === "undefined") return
   if (id === null) {
     localStorage.removeItem(SELECTED_TENANT_ID_KEY)
   } else {
@@ -274,7 +246,7 @@ export function setSelectedTenantId(id: number | null) {
  * 同时检查 Cookie 和 Token 有效性
  */
 export function isAuthenticated(): boolean {
-  if (typeof window === 'undefined') return false
+  if (typeof window === "undefined") return false
 
   // 检查 Cookie（快速检查）
   const hasCookie = getAuthCookie()
@@ -307,9 +279,9 @@ export function logout() {
   clearAllAuth()
 
   // 重定向到登录页
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     // 清除所有查询参数，防止敏感信息泄露
-    window.location.href = '/login'
+    window.location.href = "/login"
   }
 }
 
@@ -325,41 +297,4 @@ export function login(token: string, userInfo: UserResponse, remember: boolean =
   setToken(token, expiresInMs)
   setUserInfo(userInfo)
   setAuthCookie(true)
-}
-
-// ==================== 安全工具函数 ====================
-
-/**
- * 生成用于 CSRF 保护的 token
- * 注意：这需要后端支持验证
- */
-export function generateCSRFToken(): string {
-  if (typeof window === 'undefined') return ''
-
-  // 简单的随机 token 生成
-  const array = new Uint8Array(32)
-  crypto.getRandomValues(array)
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
-}
-
-/**
- * 获取或创建 CSRF token
- */
-export function getOrCreateCSRFToken(): string {
-  if (typeof window === 'undefined') return ''
-
-  const existingToken = sessionStorage.getItem('csrf_token')
-  if (existingToken) return existingToken
-
-  const newToken = generateCSRFToken()
-  sessionStorage.setItem('csrf_token', newToken)
-  return newToken
-}
-
-/**
- * 清除 CSRF token
- */
-export function clearCSRFToken() {
-  if (typeof window === 'undefined') return
-  sessionStorage.removeItem('csrf_token')
 }

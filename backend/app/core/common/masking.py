@@ -91,6 +91,12 @@ def mask_bot_config_inplace(config_value: dict) -> None:
         if "encoding_aes_key" in wecom_app:
             wecom_app["encoding_aes_key"] = mask_variable(wecom_app["encoding_aes_key"])
 
+    # 6. Telegram Bot
+    telegram = config_value.get("telegram_app", {})
+    if telegram:
+        if "bot_token" in telegram:
+            telegram["bot_token"] = mask_variable(telegram["bot_token"])
+
 
 def filter_client_site_data(site: Any) -> Any:
     """过滤客户端站点数据中的敏感信息"""

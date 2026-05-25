@@ -15,12 +15,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useTranslations } from 'next-intl'
+import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, ImageUpload, Input, Textarea } from "@/components/ui"
+import { STALE_TIME } from "@/lib/react-query"
 import {
   ChevronLeft,
   Save,
@@ -34,23 +32,22 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { useCreateSite } from "@/hooks"
-import { useGetAdminCurrentTenant } from '@/lib/sdk/admin-tenants'
-import { ImageUpload } from "@/components/ui/ImageUpload"
+import { useGetAdminCurrentTenant } from "@/lib/sdk/admin-tenants"
 
 // 主题色配置
-const THEME_COLOR_KEYS = ['blue', 'emerald', 'purple', 'orange', 'slate'] as const
+const THEME_COLOR_KEYS = ["blue", "emerald", "purple", "orange", "slate"] as const
 const THEME_COLOR_CLASSES: Record<string, string> = {
-  blue: 'bg-blue-500',
-  emerald: 'bg-emerald-500',
-  purple: 'bg-purple-500',
-  orange: 'bg-orange-500',
-  slate: 'bg-slate-800',
+  blue: "bg-blue-500",
+  emerald: "bg-emerald-500",
+  purple: "bg-purple-500",
+  orange: "bg-orange-500",
+  slate: "bg-slate-800",
 }
 
 export default function NewSitePage() {
   const router = useRouter()
-  const t = useTranslations('SiteNew')
-  const tf = useTranslations('SiteForm')
+  const t = useTranslations("SiteNew")
+  const tf = useTranslations("SiteForm")
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [description, setDescription] = useState("")
@@ -67,9 +64,9 @@ export default function NewSitePage() {
 
   // 获取当前租户标识
   const { data: tenantData } = useGetAdminCurrentTenant({
-    query: { staleTime: 10 * 60 * 1000 },
+    query: { staleTime: STALE_TIME.LONG },
   })
-  const tenantSlug = tenantData?.slug || '...'
+  const tenantSlug = tenantData?.slug || "..."
 
   // 确保水合一致性
   useEffect(() => {
@@ -226,7 +223,7 @@ export default function NewSitePage() {
                   {THEME_COLOR_KEYS.map((colorKey) => (
                     <div
                       key={colorKey}
-                      className={`w-8 h-8 rounded-full ${THEME_COLOR_CLASSES[colorKey]} cursor-pointer ring-offset-2 transition-all ${themeColor === colorKey ? 'ring-2 ring-primary ring-offset-2' : 'hover:ring-2 ring-slate-300'
+                      className={`w-8 h-8 rounded-full ${THEME_COLOR_CLASSES[colorKey]} cursor-pointer ring-offset-2 transition-all ${themeColor === colorKey ? "ring-2 ring-primary ring-offset-2" : "hover:ring-2 ring-slate-300"
                         }`}
                       onClick={() => setThemeColor(colorKey)}
                       title={tf(`colors.${colorKey}`)}
@@ -238,11 +235,11 @@ export default function NewSitePage() {
                 <label className="text-sm font-medium text-slate-700">{tf("layoutMode")}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <div
-                    className={`border rounded-lg p-3 text-center text-xs font-medium cursor-pointer transition-colors ${layoutMode === 'sidebar'
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-slate-200 bg-slate-50 text-slate-900'
+                    className={`border rounded-lg p-3 text-center text-xs font-medium cursor-pointer transition-colors ${layoutMode === "sidebar"
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-slate-200 bg-slate-50 text-slate-900"
                       }`}
-                    onClick={() => setLayoutMode('sidebar')}
+                    onClick={() => setLayoutMode("sidebar")}
                   >
                     {tf("sidebarLayout")}
                   </div>
@@ -272,10 +269,10 @@ export default function NewSitePage() {
                   <p className="text-xs text-slate-500">{tf("enableSiteHint")}</p>
                 </div>
                 <div
-                  className={`w-10 h-5 ${isActive ? 'bg-primary' : 'bg-slate-200'} rounded-full relative cursor-pointer`}
+                  className={`w-10 h-5 ${isActive ? "bg-primary" : "bg-slate-200"} rounded-full relative cursor-pointer`}
                   onClick={() => setIsActive(!isActive)}
                 >
-                  <div className={`absolute ${isActive ? 'right-0.5' : 'left-0.5'} top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all`} />
+                  <div className={`absolute ${isActive ? "right-0.5" : "left-0.5"} top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all`} />
                 </div>
               </div>
               <div className="flex items-center justify-between opacity-50">
@@ -308,10 +305,10 @@ export default function NewSitePage() {
                 <p className="text-xs text-slate-500">{tf("initAdminHint")}</p>
               </div>
               <div
-                className={`w-10 h-5 ${initAdmin ? 'bg-primary' : 'bg-slate-200'} rounded-full relative cursor-pointer`}
+                className={`w-10 h-5 ${initAdmin ? "bg-primary" : "bg-slate-200"} rounded-full relative cursor-pointer`}
                 onClick={() => setInitAdmin(!initAdmin)}
               >
-                <div className={`absolute ${initAdmin ? 'right-0.5' : 'left-0.5'} top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all`} />
+                <div className={`absolute ${initAdmin ? "right-0.5" : "left-0.5"} top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all`} />
               </div>
             </div>
 

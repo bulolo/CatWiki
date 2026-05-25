@@ -482,10 +482,16 @@ class DocumentService:
         user_agent: str | None = None,
         referer: str | None = None,
         background_tasks: BackgroundTasks | None = None,
+        site_id: int | None = None,
+        tenant_id: int | None = None,
     ) -> dict:
         """获取已发布文档详情（客户端，增加浏览量）。"""
         document = await crud_document.get_with_related_site(self.db, id=document_id)
         if not document or document.status != DocumentStatus.PUBLISHED:
+            raise NotFoundException(detail=_("doc.not_found", id=document_id))
+        if site_id is not None and document.site_id != site_id:
+            raise NotFoundException(detail=_("doc.not_found", id=document_id))
+        if tenant_id is not None and document.tenant_id != tenant_id:
             raise NotFoundException(detail=_("doc.not_found", id=document_id))
 
         document = await crud_document.increment_views(

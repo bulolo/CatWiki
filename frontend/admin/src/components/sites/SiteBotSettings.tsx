@@ -21,19 +21,16 @@
 
 import { useTranslations } from "next-intl"
 import Image from "next/image"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Bot, Code, Eye, EyeOff, RefreshCw, Copy, ChevronDown, ChevronUp, Crown, MessageSquare, Send } from "lucide-react"
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, Input, ScrollArea } from "@/components/ui"
+import { Bot, Code, Copy, Eye, EyeOff, RefreshCw, Crown, MessageSquare, Send } from "lucide-react"
 import { useState } from "react"
 import { ChatWidgetPreview } from "@/components/features/ChatWidgetPreview"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type { BotConfig } from "@/types/settings"
 import { env } from "@/lib/env"
-import { useHealth } from '@/hooks/useHealth'
+import { useHealth } from "@/hooks/useHealth"
+import { BotCard, CopyableInput, InstructionBox, SettingItem } from "./_bot/BotPrimitives"
 
 interface SiteBotSettingsProps {
   siteId: number
@@ -46,262 +43,6 @@ interface SiteBotSettingsProps {
   chatModel?: string
 }
 
-// --- Sub-components for Refactoring ---
-
-interface BotCardProps {
-  title: string
-  description: string
-  icon: React.ReactNode
-  iconBgColor?: string
-  iconTextColor?: string
-  isEnabled: boolean
-  isExpanded: boolean
-  onToggleExpand: () => void
-  onToggleEnable: (enabled: boolean) => void
-  children: React.ReactNode
-  badge?: React.ReactNode
-  typeBadge?: string
-  headerAction?: React.ReactNode
-  className?: string
-  disabled?: boolean
-  tooltip?: string
-}
-
-function BotCard({
-  title,
-  description,
-  icon,
-  iconBgColor = "bg-blue-50",
-  iconTextColor = "text-blue-600",
-  isEnabled,
-  isExpanded,
-  onToggleExpand,
-  onToggleEnable,
-  children,
-  badge,
-  typeBadge,
-  headerAction,
-  className,
-  disabled,
-  tooltip
-}: BotCardProps) {
-  const t = useTranslations("SiteBot")
-  return (
-    <Card className={cn("border-slate-200/60 shadow-sm rounded-xl overflow-hidden", disabled && "opacity-75", className)}>
-      <CardHeader className="border-b border-border/40 py-3 px-5">
-        <div className="flex items-center justify-between">
-          <div
-            className="flex items-center gap-3 cursor-pointer flex-1"
-            onClick={onToggleExpand}
-          >
-            <div className={cn("p-1.5 rounded-lg border", iconBgColor, iconTextColor, "border-opacity-50")}>
-              {icon}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base font-bold">{title}</CardTitle>
-                {typeBadge && (
-                  <Badge className="text-[9px] font-bold px-1.5 h-4 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-50">
-                    {typeBadge}
-                  </Badge>
-                )}
-                {badge}
-                {isExpanded ? (
-                  <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                )}
-              </div>
-              <CardDescription className="text-xs">{description}</CardDescription>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            {headerAction}
-            <label
-              className={cn(
-                "flex items-center gap-2 cursor-pointer bg-slate-50 px-3 h-8 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors",
-                disabled && "opacity-50 cursor-not-allowed"
-              )}
-              onClick={(e) => e.stopPropagation()}
-              title={tooltip}
-            >
-              <input
-                type="checkbox"
-                checked={isEnabled}
-                onChange={(e) => onToggleEnable(e.target.checked)}
-                disabled={disabled}
-                className="w-3.5 h-3.5 rounded border-slate-300 text-primary focus:ring-primary"
-              />
-              <span className="text-[13px] font-semibold text-slate-700">{t("enabled")}</span>
-            </label>
-          </div>
-        </div>
-      </CardHeader>
-      {isExpanded && (
-        <CardContent className="space-y-4 p-5 animate-in fade-in duration-300">
-          {children}
-        </CardContent>
-      )}
-    </Card>
-  )
-}
-
-interface SettingItemProps {
-  label: string
-  badge?: string
-  required?: boolean
-  children: React.ReactNode
-  className?: string
-  labelClassName?: string
-}
-
-function SettingItem({ label, badge, required, children, className, labelClassName }: SettingItemProps) {
-  return (
-    <div className={cn("flex gap-4", className)}>
-      <div className={cn("min-w-[100px] pt-1.5 flex flex-col items-start justify-start", labelClassName)}>
-        <label className="text-[13px] font-semibold text-slate-700">
-          {label} {required && <span className="text-red-500">*</span>}
-        </label>
-        {badge && (
-          <Badge variant="outline" className="text-[9px] mt-0.5 bg-slate-50 text-slate-500 border-slate-200 font-bold px-1.5 h-3.5">
-            {badge}
-          </Badge>
-        )}
-      </div>
-      <div className="flex-1">{children}</div>
-    </div>
-  )
-}
-
-interface CopyableInputProps {
-  value: string
-  onCopy?: () => void
-  readOnly?: boolean
-  type?: string
-  onChange?: (val: string) => void
-  placeholder?: string
-  disabled?: boolean
-  showPasswordToggle?: boolean
-  isPasswordVisible?: boolean
-  onTogglePasswordVisibility?: () => void
-  hint?: string
-  className?: string
-  generateAction?: React.ReactNode
-}
-
-function CopyableInput({
-  value,
-  onCopy,
-  readOnly,
-  type = "text",
-  onChange,
-  placeholder,
-  disabled,
-  showPasswordToggle,
-  isPasswordVisible,
-  onTogglePasswordVisibility,
-  hint,
-  className,
-  generateAction
-}: CopyableInputProps) {
-  const t = useTranslations("SiteBot")
-  const handleCopy = () => {
-    navigator.clipboard.writeText(value)
-    if (onCopy) onCopy()
-    else toast.success(t("copied"))
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="relative group">
-        <Input
-          type={showPasswordToggle ? (isPasswordVisible ? "text" : "password") : type}
-          value={value}
-          onChange={(e) => onChange?.(e.target.value)}
-          readOnly={readOnly}
-          placeholder={placeholder}
-          disabled={disabled}
-          autoComplete="new-password"
-          className={cn(
-            "rounded-lg h-9 text-[13px] pr-16 placeholder:text-slate-400/80",
-            readOnly ? "bg-slate-50 font-mono text-[11px]" : "bg-white",
-            showPasswordToggle && "pr-28 font-mono",
-            className
-          )}
-        />
-        <div className="absolute right-1 top-1 flex gap-1">
-          {showPasswordToggle && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600 rounded-lg"
-              onClick={onTogglePasswordVisibility}
-              disabled={disabled}
-              type="button"
-            >
-              {isPasswordVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "h-7 text-[11px] hover:bg-slate-200 rounded-lg font-semibold px-2 text-slate-500",
-              !showPasswordToggle && "text-slate-400"
-            )}
-            onClick={handleCopy}
-            disabled={disabled || !value}
-            type="button"
-          >
-            {showPasswordToggle ? t("copy") : <Copy className="h-3.5 w-3.5" />}
-          </Button>
-        </div>
-      </div>
-      {hint && <p className="text-[10px] text-slate-400">{hint}</p>}
-      {generateAction}
-    </div>
-  )
-}
-
-interface InstructionBoxProps {
-  title: string
-  items: string[]
-  footer?: React.ReactNode
-  bgColor?: string
-  borderColor?: string
-  textColor?: string
-}
-
-function InstructionBox({
-  title,
-  items,
-  footer,
-  bgColor = "bg-blue-50",
-  borderColor = "border-blue-100",
-  textColor = "text-blue-700"
-}: InstructionBoxProps) {
-  const titleColor = textColor.replace("700", "900")
-  return (
-    <div className="flex gap-4 mt-1">
-      <div className="min-w-[100px]" />
-      <div className={cn("flex-1 p-3 rounded-lg border", bgColor, borderColor)}>
-        <p className={cn("text-xs font-semibold mb-2", titleColor)}>{title}：</p>
-        <ol className={cn("text-[11px] space-y-1.5 list-decimal list-inside", textColor)}>
-          {items.map((item, index) => (
-            <li key={index} dangerouslySetInnerHTML={{ __html: item }} />
-          ))}
-        </ol>
-        {footer && (
-          <div className="mt-3 pt-2 border-t border-black/5 flex items-center gap-2">
-            {footer}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// --- End Sub-components ---
 
 export function SiteBotSettings({ siteId, config, onChange, chatModel }: SiteBotSettingsProps) {
   const t = useTranslations("SiteBot")
@@ -316,10 +57,11 @@ export function SiteBotSettings({ siteId, config, onChange, chatModel }: SiteBot
   const [showWecomAppSecret, setShowWecomAppSecret] = useState(false)
   const [showWecomAppToken, setShowWecomAppToken] = useState(false)
   const [showWecomAppAESKey, setShowWecomAppAESKey] = useState(false)
+  const [showTelegramBotToken, setShowTelegramBotToken] = useState(false)
   const { data: healthData } = useHealth()
-  const isCommunity = healthData?.edition === 'community'
+  const isCommunity = healthData?.edition === "community"
 
-  const { web_widget, api_bot, wecom_smart, feishu_app, dingtalk_app, wecom_kefu, wecom_app } = config
+  const { web_widget, api_bot, wecom_smart, feishu_app, dingtalk_app, wecom_kefu, wecom_app, telegram_app } = config
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({
     web_widget: web_widget?.enabled || false,
     api_bot: api_bot?.enabled || false,
@@ -329,7 +71,7 @@ export function SiteBotSettings({ siteId, config, onChange, chatModel }: SiteBot
     wecom_kefu: wecom_kefu?.enabled || false,
     wecom_app: wecom_app?.enabled || false,
     discord_app: false,
-    telegram_app: false
+    telegram_app: telegram_app?.enabled || false
   })
 
   const toggleExpand = (card: string) => {
@@ -515,14 +257,14 @@ export function SiteBotSettings({ siteId, config, onChange, chatModel }: SiteBot
                   size="sm"
                   className="h-6 text-[11px] text-primary hover:text-primary/80 px-1 gap-1 font-bold"
                   onClick={(e) => {
-                    e.preventDefault();
-                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-                    let result = 'sk-';
+                    e.preventDefault()
+                    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+                    let result = "sk-"
                     for (let i = 0; i < 32; i++) {
-                      result += chars.charAt(Math.floor(Math.random() * chars.length));
+                      result += chars.charAt(Math.floor(Math.random() * chars.length))
                     }
-                    onChange("api_bot", "api_key", result);
-                    toast.success(t("apiBot.resetSuccess"));
+                    onChange("api_bot", "api_key", result)
+                    toast.success(t("apiBot.resetSuccess"))
                   }}
                   disabled={!api_bot.enabled || isCommunity}
                 >
@@ -573,7 +315,7 @@ export function SiteBotSettings({ siteId, config, onChange, chatModel }: SiteBot
                   className="h-6 text-[11px] text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 px-2 gap-1 font-semibold ml-auto"
                   onClick={() => {
                     const code = `curl -X POST "${env.NEXT_PUBLIC_API_URL}/v1/bot/chat/completions" \\
-  -H "Authorization: Bearer ${api_bot.api_key || 'YOUR_API_KEY'}" \\
+  -H "Authorization: Bearer ${api_bot.api_key || "YOUR_API_KEY"}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "${chatModel || ""}",
@@ -592,7 +334,7 @@ export function SiteBotSettings({ siteId, config, onChange, chatModel }: SiteBot
               </div>
               <code className="block text-[10px] text-emerald-700 font-mono bg-white p-3 rounded-lg overflow-x-auto whitespace-pre border border-emerald-100">
                 {`curl -X POST "${env.NEXT_PUBLIC_API_URL}/v1/bot/chat/completions" \\
-  -H "Authorization: Bearer ${api_bot.api_key || 'YOUR_API_KEY'}" \\
+  -H "Authorization: Bearer ${api_bot.api_key || "YOUR_API_KEY"}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "${chatModel || ""}",
@@ -1022,21 +764,68 @@ export function SiteBotSettings({ siteId, config, onChange, chatModel }: SiteBot
         description={t("telegram.description")}
         typeBadge={t("telegram.type")}
         icon={<Send className="h-4 w-4" />}
-        isEnabled={false}
-        isExpanded={expandedCards.telegramApp}
-        onToggleExpand={() => toggleExpand("telegramApp")}
-        onToggleEnable={() => { }}
-        disabled={true}
-        badge={<Badge variant="outline" className="text-[9px] font-bold px-1.5 h-4 bg-slate-50 text-slate-400">{t("telegram.badge")}</Badge>}
+        isEnabled={telegram_app?.enabled ?? false}
+        isExpanded={expandedCards.telegram_app}
+        onToggleExpand={() => toggleExpand("telegram_app")}
+        onToggleEnable={(enabled) => {
+          onChange("telegram_app", "enabled", enabled)
+          if (enabled) setExpandedCards(prev => ({ ...prev, telegram_app: true }))
+        }}
+        iconBgColor="bg-sky-50"
+        iconTextColor="text-sky-600"
       >
-        <div className="flex flex-col items-center justify-center py-8 gap-3">
-          <div className="text-slate-400 text-sm italic">
-            {t("telegram.comingSoon")}
-          </div>
-          <p className="text-[10px] text-slate-400/80">
-            {t("apiBot.curlNote")}: <a href={`${env.NEXT_PUBLIC_DOCS_URL}/development/bots/telegram-app`} target="_blank" className="underline underline-offset-2 hover:text-slate-600 transition-colors">{t("telegram.docLink")}</a>
-          </p>
-        </div>
+        <SettingItem label={t("telegram.botToken")} required>
+          <CopyableInput
+            value={telegram_app?.bot_token || ""}
+            onChange={(val) => onChange("telegram_app", "bot_token", val)}
+            placeholder={t("telegram.botTokenPlaceholder")}
+            disabled={!telegram_app?.enabled}
+            showPasswordToggle
+            isPasswordVisible={showTelegramBotToken}
+            onTogglePasswordVisibility={() => setShowTelegramBotToken(!showTelegramBotToken)}
+          />
+        </SettingItem>
+
+        <SettingItem label={t("telegram.apiBaseUrl")}>
+          <CopyableInput
+            value={telegram_app?.api_base_url || ""}
+            onChange={(val) => onChange("telegram_app", "api_base_url", val)}
+            placeholder={t("telegram.apiBaseUrlPlaceholder")}
+            disabled={!telegram_app?.enabled}
+            hint={t("telegram.apiBaseUrlHint")}
+          />
+        </SettingItem>
+
+        <SettingItem label={t("telegram.allowedUserIds")}>
+          <CopyableInput
+            value={telegram_app?.allowed_user_ids || ""}
+            onChange={(val) => onChange("telegram_app", "allowed_user_ids", val)}
+            placeholder={t("telegram.allowedUserIdsPlaceholder")}
+            disabled={!telegram_app?.enabled}
+            hint={t("telegram.allowedUserIdsHint")}
+          />
+        </SettingItem>
+
+        {telegram_app?.enabled && (
+          <InstructionBox
+            title={t("telegram.instruction")}
+            bgColor="bg-sky-50"
+            borderColor="border-sky-100"
+            textColor="text-sky-700"
+            items={[
+              t.raw("telegram.step1"),
+              t.raw("telegram.step2"),
+              t.raw("telegram.step3"),
+              t.raw("telegram.step4"),
+              t.raw("telegram.step5")
+            ]}
+            footer={
+              <p className="text-[11px] text-sky-800/80">
+                {t("telegram.instruction")}: <a href={`${env.NEXT_PUBLIC_DOCS_URL}/development/bots/telegram-app`} target="_blank" className="underline decoration-sky-300 underline-offset-2 hover:text-sky-900 transition-colors">{t("telegram.docLink")}</a>
+              </p>
+            }
+          />
+        )}
       </BotCard>
 
       {/* 预览挂件 */}

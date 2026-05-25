@@ -3,7 +3,7 @@
  * Do not edit manually.
  * CatWiki Client API
  * 客户端 API - 仅提供已发布内容的只读访问
- * OpenAPI spec version: 1.1.4
+ * OpenAPI spec version: 1.1.5
  */
 import {
   useQuery
@@ -22,6 +22,7 @@ import type {
 
 import type {
   ClientSite,
+  GetClientSiteBySlugParams,
   HTTPValidationError,
   ListClientSitesParams,
   PaginatedResponseClientSite
@@ -146,21 +147,30 @@ export function useListClientSites<TData = Awaited<ReturnType<typeof listClientS
 
 
 
-export const getGetClientSiteBySlugUrl = (slug: string,) => {
+export const getGetClientSiteBySlugUrl = (slug: string,
+    params?: GetClientSiteBySlugParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/sites:bySlug/${slug}`
+  return stringifiedParams.length > 0 ? `/v1/sites:bySlug/${slug}?${stringifiedParams}` : `/v1/sites:bySlug/${slug}`
 }
 
 /**
  * 通过 slug 获取站点详情（客户端）
  * @summary Get Site By Slug
  */
-export const getClientSiteBySlug = async (slug: string, options?: RequestInit): Promise<ClientSite | null> => {
+export const getClientSiteBySlug = async (slug: string,
+    params?: GetClientSiteBySlugParams, options?: RequestInit): Promise<ClientSite | null> => {
 
-  return customFetch<ClientSite | null>(getGetClientSiteBySlugUrl(slug),
+  return customFetch<ClientSite | null>(getGetClientSiteBySlugUrl(slug,params),
   {
     ...options,
     method: 'GET'
@@ -173,23 +183,25 @@ export const getClientSiteBySlug = async (slug: string, options?: RequestInit): 
 
 
 
-export const getGetClientSiteBySlugQueryKey = (slug: string,) => {
+export const getGetClientSiteBySlugQueryKey = (slug: string,
+    params?: GetClientSiteBySlugParams,) => {
     return [
-    `/v1/sites:bySlug/${slug}`
+    `/v1/sites:bySlug/${slug}`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetClientSiteBySlugQueryOptions = <TData = Awaited<ReturnType<typeof getClientSiteBySlug>>, TError = HTTPValidationError>(slug: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientSiteBySlug>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetClientSiteBySlugQueryOptions = <TData = Awaited<ReturnType<typeof getClientSiteBySlug>>, TError = HTTPValidationError>(slug: string,
+    params?: GetClientSiteBySlugParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientSiteBySlug>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetClientSiteBySlugQueryKey(slug);
+  const queryKey =  queryOptions?.queryKey ?? getGetClientSiteBySlugQueryKey(slug,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getClientSiteBySlug>>> = ({ signal }) => getClientSiteBySlug(slug, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getClientSiteBySlug>>> = ({ signal }) => getClientSiteBySlug(slug,params, { signal, ...requestOptions });
 
 
 
@@ -203,7 +215,8 @@ export type GetClientSiteBySlugQueryError = HTTPValidationError
 
 
 export function useGetClientSiteBySlug<TData = Awaited<ReturnType<typeof getClientSiteBySlug>>, TError = HTTPValidationError>(
- slug: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientSiteBySlug>>, TError, TData>> & Pick<
+ slug: string,
+    params: undefined |  GetClientSiteBySlugParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientSiteBySlug>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getClientSiteBySlug>>,
           TError,
@@ -213,7 +226,8 @@ export function useGetClientSiteBySlug<TData = Awaited<ReturnType<typeof getClie
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetClientSiteBySlug<TData = Awaited<ReturnType<typeof getClientSiteBySlug>>, TError = HTTPValidationError>(
- slug: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientSiteBySlug>>, TError, TData>> & Pick<
+ slug: string,
+    params?: GetClientSiteBySlugParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientSiteBySlug>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getClientSiteBySlug>>,
           TError,
@@ -223,7 +237,8 @@ export function useGetClientSiteBySlug<TData = Awaited<ReturnType<typeof getClie
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetClientSiteBySlug<TData = Awaited<ReturnType<typeof getClientSiteBySlug>>, TError = HTTPValidationError>(
- slug: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientSiteBySlug>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ slug: string,
+    params?: GetClientSiteBySlugParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientSiteBySlug>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -231,11 +246,12 @@ export function useGetClientSiteBySlug<TData = Awaited<ReturnType<typeof getClie
  */
 
 export function useGetClientSiteBySlug<TData = Awaited<ReturnType<typeof getClientSiteBySlug>>, TError = HTTPValidationError>(
- slug: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientSiteBySlug>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ slug: string,
+    params?: GetClientSiteBySlugParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientSiteBySlug>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetClientSiteBySlugQueryOptions(slug,options)
+  const queryOptions = getGetClientSiteBySlugQueryOptions(slug,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

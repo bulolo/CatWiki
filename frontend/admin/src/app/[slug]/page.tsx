@@ -22,7 +22,7 @@ import { FileText, Users, MessageSquare, Eye, Network, Flame, ChevronRight, Cloc
 import { useSiteData, useDocuments, useSiteStats, useHealth } from "@/hooks"
 import { getRoutePath, useRouteContext } from "@/lib/routing"
 import { cn } from "@/lib/utils"
-import type { Document, RecentSession, TrendData } from '@/lib/sdk/sdk.schemas'
+import type { Document, RecentSession, TrendData } from "@/lib/sdk/sdk.schemas"
 
 
 // 统计图标映射
@@ -52,12 +52,13 @@ const SOURCE_BADGE_STYLES: Record<string, { bg: string; text: string; dot: strin
   wecom_smart:  { bg: "bg-teal-50",    text: "text-teal-700",    dot: "bg-teal-500" },
   dingtalk_app: { bg: "bg-orange-50",  text: "text-orange-700",  dot: "bg-orange-400" },
   feishu_app:   { bg: "bg-blue-50",    text: "text-blue-700",    dot: "bg-blue-400" },
+  telegram_app: { bg: "bg-cyan-50",    text: "text-cyan-700",    dot: "bg-cyan-500" },
 }
 
 function RecentSourceBadge({ source }: { source: string }) {
   const tc = useTranslations("ChatSessions")
   const style = SOURCE_BADGE_STYLES[source] ?? { bg: "bg-slate-50", text: "text-slate-500", dot: "bg-slate-400" }
-  const label = tc(`detail.channels.${source}` as any, { defaultValue: source })
+  const label = tc(`detail.channels.${source}` as Parameters<typeof tc>[0], { defaultValue: source })
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold", style.bg, style.text)}>
       <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", style.dot)} />
@@ -80,21 +81,21 @@ export default function AdminHome() {
     siteId,
     page: 1,
     size: 5,
-    orderBy: 'views',
-    orderDir: 'desc',
+    orderBy: "views",
+    orderDir: "desc",
   })
 
   const { data: recentDocsData, isLoading: recentDocsLoading } = useDocuments({
     siteId,
     page: 1,
     size: 5,
-    orderBy: 'updated_at',
-    orderDir: 'desc',
+    orderBy: "updated_at",
+    orderDir: "desc",
   })
 
   const { data: statsData, isLoading: statsLoading, error: statsError } = useSiteStats(siteId)
   const { data: healthData } = useHealth()
-  const isEnterprise = healthData?.edition === 'enterprise'
+  const isEnterprise = healthData?.edition === "enterprise"
 
   const hotDocs = hotDocsData?.documents || []
   const recentDocs = recentDocsData?.documents || []
@@ -178,7 +179,7 @@ export default function AdminHome() {
             <Card key={stat.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600">
-                  {t(`stats.${stat.titleKey}` as any)}
+                  {t(`stats.${stat.titleKey}` as Parameters<typeof t>[0])}
                 </CardTitle>
                 <div className={`p-2 rounded-lg ${stat.bg}`}>
                   <Icon className={`h-4 w-4 ${stat.color}`} />
@@ -188,7 +189,7 @@ export default function AdminHome() {
                 <div className="text-2xl font-bold">{displayValue}</div>
                 <div className="flex items-center justify-between mt-1.5">
                   <p className="text-xs text-slate-500 font-medium">
-                    {t(`stats.${stat.descKey}` as any)}
+                    {t(`stats.${stat.descKey}` as Parameters<typeof t>[0])}
                   </p>
                   {stat.id === "aiSessions" || stat.id === "aiMessages" ? (
                     <div className="flex items-center gap-1.5 font-bold">
@@ -197,7 +198,7 @@ export default function AdminHome() {
                         "text-xs px-2 py-0.5 rounded-full transition-all",
                         (subValue.includes("+0") || !subValue) ? "bg-slate-100 text-slate-400" : "bg-emerald-500 text-white shadow-sm"
                       )}>
-                        {subValue.replace(t("stats.today") + ' ', '') || '0'}
+                        {subValue.replace(t("stats.today") + " ", "") || "0"}
                       </span>
                     </div>
                   ) : subValue && (
@@ -279,7 +280,7 @@ export default function AdminHome() {
                     <div className="flex items-center justify-between mb-1">
                       <h4 className="text-xs font-bold text-slate-700 truncate max-w-[150px]">{session.title || t("recentQA.newChat")}</h4>
                       <span className="text-[10px] font-medium text-slate-400">
-                        {new Date(session.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(session.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -421,11 +422,11 @@ export default function AdminHome() {
                         <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60 font-medium">
                           <Clock className="h-3 w-3 opacity-60" />
                           <span>
-                            {new Date(doc.updated_at).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US', {
-                              month: 'numeric',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
+                            {new Date(doc.updated_at).toLocaleString(locale === "zh" ? "zh-CN" : "en-US", {
+                              month: "numeric",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit"
                             })}
                           </span>
                         </div>

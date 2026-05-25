@@ -13,13 +13,12 @@
 // limitations under the License.
 
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui"
 import { AlertCircle, Home, Search } from "lucide-react"
-import { getTranslations } from 'next-intl/server'
+import { getTranslations } from "next-intl/server"
 
 export default async function SiteNotFound() {
-  const t = await getTranslations('SiteNotFound')
+  const t = await getTranslations("SiteNotFound")
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50/50">
       <Card className="max-w-lg w-full">

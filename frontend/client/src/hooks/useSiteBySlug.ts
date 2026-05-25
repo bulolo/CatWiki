@@ -18,12 +18,12 @@
  * queryKey 由生成器统一管理，无需手写。
  */
 
-'use client'
+"use client"
 
-import { useGetClientSiteBySlug } from '@/lib/sdk/client-sites'
+import { useGetClientSiteBySlug } from "@/lib/sdk/client-sites"
 
-export function useSiteBySlug(slug: string) {
-  return useGetClientSiteBySlug(slug, {
+export function useSiteBySlug(slug: string, tenantSlug?: string | null) {
+  return useGetClientSiteBySlug(slug, { tenant_slug: tenantSlug || undefined }, {
     query: {
       enabled: !!slug,
       staleTime: 5 * 60 * 1000,

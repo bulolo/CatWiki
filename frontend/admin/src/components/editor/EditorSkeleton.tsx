@@ -14,7 +14,7 @@
 
 "use client"
 
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui"
 
 /**
  * 编辑器加载骨架屏

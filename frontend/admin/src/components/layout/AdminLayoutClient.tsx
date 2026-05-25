@@ -14,20 +14,20 @@
 
 "use client"
 
-import { Suspense } from 'react'
-import { usePathname, useSearchParams, useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
-import dynamic from 'next/dynamic'
-import { Toaster } from 'sonner'
-import { ReactQueryProvider } from '@/providers/ReactQueryProvider'
-import { SiteProvider } from '@/contexts/SiteContext'
-import { TaskProvider } from '@/contexts/TaskContext'
-import { ErrorBoundary } from '@/components/ui'
-import { UserMenu, StatePersistence, LanguageSwitcher } from '@/components/layout'
-import { TaskQueuePanel } from '@/components/features/tasks/TaskQueuePanel'
-import { useHealth, useDemoMode } from '@/hooks/useHealth'
-import { useTasks } from '@/contexts/TaskContext'
-import Link from 'next/link'
+import { Suspense } from "react"
+import { usePathname, useSearchParams, useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import dynamic from "next/dynamic"
+import { Toaster } from "sonner"
+import { ReactQueryProvider } from "@/providers/ReactQueryProvider"
+import { SiteProvider } from "@/contexts/SiteContext"
+import { TaskProvider } from "@/contexts/TaskContext"
+import { ErrorBoundary, ConfirmProvider } from "@/components/ui"
+import { UserMenu, StatePersistence, LanguageSwitcher } from "@/components/layout"
+import { TaskQueuePanel } from "@/components/features/tasks/TaskQueuePanel"
+import { useHealth, useDemoMode } from "@/hooks/useHealth"
+import { useTasks } from "@/contexts/TaskContext"
+import Link from "next/link"
 import {
   Search,
   Settings,
@@ -35,30 +35,30 @@ import {
   ListTodo,
   User
 } from "lucide-react"
-import { getUserInfo } from '@/lib/auth'
-import { env } from '@/lib/env'
-import { useState, useEffect } from 'react'
-const AdminSidebar = dynamic(() => import('@/components/layout').then(mod => ({ default: mod.AdminSidebar })), {
+import { getUserInfo } from "@/lib/auth"
+import { env } from "@/lib/env"
+import { useState, useEffect } from "react"
+const AdminSidebar = dynamic(() => import("@/components/layout").then(mod => ({ default: mod.AdminSidebar })), {
   ssr: false,
   loading: () => <div className="w-64 bg-slate-50 border-r border-slate-200" />
 })
 
-const SiteSwitcher = dynamic(() => import('@/components/layout').then(mod => ({ default: mod.SiteSwitcher })), {
+const SiteSwitcher = dynamic(() => import("@/components/layout").then(mod => ({ default: mod.SiteSwitcher })), {
   ssr: false,
   loading: () => <div className="w-40 h-12 bg-slate-100 rounded-xl" />
 })
 
 const TenantSwitcher = dynamic(
-  () => import('@/ee/components/TenantSwitcher').then(mod => ({ default: mod.TenantSwitcher })).catch(() => ({ default: () => null })),
+  () => import("@/ee/components/TenantSwitcher").then(mod => ({ default: mod.TenantSwitcher })).catch(() => ({ default: () => null })),
   { ssr: false }
 )
 
-const SettingsModal = dynamic(() => import('@/components/settings/SettingsModal').then(mod => ({ default: mod.SettingsModal })), {
+const SettingsModal = dynamic(() => import("@/components/settings/SettingsModal").then(mod => ({ default: mod.SettingsModal })), {
   ssr: false
 })
 
 const PlatformModal = dynamic(
-  () => import('@/ee/components/PlatformModal').then(mod => ({ default: mod.PlatformModal })).catch(() => ({ default: () => null })),
+  () => import("@/ee/components/PlatformModal").then(mod => ({ default: mod.PlatformModal })).catch(() => ({ default: () => null })),
   { ssr: false }
 )
 
@@ -79,15 +79,15 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const isLoginPage = pathname === '/login'
-  const isSettingsPage = pathname === '/settings'
+  const isLoginPage = pathname === "/login"
+  const isSettingsPage = pathname === "/settings"
 
   const [mounted, setMounted] = useState(false)
 
   const { data: healthData } = useHealth()
   const isDemoMode = useDemoMode()
   const { tasks, togglePanel } = useTasks()
-  const activeTasks = tasks.filter(t => t.status === 'processing' || t.status === 'pending' || t.status === 'running').length
+  const activeTasks = tasks.filter(t => t.status === "processing" || t.status === "pending" || t.status === "running").length
 
   /* eslint-disable-next-line react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -123,8 +123,8 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50/50">
       {/* Settings Modal Overlay */}
-      {(searchParams.get('modal') === 'settings' || searchParams.get('modal') === 'site-settings') && <SettingsModal />}
-      {healthData?.edition !== 'community' && searchParams.get('modal') === 'platform' && <PlatformModal />}
+      {(searchParams.get("modal") === "settings" || searchParams.get("modal") === "site-settings") && <SettingsModal />}
+      {healthData?.edition !== "community" && searchParams.get("modal") === "platform" && <PlatformModal />}
 
       <ErrorBoundary
         fallback={
@@ -159,10 +159,10 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
 
             {/* 平台管理入口 - 仅 admin 可见 (仅 EE 版) */}
-            {healthData?.edition !== 'community' && userInfo?.role === 'admin' && (
+            {healthData?.edition !== "community" && userInfo?.role === "admin" && (
               <button
                 onClick={() => {
-                  router.push('?modal=platform')
+                  router.push("?modal=platform")
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-xl border border-primary/20 hover:bg-primary/20 transition-colors"
                 title={t("platformMgmt")}
@@ -187,7 +187,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               </button>
             )}
 
-            {(userInfo?.role === 'admin' || userInfo?.role === 'tenant_admin' || userInfo?.role === 'site_admin') && (
+            {(userInfo?.role === "admin" || userInfo?.role === "tenant_admin" || userInfo?.role === "site_admin") && (
               <Link
                 href="?modal=settings"
                 scroll={false}
@@ -245,10 +245,12 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
       <ReactQueryProvider>
         <SiteProvider>
           <TaskProvider>
-            <Toaster position="top-center" richColors />
-            <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
-              <AdminLayoutContent>{children}</AdminLayoutContent>
-            </Suspense>
+            <ConfirmProvider>
+              <Toaster position="top-center" richColors />
+              <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+                <AdminLayoutContent>{children}</AdminLayoutContent>
+              </Suspense>
+            </ConfirmProvider>
           </TaskProvider>
         </SiteProvider>
       </ReactQueryProvider>

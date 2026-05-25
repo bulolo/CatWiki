@@ -17,10 +17,7 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@/components/ui"
 import { ShieldCheck, ArrowRight, Info, Eye, EyeOff } from "lucide-react"
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher"
 import { toast } from "sonner"
@@ -28,7 +25,7 @@ import { login as authLogin } from "@/lib/auth"
 import { useLogin } from "@/hooks"
 
 export default function LoginPage() {
-  const t = useTranslations('Login')
+  const t = useTranslations("Login")
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
@@ -36,7 +33,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
 
   // 获取 redirect 参数
-  const redirectPath = searchParams.get('redirect') || '/'
+  const redirectPath = searchParams.get("redirect") || "/"
 
   // 使用 React Query 登录 hook
   const loginMutation = useLogin()
@@ -173,7 +170,11 @@ export default function LoginPage() {
             </form>
 
             {/* 提示信息 */}
-            <div className="mt-6 p-3 bg-slate-50 rounded-lg border border-slate-200">
+            <button
+              type="button"
+              className="mt-6 w-full p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 hover:border-slate-300 transition-colors text-left cursor-pointer"
+              onClick={() => { setEmail("admin@catwiki.cn"); setPassword("admin123") }}
+            >
               <div className="flex items-center gap-2.5">
                 <div className="flex-shrink-0 w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center text-primary">
                   <Info className="h-3.5 w-3.5" />
@@ -183,7 +184,7 @@ export default function LoginPage() {
                   <p className="text-foreground font-mono mt-0.5">admin@catwiki.cn / admin123</p>
                 </div>
               </div>
-            </div>
+            </button>
           </CardContent>
         </Card>
 

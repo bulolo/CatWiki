@@ -17,11 +17,11 @@
  * select 把后端 CollectionTree 转成前端业务用的 MenuItem。
  */
 
-'use client'
+"use client"
 
-import { useGetClientCollectionTree } from '@/lib/sdk/client-collections'
-import type { CollectionTree } from '@/lib/sdk/sdk.schemas'
-import type { MenuItem } from '@/types'
+import { useGetClientCollectionTree } from "@/lib/sdk/client-collections"
+import type { CollectionTree } from "@/lib/sdk/sdk.schemas"
+import type { MenuItem } from "@/types"
 
 /**
  * 将后端返回的树形结构转换为菜单结构
@@ -30,19 +30,19 @@ function convertTreeToMenuItems(tree: CollectionTree[]): MenuItem[] {
   const items: MenuItem[] = []
 
   for (const node of tree) {
-    if (node.type === 'collection') {
+    if (node.type === "collection") {
       const children = node.children ? convertTreeToMenuItems(node.children) : []
       items.push({
         id: node.id.toString(),
         title: node.title,
-        type: 'collection' as const,
+        type: "collection" as const,
         children: children.length > 0 ? children : undefined,
       })
-    } else if (node.type === 'document') {
+    } else if (node.type === "document") {
       items.push({
         id: node.id.toString(),
         title: node.title,
-        type: 'article' as const,
+        type: "article" as const,
         views: node.views ?? undefined,
         tags: node.tags || [],
       })
@@ -55,9 +55,9 @@ function convertTreeToMenuItems(tree: CollectionTree[]): MenuItem[] {
 /**
  * 根据指定的 siteId 生成菜单树结构的 Hook
  */
-export function useMenuTree(siteId: number | null) {
+export function useMenuTree(siteId: number | null, tenantId?: number | null) {
   return useGetClientCollectionTree(
-    { site_id: siteId ?? 0, include_documents: true },
+    { site_id: siteId ?? 0, tenant_id: tenantId ?? undefined, include_documents: true },
     {
       query: {
         enabled: !!siteId,

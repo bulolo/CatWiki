@@ -19,7 +19,7 @@
  * 确保配置正确，避免运行时错误。
  */
 
-import { z } from 'zod'
+import { z } from "zod"
 
 /**
  * 环境变量 Schema
@@ -33,7 +33,7 @@ import { z } from 'zod'
  * 校验是否为占位符 (用于 Docker 运行时注入)
  */
 const isPlaceholder = (val: unknown) =>
-  typeof val === 'string' && val.startsWith('__NEXT_PUBLIC_') && val.endsWith('_PLACEHOLDER__');
+  typeof val === "string" && val.startsWith("__NEXT_PUBLIC_") && val.endsWith("_PLACEHOLDER__")
 
 const envSchema = z.object({
   // ==================== 客户端环境变量 ====================
@@ -42,27 +42,27 @@ const envSchema = z.object({
    * API 基础 URL
    */
   NEXT_PUBLIC_API_URL: z.string()
-    .min(1, { message: 'NEXT_PUBLIC_API_URL 不能为空' })
+    .min(1, { message: "NEXT_PUBLIC_API_URL 不能为空" })
     .refine(
-      (val) => isPlaceholder(val) || val.startsWith('/') || z.string().url().safeParse(val).success,
-      { message: 'NEXT_PUBLIC_API_URL 必须是有效的 URL 或以 / 开头的路径' }
+      (val) => isPlaceholder(val) || val.startsWith("/") || z.string().url().safeParse(val).success,
+      { message: "NEXT_PUBLIC_API_URL 必须是有效的 URL 或以 / 开头的路径" }
     )
-    .default('http://localhost:3000'),
+    .default("http://localhost:3000"),
 
   /**
    * 应用环境
    */
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 
   /**
    * 是否启用调试模式
    */
   NEXT_PUBLIC_DEBUG: z.string()
     .optional()
-    .default('false')
+    .default("false")
     .transform(val => {
-      if (isPlaceholder(val)) return false;
-      return val === 'true';
+      if (isPlaceholder(val)) return false
+      return val === "true"
     }),
 
   /**
@@ -77,14 +77,14 @@ const envSchema = z.object({
    */
   NEXT_PUBLIC_CLIENT_URL: z.string()
     .refine(val => isPlaceholder(val) || z.string().url().safeParse(val).success)
-    .default('http://localhost:8002'),
+    .default("http://localhost:8002"),
 
   /**
    * 文档站点 URL
    */
   NEXT_PUBLIC_DOCS_URL: z.string()
     .refine(val => isPlaceholder(val) || z.string().url().safeParse(val).success)
-    .default('http://localhost:8003'),
+    .default("http://localhost:8003"),
 
 
   /**
@@ -92,7 +92,7 @@ const envSchema = z.object({
    */
   NEXT_PUBLIC_ADMIN_URL: z.string()
     .refine(val => isPlaceholder(val) || z.string().url().safeParse(val).success)
-    .default('https://admin.catwiki.cn'),
+    .default("https://admin.catwiki.cn"),
 })
 
 /**
@@ -124,15 +124,15 @@ function validateEnv(): Env {
     if (error instanceof z.ZodError) {
       // 格式化错误信息
       const errorMessage = error.errors
-        .map(err => `  ❌ ${err.path.join('.')}: ${err.message}`)
-        .join('\n')
+        .map(err => `  ❌ ${err.path.join(".")}: ${err.message}`)
+        .join("\n")
 
-      console.error('❌ 环境变量验证失败:\n\n' + errorMessage)
-      console.error('\n💡 请检查 .env.local 文件并确保所有必需的环境变量都已正确设置。')
+      console.error("❌ 环境变量验证失败:\n\n" + errorMessage)
+      console.error("\n💡 请检查 .env.local 文件并确保所有必需的环境变量都已正确设置。")
 
       // 在开发环境中抛出错误，在生产环境中可能需要更优雅的处理
-      if (process.env.NODE_ENV === 'development') {
-        throw new Error('环境变量验证失败，请查看上面的错误信息')
+      if (process.env.NODE_ENV === "development") {
+        throw new Error("环境变量验证失败，请查看上面的错误信息")
       }
     }
 
@@ -152,33 +152,5 @@ function validateEnv(): Env {
  */
 export const env = validateEnv()
 
-/**
- * 是否为生产环境
- */
-export const isProduction = env.NODE_ENV === 'production'
-
-/**
- * 是否为开发环境
- */
-export const isDevelopment = env.NODE_ENV === 'development'
-
-/**
- * 是否为测试环境
- */
-export const isTest = env.NODE_ENV === 'test'
-
-/**
- * 是否启用调试模式
- */
-export const isDebug = env.NEXT_PUBLIC_DEBUG || isDevelopment
-
-/**
- * 打印环境配置（开发环境）
- */
-if (isDevelopment && typeof window !== 'undefined') {
-  console.log('🔧 环境配置:')
-  console.log('  - NODE_ENV:', env.NODE_ENV)
-  console.log('  - API_URL:', env.NEXT_PUBLIC_API_URL)
-  console.log('  - DEBUG:', isDebug)
-}
+export const isDevelopment = env.NODE_ENV === "development"
 

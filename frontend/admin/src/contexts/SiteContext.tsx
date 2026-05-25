@@ -32,7 +32,7 @@ import { createContext, useContext, ReactNode, useMemo } from "react"
 import { useParams, usePathname } from "next/navigation"
 import { useSitesList, useSiteBySlug } from "@/hooks/useSites"
 import { getUserInfo } from "@/lib/auth"
-import { type Site, UserRole } from '@/lib/sdk/sdk.schemas'
+import { type Site, UserRole } from "@/lib/sdk/sdk.schemas"
 
 interface SiteContextType {
   // 当前路由的 slug
@@ -63,7 +63,7 @@ export function SiteProvider({ children }: { children: ReactNode }) {
   const slug = params.slug as string | undefined
 
   // 判断是否在登录页（登录页不需要加载站点数据）
-  const isLoginPage = pathname === '/login'
+  const isLoginPage = pathname === "/login"
 
   // 使用 React Query 获取站点列表
   const {
@@ -77,13 +77,13 @@ export function SiteProvider({ children }: { children: ReactNode }) {
   })
 
   // Filter sites based on user role
-  const currentUser = typeof window !== 'undefined' ? getUserInfo() : null
+  const currentUser = typeof window !== "undefined" ? getUserInfo() : null
 
   const sites = useMemo(() => {
     if (!currentUser) return []
     // System Admins and Tenant Admins see all sites
     // (For Tenant Admins, the backend already filters sites by tenant_id)
-    if (currentUser.role === 'admin' as const || currentUser.role === 'tenant_admin' as const) {
+    if (currentUser.role === "admin" as const || currentUser.role === "tenant_admin" as const) {
       return allSites
     }
     // Others (Site Admins) only see explicitly managed sites

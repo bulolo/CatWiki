@@ -19,6 +19,7 @@ import { logout } from "@/lib/auth"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useTranslations } from "next-intl"
+import { useConfirm } from "@/components/ui"
 
 interface LogoutButtonProps {
   className?: string
@@ -26,11 +27,11 @@ interface LogoutButtonProps {
 
 export function LogoutButton({ className }: LogoutButtonProps) {
   const t = useTranslations("Common")
-  const handleLogout = () => {
-    if (confirm(t('logoutConfirm'))) {
-      toast.success(t('logoutSuccess'))
-      logout()
-    }
+  const confirm = useConfirm()
+  const handleLogout = async () => {
+    if (!await confirm({ description: t("logoutConfirm") })) return
+    toast.success(t("logoutSuccess"))
+    logout()
   }
 
   return (

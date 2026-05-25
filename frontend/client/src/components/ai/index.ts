@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { AIChat } from './AIChat'
-export { AIChatLanding } from './AIChatLanding'
-export { ChatHistorySidebar } from './ChatHistorySidebar'
-export { ToolCallCard } from './ToolCallCard'
-export { ChatWidget } from './ChatWidget'
-export { MessageSources } from './MessageSources'
+export { AIChat } from "./AIChat"
+export { AIChatLanding } from "./AIChatLanding"
+export { ChatHistorySidebar } from "./ChatHistorySidebar"
+export { ChatWidget } from "./ChatWidget"
+export { MessageList } from "./MessageList"
+export { MessageSources } from "./MessageSources"
+export { ToolCallCard } from "./ToolCallCard"

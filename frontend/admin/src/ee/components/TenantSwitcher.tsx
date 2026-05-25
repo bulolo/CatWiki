@@ -1,2 +1,2 @@
 /** CE stub for ee/components/TenantSwitcher.tsx */
-export function TenantSwitcher() { return null; }
+export function TenantSwitcher() { return null }

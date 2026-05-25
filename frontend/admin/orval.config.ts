@@ -3,7 +3,7 @@
 // Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 // you may not use this file except in compliance with the License.
 
-import { defineConfig } from 'orval'
+import { defineConfig } from "orval"
 
 /**
  * orval 配置 —— Admin SDK。
@@ -19,16 +19,16 @@ import { defineConfig } from 'orval'
  */
 export default defineConfig({
   catwikiAdmin: {
-    input: './openapi.json',
+    input: "./openapi.json",
     output: {
-      mode: 'tags',
-      target: './src/lib/sdk/sdk.ts',
-      client: 'react-query',
+      mode: "tags",
+      target: "./src/lib/sdk/sdk.ts",
+      client: "react-query",
       clean: true,
       override: {
         mutator: {
-          path: './src/lib/custom-fetch.ts',
-          name: 'customFetch',
+          path: "./src/lib/custom-fetch.ts",
+          name: "customFetch",
         },
         fetch: {
           // 直接返回业务数据（关闭 ``{data, status, headers}`` 二次包装）。

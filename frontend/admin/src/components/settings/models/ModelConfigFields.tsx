@@ -12,12 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Input, Label, Switch, Textarea } from "@/components/ui"
 import { useTranslations } from "next-intl"
 import { Eye } from "lucide-react"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import type { PrimitiveConfigValue } from "@/contexts/SettingsContext"
 import { useState } from "react"
 
@@ -36,7 +33,7 @@ interface ModelConfigFieldsProps {
 
 export function ModelConfigFields({ type, config, onUpdate }: ModelConfigFieldsProps) {
   const t = useTranslations("Models")
-  const isVisionEnabled = config.is_vision ?? false;
+  const isVisionEnabled = config.is_vision ?? false
 
   const toJsonText = (v: Record<string, any> | null | undefined) =>
     v && Object.keys(v).length > 0 ? JSON.stringify(v, null, 2) : ""
@@ -61,8 +58,8 @@ export function ModelConfigFields({ type, config, onUpdate }: ModelConfigFieldsP
   }
 
   const handleVisionChange = (checked: boolean) => {
-    onUpdate(type, "is_vision", checked);
-  };
+    onUpdate(type, "is_vision", checked)
+  }
 
   return (
     <>

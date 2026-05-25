@@ -36,7 +36,7 @@ import {
   Database
 } from "lucide-react"
 import { getUserInfo } from "@/lib/auth"
-import { UserRole } from '@/lib/sdk/sdk.schemas'
+import { UserRole } from "@/lib/sdk/sdk.schemas"
 import { Button, Card, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui"
 import { cn } from "@/lib/utils"
 
@@ -62,8 +62,8 @@ function SettingsContent() {
     const checkRole = async () => {
       const user = await getUserInfo()
       if (user) {
-        setIsAdmin(user.role === 'admin' as const)
-        setIsTenantAdmin(user.role === 'tenant_admin' as const)
+        setIsAdmin(user.role === "admin" as const)
+        setIsTenantAdmin(user.role === "tenant_admin" as const)
         // Check if user is site admin for current site if in site settings mode
         if (siteId) {
           // This would typically involve checking site permissions

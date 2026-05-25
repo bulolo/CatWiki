@@ -12,25 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { Metadata } from 'next'
-// 使用系统字体替代 Google Fonts，避免国内网络问题
-// import { Inter } from 'next/font/google'
-// const inter = Inter({ subsets: ['latin'] })
-// 使用系统字体栈
-const inter = { className: 'font-sans' }
-import { Toaster } from 'sonner'
-import { ReactQueryProvider } from '@/providers/ReactQueryProvider'
+import type { Metadata } from "next"
+// 使用系统字体栈替代 Google Fonts，避免国内网络问题
+const inter = { className: "font-sans" }
+import { Toaster } from "sonner"
+import { ReactQueryProvider } from "@/providers/ReactQueryProvider"
 import { StatePersistence } from "@/components/layout"
-import './globals.css'
+import "./globals.css"
 
-import { NextIntlClientProvider } from 'next-intl';
-import { getMessages, getLocale } from 'next-intl/server';
+import { NextIntlClientProvider } from "next-intl"
+import { getMessages, getLocale } from "next-intl/server"
 
 export const metadata: Metadata = {
-  title: 'CatWiki - AI Knowledge Base',
-  description: 'CatWiki - Enterprise AI Knowledge Base Platform',
+  title: "CatWiki - AI Knowledge Base",
+  description: "CatWiki - Enterprise AI Knowledge Base Platform",
   icons: {
-    icon: '/favicon.ico',
+    icon: "/favicon.ico",
   },
 }
 
@@ -39,8 +36,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const locale = await getLocale();
-  const messages = await getMessages();
+  const locale = await getLocale()
+  const messages = await getMessages()
 
   return (
     <html lang={locale} suppressHydrationWarning>

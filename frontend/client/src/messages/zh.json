@@ -137,9 +137,13 @@
     "defaultTitle": "新对话",
     "noMessage": "暂无消息内容",
     "deleteConfirm": "确定要删除这段对话吗？",
+    "deleteConfirmTitle": "删除会话",
     "deleteAria": "删除会话",
     "clearAll": "清空全部",
     "clearAllConfirm": "确定要清空全部历史会话吗？此操作不可撤销。",
+    "clearAllConfirmTitle": "清空全部历史",
+    "confirmAction": "确认",
+    "cancel": "取消",
     "autoSave": "会话记录将自动保存"
   },
   "NotFoundState": {
@@ -163,6 +167,7 @@
     "title": "检索结果",
     "loading": "加载中...",
     "empty": "暂无检索结果",
+    "fetchError": "加载失败，请重试",
     "chunks": "个片段",
     "expand": "展开",
     "collapse": "收起"
@@ -189,6 +194,11 @@
     "loadDocument": "加载文档详情",
     "unknownError": "未知错误",
     "operationFailed": "操作失败"
+  },
+  "GlobalError": {
+    "title": "出了点问题",
+    "fallback": "发生了未预期的错误，请刷新页面重试。",
+    "retry": "重试"
   },
   "Console": {
     "branding": "CatWiki - 企业级 AI 知识库平台"

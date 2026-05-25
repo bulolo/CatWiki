@@ -86,10 +86,10 @@ export function SearchBar({ items, onSelect, onAskAI }: SearchBarProps) {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
-      const maxIndex = searchMode === "chat" ? 0 : searchMode === "articles" ? results.length - 1 : results.length;
+      const maxIndex = searchMode === "chat" ? 0 : searchMode === "articles" ? results.length - 1 : results.length
       setSelectedIndex(prev => Math.min(prev + 1, maxIndex))
     } else if (e.key === "ArrowUp") {
-      const minIndex = searchMode === "articles" ? 1 : 0;
+      const minIndex = searchMode === "articles" ? 1 : 0
       setSelectedIndex(prev => Math.max(prev - 1, minIndex))
     } else if (e.key === "Enter") {
       if (selectedIndex === 0 && searchMode !== "articles") {
@@ -154,7 +154,7 @@ export function SearchBar({ items, onSelect, onAskAI }: SearchBarProps) {
           {/* 模式切换 Tabs */}
           <div className="flex items-center gap-1 p-1 bg-slate-100/50 border-b border-slate-100 sticky top-0 z-10">
             <button
-              onClick={() => { setSearchMode("all"); setSelectedIndex(0); }}
+              onClick={() => { setSearchMode("all"); setSelectedIndex(0) }}
               className={cn(
                 "flex-1 flex items-center justify-center gap-1 md:gap-2 py-1.5 md:py-2 text-[11px] md:text-[12px] font-medium rounded-lg md:rounded-xl transition-all",
                 searchMode === "all" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:bg-white/50"
@@ -163,7 +163,7 @@ export function SearchBar({ items, onSelect, onAskAI }: SearchBarProps) {
               {t("tabAll")}
             </button>
             <button
-              onClick={() => { setSearchMode("chat"); setSelectedIndex(0); }}
+              onClick={() => { setSearchMode("chat"); setSelectedIndex(0) }}
               className={cn(
                 "flex-1 flex items-center justify-center gap-1 md:gap-2 py-1.5 md:py-2 text-[11px] md:text-[12px] font-medium rounded-lg md:rounded-xl transition-all",
                 searchMode === "chat" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:bg-white/50"
@@ -174,7 +174,7 @@ export function SearchBar({ items, onSelect, onAskAI }: SearchBarProps) {
               <span className="sm:hidden">AI</span>
             </button>
             <button
-              onClick={() => { setSearchMode("articles"); setSelectedIndex(1); }}
+              onClick={() => { setSearchMode("articles"); setSelectedIndex(1) }}
               className={cn(
                 "flex-1 flex items-center justify-center gap-1 md:gap-2 py-1.5 md:py-2 text-[11px] md:text-[12px] font-medium rounded-lg md:rounded-xl transition-all",
                 searchMode === "articles" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:bg-white/50"

@@ -14,15 +14,15 @@
 
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { motion, AnimatePresence } from "framer-motion"
-import { listClientDocuments } from '@/lib/sdk/client-documents'
-import { listClientSites } from '@/lib/sdk/client-sites'
-import type { Document } from '@/lib/sdk/sdk.schemas'
+import { useListClientDocuments } from "@/lib/sdk/client-documents"
+import { useListClientSites } from "@/lib/sdk/client-sites"
+import type { Document } from "@/lib/sdk/sdk.schemas"
 import { logError } from "@/lib/error-handler"
 import {
   BookOpen,
@@ -31,67 +31,59 @@ import {
   LayoutDashboard,
   Search,
   TrendingUp,
-  Grid3X3,
-  Maximize2
 } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { PageLoading, Input } from "@/components/ui"
 import { SiteCard } from "@/components/sites"
 import { AIChatLanding } from "@/components/ai"
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher"
-import type { ClientSite } from '@/lib/sdk/sdk.schemas'
+import type { ClientSite } from "@/lib/sdk/sdk.schemas"
 import { env } from "@/lib/env"
 
 export default function HomePage() {
   const t = useTranslations("HomePage")
   const router = useRouter()
-  const [sites, setSites] = useState<ClientSite[]>([])
-  const [popularDocs, setPopularDocs] = useState<Document[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedSite, setSelectedSite] = useState<ClientSite | null>(null)
   const [keyword, setKeyword] = useState("")
+  const [debouncedKeyword, setDebouncedKeyword] = useState("")
 
   useEffect(() => {
-    const loadSites = async () => {
-      try {
-        const results = await Promise.allSettled([
-          listClientSites({
-            page: 1,
-            size: 100,
-            keyword: keyword || undefined,
-          }),
-          listClientDocuments({
-            size: 6,
-            order_by: 'views',
-            order_dir: 'desc',
-            include_site_info: true,
-          }),
-        ])
-
-        if (results[0].status === 'fulfilled') {
-          setSites(results[0].value?.list ?? [])
-        } else {
-          logError(t("plaza.error_load_sites"), results[0].reason)
-        }
-
-        if (results[1].status === 'fulfilled') {
-          setPopularDocs(results[1].value?.list ?? [])
-        } else {
-          logError(t("trending.error_load_docs"), results[1].reason)
-        }
-      } catch (error: unknown) {
-        logError(t("plaza.error_logic"), error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    const timer = setTimeout(() => {
-      loadSites()
-    }, 300)
-
+    const timer = setTimeout(() => setDebouncedKeyword(keyword), 300)
     return () => clearTimeout(timer)
-  }, [keyword, t])
+  }, [keyword])
+
+  const sitesParams = useMemo(() => ({
+    page: 1,
+    size: 100,
+    keyword: debouncedKeyword || undefined,
+  }), [debouncedKeyword])
+
+  const popularDocsParams = useMemo(() => ({
+    size: 6,
+    order_by: "views",
+    order_dir: "desc",
+    include_site_info: true,
+  }), [])
+
+  const {
+    data: sitesResponse,
+    isLoading: sitesLoading,
+    error: sitesError,
+  } = useListClientSites(sitesParams)
+  const {
+    data: popularDocsResponse,
+    error: popularDocsError,
+  } = useListClientDocuments(popularDocsParams)
+
+  useEffect(() => {
+    if (sitesError) logError(t("plaza.error_load_sites"), sitesError)
+  }, [sitesError, t])
+
+  useEffect(() => {
+    if (popularDocsError) logError(t("trending.error_load_docs"), popularDocsError)
+  }, [popularDocsError, t])
+
+  const sites = sitesResponse?.list ?? []
+  const popularDocs = popularDocsResponse?.list ?? []
 
   const handleVisit = (site: ClientSite) => {
     if (site.slug) {
@@ -99,7 +91,7 @@ export default function HomePage() {
     }
   }
 
-  if (loading && !keyword) {
+  if (sitesLoading && !keyword) {
     return <PageLoading text={t("loading")} />
   }
 
@@ -203,17 +195,6 @@ export default function HomePage() {
                 {t("plaza.nodes", { count: sites.length })}
               </span>
             </div>
-
-            {/* 布局切换与全屏功能暂未开通，隐藏 */}
-            {/* <div className="flex items-center gap-2">
-              <button className="p-2 bg-white border border-slate-200 rounded-lg shadow-sm text-slate-600 hover:text-primary transition-all">
-                <Grid3X3 className="h-4 w-4" />
-              </button>
-              <button className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-sm text-slate-600 hover:text-primary transition-all text-sm font-semibold">
-                <Maximize2 className="h-4 w-4" />
-                全屏浏览
-              </button>
-            </div> */}
           </div>
 
           {/* Grid Layout */}
@@ -264,14 +245,14 @@ export default function HomePage() {
                 doc={doc}
                 onClick={() => {
                   if (doc.site_slug && doc.id) {
-                    const tSlug = doc.tenant_slug || "default";
-                    router.push(`/${tSlug}/${doc.site_slug}?documentId=${doc.id}`);
+                    const tSlug = doc.tenant_slug || "default"
+                    router.push(`/${tSlug}/${doc.site_slug}?documentId=${doc.id}`)
                   }
                 }}
               />
             ))}
           </div>
-          {popularDocs.length === 0 && !loading && (
+          {popularDocs.length === 0 && !sitesLoading && (
             <div className="py-12 bg-white/50 rounded-3xl border border-slate-100 flex flex-center justify-center text-slate-400 text-sm font-medium">
               {t("trending.empty")}
             </div>
@@ -319,6 +300,9 @@ export default function HomePage() {
                 <AIChatLanding
                   siteName={selectedSite.name}
                   siteId={selectedSite.id}
+                  tenantId={selectedSite.tenant_id}
+                  tenantSlug={selectedSite.tenant_slug}
+                  siteSlug={selectedSite.slug}
                   quickQuestions={selectedSite.quick_questions ?? undefined}
                   allSites={sites}
                 />

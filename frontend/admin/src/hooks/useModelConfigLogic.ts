@@ -42,9 +42,9 @@ export function useModelConfigLogic(type: RuntimeModelType, onSuccess?: () => vo
           toast.success("Connection test successful")
           if (
             data &&
-            typeof data === 'object' &&
-            'dimension' in data &&
-            typeof (data as { dimension?: unknown }).dimension === 'number'
+            typeof data === "object" &&
+            "dimension" in data &&
+            typeof (data as { dimension?: unknown }).dimension === "number"
           ) {
             handleUpdate(type, "dimension", (data as { dimension: number }).dimension)
           }
@@ -91,9 +91,9 @@ export function useModelConfigLogic(type: RuntimeModelType, onSuccess?: () => vo
       const overrides: Record<string, string | number | boolean | Record<string, unknown>> = {}
       if (
         data &&
-        typeof data === 'object' &&
-        'dimension' in data &&
-        typeof (data as { dimension?: unknown }).dimension === 'number'
+        typeof data === "object" &&
+        "dimension" in data &&
+        typeof (data as { dimension?: unknown }).dimension === "number"
       ) {
         const dim = (data as { dimension: number }).dimension
         handleUpdate(type, "dimension", dim)

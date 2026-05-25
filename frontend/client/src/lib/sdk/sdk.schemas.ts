@@ -3,7 +3,7 @@
  * Do not edit manually.
  * CatWiki Client API
  * 客户端 API - 仅提供已发布内容的只读访问
- * OpenAPI spec version: 1.1.4
+ * OpenAPI spec version: 1.1.5
  */
 /**
  * 各模型项配置 (chat/embedding/...)
@@ -1614,6 +1614,13 @@ tenant_slug?: string | null;
 keyword?: string | null;
 };
 
+export type GetClientSiteBySlugParams = {
+/**
+ * 租户标识
+ */
+tenant_slug?: string | null;
+};
+
 export type GetClientCollectionTreeParams = {
 /**
  * 站点ID
@@ -1664,6 +1671,17 @@ order_dir?: string;
  * 是否包含站点信息
  */
 include_site_info?: boolean;
+/**
+ * 租户ID
+ */
+tenant_id?: number | null;
+};
+
+export type GetClientDocumentParams = {
+/**
+ * 站点ID
+ */
+site_id?: number | null;
 /**
  * 租户ID
  */
@@ -1825,8 +1843,16 @@ nonce: string;
 site_id: number;
 };
 
+export type GetSiteAccessStatusParams = {
+tenant_slug?: string | null;
+};
+
 /**
  * 响应数据
  */
 export type GetSiteAccessStatus200 = { [key: string]: unknown } | null;
+
+export type VerifySitePasswordParams = {
+tenant_slug?: string | null;
+};
 

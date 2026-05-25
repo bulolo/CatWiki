@@ -41,7 +41,8 @@ import {
   DropdownMenuPortal,
   Popover,
   PopoverContent,
-  PopoverTrigger
+  PopoverTrigger,
+  useConfirm
 } from "@/components/ui"
 
 import { useState } from "react"
@@ -62,7 +63,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { CreateUserForm } from "./CreateUserForm"
-import { UserRole, UserStatus, type UserListItem, type Site } from '@/lib/sdk/sdk.schemas'
+import { UserRole, UserStatus, type UserListItem, type Site } from "@/lib/sdk/sdk.schemas"
 import { useTranslations } from "next-intl"
 
 
@@ -94,16 +95,17 @@ function parsePasswordResponse(data: unknown): PasswordResponse | null {
 export function GlobalUsers() {
   const t = useTranslations("Users")
   const commonT = useTranslations("Common")
+  const confirm = useConfirm()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { data: healthData } = useHealth()
-  const isCommunity = healthData?.edition === 'community'
+  const isCommunity = healthData?.edition === "community"
 
   const [page, setPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
   const debouncedSearchTerm = useDebounce(searchTerm, 500)
-  const isCreating = searchParams.get('action') === 'create'
+  const isCreating = searchParams.get("action") === "create"
 
   // 获取所有站点列表（用于显示站点名称）
   const { data: sitesList } = useSitesList({ page: 1, size: 100 })
@@ -126,7 +128,7 @@ export function GlobalUsers() {
   const users = usersData?.users || []
 
   const currentUser = getUserInfo()
-  const isSystemAdmin = currentUser?.role === 'admin' as const
+  const isSystemAdmin = currentUser?.role === "admin" as const
 
   const handleStartCreate = () => {
     const params = new URLSearchParams(searchParams.toString())
@@ -157,9 +159,7 @@ export function GlobalUsers() {
   }
 
   const handleDeleteUser = async (userId: number, userName: string) => {
-    if (!confirm(t("deleteConfirm", { name: userName }))) {
-      return
-    }
+    if (!await confirm({ description: t("deleteConfirm", { name: userName }), variant: "destructive" })) return
 
     deleteUserMutation.mutate(userId, {
       onSuccess: () => {
@@ -182,8 +182,8 @@ export function GlobalUsers() {
   }
 
   const updateStatus = async (userId: number, status: UserStatus, userName: string) => {
-    const action = status === 'active' as const ? t("statusEnable") : t("statusDisable")
-    if (!confirm(t("statusConfirm", { action }))) return
+    const action = status === "active" as const ? t("statusEnable") : t("statusDisable")
+    if (!await confirm({ description: t("statusConfirm", { action }) })) return
 
     updateUserStatusMutation.mutate({
       userId,
@@ -197,9 +197,7 @@ export function GlobalUsers() {
   }
 
   const handleResetPassword = async (userId: number, userName: string, userEmail: string) => {
-    if (!confirm(t("resetPasswordDialog.confirm", { name: userName }))) {
-      return
-    }
+    if (!await confirm({ description: t("resetPasswordDialog.confirm", { name: userName }) })) return
 
     resetPasswordMutation.mutate(userId, {
       onSuccess: (data) => {
@@ -261,14 +259,14 @@ export function GlobalUsers() {
       <TableCell
         className={cn(
           "relative group/cell p-0",
-          user.role !== 'admin' as const && "cursor-pointer hover:bg-muted/50 transition-colors"
+          user.role !== "admin" as const && "cursor-pointer hover:bg-muted/50 transition-colors"
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        {user.role === 'admin' as const || user.role === 'tenant_admin' as const ? (
+        {user.role === "admin" as const || user.role === "tenant_admin" as const ? (
           <div className="w-full h-full px-4 py-3 min-h-[50px] flex flex-wrap gap-1 items-center relative pr-8">
             <span className="text-xs text-muted-foreground">
-              {user.role === 'admin' as const ? rolesT("allPlatform") : (isCommunity ? rolesT("allSites") : rolesT("allOrg"))}
+              {user.role === "admin" as const ? rolesT("allPlatform") : (isCommunity ? rolesT("allSites") : rolesT("allOrg"))}
             </span>
           </div>
         ) : (
@@ -433,21 +431,21 @@ export function GlobalUsers() {
                       <TableCell>
                         <Badge
                           variant={
-                            user.role === 'admin' as const ? "default" :
-                              user.role === 'tenant_admin' as const ? "secondary" :
-                                user.role === 'site_admin' as const ? "outline" : "outline"
+                            user.role === "admin" as const ? "default" :
+                              user.role === "tenant_admin" as const ? "secondary" :
+                                user.role === "site_admin" as const ? "outline" : "outline"
                           }
                           className={cn(
                             "font-bold text-[10px] tracking-tight px-2 border-none",
-                            user.role === 'admin' as const ? "bg-primary text-primary-foreground" :
-                              user.role === 'tenant_admin' as const ? "bg-violet-500/10 text-violet-600" :
-                                user.role === 'site_admin' as const ? "bg-amber-500/10 text-amber-600" :
+                            user.role === "admin" as const ? "bg-primary text-primary-foreground" :
+                              user.role === "tenant_admin" as const ? "bg-violet-500/10 text-violet-600" :
+                                user.role === "site_admin" as const ? "bg-amber-500/10 text-amber-600" :
                                   "bg-muted text-muted-foreground"
                           )}
                         >
-                          {user.role === 'admin' as const ? (isCommunity ? t("roles.superAdmin") : t("roles.sysAdmin")) :
-                            user.role === 'tenant_admin' as const ? (isCommunity ? t("roles.superAdmin") : t("roles.orgAdmin")) :
-                              user.role === 'site_admin' as const ? t("roles.siteAdmin") : t("roles.unknown")}
+                          {user.role === "admin" as const ? (isCommunity ? t("roles.superAdmin") : t("roles.sysAdmin")) :
+                            user.role === "tenant_admin" as const ? (isCommunity ? t("roles.superAdmin") : t("roles.orgAdmin")) :
+                              user.role === "site_admin" as const ? t("roles.siteAdmin") : t("roles.unknown")}
                         </Badge>
                       </TableCell>
                       <UserSitesCell user={user} />
@@ -455,13 +453,13 @@ export function GlobalUsers() {
                         <div className="flex items-center gap-1.5">
                           <span className={cn(
                             "w-2 h-2 rounded-full",
-                            user.status === 'active' as const ? "bg-emerald-500" : "bg-slate-300"
+                            user.status === "active" as const ? "bg-emerald-500" : "bg-slate-300"
                           )} />
                           <span className={cn(
                             "text-xs font-bold",
-                            user.status === 'active' as const ? "text-emerald-600" : "text-slate-400"
+                            user.status === "active" as const ? "text-emerald-600" : "text-slate-400"
                           )}>
-                             {user.status === 'active' as const ? t("status.active") : t("status.inactive")}
+                             {user.status === "active" as const ? t("status.active") : t("status.inactive")}
                           </span>
                         </div>
                       </TableCell>
@@ -488,28 +486,28 @@ export function GlobalUsers() {
                                 </DropdownMenuSubTrigger>
                                 <DropdownMenuPortal>
                                   <DropdownMenuSubContent className="w-48 p-1">
-                                    {(healthData?.edition !== 'community') && (
+                                    {(healthData?.edition !== "community") && (
                                        <DropdownMenuItem 
                                         className="flex items-center justify-between rounded-xl px-3 py-2"
-                                        onClick={() => updateRole(user.id, 'admin' as const)}
+                                        onClick={() => updateRole(user.id, "admin" as const)}
                                        >
                                          <span className="text-sm font-medium">{t("roles.sysAdmin")}</span>
-                                         {user.role === 'admin' as const && <Check className="h-4 w-4 text-primary" />}
+                                         {user.role === "admin" as const && <Check className="h-4 w-4 text-primary" />}
                                        </DropdownMenuItem>
                                     )}
                                     <DropdownMenuItem 
                                       className="flex items-center justify-between rounded-xl px-3 py-2"
-                                      onClick={() => updateRole(user.id, 'tenant_admin' as const)}
+                                      onClick={() => updateRole(user.id, "tenant_admin" as const)}
                                     >
                                       <span className="text-sm font-medium">{t("roles.orgAdmin")}</span>
-                                      {user.role === 'tenant_admin' as const && <Check className="h-4 w-4 text-primary" />}
+                                      {user.role === "tenant_admin" as const && <Check className="h-4 w-4 text-primary" />}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem 
                                       className="flex items-center justify-between rounded-xl px-3 py-2"
-                                      onClick={() => updateRole(user.id, 'site_admin' as const)}
+                                      onClick={() => updateRole(user.id, "site_admin" as const)}
                                     >
                                       <span className="text-sm font-medium">{t("roles.siteAdmin")}</span>
-                                      {user.role === 'site_admin' as const && <Check className="h-4 w-4 text-primary" />}
+                                      {user.role === "site_admin" as const && <Check className="h-4 w-4 text-primary" />}
                                     </DropdownMenuItem>
                                   </DropdownMenuSubContent>
                                 </DropdownMenuPortal>
@@ -526,10 +524,10 @@ export function GlobalUsers() {
 
                             <DropdownMenuSeparator className="my-1.5 opacity-40" />
 
-                            {user.status === 'active' as const ? (
+                            {user.status === "active" as const ? (
                               <DropdownMenuItem 
                                 className="flex items-center gap-2 rounded-xl px-2 py-2 text-slate-500 hover:text-slate-700 cursor-pointer"
-                                onClick={() => updateStatus(user.id, 'inactive' as const, user.name)}
+                                onClick={() => updateStatus(user.id, "inactive" as const, user.name)}
                               >
                                 <Slash className="h-4 w-4 opacity-70" />
                                 <span className="text-sm font-medium">{t("actions.disableAccount")}</span>
@@ -537,7 +535,7 @@ export function GlobalUsers() {
                             ) : (
                               <DropdownMenuItem 
                                 className="flex items-center gap-2 rounded-xl px-2 py-2 text-emerald-600 hover:text-emerald-700 cursor-pointer"
-                                onClick={() => updateStatus(user.id, 'active' as const, user.name)}
+                                onClick={() => updateStatus(user.id, "active" as const, user.name)}
                               >
                                 <Check className="h-4 w-4 opacity-70" />
                                 <span className="text-sm font-medium">{t("actions.enableAccount")}</span>

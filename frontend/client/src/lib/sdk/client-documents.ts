@@ -3,7 +3,7 @@
  * Do not edit manually.
  * CatWiki Client API
  * 客户端 API - 仅提供已发布内容的只读访问
- * OpenAPI spec version: 1.1.4
+ * OpenAPI spec version: 1.1.5
  */
 import {
   useQuery
@@ -22,6 +22,7 @@ import type {
 
 import type {
   Document,
+  GetClientDocumentParams,
   HTTPValidationError,
   ListClientDocumentsParams,
   PaginatedResponseDocument
@@ -143,21 +144,30 @@ export function useListClientDocuments<TData = Awaited<ReturnType<typeof listCli
 
 
 
-export const getGetClientDocumentUrl = (documentId: number,) => {
+export const getGetClientDocumentUrl = (documentId: number,
+    params?: GetClientDocumentParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/documents/${documentId}`
+  return stringifiedParams.length > 0 ? `/v1/documents/${documentId}?${stringifiedParams}` : `/v1/documents/${documentId}`
 }
 
 /**
  * 获取文档详情（客户端，自动增加浏览量并记录浏览事件）
  * @summary Get Document
  */
-export const getClientDocument = async (documentId: number, options?: RequestInit): Promise<Document | null> => {
+export const getClientDocument = async (documentId: number,
+    params?: GetClientDocumentParams, options?: RequestInit): Promise<Document | null> => {
 
-  return customFetch<Document | null>(getGetClientDocumentUrl(documentId),
+  return customFetch<Document | null>(getGetClientDocumentUrl(documentId,params),
   {
     ...options,
     method: 'GET'
@@ -170,23 +180,25 @@ export const getClientDocument = async (documentId: number, options?: RequestIni
 
 
 
-export const getGetClientDocumentQueryKey = (documentId: number,) => {
+export const getGetClientDocumentQueryKey = (documentId: number,
+    params?: GetClientDocumentParams,) => {
     return [
-    `/v1/documents/${documentId}`
+    `/v1/documents/${documentId}`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetClientDocumentQueryOptions = <TData = Awaited<ReturnType<typeof getClientDocument>>, TError = HTTPValidationError>(documentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetClientDocumentQueryOptions = <TData = Awaited<ReturnType<typeof getClientDocument>>, TError = HTTPValidationError>(documentId: number,
+    params?: GetClientDocumentParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetClientDocumentQueryKey(documentId);
+  const queryKey =  queryOptions?.queryKey ?? getGetClientDocumentQueryKey(documentId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getClientDocument>>> = ({ signal }) => getClientDocument(documentId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getClientDocument>>> = ({ signal }) => getClientDocument(documentId,params, { signal, ...requestOptions });
 
 
 
@@ -200,7 +212,8 @@ export type GetClientDocumentQueryError = HTTPValidationError
 
 
 export function useGetClientDocument<TData = Awaited<ReturnType<typeof getClientDocument>>, TError = HTTPValidationError>(
- documentId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientDocument>>, TError, TData>> & Pick<
+ documentId: number,
+    params: undefined |  GetClientDocumentParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientDocument>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getClientDocument>>,
           TError,
@@ -210,7 +223,8 @@ export function useGetClientDocument<TData = Awaited<ReturnType<typeof getClient
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetClientDocument<TData = Awaited<ReturnType<typeof getClientDocument>>, TError = HTTPValidationError>(
- documentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientDocument>>, TError, TData>> & Pick<
+ documentId: number,
+    params?: GetClientDocumentParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientDocument>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getClientDocument>>,
           TError,
@@ -220,7 +234,8 @@ export function useGetClientDocument<TData = Awaited<ReturnType<typeof getClient
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetClientDocument<TData = Awaited<ReturnType<typeof getClientDocument>>, TError = HTTPValidationError>(
- documentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ documentId: number,
+    params?: GetClientDocumentParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -228,11 +243,12 @@ export function useGetClientDocument<TData = Awaited<ReturnType<typeof getClient
  */
 
 export function useGetClientDocument<TData = Awaited<ReturnType<typeof getClientDocument>>, TError = HTTPValidationError>(
- documentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ documentId: number,
+    params?: GetClientDocumentParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClientDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetClientDocumentQueryOptions(documentId,options)
+  const queryOptions = getGetClientDocumentQueryOptions(documentId,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

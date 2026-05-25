@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { useEffect, useRef, useCallback, useState } from 'react'
-import { logger } from '@/lib/logger'
+import { useEffect, useRef, useCallback, useState } from "react"
+import { logger } from "@/lib/logger"
 
 /**
  * 草稿数据接口
@@ -43,7 +43,7 @@ export function useAutosave(
   enabled: boolean = true
 ) {
   const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const lastSavedRef = useRef<string>('')
+  const lastSavedRef = useRef<string>("")
 
   /* New state for status tracking */
   const [isSaving, setIsSaving] = useState(false)
@@ -89,9 +89,9 @@ export function useAutosave(
       localStorage.setItem(key, currentDataString)
       lastSavedRef.current = currentDataString
       setLastSavedTime(new Date())
-      logger.debug('草稿已自动保存:', key)
+      logger.debug("草稿已自动保存:", key)
     } catch (error) {
-      logger.error('保存草稿失败:', error)
+      logger.error("保存草稿失败:", error)
     } finally {
       setIsSaving(false)
     }
@@ -125,9 +125,9 @@ export function useAutosave(
   // 页面离开时立即保存未完成的草稿
   useEffect(() => {
     const handleBeforeUnload = () => saveDraft()
-    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener("beforeunload", handleBeforeUnload)
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener("beforeunload", handleBeforeUnload)
       // 组件卸载时也立即保存
       saveDraft()
     }
@@ -137,12 +137,12 @@ export function useAutosave(
   const clearDraft = useCallback(() => {
     try {
       localStorage.removeItem(key)
-      lastSavedRef.current = ''
+      lastSavedRef.current = ""
       setLastSavedTime(null)
       setIsSaving(false)
-      logger.debug('草稿已清除:', key)
+      logger.debug("草稿已清除:", key)
     } catch (error) {
-      logger.error('清除草稿失败:', error)
+      logger.error("清除草稿失败:", error)
     }
   }, [key])
 

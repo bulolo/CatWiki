@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { useState, useEffect, useCallback } from 'react'
-import { logger } from '@/lib/logger'
-import type { DraftData } from './useAutosave'
+import { useState, useEffect, useCallback } from "react"
+import { logger } from "@/lib/logger"
+import type { DraftData } from "./useAutosave"
 
 /**
  * 草稿恢复 Hook
@@ -38,11 +38,11 @@ export function useDraftRestore(key: string) {
         if (hasContent) {
           setDraftData(draft)
           setHasDraft(true)
-          logger.debug('发现草稿:', key, draft)
+          logger.debug("发现草稿:", key, draft)
         }
       }
     } catch (error) {
-      logger.error('读取草稿失败:', error)
+      logger.error("读取草稿失败:", error)
       // 如果解析失败，清除损坏的数据
       localStorage.removeItem(key)
     }
@@ -60,15 +60,15 @@ export function useDraftRestore(key: string) {
       localStorage.removeItem(key)
       setDraftData(null)
       setHasDraft(false)
-      logger.debug('草稿已丢弃:', key)
+      logger.debug("草稿已丢弃:", key)
     } catch (error) {
-      logger.error('丢弃草稿失败:', error)
+      logger.error("丢弃草稿失败:", error)
     }
   }, [key])
 
   // 格式化保存时间
   const getSavedTimeAgo = useCallback(() => {
-    if (!draftData?.savedAt) return ''
+    if (!draftData?.savedAt) return ""
 
     const now = Date.now()
     const diff = now - draftData.savedAt
@@ -79,7 +79,7 @@ export function useDraftRestore(key: string) {
     if (days > 0) return `${days}d ago`
     if (hours > 0) return `${hours}h ago`
     if (minutes > 0) return `${minutes}m ago`
-    return 'just now'
+    return "just now"
   }, [draftData])
 
   return {

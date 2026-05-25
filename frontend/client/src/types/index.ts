@@ -74,9 +74,6 @@ export interface Message {
   role: "user" | "assistant" | "system"
   content: string
   sources?: Source[]
-  // Tool calling 扩展
   toolCalls?: ToolCall[]
   status?: MessageStatus
-  activeToolName?: string // 当前正在调用的工具名称
-  additional_kwargs?: Record<string, unknown> // [NEW] 扩展元数据 (Token 统计等)
 }

@@ -160,6 +160,8 @@ def create_application() -> FastAPI:
         from app.ee.api.router import init_ee_routes
 
         init_ee_routes(application)
+    except ModuleNotFoundError:
+        logger.debug("[EE] EE routes not available (CE build)")
     except Exception as e:
         logger.error(f"❌ [EE] Failed to initialize EE routes: {e}")
 

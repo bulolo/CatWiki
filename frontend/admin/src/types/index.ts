@@ -25,7 +25,7 @@
 export interface CollectionItem {
   id: string
   name: string
-  type?: 'collection' | 'document'
+  type?: "collection" | "document"
   children?: CollectionItem[]
   status?: string
   views?: number
@@ -36,6 +36,6 @@ export interface CollectionItem {
 export interface DirectoryItem {
   id: string
   name: string
-  type?: 'collection' | 'document'
+  type?: "collection" | "document"
   children?: DirectoryItem[]
 }

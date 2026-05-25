@@ -14,15 +14,15 @@
 
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { useParams } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { listClientSites } from '@/lib/sdk/client-sites'
+import { useListClientSites } from "@/lib/sdk/client-sites"
 import { logError } from "@/lib/error-handler"
 import { cn } from "@/lib/utils"
 import { PageLoading, NotFoundState, Input } from "@/components/ui"
 import { AIChatLanding } from "@/components/ai"
-import type { ClientSite } from '@/lib/sdk/sdk.schemas'
+import type { ClientSite } from "@/lib/sdk/sdk.schemas"
 import { Search, BookOpen, ChevronDown, Github, Star } from "lucide-react"
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher"
 
@@ -31,51 +31,52 @@ import { env } from "@/lib/env"
 export default function TenantPortalPage() {
   const t = useTranslations("TenantPortal")
   const { tenantSlug } = useParams()
-  const [sites, setSites] = useState<ClientSite[]>([])
-  const [baseSites, setBaseSites] = useState<ClientSite[]>([])
-  const [loading, setLoading] = useState(true)
-  const [hasSites, setHasSites] = useState(false)
   const [selectedSite, setSelectedSite] = useState<ClientSite | null>(null)
   const [isSiteSelectorOpen, setIsSiteSelectorOpen] = useState(false)
   const [keyword, setKeyword] = useState("")
+  const [debouncedKeyword, setDebouncedKeyword] = useState("")
   const selectorRef = useRef<HTMLDivElement>(null)
-  const [error, setError] = useState<unknown>(null)
+  const tenantSlugValue = tenantSlug as string
 
   useEffect(() => {
-    const loadSites = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const response = await listClientSites({
-          page: 1,
-          size: 100,
-          tenant_slug: tenantSlug as string,
-          keyword: keyword || undefined,
-        })
-        const list = response?.list ?? []
-        setSites(list)
-
-        // 如果没有站点且不是加载中，也视为租户配置问题或不存在
-        if (!keyword && list.length === 0) {
-          setError({ status: 404, message: t("notFound.title") })
-        } else if (!keyword && list.length > 0) {
-          setHasSites(true)
-          setBaseSites(list)
-        }
-      } catch (err: unknown) {
-        logError(t("loading"), err)
-        setError(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    const timer = setTimeout(() => {
-      loadSites()
-    }, 300)
-
+    const timer = setTimeout(() => setDebouncedKeyword(keyword), 300)
     return () => clearTimeout(timer)
-  }, [tenantSlug, keyword, t])
+  }, [keyword])
+
+  const baseParams = useMemo(() => ({
+    page: 1,
+    size: 100,
+    tenant_slug: tenantSlugValue,
+  }), [tenantSlugValue])
+
+  const searchParams = useMemo(() => ({
+    ...baseParams,
+    keyword: debouncedKeyword || undefined,
+  }), [baseParams, debouncedKeyword])
+
+  const {
+    data: baseSitesResponse,
+    isLoading: baseLoading,
+    error: baseError,
+  } = useListClientSites(baseParams)
+  const {
+    data: searchSitesResponse,
+    isLoading: searchLoading,
+    error: searchError,
+  } = useListClientSites(searchParams)
+
+  useEffect(() => {
+    if (baseError) logError(t("loading"), baseError)
+  }, [baseError, t])
+
+  useEffect(() => {
+    if (searchError) logError(t("loading"), searchError)
+  }, [searchError, t])
+
+  const baseSites = baseSitesResponse?.list ?? []
+  const sites = searchSitesResponse?.list ?? []
+  const hasSites = baseSites.length > 0
+  const error = baseError || (!baseLoading && !hasSites ? { status: 404, message: t("notFound.title") } : null)
 
   // 点击外部关闭选择器
   useEffect(() => {
@@ -95,7 +96,7 @@ export default function TenantPortalPage() {
     }
   }, [isSiteSelectorOpen])
 
-  if (loading && !hasSites && !error) {
+  if (baseLoading && !hasSites && !error) {
     return <PageLoading text={t("loading")} />
   }
 
@@ -198,7 +199,7 @@ export default function TenantPortalPage() {
                         autoFocus
                         value={keyword}
                         onChange={(e) => setKeyword(e.target.value)}
-                        placeholder={t("selector.placeholder", { tenantSlug: tenantSlug as string })}
+                        placeholder={t("selector.placeholder", { tenantSlug: tenantSlugValue })}
                         className="pl-10 h-9 bg-white border-slate-200 rounded-lg text-sm focus-visible:ring-primary/20 focus:border-primary/30"
                       />
                     </div>
@@ -235,7 +236,11 @@ export default function TenantPortalPage() {
                     <div className="h-px bg-slate-100 my-2" />
 
                     {/* 站点列表 */}
-                    {sites.length > 0 ? (
+                    {searchLoading ? (
+                      <div className="p-8 text-center bg-slate-50/50 rounded-xl">
+                        <p className="text-sm text-slate-500 font-medium">{t("loading")}</p>
+                      </div>
+                    ) : sites.length > 0 ? (
                       sites.map((site) => (
                         <button
                           key={site.id}
@@ -296,6 +301,8 @@ export default function TenantPortalPage() {
         siteName={selectedSite?.name}
         siteId={selectedSite?.id}
         tenantId={selectedSite?.tenant_id || baseSites[0]?.tenant_id}
+        tenantSlug={tenantSlugValue}
+        siteSlug={selectedSite?.slug}
         quickQuestions={selectedSite?.quick_questions ?? undefined}
         allSites={baseSites}
       />

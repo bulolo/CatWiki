@@ -1,6 +1,6 @@
 "use client"
 
-import { NotFoundState } from "@/components/ui/not-found"
+import { NotFoundState } from "@/components/ui"
 import { useParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 

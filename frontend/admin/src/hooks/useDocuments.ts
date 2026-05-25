@@ -19,11 +19,12 @@
  * （``getListAdminDocumentsQueryKey()``），不再手维护。
  */
 
-import { useQueryClient } from '@tanstack/react-query'
-import { aiGenerateDocumentFields, batchVectorizeAdminDocuments, createAdminDocument, deleteAdminDocument, getListAdminDocumentsQueryKey, removeAdminDocumentVector, updateAdminDocument, useGetAdminDocument, useListAdminDocuments, vectorizeAdminDocument } from '@/lib/sdk/admin-documents'
-import { VectorStatus, type Document, type DocumentCreate, type DocumentUpdate, type ListAdminDocumentsParams } from '@/lib/sdk/sdk.schemas'
-import { isAuthenticated } from '@/lib/auth'
-import { useAdminMutation } from './useAdminMutation'
+import { useQueryClient } from "@tanstack/react-query"
+import { aiGenerateDocumentFields, batchVectorizeAdminDocuments, createAdminDocument, deleteAdminDocument, getListAdminDocumentsQueryKey, removeAdminDocumentVector, updateAdminDocument, useGetAdminDocument, useListAdminDocuments, vectorizeAdminDocument } from "@/lib/sdk/admin-documents"
+import { VectorStatus, type Document, type DocumentCreate, type DocumentUpdate, type ListAdminDocumentsParams } from "@/lib/sdk/sdk.schemas"
+import { isAuthenticated } from "@/lib/auth"
+import { useAdminMutation } from "./useAdminMutation"
+import { STALE_TIME } from "@/lib/react-query"
 
 interface UseDocumentsParams {
   siteId: number
@@ -31,10 +32,10 @@ interface UseDocumentsParams {
   size?: number
   collectionId?: number | string
   searchTerm?: string
-  status?: 'published' | 'draft' | 'all'
-  vectorStatus?: 'none' | 'outdated' | 'pending' | 'processing' | 'completed' | 'failed' | 'all'
-  orderBy?: 'created_at' | 'updated_at' | 'views'
-  orderDir?: 'asc' | 'desc'
+  status?: "published" | "draft" | "all"
+  vectorStatus?: "none" | "outdated" | "pending" | "processing" | "completed" | "failed" | "all"
+  orderBy?: "created_at" | "updated_at" | "views"
+  orderDir?: "asc" | "desc"
 }
 
 /**
@@ -51,7 +52,7 @@ export function useDocuments(params: UseDocumentsParams) {
     order_dir: filters.orderDir,
     keyword: filters.searchTerm,
   }
-  if (filters.orderBy === 'views' || filters.orderBy === 'updated_at') {
+  if (filters.orderBy === "views" || filters.orderBy === "updated_at") {
     apiParams.order_by = filters.orderBy
   }
   if (filters.collectionId !== undefined && filters.collectionId !== null) {
@@ -60,15 +61,15 @@ export function useDocuments(params: UseDocumentsParams) {
       apiParams.collection_id = parsedCollectionId
     }
   }
-  if (filters.status && filters.status !== 'all') apiParams.status = filters.status
-  if (filters.vectorStatus && filters.vectorStatus !== 'all') {
+  if (filters.status && filters.status !== "all") apiParams.status = filters.status
+  if (filters.vectorStatus && filters.vectorStatus !== "all") {
     apiParams.vector_status = filters.vectorStatus
   }
 
   return useListAdminDocuments(apiParams, {
     query: {
       enabled: !!siteId && isAuthenticated(),
-      staleTime: 0,
+      staleTime: STALE_TIME.NONE,
       gcTime: 5 * 60 * 1000,
       select: (data) => ({
         documents: data?.list ?? [],
@@ -77,7 +78,7 @@ export function useDocuments(params: UseDocumentsParams) {
       refetchInterval: (query) => {
         const data = query.state.data as { documents: Document[]; total: number } | undefined
         const hasProcessing = data?.documents?.some(
-          (doc) => doc.vector_status === 'pending' || doc.vector_status === 'processing',
+          (doc) => doc.vector_status === "pending" || doc.vector_status === "processing",
         )
         return hasProcessing ? 2000 : false
       },
@@ -92,7 +93,7 @@ export function useDocument(id: number | undefined) {
   return useGetAdminDocument(id ?? 0, {
     query: {
       enabled: !!id && isAuthenticated(),
-      staleTime: 5 * 60 * 1000,
+      staleTime: STALE_TIME.MEDIUM,
     },
   })
 }
@@ -114,7 +115,7 @@ export function useUpdateDocument() {
   return useAdminMutation({
     mutationFn: ({ documentId, data }: { documentId: number; data: DocumentUpdate }) =>
       updateAdminDocument(documentId, data),
-    invalidateKeys: [['/admin/v1/documents']],
+    invalidateKeys: [["/admin/v1/documents"]],
   })
 }
 
@@ -192,7 +193,7 @@ export function useBatchUpdateDocuments() {
 export function useVectorizeDocument() {
   return useAdminMutation({
     mutationFn: (documentId: number) => vectorizeAdminDocument(documentId),
-    invalidateKeys: [['/admin/v1/documents']],
+    invalidateKeys: [["/admin/v1/documents"]],
   })
 }
 
@@ -207,7 +208,7 @@ export function useBatchVectorizeDocuments() {
 export function useRemoveVector() {
   return useAdminMutation({
     mutationFn: (documentId: number) => removeAdminDocumentVector(documentId),
-    invalidateKeys: [['/admin/v1/documents']],
+    invalidateKeys: [["/admin/v1/documents"]],
   })
 }
 
@@ -223,7 +224,7 @@ export function useAiGenerateFields() {
       tagsMaxCount,
     }: {
       content: string
-      fields: Array<'summary' | 'tags'>
+      fields: Array<"summary" | "tags">
       summaryMaxLength?: number
       tagsMaxCount?: number
     }) =>

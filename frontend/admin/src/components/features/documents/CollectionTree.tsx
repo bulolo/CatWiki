@@ -17,10 +17,8 @@
 import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from "react"
 import { cn } from "@/lib/utils"
 import { useTranslations } from "next-intl"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Button, Input, ScrollArea } from "@/components/ui"
 import { ChevronRight, Folder, FolderPlus, Hash, FileText, Eye, EyeOff, Trash2, GripVertical } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import type { CollectionItem } from "@/types"
 
 interface CollectionTreeProps {
@@ -39,9 +37,9 @@ interface CollectionTreeProps {
 interface DragContextType {
   draggedId: string | null
   dragOverNodeId: string | null
-  dragOverPosition: 'top' | 'middle' | 'bottom' | null
+  dragOverPosition: "top" | "middle" | "bottom" | null
   setDraggedId: (id: string | null) => void
-  setDragOver: (nodeId: string | null, position: 'top' | 'middle' | 'bottom' | null) => void
+  setDragOver: (nodeId: string | null, position: "top" | "middle" | "bottom" | null) => void
   clearDragState: () => void
 }
 
@@ -70,7 +68,7 @@ function isDescendant(items: CollectionItem[], nodeId: string, targetId: string)
 }
 
 // 计算拖拽位置 - 改进算法，使用更精确的阈值
-function getDragPosition(clientY: number, rect: DOMRect): 'top' | 'middle' | 'bottom' {
+function getDragPosition(clientY: number, rect: DOMRect): "top" | "middle" | "bottom" {
   const y = clientY - rect.top
   const height = rect.height
 
@@ -78,9 +76,9 @@ function getDragPosition(clientY: number, rect: DOMRect): 'top' | 'middle' | 'bo
   const topThreshold = height * 0.3
   const bottomThreshold = height * 0.7
 
-  if (y < topThreshold) return 'top'
-  if (y > bottomThreshold) return 'bottom'
-  return 'middle'
+  if (y < topThreshold) return "top"
+  if (y > bottomThreshold) return "bottom"
+  return "middle"
 }
 
 // 检查鼠标是否真的在元素外（增加容差）
@@ -121,7 +119,7 @@ function CollectionNode({
   const dragContext = useContext(DragContext)
   const t = useTranslations("Documents")
   if (!dragContext) {
-    throw new Error('CollectionNode must be used within DragContext')
+    throw new Error("CollectionNode must be used within DragContext")
   }
 
   const { draggedId, dragOverNodeId, dragOverPosition, setDraggedId, setDragOver, clearDragState } = dragContext
@@ -136,7 +134,7 @@ function CollectionNode({
 
   const isSelected = selectedId === item.id
   const hasChildren = item.children && item.children.length > 0
-  const isDocument = item.type === 'document'
+  const isDocument = item.type === "document"
   const isDragging = draggedId === item.id
   const isDragOver = dragOverNodeId === item.id
   const currentDragPosition = isDragOver ? dragOverPosition : null
@@ -200,9 +198,9 @@ function CollectionNode({
 
   // 处理键盘事件
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSaveRename()
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       handleCancelEdit()
     }
   }
@@ -216,15 +214,15 @@ function CollectionNode({
 
     e.stopPropagation()
     setDraggedId(item.id)
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', item.id)
+    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer.setData("text/plain", item.id)
 
     // 设置拖拽图像
     if (nodeRef.current) {
       const dragImage = nodeRef.current.cloneNode(true) as HTMLElement
-      dragImage.style.opacity = '0.5'
-      dragImage.style.position = 'absolute'
-      dragImage.style.top = '-1000px'
+      dragImage.style.opacity = "0.5"
+      dragImage.style.position = "absolute"
+      dragImage.style.top = "-1000px"
       document.body.appendChild(dragImage)
       e.dataTransfer.setDragImage(dragImage, 0, 0)
       setTimeout(() => document.body.removeChild(dragImage), 0)
@@ -321,22 +319,22 @@ function CollectionNode({
 
     // 如果仍然没有位置信息，使用 middle 作为默认值
     if (!position) {
-      position = 'middle'
+      position = "middle"
     }
 
     // 根据拖拽位置决定操作
     switch (position) {
-      case 'middle':
+      case "middle":
         // 拖到中间：作为子级，移动到目标目录下
         onMoveCollection?.(draggedId, item.id, null)
         break
 
-      case 'top':
+      case "top":
         // 拖到上方：作为同级插入到当前节点之前
         onMoveCollection?.(draggedId, parentId, item.id)
         break
 
-      case 'bottom':
+      case "bottom":
         // 拖到下方：作为同级插入到当前节点之后
         const currentIndex = siblings.findIndex(s => s.id === item.id)
         const nextSibling = siblings[currentIndex + 1] || null
@@ -371,23 +369,23 @@ function CollectionNode({
   return (
     <div className="mb-1 relative" ref={nodeRef}>
       {/* 拖拽指示器 - 上方插入线 */}
-      {isDragOver && currentDragPosition === 'top' && (
+      {isDragOver && currentDragPosition === "top" && (
         <div
           className="absolute top-0 h-0.5 bg-primary z-50 pointer-events-none"
           style={{
             left: `${indentWidth + iconAreaWidth}px`,
-            right: '10px'
+            right: "10px"
           }}
         />
       )}
 
       {/* 拖拽指示器 - 下方插入线 */}
-      {isDragOver && currentDragPosition === 'bottom' && (
+      {isDragOver && currentDragPosition === "bottom" && (
         <div
           className="absolute bottom-0 h-0.5 bg-primary z-50 pointer-events-none"
           style={{
             left: `${indentWidth + iconAreaWidth}px`,
-            right: '10px'
+            right: "10px"
           }}
         />
       )}
@@ -402,9 +400,9 @@ function CollectionNode({
             : "text-muted-foreground hover:bg-muted hover:text-foreground",
           isDocument && "cursor-pointer",
           isDragging && "opacity-50 scale-95",
-          isDragOver && currentDragPosition === 'middle' && !isDocument && "bg-primary/20 border-2 border-primary border-dashed"
+          isDragOver && currentDragPosition === "middle" && !isDocument && "bg-primary/20 border-2 border-primary border-dashed"
         )}
-        style={{ paddingLeft: `${indentWidth}px`, paddingRight: '10px' }}
+        style={{ paddingLeft: `${indentWidth}px`, paddingRight: "10px" }}
         onClick={isEditing ? undefined : handleClick}
         draggable={!isDocument && !isEditing}
         onDragStart={handleDragStart}
@@ -554,10 +552,10 @@ export function CollectionTree({
   // 全局拖拽状态
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverNodeId, setDragOverNodeId] = useState<string | null>(null)
-  const [dragOverPosition, setDragOverPosition] = useState<'top' | 'middle' | 'bottom' | null>(null)
+  const [dragOverPosition, setDragOverPosition] = useState<"top" | "middle" | "bottom" | null>(null)
 
   // 设置拖拽悬停状态
-  const setDragOver = (nodeId: string | null, position: 'top' | 'middle' | 'bottom' | null) => {
+  const setDragOver = (nodeId: string | null, position: "top" | "middle" | "bottom" | null) => {
     setDragOverNodeId(nodeId)
     setDragOverPosition(position)
   }
@@ -583,12 +581,12 @@ export function CollectionTree({
     }
 
 
-    window.addEventListener('dragend', handleWindowDragEnd)
-    window.addEventListener('dragleave', handleWindowDragLeave)
+    window.addEventListener("dragend", handleWindowDragEnd)
+    window.addEventListener("dragleave", handleWindowDragLeave)
 
     return () => {
-      window.removeEventListener('dragend', handleWindowDragEnd)
-      window.removeEventListener('dragleave', handleWindowDragLeave)
+      window.removeEventListener("dragend", handleWindowDragEnd)
+      window.removeEventListener("dragleave", handleWindowDragLeave)
     }
   }, [])
 
@@ -663,7 +661,7 @@ export function CollectionTree({
           </div>
         </div>
 
-        <ScrollArea className="p-2" style={{ maxHeight: '500px' }}>
+        <ScrollArea className="p-2" style={{ maxHeight: "500px" }}>
           {items.length > 0 ? (
             <div className="space-y-1">
               {items.map((item: CollectionItem) => (

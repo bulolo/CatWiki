@@ -14,30 +14,23 @@
 
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import Image from "next/image"
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui"
+import { Button, Label, Switch, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui"
 import {
   type LucideIcon,
   Loader2, Upload, FileText, X, Bird, Zap, Scan, BookOpen, Pickaxe, Globe,
   Database, Folder, ChevronRight, ArrowLeft, CheckSquare, Square, Plus,
 } from "lucide-react"
 import { toast } from "sonner"
-import { browseDataSource, importFromDataSource, listDataSources } from '@/lib/sdk/admin-data-sources'
-import { importDocument } from '@/lib/sdk/admin-documents'
-import { getAdminDocProcessorConfig } from '@/lib/sdk/admin-system-configs'
-import type { DataSource, S3FileItem, Task } from '@/lib/sdk/sdk.schemas'
+import { browseDataSource, importFromDataSource, listDataSources } from "@/lib/sdk/admin-data-sources"
+import { importDocument } from "@/lib/sdk/admin-documents"
+import { getAdminDocProcessorConfig } from "@/lib/sdk/admin-system-configs"
+import type { S3FileItem, Task } from "@/lib/sdk/sdk.schemas"
 import { toImportDocumentBody } from "@/lib/normalizers"
 import { DOC_PROCESSOR_TYPES, type DocProcessorConfig, DocProcessorType } from "@/types/settings"
 import type { CollectionItem } from "@/types"
@@ -62,8 +55,8 @@ function parseProcessorConfig(config: unknown): ProcessorExtraConfig {
 }
 
 function parseDocProcessorType(value: unknown): DocProcessorType {
-  if (value === 'Docling' as const || value === 'MinerU' as const || value === 'PaddleOCR' as const) return value
-  return 'MinerU' as const
+  if (value === "Docling" as const || value === "MinerU" as const || value === "PaddleOCR" as const) return value
+  return "MinerU" as const
 }
 
 function parseProcessorOrigin(value: unknown): "platform" | "tenant" | undefined {
@@ -143,21 +136,12 @@ export function DocumentImportDialog({
   const [files, setFiles] = useState<File[]>([])
 
   // ---------- 数据源 Tab ----------
-  const [dataSources, setDataSources] = useState<DataSource[]>([])
-  const [isLoadingDataSources, setIsLoadingDataSources] = useState(false)
-  const [dataSourcesLoaded, setDataSourcesLoaded] = useState(false)
   const [selectedDsId, setSelectedDsId] = useState<number | null>(null)
-  const selectedDsIdRef = useRef(selectedDsId)
-  useEffect(() => { selectedDsIdRef.current = selectedDsId }, [selectedDsId])
-  const [browseFiles, setBrowseFiles] = useState<S3FileItem[]>([])
   const [browsePrefix, setBrowsePrefix] = useState("")
   const [browseStack, setBrowseStack] = useState<string[]>([])
-  const [isBrowsing, setIsBrowsing] = useState(false)
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
 
   // ---------- 通用配置 ----------
-  const [processors, setProcessors] = useState<DocProcessor[]>([])
-  const [isLoadingProcessors, setIsLoadingProcessors] = useState(false)
   const [processorId, setProcessorId] = useState<string>("")
   const [collectionId, setCollectionId] = useState<string>("")
   const [ocrEnabled, setOcrEnabled] = useState(false)
@@ -168,8 +152,7 @@ export function DocumentImportDialog({
   const [generateTags, setGenerateTags] = useState(false)
   const [autoVectorize, setAutoVectorize] = useState(false)
 
-  // ---------- 提交状态 ----------
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  // ---------- 上传进度（importDocument 是 loop，react-query 不直接覆盖）----------
   const [uploadProgress, setUploadProgress] = useState(0)
   const [currentUploadingFile, setCurrentUploadingFile] = useState("")
 
@@ -181,7 +164,6 @@ export function DocumentImportDialog({
     setSelectedKeys(new Set())
     setBrowsePrefix("")
     setBrowseStack([])
-    setBrowseFiles([])
     setCollectionId("")
     setSkipDuplicates(false)
     setGenerateSummary(false)
@@ -190,20 +172,16 @@ export function DocumentImportDialog({
     setOcrEnabled(false)
     setExtractImages(false)
     setExtractTables(true)
-    setIsSubmitting(false)
     setUploadProgress(0)
     setCurrentUploadingFile("")
-    setDataSourcesLoaded(false)
   }, [open, defaultTab])
 
-  // 加载解析器列表
-  useEffect(() => {
-    if (!open) return
-    let cancelled = false
-    setIsLoadingProcessors(true)
-    getAdminDocProcessorConfig()
-      .then(res => {
-        if (cancelled) return
+  // ---------- 解析器列表 ----------
+  const { data: processors = [], isLoading: isLoadingProcessors } = useQuery({
+    queryKey: ["doc-processor-config", "import-dialog"],
+    queryFn: async () => {
+      try {
+        const res = await getAdminDocProcessorConfig()
         const list = Array.isArray(res?.processors)
           ? (res.processors as unknown[])
               .filter((item): item is Record<string, unknown> => isRecord(item))
@@ -224,62 +202,85 @@ export function DocumentImportDialog({
           const oa = typeOrder.indexOf(a.type), ob = typeOrder.indexOf(b.type)
           return (oa === -1 ? 999 : oa) - (ob === -1 ? 999 : ob)
         })
-        setProcessors(active)
-        if (active.length > 0) {
-          const cachedId = typeof window !== "undefined" ? localStorage.getItem("doc_import_processor_id") : null
-          const target = (cachedId && active.find(p => p.id === cachedId)) || active[0]
-          setProcessorId(target.id)
-          if (target.config) {
-            setOcrEnabled(target.config.is_ocr ?? false)
-            setExtractImages(target.config.extract_images ?? false)
-            setExtractTables(target.config.extract_tables ?? true)
-          }
-        }
-      })
-      .catch(() => toast.error(t("fetchProcessorFailed")))
-      .finally(() => { if (!cancelled) setIsLoadingProcessors(false) })
-    return () => { cancelled = true }
-  }, [open, t])
+        return active
+      } catch {
+        toast.error(t("fetchProcessorFailed"))
+        return []
+      }
+    },
+    enabled: open,
+  })
 
-  // 切到数据源 Tab 时加载数据源列表
+  // 解析器加载完成后，应用 localStorage 缓存的选中项与默认配置（只跑一次）
   useEffect(() => {
-    if (!open || activeTab !== "datasource" || dataSourcesLoaded) return
-    setIsLoadingDataSources(true)
-    listDataSources()
-      .then(rawList => {
-        const list = rawList ?? []
-        setDataSources(list)
-        if (list.length > 0 && !selectedDsIdRef.current) setSelectedDsId(list[0].id)
-      })
-      .catch(() => toast.error(t("loadSourcesFailed")))
-      .finally(() => {
-        setIsLoadingDataSources(false)
-        setDataSourcesLoaded(true)
-      })
-  }, [open, activeTab, dataSourcesLoaded, t])
-
-  // 浏览文件
-  const browse = useCallback(async (dsId: number, prefix: string) => {
-    setIsBrowsing(true)
-    setSelectedKeys(new Set())
-    try {
-      const items = await browseDataSource(dsId, { prefix })
-      setBrowseFiles(items ?? [])
-      setBrowsePrefix(prefix)
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t("browseFailed"))
-    } finally {
-      setIsBrowsing(false)
+    if (!open || processors.length === 0 || processorId) return
+    const cachedId = typeof window !== "undefined" ? localStorage.getItem("doc_import_processor_id") : null
+    const target = (cachedId && processors.find(p => p.id === cachedId)) || processors[0]
+    setProcessorId(target.id)
+    if (target.config) {
+      setOcrEnabled(target.config.is_ocr ?? false)
+      setExtractImages(target.config.extract_images ?? false)
+      setExtractTables(target.config.extract_tables ?? true)
     }
-  }, [t])
+  }, [open, processors, processorId])
+
+  // ---------- 数据源列表 ----------
+  const { data: dataSources = [], isLoading: isLoadingDataSources } = useQuery({
+    queryKey: ["data-sources"],
+    queryFn: async () => {
+      try {
+        return (await listDataSources()) ?? []
+      } catch {
+        toast.error(t("loadSourcesFailed"))
+        return []
+      }
+    },
+    enabled: open && activeTab === "datasource",
+  })
+
+  // 数据源列表加载完成后，默认选中第一个
+  useEffect(() => {
+    if (dataSources.length > 0 && selectedDsId === null) setSelectedDsId(dataSources[0].id)
+  }, [dataSources, selectedDsId])
+
+  // ---------- 浏览文件 ----------
+  const { data: browseFiles = [], isFetching: isBrowsing } = useQuery({
+    queryKey: ["data-source-browse-import", selectedDsId, browsePrefix],
+    queryFn: async () => {
+      if (selectedDsId === null) return [] as S3FileItem[]
+      try {
+        return (await browseDataSource(selectedDsId, { prefix: browsePrefix })) ?? []
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : t("browseFailed"))
+        return [] as S3FileItem[]
+      }
+    },
+    enabled: open && activeTab === "datasource" && selectedDsId !== null,
+  })
+
+  // 浏览结果切换时清掉选中（不同目录的 key 集合不该混在一起）
+  useEffect(() => { setSelectedKeys(new Set()) }, [selectedDsId, browsePrefix])
 
   // 数据源切换时回到根目录
   useEffect(() => {
-    if (selectedDsId && open && activeTab === "datasource") {
+    if (selectedDsId !== null) {
       setBrowseStack([])
-      browse(selectedDsId, "")
+      setBrowsePrefix("")
     }
-  }, [selectedDsId, open, activeTab, browse])
+  }, [selectedDsId])
+
+  // ---------- 单文件上传 mutation（在 loop 里用 mutateAsync）----------
+  const importDocumentMutation = useMutation({
+    mutationFn: (fd: FormData) => importDocument(toImportDocumentBody(fd)),
+  })
+
+  // ---------- 数据源批量导入 mutation ----------
+  const importFromSourceMutation = useMutation({
+    mutationFn: (vars: { id: number; payload: Parameters<typeof importFromDataSource>[1] }) =>
+      importFromDataSource(vars.id, vars.payload),
+  })
+
+  const isSubmitting = importDocumentMutation.isPending || importFromSourceMutation.isPending
 
   // ---------- 解析器派生 ----------
   const selectedProcessor = processors.find(p => p.id === processorId)
@@ -322,16 +323,16 @@ export function DocumentImportDialog({
 
   // ---------- 数据源 Tab 交互 ----------
   const handleEnterDir = (item: S3FileItem) => {
-    if (!selectedDsId) return
+    if (selectedDsId === null) return
     setBrowseStack(prev => [...prev, browsePrefix])
-    browse(selectedDsId, item.path)
+    setBrowsePrefix(item.path)
   }
 
   const handleBrowseBack = () => {
-    if (!selectedDsId || browseStack.length === 0) return
+    if (selectedDsId === null || browseStack.length === 0) return
     const prev = browseStack[browseStack.length - 1]
     setBrowseStack(s => s.slice(0, -1))
-    browse(selectedDsId, prev)
+    setBrowsePrefix(prev)
   }
 
   const toggleFileKey = (path: string) => {
@@ -352,13 +353,12 @@ export function DocumentImportDialog({
   // ---------- 提交 ----------
   const submitUpload = async () => {
     if (files.length === 0) { toast.error(t("selectFile")); return }
-    setIsSubmitting(true)
-    try {
-      localStorage.setItem("doc_import_processor_id", processorId)
-      const generated: Task[] = []
-      const skipped: string[] = []
-      const type = selectedProcessor?.type || "MinerU"
+    localStorage.setItem("doc_import_processor_id", processorId)
+    const generated: Task[] = []
+    const skipped: string[] = []
+    const type = selectedProcessor?.type || "MinerU"
 
+    try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
         setCurrentUploadingFile(t("uploading", { current: i + 1, total: files.length, name: file.name }))
@@ -377,7 +377,7 @@ export function DocumentImportDialog({
           fd.append("generate_summary", String(generateSummary))
           fd.append("generate_tags", String(generateTags))
           fd.append("auto_vectorize", String(autoVectorize))
-          const task = await importDocument(toImportDocumentBody(fd))
+          const task = await importDocumentMutation.mutateAsync(fd)
           if (task) generated.push(task)
           else skipped.push(file.name)
         } catch (err: unknown) {
@@ -402,30 +402,31 @@ export function DocumentImportDialog({
         onSuccess?.()
       }
     } finally {
-      setIsSubmitting(false)
       setCurrentUploadingFile("")
     }
   }
 
   const submitDataSourceImport = async () => {
-    if (!selectedDsId) { toast.error(t("selectSource")); return }
+    if (selectedDsId === null) { toast.error(t("selectSource")); return }
     if (selectedKeys.size === 0) { toast.error(t("selectFiles")); return }
-    setIsSubmitting(true)
+    localStorage.setItem("doc_import_processor_id", processorId)
+    const type = selectedProcessor?.type || "MinerU"
     try {
-      localStorage.setItem("doc_import_processor_id", processorId)
-      const type = selectedProcessor?.type || "MinerU"
-      const tasksResp = await importFromDataSource(selectedDsId, {
-        keys: Array.from(selectedKeys),
-        site_id: siteId,
-        collection_id: Number(collectionId),
-        processor_type: type,
-        ocr_enabled: ocrEnabled,
-        extract_images: extractImages,
-        extract_tables: extractTables,
-        duplicate_strategy: skipDuplicates ? "skip" : "allow",
-        generate_summary: generateSummary,
-        generate_tags: generateTags,
-        auto_vectorize: autoVectorize,
+      const tasksResp = await importFromSourceMutation.mutateAsync({
+        id: selectedDsId,
+        payload: {
+          keys: Array.from(selectedKeys),
+          site_id: siteId,
+          collection_id: Number(collectionId),
+          processor_type: type,
+          ocr_enabled: ocrEnabled,
+          extract_images: extractImages,
+          extract_tables: extractTables,
+          duplicate_strategy: skipDuplicates ? "skip" : "allow",
+          generate_summary: generateSummary,
+          generate_tags: generateTags,
+          auto_vectorize: autoVectorize,
+        },
       })
       // backend ``importFromDataSource`` response_model 标注为 ``dict``（实际返回
       // ``Task[]``），SDK 由此生成 ``Record<string, unknown> | null``。
@@ -441,8 +442,6 @@ export function DocumentImportDialog({
       }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t("importFailed"))
-    } finally {
-      setIsSubmitting(false)
     }
   }
 

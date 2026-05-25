@@ -1,5 +1,6 @@
 from app.core.integration.robot.adapters.dingtalk_app import DingTalkAdapter
 from app.core.integration.robot.adapters.feishu_app import FeishuAdapter
+from app.core.integration.robot.adapters.telegram_app import TelegramAdapter
 from app.core.integration.robot.adapters.wecom_app import WeComAppAdapter
 from app.core.integration.robot.adapters.wecom_kefu import WeComKefuAdapter
 from app.core.integration.robot.adapters.wecom_smart import WeComSmartAdapter
@@ -30,6 +31,8 @@ class RobotFactory:
             adapter = WeComAppAdapter()
         elif platform == "wecom_kefu":
             adapter = WeComKefuAdapter()
+        elif platform == "telegram_app":
+            adapter = TelegramAdapter()
         else:
             raise ValueError(f"暂不支持的机器人平台: {platform}")
 

@@ -14,13 +14,14 @@
 
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { useTranslations } from "next-intl"
 import { Streamdown } from "streamdown"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui"
 import { Search, CheckCircle2, Loader2, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getChatToolResult } from '@/lib/sdk/client-chat-sessions'
+import { getChatToolResult } from "@/lib/sdk/client-chat-sessions"
 import { getVisitorId } from "@/lib/visitor"
 import type { ToolCall } from "@/types"
 
@@ -43,70 +44,52 @@ interface Chunk {
 
 export function ToolResultDialog({ open, onOpenChange, toolCall, threadId, siteId, onResultFetched }: ToolResultDialogProps) {
   const t = useTranslations("ToolResult")
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<string | null>(null)
   const [expandedChunks, setExpandedChunks] = useState<Set<number>>(new Set())
 
-  // Fetch result on open if not already available
-  const fetchResult = useCallback(async () => {
-    if (!toolCall || !threadId) return
-    if (toolCall.result) { setResult(toolCall.result); return }
+  // 已有 result 直接复用，否则向后端拉取（带重试，因 stream 收尾后后端入库可能略有延迟）
+  const needsFetch = open && !!toolCall && !toolCall.result && !!threadId
+  const { data: fetchedResult, isFetching, isError } = useQuery({
+    queryKey: ["tool-result", threadId, toolCall?.id],
+    queryFn: async () => {
+      const data = await getChatToolResult(threadId, toolCall!.id, {
+        member_id: getVisitorId(),
+        site_id: siteId ?? undefined,
+      })
+      const content = typeof data?.content === "string" ? data.content : null
+      if (!content) throw new Error("tool result not ready") // 触发重试
+      return content
+    },
+    enabled: needsFetch,
+    retry: 2,
+    retryDelay: 1500,
+    staleTime: Infinity,
+  })
 
-    setLoading(true)
-    try {
-      // Background task may not have saved yet, retry up to 3 times
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          const data = await getChatToolResult(threadId, toolCall.id, {
-            member_id: getVisitorId(),
-            site_id: siteId ?? undefined,
-          })
-          const content = typeof data?.content === 'string' ? data.content : null
-          if (content) {
-            setResult(content)
-            onResultFetched?.(toolCall.id, content)
-            return
-          }
-        } catch {
-          if (attempt < 2) await new Promise(r => setTimeout(r, 1500))
-        }
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [toolCall, threadId, siteId, onResultFetched])
+  const result = toolCall?.result ?? fetchedResult ?? null
+  const loading = needsFetch && isFetching && !fetchedResult
+  const fetchError = needsFetch && isError && !fetchedResult
 
-  // Fetch when toolCall changes (dialog opens with new tool call)
-  const prevToolCallId = useRef<string | null>(null)
-  if (open && toolCall && toolCall.id !== prevToolCallId.current) {
-    prevToolCallId.current = toolCall.id
-    if (toolCall.result) {
-      if (result !== toolCall.result) setResult(toolCall.result)
-    } else {
-      fetchResult()
-    }
-  }
+  // 拉取成功后回写到 message 缓存
+  useEffect(() => {
+    if (fetchedResult && toolCall) onResultFetched?.(toolCall.id, fetchedResult)
+  }, [fetchedResult, toolCall, onResultFetched])
 
   const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-      setResult(null)
-      setExpandedChunks(new Set())
-      prevToolCallId.current = null
-    }
+    if (!isOpen) setExpandedChunks(new Set())
     onOpenChange(isOpen)
   }
 
-  // Parse result as chunks
-  let chunks: Chunk[] = []
-  if (result) {
+  const chunks = useMemo<Chunk[]>(() => {
+    if (!result) return []
     try {
       const parsed = JSON.parse(result)
-      if (Array.isArray(parsed)) chunks = parsed
-    } catch { /* raw text */ }
-  }
+      return Array.isArray(parsed) ? parsed : []
+    } catch { return [] }
+  }, [result])
 
-  let query = ""
-  try { query = JSON.parse(toolCall?.function?.arguments || "{}").query || "" } catch { /* */ }
+  const query = useMemo(() => {
+    try { return JSON.parse(toolCall?.function?.arguments || "{}").query || "" } catch { return "" }
+  }, [toolCall?.function?.arguments])
 
   const toggleChunk = (i: number) => {
     setExpandedChunks(prev => {
@@ -184,6 +167,8 @@ export function ToolResultDialog({ open, onOpenChange, toolCall, threadId, siteI
             </div>
           ) : result ? (
             <div className="text-xs text-slate-600 whitespace-pre-wrap break-words font-mono leading-relaxed">{result}</div>
+          ) : fetchError ? (
+            <div className="text-center py-16 text-sm text-red-500 italic">{t("fetchError")}</div>
           ) : (
             <div className="text-center py-16 text-sm text-muted-foreground italic">{t("empty")}</div>
           )}

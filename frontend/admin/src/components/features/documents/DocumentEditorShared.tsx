@@ -7,11 +7,7 @@
 
 import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Button, Card, CardContent, CardHeader, CardTitle, ImageUpload, Input, Popover, PopoverContent, PopoverTrigger, TagsInput, Textarea } from "@/components/ui"
 import {
   Image as ImageIcon, Settings as SettingsIcon,
   Tags, Hash, Info, Plus, Loader2, Sparkles
@@ -20,12 +16,8 @@ import { toast } from "sonner"
 import { useAiGenerateFields } from "@/hooks/useDocuments"
 import { LazyMarkdownEditor } from "@/components/editor"
 import { CreateCollectionDialog } from "@/components/features/documents/CreateCollectionDialog"
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
-import { TagsInput } from "@/components/ui/TagsInput"
-import { ImageUpload } from "@/components/ui/ImageUpload"
-import type { CollectionTree } from '@/lib/sdk/sdk.schemas'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui"
+import type { CollectionTree } from "@/lib/sdk/sdk.schemas"
 
 type CollectionTreeWithLevel = CollectionTree & { level?: number }
 
@@ -59,21 +51,21 @@ interface DocumentEditorContentProps {
   isPending: boolean
 }
 
-const AI_SUMMARY_MAX_LENGTH_KEY = 'doc_ai_summary_max_length'
+const AI_SUMMARY_MAX_LENGTH_KEY = "doc_ai_summary_max_length"
 const AI_SUMMARY_MAX_LENGTH_DEFAULT = 150
-const AI_TAGS_MAX_COUNT_KEY = 'doc_ai_tags_max_count'
+const AI_TAGS_MAX_COUNT_KEY = "doc_ai_tags_max_count"
 const AI_TAGS_MAX_COUNT_DEFAULT = 8
 const AI_CONTENT_SEND_LIMIT = 6000
 
 /** 左侧编辑器区域 */
 export function DocumentEditorContent({
   form, onChange,
-}: Pick<DocumentEditorContentProps, 'form' | 'onChange'>) {
+}: Pick<DocumentEditorContentProps, "form" | "onChange">) {
   const t = useTranslations("Documents")
   const aiGenerate = useAiGenerateFields()
 
   const [summaryMaxLength, setSummaryMaxLength] = useState<number>(() => {
-    if (typeof window === 'undefined') return AI_SUMMARY_MAX_LENGTH_DEFAULT
+    if (typeof window === "undefined") return AI_SUMMARY_MAX_LENGTH_DEFAULT
     const stored = localStorage.getItem(AI_SUMMARY_MAX_LENGTH_KEY)
     const parsed = stored ? parseInt(stored, 10) : NaN
     return Number.isNaN(parsed) ? AI_SUMMARY_MAX_LENGTH_DEFAULT : parsed
@@ -87,9 +79,9 @@ export function DocumentEditorContent({
       return
     }
     const content = trimmed.slice(0, AI_CONTENT_SEND_LIMIT)
-    const result = await aiGenerate.mutateAsync({ content, fields: ['summary'], summaryMaxLength })
+    const result = await aiGenerate.mutateAsync({ content, fields: ["summary"], summaryMaxLength })
     if (result?.summary) {
-      onChange('summary', result.summary)
+      onChange("summary", result.summary)
       toast.success(t("newDoc.aiGenerateSummarySuccess"))
     }
   }
@@ -111,7 +103,7 @@ export function DocumentEditorContent({
           placeholder={t("newDoc.placeholderTitle")}
           className="text-3xl font-extrabold border-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-300 bg-transparent"
           value={form.title}
-          onChange={(e) => onChange('title', e.target.value)}
+          onChange={(e) => onChange("title", e.target.value)}
         />
         <div className="space-y-2 pt-2">
           <div className="flex items-center justify-between gap-2 mb-1">
@@ -159,7 +151,7 @@ export function DocumentEditorContent({
             placeholder={t("newDoc.placeholderSummary")}
             className="resize-none min-h-[80px] text-sm leading-relaxed text-slate-600 border-none bg-slate-50/50 focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl px-4 py-3 placeholder:text-slate-400"
             value={form.summary}
-            onChange={(e) => onChange('summary', e.target.value)}
+            onChange={(e) => onChange("summary", e.target.value)}
           />
         </div>
       </CardHeader>
@@ -167,7 +159,7 @@ export function DocumentEditorContent({
         <div className="md-editor-container">
           <LazyMarkdownEditor
             value={form.content}
-            onChange={(v) => onChange('content', v)}
+            onChange={(v) => onChange("content", v)}
             placeholder={t("newDoc.placeholderContent")}
           />
         </div>
@@ -185,7 +177,7 @@ export function DocumentEditorSidebar({
   const aiGenerate = useAiGenerateFields()
 
   const [tagsMaxCount, setTagsMaxCount] = useState<number>(() => {
-    if (typeof window === 'undefined') return AI_TAGS_MAX_COUNT_DEFAULT
+    if (typeof window === "undefined") return AI_TAGS_MAX_COUNT_DEFAULT
     const stored = localStorage.getItem(AI_TAGS_MAX_COUNT_KEY)
     const parsed = stored ? parseInt(stored, 10) : NaN
     return Number.isNaN(parsed) ? AI_TAGS_MAX_COUNT_DEFAULT : parsed
@@ -199,9 +191,9 @@ export function DocumentEditorSidebar({
       return
     }
     const content = trimmed.slice(0, AI_CONTENT_SEND_LIMIT)
-    const result = await aiGenerate.mutateAsync({ content, fields: ['tags'], tagsMaxCount })
+    const result = await aiGenerate.mutateAsync({ content, fields: ["tags"], tagsMaxCount })
     if (result?.tags?.length) {
-      onChange('tags', result.tags)
+      onChange("tags", result.tags)
       toast.success(t("newDoc.aiGenerateTagsSuccess"))
     }
   }
@@ -221,7 +213,7 @@ export function DocumentEditorSidebar({
         siteId={siteId}
         open={isCreateCollectionOpen}
         onOpenChange={setIsCreateCollectionOpen}
-        onSuccess={(id) => onChange('collectionId', id.toString())}
+        onSuccess={(id) => onChange("collectionId", id.toString())}
         collections={collections}
       />
       <Card className="border-border/50 shadow-sm overflow-hidden">
@@ -242,7 +234,7 @@ export function DocumentEditorSidebar({
               <span className="text-red-500">*</span>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={form.collectionId} onValueChange={(v) => onChange('collectionId', v)} disabled={collectionsLoading}>
+              <Select value={form.collectionId} onValueChange={(v) => onChange("collectionId", v)} disabled={collectionsLoading}>
                 <SelectTrigger className="flex-1 bg-slate-50/50 border-slate-200 h-10 rounded-xl">
                   <SelectValue placeholder={collectionsLoading ? t("config.collectionsLoading") : (collections.length === 0 ? t("config.noCollection") : t("config.collectionPlaceholder"))} />
                 </SelectTrigger>
@@ -311,7 +303,7 @@ export function DocumentEditorSidebar({
                 </Button>
               </div>
             </div>
-            <TagsInput value={form.tags} onChange={(v) => onChange('tags', v)} placeholder={t("config.tagsPlaceholder")} />
+            <TagsInput value={form.tags} onChange={(v) => onChange("tags", v)} placeholder={t("config.tagsPlaceholder")} />
           </div>
 
           {/* 封面图 */}
@@ -320,7 +312,7 @@ export function DocumentEditorSidebar({
               <ImageIcon className="h-4 w-4" />
               <label className="text-sm font-bold">{t("config.coverImage")}</label>
             </div>
-            <ImageUpload value={form.coverImage} onChange={(v) => onChange('coverImage', v)} disabled={isPending} />
+            <ImageUpload value={form.coverImage} onChange={(v) => onChange("coverImage", v)} disabled={isPending} />
           </div>
 
           {/* 附加信息（由调用方注入） */}

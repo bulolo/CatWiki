@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { ModelSettingsCard } from './ModelSettingsCard'
-export { ModelDetailCard } from './ModelDetailCard'
-export { SingleModelConfig } from './SingleModelConfig'
-export { ManualModeConfig } from './ManualModeConfig'
-export * from './constants'
+export { ModelSettingsCard } from "./ModelSettingsCard"
+export { ModelDetailCard } from "./ModelDetailCard"
+export { SingleModelConfig } from "./SingleModelConfig"
+export { ManualModeConfig } from "./ManualModeConfig"
+export * from "./constants"

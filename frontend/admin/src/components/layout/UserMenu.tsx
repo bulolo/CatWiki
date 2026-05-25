@@ -25,15 +25,9 @@ import {
   ChevronDown,
   Lock
 } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, useConfirm } from "@/components/ui"
 import { getUserInfo, logout } from "@/lib/auth"
-import { UserRole } from '@/lib/sdk/sdk.schemas'
+import { UserRole } from "@/lib/sdk/sdk.schemas"
 import { toast } from "sonner"
 import { ChangePasswordModal } from "@/components/settings/users/ChangePasswordModal"
 
@@ -48,12 +42,12 @@ export function UserMenu() {
   }, [])
 
   const user = mounted ? getUserInfo() : null
+  const confirm = useConfirm()
 
-  const handleLogout = () => {
-    if (confirm(t("logoutConfirm"))) {
-      toast.success(t("logoutSuccess"))
-      logout()
-    }
+  const handleLogout = async () => {
+    if (!await confirm({ description: t("logoutConfirm") })) return
+    toast.success(t("logoutSuccess"))
+    logout()
   }
 
   // 获取显示的名称
@@ -63,11 +57,11 @@ export function UserMenu() {
   // 获取显示的职业/角色
   const getRoleLabel = (role?: string) => {
     switch (role) {
-      case 'admin' as const:
+      case "admin" as const:
         return t("sysAdmin")
-      case 'tenant_admin' as const:
+      case "tenant_admin" as const:
         return t("tenantAdmin")
-      case 'site_admin' as const:
+      case "site_admin" as const:
         return t("siteAdmin")
       default:
         return t("regularUser")

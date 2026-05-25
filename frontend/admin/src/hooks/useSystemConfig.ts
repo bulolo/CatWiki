@@ -16,24 +16,25 @@
  * React Query hooks for System Config management
  */
 
-import { useMutation } from '@tanstack/react-query'
-import { deleteAdminConfig, getGetAdminAiConfigQueryKey, getGetAdminDocProcessorConfigQueryKey, testDocProcessorConnection, testModelConnection, updateAdminAiConfig, updateAdminDocProcessorConfig, useGetAdminAiConfig, useGetAdminDocProcessorConfig } from '@/lib/sdk/admin-system-configs'
-import type { AIConfigUpdate, DocProcessorConfig, DocProcessorsUpdate, ModelConfig, TestConnectionRequestModelType } from '@/lib/sdk/sdk.schemas'
-import { isAuthenticated } from '@/lib/auth'
-import { useAdminMutation } from './useAdminMutation'
+import { useMutation } from "@tanstack/react-query"
+import { getGetAdminAiConfigQueryKey, getGetAdminDocProcessorConfigQueryKey, testDocProcessorConnection, testModelConnection, updateAdminAiConfig, updateAdminDocProcessorConfig, useGetAdminAiConfig, useGetAdminDocProcessorConfig } from "@/lib/sdk/admin-system-configs"
+import type { AIConfigUpdate, DocProcessorConfig, DocProcessorsUpdate, ModelConfig, TestConnectionRequestModelType } from "@/lib/sdk/sdk.schemas"
+import { isAuthenticated } from "@/lib/auth"
+import { useAdminMutation } from "./useAdminMutation"
+import { STALE_TIME } from "@/lib/react-query"
 
-type Scope = 'platform' | 'tenant'
+type Scope = "platform" | "tenant"
 
 /**
  * 获取 AI 模型配置
  */
-export function useAIConfig(scope: Scope = 'tenant') {
+export function useAIConfig(scope: Scope = "tenant") {
   return useGetAdminAiConfig(
     { scope },
     {
       query: {
         enabled: isAuthenticated(),
-        staleTime: 5 * 60 * 1000,
+        staleTime: STALE_TIME.MEDIUM,
       },
     },
   )
@@ -42,7 +43,7 @@ export function useAIConfig(scope: Scope = 'tenant') {
 /**
  * 更新 AI 模型配置
  */
-export function useUpdateAIConfig(scope: Scope = 'tenant') {
+export function useUpdateAIConfig(scope: Scope = "tenant") {
   return useAdminMutation({
     mutationFn: (config: AIConfigUpdate) => updateAdminAiConfig(config, { scope }),
     invalidateKeys: [getGetAdminAiConfigQueryKey({ scope })],
@@ -50,19 +51,9 @@ export function useUpdateAIConfig(scope: Scope = 'tenant') {
 }
 
 /**
- * 删除指定配置
- */
-export function useDeleteConfig(scope: Scope = 'tenant') {
-  return useAdminMutation({
-    mutationFn: (configKey: string) => deleteAdminConfig(configKey, { scope }),
-    invalidateKeys: [getGetAdminAiConfigQueryKey({ scope })],
-  })
-}
-
-/**
  * 测试模型连接
  */
-export function useTestConnection(scope: Scope = 'tenant') {
+export function useTestConnection(scope: Scope = "tenant") {
   return useMutation({
     mutationFn: (data: { modelType: TestConnectionRequestModelType; config: ModelConfig }) =>
       testModelConnection(
@@ -75,7 +66,7 @@ export function useTestConnection(scope: Scope = 'tenant') {
 /**
  * 获取文档处理服务配置
  */
-export function useDocProcessorConfig(scope: Scope = 'tenant') {
+export function useDocProcessorConfig(scope: Scope = "tenant") {
   return useGetAdminDocProcessorConfig(
     { scope },
     {
@@ -89,7 +80,7 @@ export function useDocProcessorConfig(scope: Scope = 'tenant') {
 /**
  * 更新文档处理服务配置
  */
-export function useUpdateDocProcessorConfig(scope: Scope = 'tenant') {
+export function useUpdateDocProcessorConfig(scope: Scope = "tenant") {
   return useAdminMutation({
     mutationFn: (data: DocProcessorsUpdate) =>
       updateAdminDocProcessorConfig(data, { scope }),
@@ -100,7 +91,7 @@ export function useUpdateDocProcessorConfig(scope: Scope = 'tenant') {
 /**
  * 测试文档处理服务连接
  */
-export function useTestDocProcessorConnection(scope: Scope = 'tenant') {
+export function useTestDocProcessorConnection(scope: Scope = "tenant") {
   return useMutation({
     mutationFn: (config: DocProcessorConfig) =>
       testDocProcessorConnection({ config }, { scope }),

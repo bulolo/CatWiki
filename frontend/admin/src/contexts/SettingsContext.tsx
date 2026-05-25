@@ -23,7 +23,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { toast } from "sonner"
 import { useTranslations } from "next-intl"
 import { useAIConfig, useUpdateAIConfig } from "@/hooks"
-import type { AIConfigResponse, AIConfigUpdate, ModelConfig } from '@/lib/sdk/sdk.schemas'
+import type { AIConfigResponse, AIConfigUpdate, ModelConfig } from "@/lib/sdk/sdk.schemas"
 import { type AIConfigs, initialConfigs, MODEL_TYPES } from "@/types/settings"
 
 type RuntimeModelType = typeof MODEL_TYPES[number]
@@ -65,6 +65,9 @@ const mergeAIConfigs = (backendData: unknown, initial: AIConfigs): AIConfigs => 
 }
 
 function toApiModelConfig(config: AIConfigs[RuntimeModelType]): AIConfigUpdate["chat"] {
+  // extra_body 在 SDK 是 { [key: string]: unknown } | null —— 这里只关心 chat_template_kwargs
+  const extraBody = (config.extra_body ?? {}) as Record<string, unknown>
+  const existingKwargs = (extraBody.chat_template_kwargs ?? {}) as Record<string, unknown>
   return {
     provider: config.provider,
     model: config.model,
@@ -72,18 +75,18 @@ function toApiModelConfig(config: AIConfigs[RuntimeModelType]): AIConfigUpdate["
     base_url: config.base_url,
     dimension: typeof config.dimension === "number" ? config.dimension : null,
     extra_body: {
-      ...(config.extra_body as Record<string, any>),
+      ...extraBody,
       chat_template_kwargs: {
-        ...(config.extra_body as any)?.chat_template_kwargs,
-        enable_thinking: false
-      }
+        ...existingKwargs,
+        enable_thinking: false,
+      },
     },
     is_vision: config.is_vision ?? false,
     mode: config.mode === "platform"
       ? "platform"
       : config.mode === "custom"
         ? "custom"
-        : undefined
+        : undefined,
   } as AIConfigUpdate["chat"]
 }
 
@@ -94,7 +97,7 @@ interface SettingsContextType {
   savedConfigs: AIConfigs
   isLoading: boolean
   isAiDirty: boolean
-  scope: 'platform' | 'tenant'
+  scope: "platform" | "tenant"
 
   // 更新函数
   handleUpdate: (type: RuntimeModelType, field: string, value: PrimitiveConfigValue) => void
@@ -109,8 +112,8 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
-export function SettingsProvider({ children, scope = 'tenant' }: { children: ReactNode, scope?: 'platform' | 'tenant' }) {
-  const t = useTranslations('Models')
+export function SettingsProvider({ children, scope = "tenant" }: { children: ReactNode, scope?: "platform" | "tenant" }) {
+  const t = useTranslations("Models")
   const [configs, setConfigs] = useState<AIConfigs>(initialConfigs)
   const [savedConfigs, setSavedConfigs] = useState<AIConfigs>(initialConfigs)
   const [platformFallback, setPlatformFallback] = useState<Record<string, boolean>>({})
@@ -210,15 +213,15 @@ export function SettingsProvider({ children, scope = 'tenant' }: { children: Rea
 
   const isAiDirty = (() => {
     const normalize = (obj: unknown): string => {
-      if (obj === null || obj === undefined) return ''
-      if (typeof obj !== 'object') return String(obj)
-      if (Array.isArray(obj)) return obj.map(normalize).join(',')
+      if (obj === null || obj === undefined) return ""
+      if (typeof obj !== "object") return String(obj)
+      if (Array.isArray(obj)) return obj.map(normalize).join(",")
       const record = obj as Record<string, unknown>
       return Object.keys(obj)
         .filter(k => record[k] !== undefined && record[k] !== null) // Filter out null/undefined keys
         .sort()
         .map(k => `${k}:${normalize(record[k])}`)
-        .join('|')
+        .join("|")
     }
     const currentStr = normalize({ chat: configs.chat, embedding: configs.embedding, rerank: configs.rerank, bot_config: configs.bot_config })
     const savedStr = normalize({ chat: savedConfigs.chat, embedding: savedConfigs.embedding, rerank: savedConfigs.rerank, bot_config: savedConfigs.bot_config })

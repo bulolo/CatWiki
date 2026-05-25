@@ -16,10 +16,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, ImageUpload, Input, Textarea } from "@/components/ui"
 import {
   ChevronLeft,
   Save,
@@ -32,15 +29,14 @@ import {
 import { toast } from "sonner"
 import { useCreateSite } from "@/hooks"
 import { env } from "@/lib/env"
-import { ImageUpload } from "@/components/ui/ImageUpload"
 
 // 主题色配置
 const THEME_COLORS_BASE = [
-  { value: 'blue', colorName: 'blue', className: 'bg-blue-500' },
-  { value: 'emerald', colorName: 'emerald', className: 'bg-emerald-500' },
-  { value: 'purple', colorName: 'purple', className: 'bg-purple-500' },
-  { value: 'orange', colorName: 'orange', className: 'bg-orange-500' },
-  { value: 'slate', colorName: 'slate', className: 'bg-slate-800' },
+  { value: "blue", colorName: "blue", className: "bg-blue-500" },
+  { value: "emerald", colorName: "emerald", className: "bg-emerald-500" },
+  { value: "purple", colorName: "purple", className: "bg-purple-500" },
+  { value: "orange", colorName: "orange", className: "bg-orange-500" },
+  { value: "slate", colorName: "slate", className: "bg-slate-800" },
 ] as const
 
 interface CreateSiteFormProps {
@@ -209,10 +205,10 @@ export function CreateSiteForm({ onCancel, onSuccess }: CreateSiteFormProps) {
                   {THEME_COLORS_BASE.map((color) => (
                     <div
                       key={color.value}
-                      className={`w-8 h-8 rounded-full ${color.className} cursor-pointer ring-offset-2 transition-all ${themeColor === color.value ? 'ring-2 ring-primary ring-offset-2' : 'hover:ring-2 ring-slate-300'
+                      className={`w-8 h-8 rounded-full ${color.className} cursor-pointer ring-offset-2 transition-all ${themeColor === color.value ? "ring-2 ring-primary ring-offset-2" : "hover:ring-2 ring-slate-300"
                         }`}
                       onClick={() => setThemeColor(color.value)}
-                      title={t(`colors.${color.colorName}` as any)}
+                      title={t(`colors.${color.colorName}` as Parameters<typeof t>[0])}
                     />
                   ))}
                 </div>
@@ -221,11 +217,11 @@ export function CreateSiteForm({ onCancel, onSuccess }: CreateSiteFormProps) {
                 <label className="text-sm font-medium text-slate-700">{t("layoutMode")}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <div
-                    className={`border rounded-lg p-2 text-center text-xs font-medium cursor-pointer transition-colors ${layoutMode === 'sidebar'
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-slate-200 bg-slate-50 text-slate-900'
+                    className={`border rounded-lg p-2 text-center text-xs font-medium cursor-pointer transition-colors ${layoutMode === "sidebar"
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-slate-200 bg-slate-50 text-slate-900"
                       }`}
-                    onClick={() => setLayoutMode('sidebar')}
+                    onClick={() => setLayoutMode("sidebar")}
                   >
                     {t("sidebarLayout")}
                   </div>
@@ -254,10 +250,10 @@ export function CreateSiteForm({ onCancel, onSuccess }: CreateSiteFormProps) {
                   <p className="text-xs text-slate-500">{t("enableTip")}</p>
                 </div>
                 <div
-                  className={`w-10 h-5 ${isActive ? 'bg-primary' : 'bg-slate-200'} rounded-full relative cursor-pointer`}
+                  className={`w-10 h-5 ${isActive ? "bg-primary" : "bg-slate-200"} rounded-full relative cursor-pointer`}
                   onClick={() => setIsActive(!isActive)}
                 >
-                  <div className={`absolute ${isActive ? 'right-0.5' : 'left-0.5'} top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all`} />
+                  <div className={`absolute ${isActive ? "right-0.5" : "left-0.5"} top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all`} />
                 </div>
               </div>
             </CardContent>
@@ -281,10 +277,10 @@ export function CreateSiteForm({ onCancel, onSuccess }: CreateSiteFormProps) {
                 <p className="text-xs text-slate-500">{t("initAdminTip")}</p>
               </div>
               <div
-                className={`w-10 h-5 ${initAdmin ? 'bg-primary' : 'bg-slate-200'} rounded-full relative cursor-pointer`}
+                className={`w-10 h-5 ${initAdmin ? "bg-primary" : "bg-slate-200"} rounded-full relative cursor-pointer`}
                 onClick={() => setInitAdmin(!initAdmin)}
               >
-                <div className={`absolute ${initAdmin ? 'right-0.5' : 'left-0.5'} top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all`} />
+                <div className={`absolute ${initAdmin ? "right-0.5" : "left-0.5"} top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all`} />
               </div>
             </div>
 

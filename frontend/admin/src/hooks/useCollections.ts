@@ -16,22 +16,23 @@
  * React Query hooks for Collection management
  */
 
-import { useQueryClient } from '@tanstack/react-query'
-import { createAdminCollection, deleteAdminCollection, getGetAdminCollectionTreeQueryKey, getListAdminCollectionsQueryKey, updateAdminCollection, useGetAdminCollection, useGetAdminCollectionTree, useListAdminCollections } from '@/lib/sdk/admin-collections'
-import type { CollectionCreate, CollectionTree, CollectionUpdate } from '@/lib/sdk/sdk.schemas'
-import { isAuthenticated } from '@/lib/auth'
-import { useAdminMutation } from './useAdminMutation'
+import { useQueryClient } from "@tanstack/react-query"
+import { createAdminCollection, deleteAdminCollection, getGetAdminCollectionTreeQueryKey, getListAdminCollectionsQueryKey, updateAdminCollection, useGetAdminCollection, useGetAdminCollectionTree, useListAdminCollections } from "@/lib/sdk/admin-collections"
+import type { CollectionCreate, CollectionTree, CollectionUpdate } from "@/lib/sdk/sdk.schemas"
+import { isAuthenticated } from "@/lib/auth"
+import { useAdminMutation } from "./useAdminMutation"
+import { STALE_TIME } from "@/lib/react-query"
 
 /**
  * 获取目录树
  */
 export function useCollectionTree(siteId: number, showDocuments: boolean = false) {
   return useGetAdminCollectionTree(
-    { site_id: siteId, type: showDocuments ? undefined : 'collection' },
+    { site_id: siteId, type: showDocuments ? undefined : "collection" },
     {
       query: {
         enabled: !!siteId && isAuthenticated(),
-        staleTime: 5 * 60 * 1000,
+        staleTime: STALE_TIME.MEDIUM,
         select: (data) => data ?? [],
       },
     },
@@ -47,7 +48,7 @@ export function useCollections(siteId: number, parentId?: number) {
     {
       query: {
         enabled: !!siteId && isAuthenticated(),
-        staleTime: 5 * 60 * 1000,
+        staleTime: STALE_TIME.MEDIUM,
         select: (data) => data?.list ?? [],
       },
     },
@@ -61,7 +62,7 @@ export function useCollection(id: number | undefined) {
   return useGetAdminCollection(id ?? 0, {
     query: {
       enabled: !!id && isAuthenticated(),
-      staleTime: 5 * 60 * 1000,
+      staleTime: STALE_TIME.MEDIUM,
     },
   })
 }
@@ -86,7 +87,7 @@ export function useUpdateCollection(_siteId: number) {
   return useAdminMutation({
     mutationFn: ({ id, data }: { id: number; data: CollectionUpdate }) =>
       updateAdminCollection(id, data),
-    invalidateKeys: [['/admin/v1/collections']],
+    invalidateKeys: [["/admin/v1/collections"]],
   })
 }
 
@@ -124,7 +125,7 @@ export function useDeleteCollection(siteId: number) {
         )
       }
     },
-    invalidateKeys: [['/admin/v1/collections']],
+    invalidateKeys: [["/admin/v1/collections"]],
   })
 }
 
@@ -134,6 +135,6 @@ export function useDeleteCollection(siteId: number) {
 export function useUpdateCollectionSort(_siteId: number) {
   return useAdminMutation({
     mutationFn: async (_sortData: { id: number; sort_order: number }[]) => true,
-    invalidateKeys: [['/admin/v1/collections']],
+    invalidateKeys: [["/admin/v1/collections"]],
   })
 }

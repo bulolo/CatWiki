@@ -19,7 +19,7 @@
 
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui"
 import { useTranslations } from "next-intl"
 import { PlugZap, Save, Loader2 } from "lucide-react"
 import { useModelConfigLogic } from "@/hooks/useModelConfigLogic"

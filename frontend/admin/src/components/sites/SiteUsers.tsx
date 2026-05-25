@@ -16,18 +16,8 @@
 
 import { useTranslations, useLocale } from "next-intl"
 import { useState } from "react"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui"
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, useConfirm } from "@/components/ui"
 import { cn } from "@/lib/utils"
 import {
   Users,
@@ -43,35 +33,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { CreateUserForm } from "@/components/settings/users/CreateUserForm"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
-} from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { UserRole, UserStatus, type UserListItem } from '@/lib/sdk/sdk.schemas'
+import { UserRole, UserStatus, type UserListItem } from "@/lib/sdk/sdk.schemas"
 
 
 import {
@@ -102,6 +64,7 @@ function parsePasswordResponse(data: unknown): { password: string } | null {
 
 export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
   const t = useTranslations("SiteUsersPanel")
+  const confirm = useConfirm()
   const locale = useLocale()
   const [page, setPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
@@ -128,13 +91,11 @@ export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
   const total = usersData?.total || 0
 
   const currentUser = getUserInfo()
-  const isSystemAdmin = currentUser?.role === 'admin' as const
+  const isSystemAdmin = currentUser?.role === "admin" as const
 
   // 处理移除站点权限（如果移除当前站点，用户就不再出现在这个列表里了，类似于删除）
   const handleRemoveFromSite = async (userId: number, currentSites: number[]) => {
-    if (!confirm(t("removeConfirm"))) {
-      return
-    }
+    if (!await confirm({ description: t("removeConfirm"), variant: "destructive" })) return
 
     const newSites = currentSites.filter((id: number) => id !== siteId)
 
@@ -169,9 +130,7 @@ export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
 
 
   const handleResetPassword = async (userId: number, userName: string, userEmail: string) => {
-    if (!confirm(t("resetConfirm", { name: userName }))) {
-      return
-    }
+    if (!await confirm({ description: t("resetConfirm", { name: userName }) })) return
 
     resetPasswordMutation.mutate(userId, {
       onSuccess: (data) => {
@@ -291,31 +250,31 @@ export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
                     <TableCell>
                       <Badge
                         variant={
-                          user.role === 'admin' as const ? "default" :
-                            user.role === 'tenant_admin' as const ? "default" :
-                              user.role === 'site_admin' as const ? "secondary" : "outline"
+                          user.role === "admin" as const ? "default" :
+                            user.role === "tenant_admin" as const ? "default" :
+                              user.role === "site_admin" as const ? "secondary" : "outline"
                         }
                         className={cn(
                           "font-bold text-[10px] tracking-tight px-2 border-none",
-                          user.role === 'admin' as const ? "bg-primary text-primary-foreground" :
-                            user.role === 'tenant_admin' as const ? "bg-violet-500/10 text-violet-600" :
-                              user.role === 'site_admin' as const ? "bg-amber-500/10 text-amber-600" :
+                          user.role === "admin" as const ? "bg-primary text-primary-foreground" :
+                            user.role === "tenant_admin" as const ? "bg-violet-500/10 text-violet-600" :
+                              user.role === "site_admin" as const ? "bg-amber-500/10 text-amber-600" :
                                 "bg-muted text-muted-foreground"
                         )}
                       >
-                        {user.role === 'admin' as const ? t("roleSysAdmin") :
-                          user.role === 'tenant_admin' as const ? t("roleTenantAdmin") :
-                            user.role === 'site_admin' as const ? t("roleSiteAdmin") : user.role}
+                        {user.role === "admin" as const ? t("roleSysAdmin") :
+                          user.role === "tenant_admin" as const ? t("roleTenantAdmin") :
+                            user.role === "site_admin" as const ? t("roleSiteAdmin") : user.role}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         <span className={cn(
                           "w-2 h-2 rounded-full",
-                          user.status === 'active' as const ? "bg-emerald-500" : "bg-slate-300"
+                          user.status === "active" as const ? "bg-emerald-500" : "bg-slate-300"
                         )} />
                         <span className="text-xs text-muted-foreground">
-                          {user.status === 'active' as const ? t("active") : t("disabled")}
+                          {user.status === "active" as const ? t("active") : t("disabled")}
                         </span>
 
                       </div>
@@ -323,10 +282,10 @@ export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
                     <TableCell className="text-muted-foreground text-sm">
                       {user.last_login_at
                         ? new Date(user.last_login_at).toLocaleString(locale, {
-                          month: 'numeric',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
+                          month: "numeric",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit"
                         })
                         : t("neverLoggedIn")
                       }
@@ -351,11 +310,11 @@ export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
                               <DropdownMenuSubContent className="w-48">
                                 {isSystemAdmin && (
                                   <DropdownMenuItem
-                                    onSelect={() => updateRole(user.id, 'site_admin' as const)}
+                                    onSelect={() => updateRole(user.id, "site_admin" as const)}
                                     className="flex items-center justify-between"
                                   >
                                     <span>{t("roleSiteAdmin")}</span>
-                                    {user.role === 'site_admin' as const && <Check className="h-4 w-4 text-primary" />}
+                                    {user.role === "site_admin" as const && <Check className="h-4 w-4 text-primary" />}
                                   </DropdownMenuItem>
                                 )}
 
@@ -374,17 +333,16 @@ export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
 
                           <DropdownMenuItem
                             className="text-orange-600 flex items-center gap-2"
-                            onSelect={() => {
-                              const newStatus = user.status === 'active' as const ? 'inactive' as const : 'active' as const
-                              if (confirm(newStatus === 'inactive' as const ? t("disableConfirm") : t("enableConfirm"))) {
-                                updateStatus(user.id, newStatus)
-                              }
+                            onSelect={async () => {
+                              const newStatus = user.status === "active" as const ? "inactive" as const : "active" as const
+                              const ok = await confirm({ description: newStatus === "inactive" as const ? t("disableConfirm") : t("enableConfirm") })
+                              if (ok) updateStatus(user.id, newStatus)
                             }}
                           >
                             <div className="w-4 h-4 flex items-center justify-center">
-                              <span className={cn("w-2 h-2 rounded-full", user.status === 'active' as const ? "bg-orange-500" : "bg-emerald-500")} />
+                              <span className={cn("w-2 h-2 rounded-full", user.status === "active" as const ? "bg-orange-500" : "bg-emerald-500")} />
                             </div>
-                            {user.status === 'active' as const ? t("disableAccount") : t("enableAccount")}
+                            {user.status === "active" as const ? t("disableAccount") : t("enableAccount")}
                           </DropdownMenuItem>
 
 

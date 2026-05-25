@@ -481,6 +481,7 @@
   "DocProcessor": {
     "title": "文档解析",
     "description": "配置可用的文档解析 API，实际使用时可选择。",
+    "deleteConfirm": "确定删除这个解析器吗？此操作不可撤销。",
     "addProcessor": "添加解析器",
     "editProcessor": "编辑解析器",
     "addFirst": "添加第一个解析器",
@@ -569,6 +570,11 @@
     "systemSettings": "系统设置",
     "demoMode": "演示模式",
     "demoModeMessage": "当前处于<bold>演示模式</bold>：出于安全考虑，系统配置中的敏感信息（如 API Key）已自动脱敏，且部分修改操作可能受限。"
+  },
+  "ConfirmDialog": {
+    "defaultTitle": "请确认",
+    "confirm": "确认",
+    "cancel": "取消"
   },
   "Common": {
     "save": "保存",
@@ -940,6 +946,7 @@
         "wecom_smart": "企业微信智能机器人",
         "dingtalk_app": "钉钉",
         "feishu_app": "飞书",
+        "telegram_app": "Telegram",
         "unknown": "未知来源"
       },
       "toolCall": "知识库检索",
@@ -1141,11 +1148,23 @@
     },
     "telegram": {
       "title": "Telegram 机器人",
-      "description": "在 Telegram 中与您的知识库对话",
+      "description": "通过 Telegram Bot，在 Telegram 中与知识库对话",
       "type": "应用",
-      "comingSoon": "Telegram 机器人功能开发中，敬请期待...",
-      "docLink": "Telegram 机器人配置文档",
-      "badge": "敬请期待"
+      "botToken": "Bot Token",
+      "botTokenPlaceholder": "粘贴 BotFather 给的 Bot Token",
+      "apiBaseUrl": "API 反代地址（可选）",
+      "apiBaseUrlPlaceholder": "https://api.telegram.org",
+      "apiBaseUrlHint": "如服务器无法直连 api.telegram.org（如中国大陆），可填写自建的反向代理地址",
+      "allowedUserIds": "用户白名单（可选）",
+      "allowedUserIdsPlaceholder": "123456789,987654321",
+      "allowedUserIdsHint": "Telegram 用户 ID，逗号分隔。留空则所有人都可对话",
+      "instruction": "配置说明",
+      "step1": "在 Telegram 中与 <b>@BotFather</b> 私聊，发送 <b>/newbot</b> 创建机器人并获取 <b>Bot Token</b>",
+      "step2": "把 Token 粘贴到本卡片，并启用本平台",
+      "step3": "若要在群里 @机器人 问答，发送 <b>/setprivacy</b> → 选择对应 Bot → 关闭 <b>Group Privacy</b>，再重新拉群",
+      "step4": "服务器若无法直连 <b>api.telegram.org</b>，需在上面填写反向代理地址",
+      "step5": "用户首次给 Bot 发任意消息即可触发对话；发送 <b>/clear</b> 重置上下文",
+      "docLink": "Telegram 机器人配置文档"
     }
   },
   "DraftRestore": {
@@ -1548,6 +1567,7 @@
     "updateSuccess": "数据源更新成功",
     "deleteSuccess": "数据源已删除",
     "deleteFailed": "删除失败",
+    "deleteConfirm": "确定要删除数据源「{name}」吗？此操作不可恢复",
     "browseFiles": "浏览文件",
     "browseFailed": "浏览文件失败",
     "back": "返回上级",

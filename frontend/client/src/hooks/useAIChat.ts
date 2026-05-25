@@ -14,12 +14,15 @@
 
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect, type Dispatch, type SetStateAction } from "react"
 import { env } from "@/lib/env"
-import { getChatSessionMessages } from '@/lib/sdk/client-chat-sessions'
+import { getChatSessionMessages } from "@/lib/sdk/client-chat-sessions"
 import { useTranslations } from "next-intl"
 import type { Message } from "@/types"
+import { formatHistoryMessages } from "@/lib/chat-history"
 import { getVisitorId } from "@/lib/visitor"
+import { getSiteAccessToken } from "@/lib/site-access-token"
+import { logError } from "@/lib/error-handler"
 
 interface UseAIChatOptions {
   /** 初始消息列表（用于欢迎消息等） */
@@ -28,6 +31,10 @@ interface UseAIChatOptions {
   selectedSiteId?: number | null
   /** 当前选中的租户ID（用于双重校验隔离） */
   selectedTenantId?: number | null
+  /** 当前路由租户标识（用于读取站点访问 token） */
+  tenantSlug?: string | null
+  /** 当前路由站点标识（用于读取站点访问 token） */
+  siteSlug?: string | null
   /** 消息发送完成后的回调 */
   onMessageSent?: () => void
 }
@@ -44,17 +51,23 @@ interface UseAIChatReturn {
   /** 当前会话ID */
   threadId: string
   /** 直接设置消息列表 */
-  setMessages: (messages: Message[]) => void
+  setMessages: Dispatch<SetStateAction<Message[]>>
   /** 直接设置当前 thread_id */
   setThreadId: (id: string) => void
   /** 加载特定会话的消息历史 */
   loadSessionMessages: (threadId: string) => Promise<void>
 }
 
-/**
- * 生成唯一的 thread_id
- */
+interface ToolCallAccumulator {
+  id: string
+  name: string
+  arguments: string
+}
+
 function generateThreadId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return `thread-${crypto.randomUUID()}`
+  }
   return `thread-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
 }
 
@@ -63,6 +76,8 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     initialMessages = [],
     selectedSiteId = null,
     selectedTenantId = null,
+    tenantSlug = null,
+    siteSlug = null,
   } = options
 
   const t = useTranslations("Errors")
@@ -70,15 +85,18 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [threadId, setThreadId] = useState<string>(generateThreadId)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const isLoadingRef = useRef(false)
 
-  // 引用初始消息，用于重置
+  // 用 ref 追踪可能每渲染变化的值，避免 sendMessage useCallback 依赖不稳定引用
   const initialMessagesRef = useRef<Message[]>(initialMessages)
-
-  const onMessageSent = options.onMessageSent
+  const onMessageSentRef = useRef(options.onMessageSent)
+  useEffect(() => { initialMessagesRef.current = initialMessages }, [initialMessages])
+  useEffect(() => { onMessageSentRef.current = options.onMessageSent }, [options.onMessageSent])
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || isLoading) return
+    if (!content.trim() || isLoadingRef.current) return
 
+    isLoadingRef.current = true
     setIsLoading(true)
 
     // 1. 添加用户消息
@@ -106,7 +124,8 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       input: content.trim(),
       stream: true,
       user: getVisitorId(),
-      ...(threadId ? { previous_response_id: threadId } : {}),
+      // 只有服务端返回的真实 response ID 才作为 previous_response_id，本地占位 ID 不传
+      ...(!threadId.startsWith("thread-") ? { previous_response_id: threadId } : {}),
     }
 
     // 添加过滤器 (携带 site_id 和 tenant_id 实现双重校验隔离)
@@ -121,11 +140,8 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       }
-      if (typeof window !== "undefined") {
-        const siteSlug = window.location.pathname.split("/")[2]
-        const token = siteSlug ? sessionStorage.getItem(`site_access_token:${siteSlug}`) : null
-        if (token) headers["X-Site-Access-Token"] = token
-      }
+      const token = getSiteAccessToken(tenantSlug, siteSlug)
+      if (token) headers["X-Site-Access-Token"] = token
 
       const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/v1/chat/responses`, {
         method: "POST",
@@ -148,12 +164,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let accumulatedContent = ""
-      // 累积当前轮次的 tool_call (因为可能分多个 chunk 发送)
-      interface ToolCallAccumulator {
-        id: string
-        name: string
-        arguments: string
-      }
       let currentToolCall: ToolCallAccumulator | null = null
       // 保存所有历史 tool calls（已完成的）
       const allCompletedToolCalls: Array<{ id: string; name: string; arguments: string }> = []
@@ -218,7 +228,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
                     ? {
                       ...msg,
                       status: "tool_calling",
-                      activeToolName: data.tool,
                       toolCalls: displayToolCalls.length > 0 ? displayToolCalls : undefined
                     }
                     : msg
@@ -256,15 +265,8 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
               continue
             }
 
-            // 4. 工具调用结束
+            // 4. 工具调用结束（无 UI 变更，仅作为流程标记）
             if (eventType === "response.tool_call.completed") {
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === assistantMsgId
-                    ? { ...msg, activeToolName: undefined }
-                    : msg
-                )
-              )
               continue
             }
 
@@ -298,7 +300,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
                       content: accumulatedContent,
                       status: "streaming",
                       toolCalls: finalToolCalls,
-                      activeToolName: undefined
                     }
                     : msg
                 )
@@ -317,7 +318,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
               )
             }
           } catch (e) {
-            console.error("Error parsing stream chunk", e)
+            logError("useAIChat:parseStreamChunk", e)
           }
         }
       }
@@ -326,38 +327,38 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       setMessages(prev =>
         prev.map(msg =>
           msg.id === assistantMsgId
-            ? { ...msg, status: undefined, activeToolName: undefined }
+            ? { ...msg, status: undefined }
             : msg
         )
       )
 
     } catch (error: unknown) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        console.log("Chat aborted")
-      } else {
-        console.warn("Chat error:", error)
-        const errorMessage = error instanceof Error ? error.message : t("unknownError")
-        setMessages(prev =>
-          prev.map(msg =>
-            msg.id === assistantMsgId
-              ? { ...msg, content: msg.content || `⚠️ ${errorMessage}` }
-              : msg
-          )
+      const isAbort = error instanceof DOMException && error.name === "AbortError"
+      if (isAbort) return // 用户主动取消，沿用已有占位消息，不写错误提示
+      logError("useAIChat:sendMessage", error)
+      const errorMessage = error instanceof Error ? error.message : t("unknownError")
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === assistantMsgId
+            ? { ...msg, content: msg.content || `⚠️ ${errorMessage}` }
+            : msg
         )
-      }
+      )
     } finally {
+      isLoadingRef.current = false
       setIsLoading(false)
       abortControllerRef.current = null
-      onMessageSent?.()
+      onMessageSentRef.current?.()
     }
-  }, [threadId, isLoading, selectedSiteId, selectedTenantId, onMessageSent, t])
+  }, [threadId, selectedSiteId, selectedTenantId, tenantSlug, siteSlug, t])
 
   const resetMessages = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
+    isLoadingRef.current = false
     setMessages(initialMessagesRef.current)
-    setThreadId(generateThreadId()) // 重置时生成新的 thread_id
+    setThreadId(generateThreadId())
     setIsLoading(false)
   }, [])
 
@@ -366,111 +367,20 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       abortControllerRef.current.abort()
     }
 
+    isLoadingRef.current = true
     setIsLoading(true)
     try {
       const session = await getChatSessionMessages(targetThreadId, {
         member_id: getVisitorId(),
         site_id: selectedSiteId ?? undefined,
       })
-      const historyMessages = session?.messages ?? []
-
-      // 转换后端消息格式到前端格式
-      // 需要将工具调用信息合并到最终的 AI 回复消息上
-      // 消息序列通常是: user -> assistant(tool_calls) -> tool -> assistant(content)
-      // 我们需要把 tool_calls 从第一个 assistant 消息移到最后一个 assistant 消息
-
-      const formattedMessages: Message[] = []
-      let pendingToolCalls: Array<{ id: string; function?: { name?: string; arguments?: unknown }; name?: string }> = []
-      let pendingContent: string[] = [] // 暂存工具调用前的思考内容（部分 LLM 同时输出 content + tool_calls）
-      // 收集 tool results by tool_call_id
-      const toolResultMap = new Map<string, string>()
-      for (const msg of historyMessages) {
-        if (msg.role === "tool" && msg.tool_call_id && msg.content) {
-          toolResultMap.set(msg.tool_call_id, msg.content)
-        }
-      }
-
-      for (let i = 0; i < historyMessages.length; i++) {
-        const m = historyMessages[i]
-
-        // 跳过 tool 角色的消息（已收集到 toolResultMap）
-        if (m.role === "tool") {
-          continue
-        }
-
-        // 处理 assistant 消息
-        if (m.role === "assistant") {
-          const toolCallsArr = m.tool_calls
-          // 只要有 tool_calls 就视为工具调用阶段，无论是否同时有 content
-          if (toolCallsArr?.length) {
-            pendingToolCalls = [
-              ...pendingToolCalls,
-              ...toolCallsArr.map((tc) => tc as {
-                id: string
-                function?: { name?: string; arguments?: unknown }
-                name?: string
-              }),
-            ]
-            if (m.content && m.content.trim()) {
-              pendingContent.push(m.content)
-            }
-            continue
-          }
-
-          // 提取消息自带的引用
-          const backendSources = m.sources ?? []
-          const mappedSources = backendSources.map((c) => ({
-            id: String(c.id ?? ''),
-            title: c.title as string,
-            siteId: c.siteId as number | undefined,
-            documentId: c.documentId as number | undefined,
-          }))
-
-          // 合并思考内容与最终回复内容
-          const finalContent = [...pendingContent, m.content || ""]
-            .filter(Boolean).join("\n\n")
-
-          formattedMessages.push({
-            id: m.id || `${targetThreadId}-${i}`,
-            role: "assistant" as const,
-            content: finalContent,
-            ...(pendingToolCalls.length > 0 ? {
-              toolCalls: pendingToolCalls.map((tc) => ({
-                id: tc.id,
-                type: "function" as const,
-                function: {
-                  name: tc.function?.name || tc.name || "unknown",
-                  arguments: typeof tc.function?.arguments === 'string'
-                    ? tc.function.arguments
-                    : JSON.stringify(tc.function?.arguments || "{}")
-                },
-                status: "completed" as const,
-                result: toolResultMap.get(tc.id),
-              }))
-            } : {}),
-            ...(mappedSources.length > 0 ? { sources: mappedSources } : {}),
-            additional_kwargs: m.additional_kwargs as Record<string, unknown> | undefined
-          })
-          pendingToolCalls = []
-          pendingContent = []
-          continue
-        }
-
-        // 处理 user 消息
-        if (m.role === "user") {
-          formattedMessages.push({
-            id: m.id || `${targetThreadId}-${i}`,
-            role: "user" as const,
-            content: m.content || "",
-          })
-        }
-      }
-
+      const formattedMessages = formatHistoryMessages(targetThreadId, session?.messages ?? [])
       setMessages(formattedMessages)
       setThreadId(targetThreadId)
     } catch (error) {
-      console.error("Failed to load session messages:", error)
+      logError("useAIChat:loadSessionMessages", error)
     } finally {
+      isLoadingRef.current = false
       setIsLoading(false)
     }
   }, [selectedSiteId])

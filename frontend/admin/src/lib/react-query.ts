@@ -16,13 +16,27 @@
  * React Query 配置
  */
 
-import { QueryClient, DefaultOptions } from '@tanstack/react-query'
+import { QueryClient, DefaultOptions } from "@tanstack/react-query"
+
+/**
+ * 查询新鲜度时长枚举。
+ * 业务侧选其中一档表达意图，避免散落的 5*60*1000 / 1000*60*5 等同值异写。
+ */
+export const STALE_TIME = {
+  /** 总是过期 — 列表/分页这类要每次都拿最新的 */
+  NONE: 0,
+  /** 30 秒 — 健康检查、租户状态等高频变动 */
+  SHORT: 30 * 1000,
+  /** 5 分钟 — 默认档，多数列表与详情 */
+  MEDIUM: 5 * 60 * 1000,
+  /** 10 分钟 — 极少变动的全局配置 */
+  LONG: 10 * 60 * 1000,
+} as const
 
 // 默认配置
 const queryConfig: DefaultOptions = {
   queries: {
-    // 数据保持新鲜的时间（5分钟）
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
     // 缓存时间（10分钟）
     gcTime: 10 * 60 * 1000,
     // 失败后重试次数
@@ -40,8 +54,7 @@ const queryConfig: DefaultOptions = {
   },
 }
 
-// 创建 QueryClient 工厂函数
-export function makeQueryClient() {
+function makeQueryClient() {
   return new QueryClient({
     defaultOptions: queryConfig,
   })
@@ -51,7 +64,7 @@ export function makeQueryClient() {
 let browserQueryClient: QueryClient | undefined = undefined
 
 export function getQueryClient() {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     // 服务器端：总是创建新实例
     return makeQueryClient()
   } else {

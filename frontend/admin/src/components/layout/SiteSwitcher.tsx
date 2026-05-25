@@ -24,20 +24,13 @@ import {
   Edit2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui"
+import { Button } from "@/components/ui"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter, usePathname, useParams, useSearchParams } from "next/navigation"
-import type { Site } from '@/lib/sdk/sdk.schemas'
-import { UserRole } from '@/lib/sdk/sdk.schemas'
+import type { Site } from "@/lib/sdk/sdk.schemas"
+import { UserRole } from "@/lib/sdk/sdk.schemas"
 import { setLastSiteSlug, getUserInfo } from "@/lib/auth"
 import { useSite } from "@/contexts/SiteContext"
 
@@ -49,8 +42,8 @@ function SiteSwitcherComponent() {
   const params = useParams()
   const [open, setOpen] = useState(false)
   // 检查权限
-  const currentUser = typeof window !== 'undefined' ? getUserInfo() : null
-  const canManageSites = currentUser?.role === 'admin' as const || currentUser?.role === 'tenant_admin' as const || currentUser?.role === 'site_admin' as const
+  const currentUser = typeof window !== "undefined" ? getUserInfo() : null
+  const canManageSites = currentUser?.role === "admin" as const || currentUser?.role === "tenant_admin" as const || currentUser?.role === "site_admin" as const
 
   // 使用 SiteContext 获取站点列表
   const { sites, isLoadingSites } = useSite()
@@ -58,10 +51,10 @@ function SiteSwitcherComponent() {
   // 检查是否在全局管理类页面 (站点管理、系统设置、用户管理)
   const isGlobalPage = useMemo(() => {
     // 排除编辑页面，使其可以显示站点上下文
-    if (pathname.startsWith('/sites/edit/')) return false
+    if (pathname.startsWith("/sites/edit/")) return false
 
-    return pathname.startsWith('/settings') ||
-      pathname === '/users'
+    return pathname.startsWith("/settings") ||
+      pathname === "/users"
   }, [pathname])
 
   // 获取当前slug
@@ -87,7 +80,7 @@ function SiteSwitcherComponent() {
 
     // 使用站点标识路由，保持当前路径结构
     if (currentSlug) {
-      const pathAfterSlug = pathname.replace(`/${currentSlug}`, '') || '/'
+      const pathAfterSlug = pathname.replace(`/${currentSlug}`, "") || "/"
       router.push(`/${slug}${pathAfterSlug}`)
     } else {
       router.push(`/${slug}`)
@@ -96,9 +89,9 @@ function SiteSwitcherComponent() {
 
   // 计算全局页面的标题
   const globalTitle = useMemo(() => {
-    if (pathname.startsWith('/settings')) return t("allPlatformSettings")
-    if (pathname.startsWith('/users')) return t("userManagement")
-    if (pathname.startsWith('/sites')) return t("siteManagement")
+    if (pathname.startsWith("/settings")) return t("allPlatformSettings")
+    if (pathname.startsWith("/users")) return t("userManagement")
+    if (pathname.startsWith("/sites")) return t("siteManagement")
     return t("globalManagement")
   }, [pathname, t])
   // Broadway: Personal Account removed from title list.
@@ -150,7 +143,7 @@ function SiteSwitcherComponent() {
               </div>
               <div className="flex flex-col flex-1 min-w-0">
                 <span className="text-sm font-semibold truncate">{site.name}</span>
-                <span className="text-xs text-slate-500 truncate">/{site.slug || 'default'}</span>
+                <span className="text-xs text-slate-500 truncate">/{site.slug || "default"}</span>
               </div>
               {canManageSites && (
                 <div
@@ -215,7 +208,7 @@ function SiteSwitcherComponent() {
         {sites.length === 0 && (
           <DropdownMenuItem
             onSelect={() => {
-              router.push('?modal=settings&tab=sites&action=create')
+              router.push("?modal=settings&tab=sites&action=create")
             }}
             className="flex items-center gap-3 py-2.5 cursor-pointer text-primary"
           >
@@ -247,7 +240,7 @@ function SiteSwitcherComponent() {
             </div>
             <div className="flex flex-col flex-1 min-w-0">
               <span className="text-sm font-semibold truncate">{site.name}</span>
-              <span className="text-xs text-slate-500 truncate">/{site.slug || 'default'}</span>
+              <span className="text-xs text-slate-500 truncate">/{site.slug || "default"}</span>
             </div>
             {canManageSites && (
               <div
@@ -273,7 +266,7 @@ function SiteSwitcherComponent() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={() => {
-                router.push('?modal=settings&tab=sites&action=create')
+                router.push("?modal=settings&tab=sites&action=create")
               }}
               className="flex items-center gap-2 py-2 cursor-pointer text-slate-500"
             >

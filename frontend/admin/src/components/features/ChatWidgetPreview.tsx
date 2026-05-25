@@ -20,7 +20,7 @@
 "use client"
 
 import { useState } from "react"
-import { useTranslations } from 'next-intl'
+import { useTranslations } from "next-intl"
 import { Bot, X, Send, User, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -39,7 +39,7 @@ export function ChatWidgetPreview({
   position,
   onClose,
 }: ChatWidgetPreviewProps) {
-  const t = useTranslations('ChatWidgetPreview')
+  const t = useTranslations("ChatWidgetPreview")
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([
     { role: "assistant", content: welcomeMessage || t("defaultWelcome") },

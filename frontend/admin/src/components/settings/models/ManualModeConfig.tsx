@@ -19,7 +19,7 @@
 
 "use client"
 
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui"
 import { useTranslations } from "next-intl"
 import { Settings, Globe } from "lucide-react"
 import { useSettings } from "@/contexts/SettingsContext"
@@ -50,7 +50,7 @@ export function ManualModeConfig({ onSelectModel, activeTab }: ManualModeConfigP
             const type = item.id as "chat" | "embedding" | "rerank"
             // @ts-ignore
             const conf = savedConfigs[type]
-            const isPlatform = platformFallback[type] || conf?.mode === 'platform'
+            const isPlatform = platformFallback[type] || conf?.mode === "platform"
 
             // 使用 savedConfigs 判断配置状态 (避免未保存的修改影响列表显示)
             // 如果开启了平台共享，即使租户自己没填 Key，也视为已配置

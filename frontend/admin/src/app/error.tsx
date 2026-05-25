@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-'use client'
+"use client"
 
-import { useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { useTranslations } from 'next-intl'
+import { useEffect } from "react"
+import { Button } from "@/components/ui"
+import { useTranslations } from "next-intl"
 
 export default function Error({
   error,
@@ -25,10 +25,10 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  const t = useTranslations('ErrorPage')
+  const t = useTranslations("ErrorPage")
   useEffect(() => {
     // 在生产环境中，可以发送到错误监控服务
-    console.error('应用错误:', error)
+    console.error("应用错误:", error)
   }, [error])
 
   return (

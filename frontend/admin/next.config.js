@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const createNextIntlPlugin = require('next-intl/plugin');
+const createNextIntlPlugin = require("next-intl/plugin")
 
-const withNextIntl = createNextIntlPlugin();
+const withNextIntl = createNextIntlPlugin()
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone', // 支持 Docker 部署
+  output: "standalone", // 支持 Docker 部署
 
   // 编译器优化
   compiler: {
@@ -34,15 +34,15 @@ const nextConfig = {
   // 实验性优化配置
   experimental: {
     optimizePackageImports: [
-      'lucide-react',
-      'date-fns',
-      'lodash',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-popover',
-      '@radix-ui/react-select',
-      '@radix-ui/react-switch',
-      '@radix-ui/react-tabs',
+      "lucide-react",
+      "date-fns",
+      "lodash",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-popover",
+      "@radix-ui/react-select",
+      "@radix-ui/react-switch",
+      "@radix-ui/react-tabs",
     ],
   },
 
@@ -52,19 +52,19 @@ const nextConfig = {
     // 允许的外部图片域名
     remotePatterns: [
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '9000',
-        pathname: '/catwiki/**',
+        protocol: "http",
+        hostname: "localhost",
+        port: "9000",
+        pathname: "/catwiki/**",
       },
       {
-        protocol: 'https',
-        hostname: '*.your-domain.com', // 生产环境域名
-        pathname: '/**',
+        protocol: "https",
+        hostname: "*.your-domain.com", // 生产环境域名
+        pathname: "/**",
       }
     ],
     // 图片格式优化
-    formats: ['image/webp', 'image/avif'],
+    formats: ["image/webp", "image/avif"],
     // 图片尺寸配置
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
@@ -76,8 +76,8 @@ const nextConfig = {
   async rewrites () {
     return [
       {
-        source: '/api-proxy/:path*',
-        destination: `${process.env.PROXY_API_URL || 'http://backend:3000'}/:path*`,
+        source: "/api-proxy/:path*",
+        destination: `${process.env.PROXY_API_URL || "http://backend:3000"}/:path*`,
       },
     ]
   },

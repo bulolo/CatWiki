@@ -14,16 +14,12 @@
 
 "use client"
 
-import { LoadingState } from "@/components/ui/loading-state"
-import { EmptyState } from "@/components/ui/empty-state"
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, LoadingState, useConfirm } from "@/components/ui"
 import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import Link from "next/link"
 import Image from "next/image"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Plus,
   Edit2,
@@ -40,7 +36,7 @@ import { useSite } from "@/contexts/SiteContext"
 import { useDeleteSite } from "@/hooks"
 
 import { cn } from "@/lib/utils"
-import type { Site } from '@/lib/sdk/sdk.schemas'
+import type { Site } from "@/lib/sdk/sdk.schemas"
 
 
 import { CreateSiteForm } from "./CreateSiteForm"
@@ -53,7 +49,7 @@ export function GlobalSites() {
   const router = useRouter()
   const pathname = usePathname()
 
-  const isCreating = searchParams.get('action') === 'create'
+  const isCreating = searchParams.get("action") === "create"
 
   // 确保水合一致性
   useEffect(() => {
@@ -65,13 +61,12 @@ export function GlobalSites() {
 
   // 使用 React Query 删除 hook
   const deleteSiteMutation = useDeleteSite()
+  const confirm = useConfirm()
 
 
   // 删除站点
-  const handleDelete = (id: number, name: string) => {
-    if (!confirm(t("deleteConfirm", { name }))) {
-      return
-    }
+  const handleDelete = async (id: number, name: string) => {
+    if (!await confirm({ description: t("deleteConfirm", { name }), variant: "destructive" })) return
 
     deleteSiteMutation.mutate(id, {
       onSuccess: async () => {
@@ -180,7 +175,7 @@ export function GlobalSites() {
                     </CardTitle>
                     <div className="flex items-center gap-2 mt-1.5">
                       <div className="px-1.5 py-0.5 rounded-md bg-muted/50 border border-border/50">
-                        <span className="text-[10px] text-muted-foreground font-mono font-medium tracking-wider">/{site.slug || 'default'}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono font-medium tracking-wider">/{site.slug || "default"}</span>
                       </div>
                       <Badge variant={site.status === "active" ? "success" : "outline"} className={cn(
                         "text-[10px] px-1.5 py-0 h-4 font-bold tracking-tight border-none",
@@ -197,7 +192,7 @@ export function GlobalSites() {
                   </p>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <a href={`${env.NEXT_PUBLIC_CLIENT_URL}/${site.tenant_slug || 'default'}/${site.slug || site.id}`} target="_blank" rel="noopener noreferrer">
+                    <a href={`${env.NEXT_PUBLIC_CLIENT_URL}/${site.tenant_slug || "default"}/${site.slug || site.id}`} target="_blank" rel="noopener noreferrer">
                       <Button variant="outline" size="sm" className="w-full flex items-center justify-center gap-2">
                         <BookOpen className="h-3.5 w-3.5" />
                         {t("enterSite")}

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * CatWiki Admin API
  * 管理后台 API - 提供完整的增删改查功能
- * OpenAPI spec version: 1.1.4
+ * OpenAPI spec version: 1.1.5
  */
 import {
   useMutation,

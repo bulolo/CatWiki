@@ -7,17 +7,15 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Badge, Button, DraftRestoreDialog } from "@/components/ui"
 import { FileText, Save, Send, Clock, User, Info, Loader2 } from "lucide-react"
 import { useTranslations } from "next-intl"
-import type { DocumentStatus } from '@/lib/sdk/sdk.schemas'
+import type { DocumentStatus } from "@/lib/sdk/sdk.schemas"
 import { toast } from "sonner"
 import { getRoutePath, useRouteContext } from "@/lib/routing"
 import { useSiteData, useCollectionTree, useCreateDocument, useAutosave, useDraftRestore } from "@/hooks"
 import { getUserInfo } from "@/lib/auth"
 import { useQueryClient } from "@tanstack/react-query"
-import { DraftRestoreDialog } from "@/components/ui/DraftRestoreDialog"
 import {
   DocumentEditorContent, DocumentEditorSidebar, MetaRow,
   flattenCollections, type DocumentFormData,
@@ -81,8 +79,8 @@ export default function NewDocumentPage() {
     }, {
       onSuccess: async () => {
         clearDraft()
-        await queryClient.invalidateQueries({ queryKey: ['/admin/v1/documents'], refetchType: 'all' })
-        toast.success(status === 'published' as const ? t("newDoc.successPublish") : t("newDoc.successSave"))
+        await queryClient.invalidateQueries({ queryKey: ["/admin/v1/documents"], refetchType: "all" })
+        toast.success(status === "published" as const ? t("newDoc.successPublish") : t("newDoc.successSave"))
         router.push(getRoutePath("/documents", routeContext.slug))
       }
     })
@@ -121,10 +119,10 @@ export default function NewDocumentPage() {
             <Button variant="outline" className="h-11 px-6" onClick={() => router.push(getRoutePath("/documents", routeContext.slug))} disabled={createDocumentMutation.isPending}>
               {t("newDoc.cancel")}
             </Button>
-            <Button variant="outline" className="flex items-center gap-2 h-11 px-6" onClick={() => handleSave('draft' as const)} disabled={createDocumentMutation.isPending}>
+            <Button variant="outline" className="flex items-center gap-2 h-11 px-6" onClick={() => handleSave("draft" as const)} disabled={createDocumentMutation.isPending}>
               <Save className="h-4 w-4" />{t("newDoc.saveDraft")}
             </Button>
-            <Button className="flex items-center gap-2 h-11 px-8" onClick={() => handleSave('published' as const)} disabled={createDocumentMutation.isPending}>
+            <Button className="flex items-center gap-2 h-11 px-8" onClick={() => handleSave("published" as const)} disabled={createDocumentMutation.isPending}>
               {createDocumentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               {createDocumentMutation.isPending ? t("newDoc.saving") : t("newDoc.publish")}
             </Button>

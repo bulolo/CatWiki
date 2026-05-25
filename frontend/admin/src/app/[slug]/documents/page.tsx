@@ -49,7 +49,8 @@ import {
   SheetTitle,
   SheetDescription,
   OptimizedImage,
-  ScrollArea
+  ScrollArea,
+  useConfirm
 } from "@/components/ui"
 
 import { useState, useMemo } from "react"
@@ -78,7 +79,6 @@ import {
   X,
   AlertCircle,
   RefreshCw,
-  ChevronLeft,
   Brain,
   Loader2,
   Sparkles,
@@ -106,12 +106,10 @@ import { env } from "@/lib/env"
 import { CollectionTree, VectorRetrieveModal, DocumentImportDialog } from "@/components/features/documents"
 import type { CollectionItem } from "@/types"
 import { getRoutePath, useRouteContext } from "@/lib/routing"
-import { listAdminCollections, moveAdminCollection } from '@/lib/sdk/admin-collections'
-import { getAdminDocumentChunks } from '@/lib/sdk/admin-documents'
-import type { Collection as APICollection, CollectionCreate, CollectionTree as APICollectionTree, Document, DocumentStatus } from '@/lib/sdk/sdk.schemas'
-import type { DocumentChunk } from "@/lib/normalizers"
-import { normalizeChunks } from "@/lib/normalizers"
+import { listAdminCollections, moveAdminCollection } from "@/lib/sdk/admin-collections"
+import type { Collection as APICollection, CollectionCreate, CollectionTree as APICollectionTree, Document, DocumentStatus } from "@/lib/sdk/sdk.schemas"
 import { cn } from "@/lib/utils"
+import { ChunksViewerDialog } from "./_dialogs/ChunksViewerDialog"
 
 // 转换集合树为 CollectionItem 的辅助函数
 const convertToCollectionItems = (tree: APICollectionTree[]): CollectionItem[] => {
@@ -119,7 +117,7 @@ const convertToCollectionItems = (tree: APICollectionTree[]): CollectionItem[] =
   return tree.map(col => ({
     id: col.id.toString(),
     name: col.title,
-    type: col.type as 'collection' | 'document',
+    type: col.type as "collection" | "document",
     children: col.children?.length
       ? convertToCollectionItems(col.children)
       : [],
@@ -131,6 +129,7 @@ const convertToCollectionItems = (tree: APICollectionTree[]): CollectionItem[] =
 
 export default function DocumentsPage() {
   const t = useTranslations("Documents")
+  const confirm = useConfirm()
   const locale = useLocale()
   const commonT = useTranslations("Common")
   const routeContext = useRouteContext()
@@ -138,7 +137,7 @@ export default function DocumentsPage() {
   const siteId = currentSite.id
   const queryClient = useQueryClient()
   // 直接从站点数据获取 tenantSlug，站点 API 已经返回了 tenant_slug
-  const tenantSlug = currentSite.tenant_slug || 'default'
+  const tenantSlug = currentSite.tenant_slug || "default"
 
   const [searchTerm, setSearchTerm] = useState("")
   const debouncedSearchTerm = useDebounce(searchTerm, 500)
@@ -151,15 +150,15 @@ export default function DocumentsPage() {
 
   const [targetParentId, setTargetParentId] = useState<number | undefined>()
   const [showDocuments, setShowDocuments] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list")
 
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
-  const [sortBy, setSortBy] = useState<'created_at' | 'updated_at' | 'views'>('created_at')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [status, setStatus] = useState<'all' | 'published' | 'draft'>('all')
-  const [vectorStatus, setVectorStatus] = useState<'all' | 'none' | 'outdated' | 'pending' | 'processing' | 'completed' | 'failed'>('all')
+  const [sortBy, setSortBy] = useState<"created_at" | "updated_at" | "views">("created_at")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const [status, setStatus] = useState<"all" | "published" | "draft">("all")
+  const [vectorStatus, setVectorStatus] = useState<"all" | "none" | "outdated" | "pending" | "processing" | "completed" | "failed">("all")
 
   // 批量操作状态
   const [selectedDocIds, setSelectedDocIds] = useState<number[]>([])
@@ -169,7 +168,6 @@ export default function DocumentsPage() {
 
   // 查看分片状态
   const [viewChunksId, setViewChunksId] = useState<number | null>(null)
-  const [focusedChunk, setFocusedChunk] = useState<DocumentChunk | null>(null)
   const [isVectorRetrieveOpen, setIsVectorRetrieveOpen] = useState(false)
 
   // 删除确认弹窗状态
@@ -186,8 +184,8 @@ export default function DocumentsPage() {
     collectionId: selectedCollectionId ? parseInt(selectedCollectionId) : undefined,
     // 不在 useDocuments 中传递 documentId，改用单独的 useDocument hook
     searchTerm: debouncedSearchTerm.trim() || undefined,
-    status: status !== 'all' ? status : undefined,
-    vectorStatus: vectorStatus !== 'all' ? vectorStatus : undefined,
+    status: status !== "all" ? status : undefined,
+    vectorStatus: vectorStatus !== "all" ? vectorStatus : undefined,
     orderBy: sortBy,
     orderDir: sortOrder,
   })
@@ -213,18 +211,6 @@ export default function DocumentsPage() {
   const batchVectorizeMutation = useBatchVectorizeDocuments()
   const removeVectorMutation = useRemoveVector()
 
-  // 获取文档分片
-  const { data: chunksData, isLoading: chunksLoading } = useQuery({
-    queryKey: ['document-chunks', viewChunksId],
-    queryFn: async () => {
-      if (!viewChunksId) return []
-      const raw = await getAdminDocumentChunks(viewChunksId)
-      return normalizeChunks(raw)
-    },
-
-    enabled: !!viewChunksId
-  })
-  const chunkList = chunksData ?? []
 
   // 处理文档数据
   const documents = useMemo(() => {
@@ -263,18 +249,18 @@ export default function DocumentsPage() {
     return convertToCollectionItems(collectionsTree)
   }, [collectionsTree])
 
-  const handleSort = (field: 'created_at' | 'updated_at' | 'views') => {
+  const handleSort = (field: "created_at" | "updated_at" | "views") => {
     if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc")
     } else {
       setSortBy(field)
-      setSortOrder('desc')
+      setSortOrder("desc")
     }
   }
 
-  const getSortIcon = (field: 'created_at' | 'updated_at' | 'views') => {
+  const getSortIcon = (field: "created_at" | "updated_at" | "views") => {
     if (sortBy !== field) return <ArrowUpDown className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50" />
-    return sortOrder === 'asc' ? (
+    return sortOrder === "asc" ? (
       <ArrowUp className="h-3.5 w-3.5" />
     ) : (
       <ArrowDown className="h-3.5 w-3.5" />
@@ -283,11 +269,11 @@ export default function DocumentsPage() {
 
   // 渲染向量化状态
   const renderVectorStatus = (doc: Document) => {
-    const vectorStatus = doc.vector_status || 'none' as const
+    const vectorStatus = doc.vector_status || "none" as const
     const vectorError = doc.vector_error
 
     switch (vectorStatus) {
-      case 'none' as const:
+      case "none" as const:
         return (
           <button
             onClick={() => vectorizeMutation.mutate(doc.id)}
@@ -298,7 +284,7 @@ export default function DocumentsPage() {
             <span>{t("learning.notLearned")}</span>
           </button>
         )
-      case 'outdated' as const:
+      case "outdated" as const:
         return (
           <div className="flex items-center gap-1.5">
             <button
@@ -321,9 +307,9 @@ export default function DocumentsPage() {
               <Eye className="h-3.5 w-3.5" />
             </button>
             <button
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation()
-                if (confirm(t("learning.confirmDeleteVector"))) {
+                if (await confirm({ description: t("learning.confirmDeleteVector"), variant: "destructive" })) {
                   removeVectorMutation.mutate(doc.id)
                 }
               }}
@@ -335,7 +321,7 @@ export default function DocumentsPage() {
             </button>
           </div>
         )
-      case 'pending' as const:
+      case "pending" as const:
         return (
           <Badge
             variant="outline"
@@ -347,7 +333,7 @@ export default function DocumentsPage() {
             {t("learning.queuing")}
           </Badge>
         )
-      case 'processing' as const:
+      case "processing" as const:
         return (
           <Badge
             variant="outline"
@@ -357,7 +343,7 @@ export default function DocumentsPage() {
             {t("learning.learning")}
           </Badge>
         )
-      case 'completed' as const:
+      case "completed" as const:
         return (
           <div className="flex items-center gap-1.5">
             <button
@@ -390,9 +376,9 @@ export default function DocumentsPage() {
 
             {/* 删除向量 */}
             <button
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation()
-                if (confirm(t("learning.confirmDeleteVector"))) {
+                if (await confirm({ description: t("learning.confirmDeleteVector"), variant: "destructive" })) {
                   removeVectorMutation.mutate(doc.id)
                 }
               }}
@@ -404,7 +390,7 @@ export default function DocumentsPage() {
             </button>
           </div>
         )
-      case 'failed' as const:
+      case "failed" as const:
         return (
           <button
             onClick={() => vectorizeMutation.mutate(doc.id)}
@@ -532,7 +518,7 @@ export default function DocumentsPage() {
       refetchCollections()
 
       // 刷新文档列表，因为合集结构改变了，文档列表可能受影响
-      queryClient.invalidateQueries({ queryKey: ['/admin/v1/documents'] })
+      queryClient.invalidateQueries({ queryKey: ["/admin/v1/documents"] })
 
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : t("error.collectionMoveFailed")
@@ -577,10 +563,10 @@ export default function DocumentsPage() {
     })
   }
 
-  const findNodeType = (items: CollectionItem[], targetId: string): 'collection' | 'document' | null => {
+  const findNodeType = (items: CollectionItem[], targetId: string): "collection" | "document" | null => {
     for (const item of items) {
       if (item.id === targetId) {
-        return item.type || 'collection'
+        return item.type || "collection"
       }
       if (item.children && item.children.length > 0) {
         const found = findNodeType(item.children, targetId)
@@ -597,12 +583,12 @@ export default function DocumentsPage() {
       setSelectedDocumentId(undefined)
       setCurrentPage(1)
       // 刷新文档列表
-      queryClient.invalidateQueries({ queryKey: ['/admin/v1/documents'] })
+      queryClient.invalidateQueries({ queryKey: ["/admin/v1/documents"] })
       return
     }
 
     const nodeType = findNodeType(collections, id)
-    if (nodeType === 'document') {
+    if (nodeType === "document") {
       setSelectedDocumentId(id)
       setSelectedCollectionId(undefined)
       setCurrentPage(1)
@@ -612,7 +598,7 @@ export default function DocumentsPage() {
       setSelectedDocumentId(undefined)
       setCurrentPage(1)
       // 强制刷新文档列表，因为合集结构可能已经改变
-      queryClient.invalidateQueries({ queryKey: ['/admin/v1/documents'] })
+      queryClient.invalidateQueries({ queryKey: ["/admin/v1/documents"] })
     }
   }
 
@@ -621,7 +607,7 @@ export default function DocumentsPage() {
     setCurrentPage(1)
   }
 
-  const handleStatusFilterChange = (value: 'all' | 'published' | 'draft') => {
+  const handleStatusFilterChange = (value: "all" | "published" | "draft") => {
     setStatus(value)
     setCurrentPage(1)
   }
@@ -656,7 +642,7 @@ export default function DocumentsPage() {
 
   const handleBatchDelete = () => {
     if (selectedDocIds.length === 0) {
-      toast.error(t('batchBar.selectItems'))
+      toast.error(t("batchBar.selectItems"))
       return
     }
     setIsBatchDeleteOpen(true)
@@ -675,7 +661,7 @@ export default function DocumentsPage() {
 
   const handleBatchMove = () => {
     if (selectedDocIds.length === 0) {
-      toast.error(t('batchBar.selectItems'))
+      toast.error(t("batchBar.selectItems"))
       return
     }
     setShowBatchMoveDialog(true)
@@ -705,13 +691,13 @@ export default function DocumentsPage() {
 
   const handleBatchPublish = () => {
     if (selectedDocIds.length === 0) {
-      toast.error(t('batchBar.selectItems'))
+      toast.error(t("batchBar.selectItems"))
       return
     }
 
     batchUpdateMutation.mutate({
       documentIds: selectedDocIds,
-      data: { status: 'published' as const }
+      data: { status: "published" as const }
     }, {
       onSuccess: () => {
         toast.success(t("batchBar.publishSuccess"))
@@ -722,13 +708,13 @@ export default function DocumentsPage() {
 
   const handleBatchUnpublish = () => {
     if (selectedDocIds.length === 0) {
-      toast.error(t('batchBar.selectItems'))
+      toast.error(t("batchBar.selectItems"))
       return
     }
 
     batchUpdateMutation.mutate({
       documentIds: selectedDocIds,
-      data: { status: 'draft' as const }
+      data: { status: "draft" as const }
     }, {
       onSuccess: () => {
         toast.success(t("batchBar.unpublishSuccess"))
@@ -754,8 +740,8 @@ export default function DocumentsPage() {
         collections={collections}
         defaultTab={importDefaultTab}
         onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['/admin/v1/documents'] })
-          queryClient.invalidateQueries({ queryKey: ['collection-tree', siteId] })
+          queryClient.invalidateQueries({ queryKey: ["/admin/v1/documents"] })
+          queryClient.invalidateQueries({ queryKey: ["collection-tree", siteId] })
         }}
       />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between shrink-0 px-1 gap-3">
@@ -819,7 +805,7 @@ export default function DocumentsPage() {
             onClick={() => {
               cancelBatchMode()
               const clientUrl = env.NEXT_PUBLIC_CLIENT_URL
-              window.open(`${clientUrl}/${tenantSlug}/${currentSite.slug}`, '_blank')
+              window.open(`${clientUrl}/${tenantSlug}/${currentSite.slug}`, "_blank")
             }}
             className="flex items-center gap-1.5 md:gap-2 border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 transition-all shadow-sm"
           >
@@ -841,7 +827,7 @@ export default function DocumentsPage() {
                   {selectedDocIds.length}
                 </div>
                 <span className="text-xs md:text-sm font-semibold text-slate-600 tracking-tight hidden sm:inline">
-                  {t("batchBar.selected", { count: selectedDocIds.length }).replace(selectedDocIds.length.toString(), '').trim()}
+                  {t("batchBar.selected", { count: selectedDocIds.length }).replace(selectedDocIds.length.toString(), "").trim()}
                 </span>
               </div>
 
@@ -1008,9 +994,9 @@ export default function DocumentsPage() {
                       size="icon"
                       className={cn(
                         "h-8 w-8 rounded-md transition-all",
-                        viewMode === 'list' ? "bg-white shadow-sm text-slate-900" : "text-slate-400 hover:text-slate-600"
+                        viewMode === "list" ? "bg-white shadow-sm text-slate-900" : "text-slate-400 hover:text-slate-600"
                       )}
-                      onClick={() => setViewMode('list')}
+                      onClick={() => setViewMode("list")}
                       title={t("actions.listView")}
                     >
                       <List className="h-4 w-4" />
@@ -1020,9 +1006,9 @@ export default function DocumentsPage() {
                       size="icon"
                       className={cn(
                         "h-8 w-8 rounded-md transition-all",
-                        viewMode === 'grid' ? "bg-white shadow-sm text-slate-900" : "text-slate-400 hover:text-slate-600"
+                        viewMode === "grid" ? "bg-white shadow-sm text-slate-900" : "text-slate-400 hover:text-slate-600"
                       )}
-                      onClick={() => setViewMode('grid')}
+                      onClick={() => setViewMode("grid")}
                       title={t("actions.gridView")}
                     >
                       <LayoutGrid className="h-4 w-4" />
@@ -1076,12 +1062,12 @@ export default function DocumentsPage() {
                 <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-20 flex items-center justify-center">
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    <div className="text-sm text-muted-foreground">{commonT('loading')}</div>
+                    <div className="text-sm text-muted-foreground">{commonT("loading")}</div>
                   </div>
                 </div>
               )}
 
-              {viewMode === 'list' && (
+              {viewMode === "list" && (
                 <div className="overflow-x-auto">
                   <Table className="">
                     <TableHeader className="bg-slate-50/50 sticky top-0 z-10 backdrop-blur-md">
@@ -1108,28 +1094,28 @@ export default function DocumentsPage() {
                         <TableHead className="w-[80px] hidden lg:table-cell">
                           <button
                             className="group flex items-center gap-1 hover:text-slate-600 transition-colors font-medium text-[11px] uppercase tracking-wider text-slate-400"
-                            onClick={() => handleSort('views')}
+                            onClick={() => handleSort("views")}
                           >
                             {t("list.columnViews")}
-                            {getSortIcon('views')}
+                            {getSortIcon("views")}
                           </button>
                         </TableHead>
                         <TableHead className="w-[100px] hidden 2xl:table-cell">
                           <button
                             className="group flex items-center gap-1 hover:text-slate-600 transition-colors font-medium text-[11px] uppercase tracking-wider text-slate-400"
-                            onClick={() => handleSort('created_at')}
+                            onClick={() => handleSort("created_at")}
                           >
                             {t("list.columnCreatedAt")}
-                            {getSortIcon('created_at')}
+                            {getSortIcon("created_at")}
                           </button>
                         </TableHead>
                         <TableHead className="w-[100px] hidden md:table-cell">
                           <button
                             className="group flex items-center gap-1 hover:text-slate-600 transition-colors font-medium text-[11px] uppercase tracking-wider text-slate-400"
-                            onClick={() => handleSort('updated_at')}
+                            onClick={() => handleSort("updated_at")}
                           >
                             {t("list.columnUpdatedAt")}
-                            {getSortIcon('updated_at')}
+                            {getSortIcon("updated_at")}
                           </button>
                         </TableHead>
                         <TableHead className="w-[80px] text-right pr-6 font-medium text-[11px] uppercase tracking-wider text-slate-400 sticky right-0 z-20 bg-slate-50/95 backdrop-blur">{t("list.columnActions")}</TableHead>
@@ -1174,8 +1160,8 @@ export default function DocumentsPage() {
                                     className="font-semibold text-slate-900 truncate cursor-pointer hover:text-primary transition-colors text-[13.5px] leading-relaxed"
                                     onClick={() => {
                                       const clientUrl = env.NEXT_PUBLIC_CLIENT_URL
-                                      const slug = routeContext.slug || currentSite.slug || 'demo'
-                                      window.open(`${clientUrl}/${tenantSlug}/${slug}?documentId=${doc.id}`, '_blank')
+                                      const slug = routeContext.slug || currentSite.slug || "demo"
+                                      window.open(`${clientUrl}/${tenantSlug}/${slug}?documentId=${doc.id}`, "_blank")
                                     }}
                                   >
                                     {doc.title}
@@ -1188,7 +1174,7 @@ export default function DocumentsPage() {
                                     {doc.tags && doc.tags.length > 0 && (
                                       <>
                                         <span className="w-0.5 h-0.5 rounded-full bg-slate-300 hidden sm:block" />
-                                        <span className="truncate max-w-[100px]">{doc.tags.join(', ')}</span>
+                                        <span className="truncate max-w-[100px]">{doc.tags.join(", ")}</span>
                                       </>
                                     )}
                                   </div>
@@ -1222,21 +1208,21 @@ export default function DocumentsPage() {
                             </TableCell>
                             <TableCell className="py-3 text-slate-400 text-[11px] font-medium whitespace-nowrap hidden 2xl:table-cell">
                               {new Date(doc.created_at).toLocaleString(locale, {
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
+                                month: "2-digit",
+                                day: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
                                 hour12: false
-                              }).replace(/\//g, '-')}
+                              }).replace(/\//g, "-")}
                             </TableCell>
                             <TableCell className="py-3 text-slate-400 text-[11px] font-medium whitespace-nowrap hidden md:table-cell">
                               {new Date(doc.updated_at).toLocaleString(locale, {
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
+                                month: "2-digit",
+                                day: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
                                 hour12: false
-                              }).replace(/\//g, '-')}
+                              }).replace(/\//g, "-")}
                             </TableCell>
                             <TableCell className="py-3 text-right pr-6 sticky right-0 z-10 bg-white group-hover:bg-slate-50/50">
                               <div className="flex justify-end gap-0.5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1283,7 +1269,7 @@ export default function DocumentsPage() {
                 </div>
               )}
 
-              {viewMode === 'grid' && (
+              {viewMode === "grid" && (
                 <div className={cn("p-4", loading && "opacity-40")}>
                   {documents.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 items-stretch">
@@ -1296,8 +1282,8 @@ export default function DocumentsPage() {
                             className="relative w-full aspect-[3/2] overflow-hidden bg-slate-50 cursor-pointer shrink-0"
                             onClick={() => {
                               const clientUrl = env.NEXT_PUBLIC_CLIENT_URL
-                              const slug = routeContext.slug || currentSite.slug || 'demo'
-                              window.open(`${clientUrl}/${tenantSlug}/${slug}?documentId=${doc.id}`, '_blank')
+                              const slug = routeContext.slug || currentSite.slug || "demo"
+                              window.open(`${clientUrl}/${tenantSlug}/${slug}?documentId=${doc.id}`, "_blank")
                             }}
                           >
                             <OptimizedImage
@@ -1318,7 +1304,7 @@ export default function DocumentsPage() {
                                   {t("status.draft")}
                                 </div>
                               )}
-                              {doc.vector_status === 'completed' as const && (
+                              {doc.vector_status === "completed" as const && (
                                 <div className="px-2 py-0.5 rounded bg-blue-500/90 backdrop-blur-sm text-white text-xs font-medium">
                                   {t("status.completed")}
                                 </div>
@@ -1331,8 +1317,8 @@ export default function DocumentsPage() {
                               className="text-sm font-bold text-slate-900 mb-1.5 line-clamp-2 leading-snug cursor-pointer hover:text-primary transition-colors shrink-0"
                               onClick={() => {
                                 const clientUrl = env.NEXT_PUBLIC_CLIENT_URL
-                                const slug = routeContext.slug || currentSite.slug || 'demo'
-                                window.open(`${clientUrl}/${tenantSlug}/${slug}?documentId=${doc.id}`, '_blank')
+                                const slug = routeContext.slug || currentSite.slug || "demo"
+                                window.open(`${clientUrl}/${tenantSlug}/${slug}?documentId=${doc.id}`, "_blank")
                               }}
                             >
                               {doc.title}
@@ -1465,7 +1451,7 @@ export default function DocumentsPage() {
                 onChange={(e) => setNewCollectionName(e.target.value)}
                 autoFocus
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCreateCollection()
+                  if (e.key === "Enter") handleCreateCollection()
                 }}
               />
             </div>
@@ -1508,7 +1494,7 @@ export default function DocumentsPage() {
                       <div className="flex items-center gap-2">
                         {col.level > 0 && (
                           <span className="text-slate-300 select-none">
-                            {'　'.repeat(col.level)}
+                            {"　".repeat(col.level)}
                           </span>
                         )}
                         <Folder className={cn(
@@ -1547,119 +1533,7 @@ export default function DocumentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={!!viewChunksId} onOpenChange={(open) => {
-        if (!open) {
-          setViewChunksId(null)
-          setFocusedChunk(null)
-        }
-      }}>
-        <DialogContent className="sm:max-w-[1000px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
-            {focusedChunk ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 -ml-2 mr-1 text-slate-500 hover:text-slate-900"
-                  onClick={() => setFocusedChunk(null)}
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                <DialogTitle className="flex items-center gap-2 text-base">
-                  <span className="font-mono bg-primary/10 text-primary px-2 py-0.5 rounded text-sm">
-                    #{focusedChunk.metadata?.chunk_index ?? '?'}
-                  </span>
-                  {t("dialogs.chunks.detailTitle")}
-                </DialogTitle>
-                <DialogDescription className="font-mono text-xs ml-auto">
-                  Chunk ID: {focusedChunk.id}
-                </DialogDescription>
-              </div>
-            ) : (
-              <>
-                <DialogTitle className="flex items-center gap-2">
-                  <Brain className="h-5 w-5 text-primary" />
-                  {t("dialogs.chunks.title")}
-                </DialogTitle>
-                <DialogDescription>
-                  {t("dialogs.chunks.description", { id: viewChunksId || "" })}
-                </DialogDescription>
-              </>
-            )}
-          </DialogHeader>
-
-          <div className="flex-1 min-h-0 bg-slate-50/30 relative">
-            {focusedChunk ? (
-              <div className="absolute inset-0 bg-white flex flex-col">
-                <ScrollArea className="flex-1 p-6">
-                  <div className="font-mono text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words max-w-4xl mx-auto">
-                    {focusedChunk.content}
-                  </div>
-                </ScrollArea>
-                <div className="px-6 py-2 bg-slate-50/50 border-t border-slate-100 text-xs text-slate-400 font-mono flex justify-between shrink-0">
-                  <span>Index: {focusedChunk.metadata?.chunk_index}</span>
-                  <span>Length: {focusedChunk.content?.length} chars</span>
-                </div>
-              </div>
-            ) : chunksLoading ? (
-              <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-400">
-                <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
-                <p className="text-sm">{t("dialogs.chunks.loading")}</p>
-              </div>
-            ) : chunkList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-400">
-                <FileText className="h-10 w-10 opacity-20" />
-                <p className="text-sm">{t("dialogs.chunks.noData")}</p>
-              </div>
-            ) : (
-              <ScrollArea className="h-full p-4 md:p-6 text-left">
-                <div className="space-y-4 pb-4">
-                  <div className="flex items-center justify-between px-1 pb-2">
-                    <Badge variant="outline" className="bg-white">
-                      {t("dialogs.chunks.badgeCount", { count: chunkList.length })}
-                    </Badge>
-                    <div className="text-xs text-slate-400">
-                      {t("dialogs.chunks.hintClick")}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {chunkList.map((chunk: DocumentChunk, index: number) => (
-                      <div
-                        key={chunk.id || index}
-                        className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group hover:border-primary/50 hover:shadow-md transition-all cursor-pointer flex flex-col h-40"
-                        onClick={() => setFocusedChunk(chunk)}
-                      >
-                        <div className="px-3 py-2 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between text-[10px] text-slate-500 shrink-0">
-                          <span className="font-mono bg-slate-200/50 px-1.5 py-0.5 rounded text-slate-600">
-                            #{chunk.metadata?.chunk_index ?? index}
-                          </span>
-                          <span className="font-mono truncate max-w-[80px]">
-                            {chunk.content?.length || 0} chars
-                          </span>
-                        </div>
-                        <div className="p-3 text-[11px] text-slate-600 leading-relaxed font-mono whitespace-pre-wrap break-words bg-white flex-1 overflow-hidden relative">
-                          <div className="line-clamp-6 opacity-80 group-hover:opacity-100 transition-opacity">
-                            {chunk.content}
-                          </div>
-                          {/* 遮罩提示 */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-2">
-                            <span className="text-[10px] text-primary bg-primary/5 px-2 py-0.5 rounded-full font-medium">{t("deleteDialog.viewDetail")}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </ScrollArea>
-            )}
-          </div>
-
-          <DialogFooter className="px-6 py-4 border-t border-slate-100 bg-white shrink-0">
-            <Button onClick={() => setViewChunksId(null)}>{t("deleteDialog.close")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ChunksViewerDialog viewChunksId={viewChunksId} onClose={() => setViewChunksId(null)} />
 
       {/* 删除文档确认对话框 */}
       <Dialog open={!!deleteDocTarget} onOpenChange={(open) => !open && setDeleteDocTarget(null)}>

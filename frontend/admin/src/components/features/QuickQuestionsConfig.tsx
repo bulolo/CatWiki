@@ -20,12 +20,9 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@/components/ui"
 import { Plus, Trash2, GripVertical, Sparkles } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import type { QuickQuestion } from '@/lib/sdk/sdk.schemas'
+import type { QuickQuestion } from "@/lib/sdk/sdk.schemas"
 
 interface QuickQuestionsConfigProps {
   questions: QuickQuestion[]

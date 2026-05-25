@@ -22,4 +22,6 @@ export { useDocument } from "./useDocument"
 export { useAIChat } from "./useAIChat"
 export { useHealth } from "./useHealth"
 export { useChatSessions } from "./useChatSessions"
+export { useChatAutoScroll } from "./useChatAutoScroll"
+export { useToolCallState } from "./useToolCallState"
 

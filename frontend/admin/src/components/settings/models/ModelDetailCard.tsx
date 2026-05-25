@@ -19,10 +19,8 @@
 
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui"
 import { useTranslations } from "next-intl"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { ChevronRight, Cpu } from "lucide-react"
 import { SingleModelConfig } from "./SingleModelConfig"
 import { MODEL_META } from "./constants"

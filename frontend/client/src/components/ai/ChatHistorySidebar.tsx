@@ -16,24 +16,32 @@
 
 import { useState, useEffect } from "react"
 import { MessageSquare, Trash2, Plus, X, Search, Clock, Bot, History as HistoryIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Button,
+  ScrollArea,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui"
 import { cn } from "@/lib/utils"
 import { useChatSessions } from "@/hooks/useChatSessions"
 import { useTranslations, useLocale } from "next-intl"
 
+type PendingConfirm =
+  | { type: "delete"; threadId: string }
+  | { type: "clearAll" }
+  | null
+
 interface ChatHistorySidebarProps {
   siteId?: number | null
-  tenantId?: number | null
   currentThreadId?: string
   onSelectSession: (threadId: string) => void
   onNewChat: () => void
   isOpen: boolean
   onClose: () => void
-  refreshTrigger?: number
 }
-
-
 
 export function ChatHistorySidebar({
   siteId,
@@ -42,23 +50,14 @@ export function ChatHistorySidebar({
   onNewChat,
   isOpen,
   onClose,
-  refreshTrigger = 0,
-  tenantId
 }: ChatHistorySidebarProps) {
   const t = useTranslations("ChatHistory")
   const locale = useLocale()
-  const { sessions, isLoading, deleteSession, clearAllSessions, refresh, searchSessions } = useChatSessions({ siteId, tenantId })
-
-  // 监听外部刷新信号
-  useEffect(() => {
-    if (refreshTrigger > 0) {
-      refresh()
-    }
-  }, [refreshTrigger, refresh])
+  const { sessions, isLoading, deleteSession, clearAllSessions, searchSessions } = useChatSessions({ siteId })
 
   const [searchQuery, setSearchQuery] = useState("")
 
-  // 防抖搜索
+  // 防抖搜索：keyword 变化驱动 useChatSessions 内的 useQuery 自动重取
   useEffect(() => {
     const timer = setTimeout(() => {
       searchSessions(searchQuery)
@@ -71,18 +70,25 @@ export function ChatHistorySidebar({
     // 不再自动关闭，让用户手动收起
   }
 
-  const handleDelete = async (e: React.MouseEvent, threadId: string) => {
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null)
+
+  const handleDelete = (e: React.MouseEvent, threadId: string) => {
     e.stopPropagation()
-    if (confirm(t("deleteConfirm"))) {
-      await deleteSession(threadId)
-      if (currentThreadId === threadId) {
-        onNewChat()
-      }
-    }
+    setPendingConfirm({ type: "delete", threadId })
   }
 
-  const handleClearAll = async () => {
-    if (confirm(t("clearAllConfirm"))) {
+  const handleClearAll = () => {
+    setPendingConfirm({ type: "clearAll" })
+  }
+
+  const handleConfirmed = async () => {
+    const action = pendingConfirm
+    setPendingConfirm(null)
+    if (!action) return
+    if (action.type === "delete") {
+      await deleteSession(action.threadId)
+      if (currentThreadId === action.threadId) onNewChat()
+    } else {
       await clearAllSessions()
       onNewChat()
     }
@@ -194,12 +200,12 @@ export function ChatHistorySidebar({
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
                       <Clock className="h-3 w-3" />
                       {new Date(session.updated_at).toLocaleString(locale, {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
                         hour12: false
                       })}
                     </div>
@@ -226,6 +232,33 @@ export function ChatHistorySidebar({
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={pendingConfirm !== null}
+        onOpenChange={(open) => { if (!open) setPendingConfirm(null) }}
+      >
+        <DialogContent className="sm:max-w-[400px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {pendingConfirm?.type === "clearAll" ? t("clearAllConfirmTitle") : t("deleteConfirmTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingConfirm?.type === "clearAll" ? t("clearAllConfirm") : t("deleteConfirm")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setPendingConfirm(null)}>
+              {t("cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmed}
+            >
+              {t("confirmAction")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

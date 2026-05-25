@@ -19,8 +19,7 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { getLastSiteSlug, setLastSiteSlug, getUserInfo } from "@/lib/auth"
 import { useSite } from "@/contexts/SiteContext"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Button, Card, CardContent } from "@/components/ui"
 import { Globe, Plus, Loader2 } from "lucide-react"
 
 export default function AdminHome() {
@@ -81,7 +80,7 @@ export default function AdminHome() {
   }, [router, sites, isLoadingSites])
 
   const handleCreateSite = () => {
-    router.push('?modal=settings&tab=sites&action=create')
+    router.push("?modal=settings&tab=sites&action=create")
   }
 
   if (loading || isLoadingSites) {

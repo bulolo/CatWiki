@@ -17,18 +17,8 @@
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
 import Image from "next/image"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Switch, useConfirm } from "@/components/ui"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui"
 import {
   FileText,
   Plus,
@@ -63,8 +53,19 @@ const getConfigFlag = (config: DocProcessorConfig["config"], key: string, fallba
   return typeof value === "boolean" ? value : fallback
 }
 
-export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' | 'tenant' }) {
+const getConfigString = (config: DocProcessorConfig["config"], key: string, fallback: string): string => {
+  const value = config?.[key]
+  return typeof value === "string" ? value : fallback
+}
+
+const getConfigStringArray = (config: DocProcessorConfig["config"], key: string, fallback: string[]): string[] => {
+  const value = config?.[key]
+  return Array.isArray(value) && value.every(v => typeof v === "string") ? value : fallback
+}
+
+export function DocProcessorSettings({ scope = "tenant" }: { scope?: "platform" | "tenant" }) {
   const t = useTranslations("DocProcessor")
+  const confirm = useConfirm()
   const [processors, setProcessors] = useState<DocProcessorConfig[]>([])
   const [testing, setTesting] = useState<string | null>(null)
   const [versions, setVersions] = useState<Record<string, string>>({})
@@ -105,7 +106,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
 
   const handleSave = async (updatedProcessors: DocProcessorConfig[]) => {
     // 过滤掉平台资源，只保存租户自定义的
-    const tenantProcessors = updatedProcessors.filter(p => p.origin !== 'platform')
+    const tenantProcessors = updatedProcessors.filter(p => p.origin !== "platform")
     updateMutation.mutate({ processors: tenantProcessors }, {
       onSuccess: () => {
         toast.success(t("saveSuccess"))
@@ -183,7 +184,8 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
     handleCancel()
   }
 
-  const handleDelete = (processorId: string) => {
+  const handleDelete = async (processorId: string) => {
+    if (!await confirm({ description: t("deleteConfirm"), variant: "destructive" })) return
     const updated = processors.filter(p => p.id !== processorId)
     handleSave(updated)
   }
@@ -253,10 +255,10 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                         disabled={type.disabled}
                       >
                         <div className="flex items-center gap-2">
-                          {type.icon.startsWith('/') ? (
+                          {type.icon.startsWith("/") ? (
                             <Image src={type.icon} alt="" width={16} height={16} className="object-contain" />
                           ) : (
-                            <Icon className={`h-4 w-4 ${type.color.split(' ')[0] || "text-slate-500"}`} />
+                            <Icon className={`h-4 w-4 ${type.color.split(" ")[0] || "text-slate-500"}`} />
                           )}
                           <span>{type.label}</span>
                         </div>
@@ -311,13 +313,13 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
 
           <div className="space-y-2">
             <Label htmlFor="api_key">
-              {formData.type === 'Docling' ? 'API Key (X-Api-Key)' : t("apiKey")}
+              {formData.type === "Docling" ? "API Key (X-Api-Key)" : t("apiKey")}
               <span className="text-slate-400 font-normal ml-1">{t("optional")}</span>
             </Label>
             <Input
               id="api_key"
               type="password"
-              placeholder={formData.type === 'Docling' ? t("enterApiKey") : t("apiKeyPlaceholder")}
+              placeholder={formData.type === "Docling" ? t("enterApiKey") : t("apiKeyPlaceholder")}
               value={formData.api_key}
               onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
               autoComplete="new-password"
@@ -378,7 +380,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                     <div className="flex items-center gap-2">
                       <Switch
                         id="do_formula_enrichment"
-                        checked={(formData.config as any)?.do_formula_enrichment !== false}
+                        checked={getConfigFlag(formData.config, "do_formula_enrichment", true)}
                         onCheckedChange={(checked: boolean) =>
                           setFormData({
                             ...formData,
@@ -396,7 +398,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                     <div className="flex items-center gap-2">
                       <Switch
                         id="formula_enable"
-                        checked={(formData.config as any)?.formula_enable !== false}
+                        checked={getConfigFlag(formData.config, "formula_enable", true)}
                         onCheckedChange={(checked: boolean) =>
                           setFormData({ ...formData, config: { ...formData.config, formula_enable: checked } })
                         }
@@ -406,7 +408,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                     <div className="flex items-center gap-2">
                       <Switch
                         id="table_enable"
-                        checked={(formData.config as any)?.table_enable !== false}
+                        checked={getConfigFlag(formData.config, "table_enable", true)}
                         onCheckedChange={(checked: boolean) =>
                           setFormData({ ...formData, config: { ...formData.config, table_enable: checked } })
                         }
@@ -424,7 +426,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                     <div className="space-y-1.5">
                       <Label htmlFor="docling_ocr_engine" className="text-sm">{t("ocrEngine")}</Label>
                       <Select
-                        value={(formData.config as any)?.ocr_engine || "rapidocr"}
+                        value={getConfigString(formData.config, "ocr_engine", "rapidocr")}
                         onValueChange={(value) =>
                           setFormData({ ...formData, config: { ...formData.config, ocr_engine: value } })
                         }
@@ -442,7 +444,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                     <div className="space-y-1.5">
                       <Label htmlFor="docling_pdf_backend" className="text-sm">{t("pdfBackend")}</Label>
                       <Select
-                        value={(formData.config as any)?.pdf_backend || "dlparse_v4"}
+                        value={getConfigString(formData.config, "pdf_backend", "dlparse_v4")}
                         onValueChange={(value) =>
                           setFormData({ ...formData, config: { ...formData.config, pdf_backend: value } })
                         }
@@ -459,7 +461,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                     <div className="space-y-1.5">
                       <Label htmlFor="docling_pipeline" className="text-sm">{t("doclingPipeline")}</Label>
                       <Select
-                        value={(formData.config as any)?.pipeline || "standard"}
+                        value={getConfigString(formData.config, "pipeline", "standard")}
                         onValueChange={(value) =>
                           setFormData({ ...formData, config: { ...formData.config, pipeline: value } })
                         }
@@ -481,7 +483,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                   <div className="space-y-1.5">
                     <Label htmlFor="mineru_backend" className="text-sm">{t("mineruBackend")}</Label>
                     <Select
-                      value={(formData.config as any)?.backend || "hybrid-auto-engine"}
+                      value={getConfigString(formData.config, "backend", "hybrid-auto-engine")}
                       onValueChange={(value) =>
                         setFormData({ ...formData, config: { ...formData.config, backend: value } })
                       }
@@ -501,7 +503,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                   <div className="space-y-1.5">
                     <Label htmlFor="mineru_parse_method" className="text-sm">{t("parseMethod")}</Label>
                     <Select
-                      value={(formData.config as any)?.parse_method || "auto"}
+                      value={getConfigString(formData.config, "parse_method", "auto")}
                       onValueChange={(value) =>
                         setFormData({ ...formData, config: { ...formData.config, parse_method: value } })
                       }
@@ -536,7 +538,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                         { value: "te", label: t("langTe") },
                         { value: "ka", label: t("langKa") },
                       ].map(({ value: lang, label }) => {
-                        const current: string[] = (formData.config as any)?.lang_list || ["ch", "en"]
+                        const current = getConfigStringArray(formData.config, "lang_list", ["ch", "en"])
                         const selected = current.includes(lang)
                         return (
                           <button
@@ -544,7 +546,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                             type="button"
                             onClick={() => {
                               const next = selected
-                                ? current.filter((l: string) => l !== lang)
+                                ? current.filter(l => l !== lang)
                                 : [...current, lang]
                               if (next.length === 0) return
                               setFormData({ ...formData, config: { ...formData.config, lang_list: next } })
@@ -633,7 +635,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
               editingIndex === index ? (
                 <div key={processor.id}>{renderForm()}</div>
               ) : (
-                <Card key={processor.id} className={`transition-all ${!processor.enabled ? 'opacity-60' : ''}`}>
+                <Card key={processor.id} className={`transition-all ${!processor.enabled ? "opacity-60" : ""}`}>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -641,7 +643,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                           const typeInfo = DOC_PROCESSOR_TYPES.find(t => t.value === processor.type)
                           const icons: Record<string, LucideIcon> = { Bird, Zap, Scan, BookOpen, Pickaxe, FileText }
 
-                          if (typeInfo?.icon.startsWith('/')) {
+                          if (typeInfo?.icon.startsWith("/")) {
                             return (
                               <div className={`h-10 w-10 rounded-lg flex items-center justify-center p-1.5 ${typeInfo?.color || "bg-slate-100"}`}>
                                 <Image src={typeInfo.icon} alt={processor.name} width={28} height={28} className="object-contain" />
@@ -664,7 +666,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                                 v{versions[processor.id]}
                               </span>
                             )}
-                            {processor.origin === 'platform' && (
+                            {processor.origin === "platform" && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700">
                                 <Globe className="h-3 w-3 mr-1" />
                                 {t("platformShared")}
@@ -690,7 +692,7 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {processor.origin !== 'platform' && (
+                        {processor.origin !== "platform" && (
                           <Switch
                             checked={processor.enabled}
                             onCheckedChange={(checked: boolean) => handleToggleEnabled(processor.id, checked)}
@@ -700,8 +702,8 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                           variant="ghost"
                           size="icon"
                           onClick={() => handleTest(processor)}
-                          disabled={testing === processor.id || processor.origin === 'platform'}
-                          title={processor.origin === 'platform' ? t("platformShared") : t("testConnect")}
+                          disabled={testing === processor.id || processor.origin === "platform"}
+                          title={processor.origin === "platform" ? t("platformShared") : t("testConnect")}
                         >
                           {testing === processor.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -709,8 +711,8 @@ export function DocProcessorSettings({ scope = 'tenant' }: { scope?: 'platform' 
                             <Zap className="h-4 w-4" />
                           )}
                         </Button>
-                        <div className="flex items-center gap-2" title={processor.origin === 'platform' ? t("platformResourceDesc") : undefined}>
-                          {processor.origin !== 'platform' && (
+                        <div className="flex items-center gap-2" title={processor.origin === "platform" ? t("platformResourceDesc") : undefined}>
+                          {processor.origin !== "platform" && (
                             <>
                               <Button
                                 variant="ghost"

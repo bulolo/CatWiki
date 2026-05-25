@@ -344,20 +344,34 @@ class CRUDSite(CRUDBase[Site, SiteCreate, SiteUpdate]):
         return sites, total
 
     async def get_active(
-        self, db: AsyncSession, *, site_id: int | None = None, slug: str | None = None
+        self,
+        db: AsyncSession,
+        *,
+        site_id: int | None = None,
+        slug: str | None = None,
+        tenant_slug: str | None = None,
     ) -> Site | None:
         """获取单个激活的站点详情 (带缓存)"""
         target = f"id:{site_id}" if site_id else f"slug:{slug}"
+        if tenant_slug:
+            target = f"{target}:tenant:{tenant_slug}"
         cache_key = f"site:active:{target}"
 
         async def _fetch():
             from sqlalchemy import select
             from sqlalchemy.orm import joinedload
 
+            from app.models.tenant import Tenant
+
             if site_id:
                 stmt = select(self.model).where(self.model.id == site_id)
             else:
                 stmt = select(self.model).where(self.model.slug == slug)
+
+            if tenant_slug:
+                stmt = stmt.join(Tenant, self.model.tenant_id == Tenant.id).where(
+                    Tenant.slug == tenant_slug
+                )
 
             stmt = stmt.where(self.model.status == "active").options(joinedload(self.model.tenant))
             result = await db.execute(stmt)

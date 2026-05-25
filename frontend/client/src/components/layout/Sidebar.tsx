@@ -27,7 +27,7 @@ import { useTranslations } from "next-intl"
 interface SidebarProps {
   items: MenuItem[]
   selectedId?: string
-  onSelect?: (item: MenuItem | { id: string, type: 'special' }) => void
+  onSelect?: (item: MenuItem | { id: string, type: "special" }) => void
   isOpen?: boolean
   onClose?: () => void
   siteName?: string
@@ -227,10 +227,9 @@ export function Sidebar({ items, selectedId, onSelect, isOpen, onClose, siteName
         <div className="px-2 pt-3 border-t border-slate-200/60 flex flex-col gap-1 mt-4">
           <div className="flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-[#3b82f6]">
             <Link
-              href="https://catwiki.cn"
+              href="https://catwiki.ai"
               target="_blank"
               className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
-              id="cw-sys-mount"
             >
               <ShieldCheck className="h-3 w-3" />
               CatWiki Official

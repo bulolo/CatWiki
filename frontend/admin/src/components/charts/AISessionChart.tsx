@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-"use client";
+"use client"
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
-import { cn } from "@/lib/utils";
+import React, { useState, useMemo, useEffect } from "react"
+import { useTranslations } from "next-intl"
+import { cn } from "@/lib/utils"
 
 interface ChartData {
   date: string;
@@ -42,54 +42,54 @@ interface AISessionChartProps {
 }
 
 export default function AISessionChart({ data, color = "#3b82f6", className }: AISessionChartProps) {
-  const t = useTranslations('AIChart');
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [hasLoaded, setHasLoaded] = useState(false);
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const [viewWidth, setViewWidth] = useState(1000); // Default fallback
+  const t = useTranslations("AIChart")
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const [hasLoaded, setHasLoaded] = useState(false)
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [viewWidth, setViewWidth] = useState(1000) // Default fallback
 
   useEffect(() => {
-    setHasLoaded(true);
+    setHasLoaded(true)
 
-    if (!containerRef.current) return;
+    if (!containerRef.current) return
 
     const observer = new ResizeObserver((entries) => {
       if (entries[0].contentRect.width > 0) {
-        setViewWidth(entries[0].contentRect.width);
+        setViewWidth(entries[0].contentRect.width)
       }
-    });
+    })
 
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
+    observer.observe(containerRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   // Configuration - Use responsive internal coordinate system
-  const PADDING_TOP = 40; // Increased to accommodate Max label
-  const PADDING_BOTTOM = 35;
-  const VIEW_HEIGHT = 400;
-  const VIEW_WIDTH = viewWidth; // Dynamic based on container
+  const PADDING_TOP = 40 // Increased to accommodate Max label
+  const PADDING_BOTTOM = 35
+  const VIEW_HEIGHT = 400
+  const VIEW_WIDTH = viewWidth // Dynamic based on container
 
   const { points, areaPath, linePath, maxVal } = useMemo(() => {
-    if (!data || data.length === 0) return { points: [], areaPath: "", linePath: "", maxVal: 0 };
+    if (!data || data.length === 0) return { points: [], areaPath: "", linePath: "", maxVal: 0 }
 
-    const mv = Math.max(...data.map(d => d.value)) || 1;
-    const plottingHeight = VIEW_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
+    const mv = Math.max(...data.map(d => d.value)) || 1
+    const plottingHeight = VIEW_HEIGHT - PADDING_TOP - PADDING_BOTTOM
 
     // Calculate coordinates and hit areas
-    const segmentWidth = VIEW_WIDTH / (data.length - 1 || 1);
+    const segmentWidth = VIEW_WIDTH / (data.length - 1 || 1)
 
     const coords = data.map((d, i) => {
-      const x = i * segmentWidth;
-      const percent = d.value / mv;
-      const y = PADDING_TOP + plottingHeight * (1 - percent);
+      const x = i * segmentWidth
+      const percent = d.value / mv
+      const y = PADDING_TOP + plottingHeight * (1 - percent)
 
-      const leftPercent = (i / (data.length - 1 || 1)) * 100;
-      const topPercent = (y / VIEW_HEIGHT) * 100;
+      const leftPercent = (i / (data.length - 1 || 1)) * 100
+      const topPercent = (y / VIEW_HEIGHT) * 100
 
       // Calculate hit area
-      const hitWidthPercent = 100 / (data.length - 1 || 1);
-      const hitWidth = (i === 0 || i === data.length - 1) ? hitWidthPercent / 2 : hitWidthPercent;
-      const hitLeft = (i === 0) ? 0 : (i === data.length - 1) ? 100 - hitWidth : leftPercent - hitWidth / 2;
+      const hitWidthPercent = 100 / (data.length - 1 || 1)
+      const hitWidth = (i === 0 || i === data.length - 1) ? hitWidthPercent / 2 : hitWidthPercent
+      const hitLeft = (i === 0) ? 0 : (i === data.length - 1) ? 100 - hitWidth : leftPercent - hitWidth / 2
 
       return {
         x, y,
@@ -97,52 +97,52 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
         hitWidth, hitLeft,
         isToday: i === data.length - 1,
         ...d
-      };
-    });
+      }
+    })
 
     // Fluid Monotone Spline algorithm
     const generateSmoothPath = (pts: ChartPoint[]) => {
-      if (pts.length < 2) return "";
-      let path = `M ${pts[0].x} ${pts[0].y}`;
+      if (pts.length < 2) return ""
+      let path = `M ${pts[0].x} ${pts[0].y}`
 
       const slopes = pts.map((p, i) => {
-        if (i === 0) return (pts[1].y - p.y) / (pts[1].x - pts[0].x);
-        if (i === pts.length - 1) return (p.y - pts[i - 1].y) / (pts[i].x - pts[i - 1].x);
+        if (i === 0) return (pts[1].y - p.y) / (pts[1].x - pts[0].x)
+        if (i === pts.length - 1) return (p.y - pts[i - 1].y) / (pts[i].x - pts[i - 1].x)
 
-        const dx1 = pts[i].x - pts[i - 1].x;
-        const dy1 = p.y - pts[i - 1].y;
-        const dx2 = pts[i + 1].x - pts[i].x;
-        const dy2 = pts[i + 1].y - p.y;
+        const dx1 = pts[i].x - pts[i - 1].x
+        const dy1 = p.y - pts[i - 1].y
+        const dx2 = pts[i + 1].x - pts[i].x
+        const dy2 = pts[i + 1].y - p.y
 
-        const s1 = dy1 / dx1;
-        const s2 = dy2 / dx2;
-        if (s1 * s2 <= 0) return 0;
-        const w1 = 2 * dx2 + dx1;
-        const w2 = dx2 + 2 * dx1;
-        return (w1 + w2) / (w1 / s1 + w2 / s2);
-      });
+        const s1 = dy1 / dx1
+        const s2 = dy2 / dx2
+        if (s1 * s2 <= 0) return 0
+        const w1 = 2 * dx2 + dx1
+        const w2 = dx2 + 2 * dx1
+        return (w1 + w2) / (w1 / s1 + w2 / s2)
+      })
 
       for (let i = 0; i < pts.length - 1; i++) {
-        const curr = pts[i];
-        const next = pts[i + 1];
-        const dx = (next.x - curr.x) / 2.75;
-        path += ` C ${curr.x + dx} ${curr.y + slopes[i] * dx}, ${next.x - dx} ${next.y - slopes[i + 1] * dx}, ${next.x} ${next.y}`;
+        const curr = pts[i]
+        const next = pts[i + 1]
+        const dx = (next.x - curr.x) / 2.75
+        path += ` C ${curr.x + dx} ${curr.y + slopes[i] * dx}, ${next.x - dx} ${next.y - slopes[i + 1] * dx}, ${next.x} ${next.y}`
       }
-      return path;
-    };
+      return path
+    }
 
-    const lp = generateSmoothPath(coords);
-    const ap = `${lp} L ${VIEW_WIDTH} ${VIEW_HEIGHT} L 0 ${VIEW_HEIGHT} Z`;
+    const lp = generateSmoothPath(coords)
+    const ap = `${lp} L ${VIEW_WIDTH} ${VIEW_HEIGHT} L 0 ${VIEW_HEIGHT} Z`
 
-    return { points: coords, areaPath: ap, linePath: lp, maxVal: mv };
-  }, [data, VIEW_HEIGHT, VIEW_WIDTH, PADDING_TOP, PADDING_BOTTOM]);
+    return { points: coords, areaPath: ap, linePath: lp, maxVal: mv }
+  }, [data, VIEW_HEIGHT, VIEW_WIDTH, PADDING_TOP, PADDING_BOTTOM])
 
   if (!data || data.length === 0) {
     return (
       <div className={cn("w-full h-full flex items-center justify-center text-slate-300 italic text-sm", className)}>
         {t("noData")}
       </div>
-    );
+    )
   }
 
   // Grid levels
@@ -150,7 +150,7 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
     { lvl: 0, label: "0" },
     { lvl: 0.5, label: "50%" },
     { lvl: 1, label: t("maxValue") }
-  ];
+  ]
 
   return (
     <div
@@ -191,14 +191,14 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
               x="0" y="0"
               width={hasLoaded ? VIEW_WIDTH : 0}
               height={VIEW_HEIGHT}
-              style={{ transition: 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
+              style={{ transition: "width 1.2s cubic-bezier(0.4, 0, 0.2, 1)" }}
             />
           </clipPath>
         </defs>
 
         {/* Horizontal Grid lines */}
         {gridLevels.map((g) => {
-          const y = PADDING_TOP + (VIEW_HEIGHT - PADDING_TOP - PADDING_BOTTOM) * (1 - g.lvl);
+          const y = PADDING_TOP + (VIEW_HEIGHT - PADDING_TOP - PADDING_BOTTOM) * (1 - g.lvl)
           return (
             <line
               key={`grid-${g.lvl}`}
@@ -208,7 +208,7 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
               strokeDasharray="4 4"
               className="opacity-30"
             />
-          );
+          )
         })}
 
         {/* Area Fill */}
@@ -229,7 +229,7 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
             style={{
               strokeDasharray: 3000,
               strokeDashoffset: hasLoaded ? 0 : 3000,
-              transition: hasLoaded ? 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
+              transition: hasLoaded ? "stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)" : "none"
             }}
           />
           {/* Core Stroke (Sharp & Vibrant) */}
@@ -244,7 +244,7 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
             style={{
               strokeDasharray: 3000,
               strokeDashoffset: hasLoaded ? 0 : 3000,
-              transition: hasLoaded ? 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
+              transition: hasLoaded ? "stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)" : "none"
             }}
           />
         </g>
@@ -256,24 +256,24 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
       <div className="absolute inset-0 z-10 pointer-events-none">
         {/* Grid Labels - Moved from SVG to prevent squeezing */}
         {gridLevels.map((g) => {
-          const topPercent = ((PADDING_TOP + (VIEW_HEIGHT - PADDING_TOP - PADDING_BOTTOM) * (1 - g.lvl)) / VIEW_HEIGHT) * 100;
+          const topPercent = ((PADDING_TOP + (VIEW_HEIGHT - PADDING_TOP - PADDING_BOTTOM) * (1 - g.lvl)) / VIEW_HEIGHT) * 100
           return (
             <div
               key={`label-${g.lvl}`}
               className="absolute right-1 text-[10px] text-slate-400 font-bold tracking-tight pointer-events-none"
               style={{
                 top: `${topPercent}%`,
-                marginTop: '-16px', // Roughly y-8 equivalent in SVG
+                marginTop: "-16px", // Roughly y-8 equivalent in SVG
                 opacity: 0.8
               }}
             >
               {g.label === t("maxValue") ? `${t("maxValue")}: ${maxVal}` : g.label}
             </div>
-          );
+          )
         })}
 
         {points.map((p: ChartPoint, i: number) => {
-          const isHovered = hoverIndex === i;
+          const isHovered = hoverIndex === i
 
           return (
             <div
@@ -286,9 +286,9 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
               <div
                 className="absolute pointer-events-none z-[60]"
                 style={{
-                  left: i === 0 ? '0%' : i === points.length - 1 ? '100%' : '50%',
+                  left: i === 0 ? "0%" : i === points.length - 1 ? "100%" : "50%",
                   top: `${p.topPercent}%`,
-                  transform: 'translate(-50%, -50%)'
+                  transform: "translate(-50%, -50%)"
                 }}
               >
                 {/* Static / Today Point */}
@@ -344,7 +344,7 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
                 isHovered ? "opacity-100 scale-100" : "opacity-0 scale-95"
               )} style={{
                 bottom: `${100 - p.topPercent}%`,
-                marginBottom: '12px' // Gap for tail and dot marker
+                marginBottom: "12px" // Gap for tail and dot marker
               }}>
                 <div className={cn(
                   "bg-white/95 backdrop-blur-xl text-slate-900 px-5 py-4 rounded-[24px] shadow-2xl whitespace-nowrap flex flex-col items-center gap-1.5 relative border border-slate-200/50",
@@ -387,5 +387,5 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
         })}
       </div>
     </div>
-  );
+  )
 }

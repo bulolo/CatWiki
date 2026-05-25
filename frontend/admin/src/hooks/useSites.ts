@@ -20,11 +20,12 @@
  * 替换原手写 ``siteKeys.list(filters)``，避免与 invalidation 漂移。
  */
 
-import { useQueryClient } from '@tanstack/react-query'
-import { createAdminSite, deleteAdminSite, getAdminSiteBySlug, getGetAdminSiteBySlugQueryKey, getListAdminSitesQueryKey, updateAdminSite, useGetAdminSite, useGetAdminSiteBySlug, useListAdminSites } from '@/lib/sdk/admin-sites'
-import type { SiteCreate, SiteUpdate } from '@/lib/sdk/sdk.schemas'
-import { isAuthenticated } from '@/lib/auth'
-import { useAdminMutation } from './useAdminMutation'
+import { useQueryClient } from "@tanstack/react-query"
+import { createAdminSite, deleteAdminSite, getAdminSiteBySlug, getGetAdminSiteBySlugQueryKey, getListAdminSitesQueryKey, updateAdminSite, useGetAdminSite, useGetAdminSiteBySlug, useListAdminSites } from "@/lib/sdk/admin-sites"
+import type { SiteCreate, SiteUpdate } from "@/lib/sdk/sdk.schemas"
+import { isAuthenticated } from "@/lib/auth"
+import { useAdminMutation } from "./useAdminMutation"
+import { STALE_TIME } from "@/lib/react-query"
 
 /**
  * 获取站点列表（按 list 字段解开分页对象）
@@ -36,7 +37,7 @@ export function useSitesList(params: { page?: number; size?: number; status?: st
     {
       query: {
         enabled: isAuthenticated(),
-        staleTime: 10 * 60 * 1000,
+        staleTime: STALE_TIME.LONG,
         gcTime: 30 * 60 * 1000,
         select: (data) => data?.list ?? [],
       },
@@ -48,10 +49,10 @@ export function useSitesList(params: { page?: number; size?: number; status?: st
  * 通过 slug 获取站点详情
  */
 export function useSiteBySlug(slug: string | undefined) {
-  return useGetAdminSiteBySlug(slug ?? '', {
+  return useGetAdminSiteBySlug(slug ?? "", {
     query: {
       enabled: !!slug && isAuthenticated(),
-      staleTime: 5 * 60 * 1000,
+      staleTime: STALE_TIME.MEDIUM,
       retry: 2,
     },
   })
@@ -64,7 +65,7 @@ export function useSiteById(id: number | undefined) {
   return useGetAdminSite(id ?? 0, {
     query: {
       enabled: !!id && isAuthenticated(),
-      staleTime: 5 * 60 * 1000,
+      staleTime: STALE_TIME.MEDIUM,
     },
   })
 }
@@ -86,7 +87,7 @@ export function useUpdateSite() {
   return useAdminMutation({
     mutationFn: ({ siteId, data }: { siteId: number; data: SiteUpdate }) =>
       updateAdminSite(siteId, data),
-    invalidateKeys: [['/admin/v1/sites']],
+    invalidateKeys: [["/admin/v1/sites"]],
   })
 }
 
@@ -110,7 +111,7 @@ export function usePrefetchSite(slug: string) {
     queryClient.prefetchQuery({
       queryKey: getGetAdminSiteBySlugQueryKey(slug),
       queryFn: () => getAdminSiteBySlug(slug).catch(() => null),
-      staleTime: 5 * 60 * 1000,
+      staleTime: STALE_TIME.MEDIUM,
     })
   }
 }

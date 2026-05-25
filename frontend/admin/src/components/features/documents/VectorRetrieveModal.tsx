@@ -14,15 +14,11 @@
 
 
 import { useState } from "react"
-import { useTranslations } from 'next-intl'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { useTranslations } from "next-intl"
+import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, ScrollArea } from "@/components/ui"
 import { Search, Loader2, FileText, Brain, Info } from "lucide-react"
-import { retrieveDocuments } from '@/lib/sdk/admin-documents'
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Badge } from "@/components/ui/badge"
-import type { VectorRetrieveResponse } from '@/lib/sdk/sdk.schemas'
+import { retrieveDocuments } from "@/lib/sdk/admin-documents"
+import type { VectorRetrieveResponse } from "@/lib/sdk/sdk.schemas"
 
 interface VectorRetrieveModalProps {
   open: boolean
@@ -41,14 +37,14 @@ interface RetrieveResult {
 
 function getChunkIndex(metadata?: Record<string, unknown>): string {
   const value = metadata?.chunk_index
-  if (typeof value === 'number' || typeof value === 'string') {
+  if (typeof value === "number" || typeof value === "string") {
     return String(value)
   }
-  return 'N/A'
+  return "N/A"
 }
 
 export function VectorRetrieveModal({ open, onOpenChange, siteId }: VectorRetrieveModalProps) {
-  const t = useTranslations('VectorRetrieve')
+  const t = useTranslations("VectorRetrieve")
   const [query, setQuery] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [results, setResults] = useState<RetrieveResult[]>([])

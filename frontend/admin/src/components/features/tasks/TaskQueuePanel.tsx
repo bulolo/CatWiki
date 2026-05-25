@@ -1,54 +1,54 @@
 "use client"
 
-import React from 'react'
-import { useTranslations } from 'next-intl'
-import { useTasks } from '@/contexts/TaskContext'
-import Image from 'next/image'
-import { Button } from '@/components/ui/button'
-import { X, Minus, Loader2, CheckCircle2, AlertCircle, ChevronUp } from 'lucide-react'
-import { AnimatePresence, motion } from 'framer-motion'
-import type { Task } from '@/lib/sdk/sdk.schemas'
-import { cn } from '@/lib/utils'
-import { DOC_PROCESSOR_TYPES } from '@/types/settings'
+import React from "react"
+import { useTranslations } from "next-intl"
+import { useTasks } from "@/contexts/TaskContext"
+import Image from "next/image"
+import { Button } from "@/components/ui"
+import { X, Minus, Loader2, CheckCircle2, AlertCircle, ChevronUp } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion"
+import type { Task } from "@/lib/sdk/sdk.schemas"
+import { cn } from "@/lib/utils"
+import { DOC_PROCESSOR_TYPES } from "@/types/settings"
 
 export function TaskQueuePanel() {
   const { tasks, isPanelOpen, setPanelOpen, minimizePanel, togglePanel, removeTask, clearFinishedTasks } = useTasks()
-  const t = useTranslations('TaskQueue')
+  const t = useTranslations("TaskQueue")
 
   if (tasks.length === 0) return null
 
   // Calculate totals
   const total = tasks.length
-  const completed = tasks.filter(t => t.status === 'completed').length
-  const failed = tasks.filter(t => t.status === 'failed').length
-  const processing = tasks.filter(t => t.status === 'processing' || t.status === 'pending' || t.status === 'running').length
+  const completed = tasks.filter(t => t.status === "completed").length
+  const failed = tasks.filter(t => t.status === "failed").length
+  const processing = tasks.filter(t => t.status === "processing" || t.status === "pending" || t.status === "running").length
 
-  const getStatusIcon = (status: Task['status']) => {
+  const getStatusIcon = (status: Task["status"]) => {
     switch (status) {
-      case 'completed': return <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-      case 'failed': return <AlertCircle className="h-4 w-4 text-red-500" />
-      case 'processing': 
-      case 'running':
-      case 'pending':
+      case "completed": return <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+      case "failed": return <AlertCircle className="h-4 w-4 text-red-500" />
+      case "processing": 
+      case "running":
+      case "pending":
       default: return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
     }
   }
 
-  const getStatusTextColor = (status: Task['status']) => {
+  const getStatusTextColor = (status: Task["status"]) => {
     switch (status) {
-      case 'completed': return 'text-emerald-600'
-      case 'failed': return 'text-red-600'
-      default: return 'text-slate-600'
+      case "completed": return "text-emerald-600"
+      case "failed": return "text-red-600"
+      default: return "text-slate-600"
     }
   }
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'completed': return t("completed")
-      case 'failed': return t("failed")
-      case 'pending': return t("pending")
-      case 'processing': return t("processing")
-      case 'running': return t("processing")
+      case "completed": return t("completed")
+      case "failed": return t("failed")
+      case "pending": return t("pending")
+      case "processing": return t("processing")
+      case "running": return t("processing")
       default: return status
     }
   }
@@ -148,13 +148,13 @@ export function TaskQueuePanel() {
                             </span>
                             {processorInfo && (
                               <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
-                                {processorInfo.icon.startsWith('/') ? (
+                                {processorInfo.icon.startsWith("/") ? (
                                   <Image src={processorInfo.icon} alt={processorInfo.label} width={12} height={12} className="object-contain" />
                                 ) : null}
                                 {processorInfo.label}
                               </span>
                             )}
-                            {task.status === 'failed' && task.error && (
+                            {task.status === "failed" && task.error && (
                               <span className="text-xs text-red-500 truncate max-w-[150px]" title={task.error}>
                                 : {task.error}
                               </span>
@@ -163,7 +163,7 @@ export function TaskQueuePanel() {
                         </div>
                       </div>
                       
-                      {(task.status === 'completed' || task.status === 'failed') && (
+                      {(task.status === "completed" || task.status === "failed") && (
                         <Button 
                           variant="ghost" 
                           size="icon" 

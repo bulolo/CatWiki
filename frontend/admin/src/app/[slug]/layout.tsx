@@ -24,8 +24,8 @@ import { useSite } from "@/contexts/SiteContext"
  */
 export default function SiteLayout({ children }: { children: ReactNode }) {
   const { isLoadingSite, siteError, currentSite } = useSite()
-  const t = useTranslations('Common')
-  const st = useTranslations('SiteNotFound')
+  const t = useTranslations("Common")
+  const st = useTranslations("SiteNotFound")
   const [isMounted, setIsMounted] = useState(false)
 
   // 检测客户端挂载状态，避免 SSR/CSR 不匹配
@@ -46,7 +46,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
   if (siteError) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-slate-600">{siteError.message || t('loading')}</div>
+        <div className="text-slate-600">{siteError.message || t("loading")}</div>
       </div>
     )
   }

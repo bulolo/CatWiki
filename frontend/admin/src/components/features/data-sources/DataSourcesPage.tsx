@@ -14,25 +14,23 @@
 
 "use client"
 
-import { useState, useEffect, useCallback, Fragment, useRef, type ChangeEvent } from "react"
+import { Fragment, useRef, useState, type ChangeEvent } from "react"
 import { useTranslations } from "next-intl"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table"
-import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useAdminMutation } from "@/hooks/useAdminMutation"
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, useConfirm } from "@/components/ui"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui"
 import {
   Database, Plus, Pencil, Trash2, Loader2, Server, Info, X, Check,
   FolderOpen, Folder, FileText, ChevronRight, ArrowLeft, RefreshCw, Upload,
 } from "lucide-react"
 import { toast } from "sonner"
-import { browseDataSource, createDataSource, deleteDataSource, deleteDataSourceFile, listDataSources, updateDataSource, uploadToDataSource } from '@/lib/sdk/admin-data-sources'
-import type { DataSource, DataSourceCreate, DataSourceUpdate, S3FileItem } from '@/lib/sdk/sdk.schemas'
+import { browseDataSource, createDataSource, deleteDataSource, deleteDataSourceFile, listDataSources, updateDataSource, uploadToDataSource } from "@/lib/sdk/admin-data-sources"
+import type { DataSource, DataSourceCreate, DataSourceUpdate, S3FileItem } from "@/lib/sdk/sdk.schemas"
+
+const DATA_SOURCES_KEY = ["data-sources"] as const
+const DATA_SOURCE_BROWSE_KEY = (id: number | null, prefix: string) =>
+  ["data-source-browse", id, prefix] as const
 
 function formatSize(bytes: number | null | undefined): string {
   if (bytes == null) return ""
@@ -69,38 +67,91 @@ const EMPTY_FORM: FormState = {
 
 export function DataSourcesPage() {
   const t = useTranslations("DataSources")
-  const [sources, setSources] = useState<DataSource[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const confirm = useConfirm()
+  const queryClient = useQueryClient()
+
+  // —————————————— 数据源列表 ——————————————
+  const { data: sources = [], isLoading } = useQuery({
+    queryKey: DATA_SOURCES_KEY,
+    queryFn: async () => {
+      try {
+        return (await listDataSources()) ?? []
+      } catch {
+        toast.error(t("loadFailed"))
+        throw new Error("load failed")
+      }
+    },
+  })
+
+  // —————————————— 表单状态 ——————————————
   const [editingId, setEditingId] = useState<number | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
-  const [isSaving, setIsSaving] = useState(false)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
 
-  // 文件浏览面板
+  // —————————————— 文件浏览状态 ——————————————
   const [browsingId, setBrowsingId] = useState<number | null>(null)
-  const [browseFiles, setBrowseFiles] = useState<S3FileItem[]>([])
   const [browsePrefix, setBrowsePrefix] = useState("")
   const [browseStack, setBrowseStack] = useState<string[]>([])
-  const [isBrowsing, setIsBrowsing] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
-  const [deletingKey, setDeletingKey] = useState<string | null>(null)
   const uploadInputRef = useRef<HTMLInputElement>(null)
 
-  const load = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const list = await listDataSources()
-      setSources(list ?? [])
-    } catch {
-      toast.error(t("loadFailed"))
-    } finally {
-      setIsLoading(false)
+  const { data: browseFiles = [], isFetching: isBrowsing } = useQuery({
+    queryKey: DATA_SOURCE_BROWSE_KEY(browsingId, browsePrefix),
+    queryFn: async () => {
+      if (browsingId === null) return [] as S3FileItem[]
+      try {
+        return (await browseDataSource(browsingId, { prefix: browsePrefix })) ?? []
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : t("browseFailed"))
+        return [] as S3FileItem[]
+      }
+    },
+    enabled: browsingId !== null,
+  })
+
+  const invalidateBrowse = () => {
+    if (browsingId !== null) {
+      queryClient.invalidateQueries({ queryKey: DATA_SOURCE_BROWSE_KEY(browsingId, browsePrefix) })
     }
-  }, [t])
+  }
 
-  useEffect(() => { load() }, [load])
+  // —————————————— Mutations ——————————————
+  const createMutation = useAdminMutation({
+    mutationFn: (data: DataSourceCreate) => createDataSource(data),
+    successMsg: t("createSuccess"),
+    invalidateKeys: [DATA_SOURCES_KEY],
+  })
 
+  const updateMutation = useAdminMutation({
+    mutationFn: ({ id, data }: { id: number; data: DataSourceUpdate }) => updateDataSource(id, data),
+    successMsg: t("updateSuccess"),
+    invalidateKeys: [DATA_SOURCES_KEY],
+  })
+
+  const deleteMutation = useAdminMutation({
+    mutationFn: (id: number) => deleteDataSource(id),
+    successMsg: t("deleteSuccess"),
+    invalidateKeys: [DATA_SOURCES_KEY],
+  })
+
+  const uploadMutation = useAdminMutation({
+    mutationFn: ({ id, file, prefix }: { id: number; file: File; prefix: string }) =>
+      uploadToDataSource(id, { file, prefix }),
+    successMsg: (_data, vars) => t("uploadSuccess", { name: vars.file.name }),
+    onSuccess: () => invalidateBrowse(),
+  })
+
+  const deleteFileMutation = useAdminMutation({
+    mutationFn: ({ id, key }: { id: number; key: string }) => deleteDataSourceFile(id, { key }),
+    successMsg: t("deleteFileSuccess"),
+    onSuccess: () => invalidateBrowse(),
+  })
+
+  const isSaving = createMutation.isPending || updateMutation.isPending
+  const deletingId = deleteMutation.isPending ? deleteMutation.variables : null
+  const deletingKey = deleteFileMutation.isPending ? deleteFileMutation.variables?.key : null
+  const isUploading = uploadMutation.isPending
+
+  // —————————————— Handlers ——————————————
   const handleStartAdd = () => {
     setEditingId(null)
     setIsAdding(true)
@@ -144,131 +195,90 @@ export function DataSourcesPage() {
       if (!editingId && !form.secret_key.trim()) { toast.error(t("secretKeyRequired")); return }
     }
 
-    setIsSaving(true)
-    try {
-      const config = form.type === "s3"
-        ? {
-            endpoint: form.endpoint,
-            bucket_name: form.bucket_name,
-            access_key: form.access_key,
-            secret_key: form.secret_key,
-            use_ssl: form.use_ssl,
-            root_prefix: form.root_prefix,
-          }
-        : { root_prefix: form.root_prefix }
+    const config = form.type === "s3"
+      ? {
+          endpoint: form.endpoint,
+          bucket_name: form.bucket_name,
+          access_key: form.access_key,
+          secret_key: form.secret_key,
+          use_ssl: form.use_ssl,
+          root_prefix: form.root_prefix,
+        }
+      : { root_prefix: form.root_prefix }
 
+    try {
       if (editingId) {
-        await updateDataSource(editingId, { name: form.name, description: form.description || undefined, config } as DataSourceUpdate)
-        toast.success(t("updateSuccess"))
+        await updateMutation.mutateAsync({
+          id: editingId,
+          data: { name: form.name, description: form.description || undefined, config } as DataSourceUpdate,
+        })
       } else {
-        await createDataSource({ name: form.name, type: form.type, description: form.description || undefined, config } as DataSourceCreate)
-        toast.success(t("createSuccess"))
+        await createMutation.mutateAsync({
+          name: form.name,
+          type: form.type,
+          description: form.description || undefined,
+          config,
+        } as DataSourceCreate)
       }
       handleCancel()
-      load()
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t("saveFailed"))
-    } finally {
-      setIsSaving(false)
+    } catch {
+      // useAdminMutation 已经 toast.error
     }
   }
 
   const handleDelete = async (id: number) => {
-    setDeletingId(id)
-    try {
-      await deleteDataSource(id)
-      toast.success(t("deleteSuccess"))
-      setSources(prev => prev.filter(s => s.id !== id))
-      if (browsingId === id) {
-        setBrowsingId(null)
-      }
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t("deleteFailed"))
-    } finally {
-      setDeletingId(null)
-    }
+    const target = sources.find(s => s.id === id)
+    if (!await confirm({
+      description: t("deleteConfirm", { name: target?.name ?? "" }),
+      variant: "destructive",
+    })) return
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        if (browsingId === id) setBrowsingId(null)
+      },
+    })
   }
-
-  const doBrowse = useCallback(async (dsId: number, prefix: string) => {
-    setIsBrowsing(true)
-    try {
-      const items = await browseDataSource(dsId, { prefix })
-      setBrowseFiles(items ?? [])
-      setBrowsePrefix(prefix)
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t("browseFailed"))
-      setBrowseFiles([])
-    } finally {
-      setIsBrowsing(false)
-    }
-  }, [t])
 
   const handleToggleBrowse = (ds: DataSource) => {
     if (browsingId === ds.id) {
       setBrowsingId(null)
-      setBrowseFiles([])
       setBrowsePrefix("")
       setBrowseStack([])
       return
     }
     setBrowsingId(ds.id)
+    setBrowsePrefix("")
     setBrowseStack([])
-    doBrowse(ds.id, "")
   }
 
   const handleEnterDir = (item: S3FileItem) => {
-    if (!browsingId) return
+    if (browsingId === null) return
     setBrowseStack(prev => [...prev, browsePrefix])
-    doBrowse(browsingId, item.path)
+    setBrowsePrefix(item.path)
   }
 
   const handleBrowseBack = () => {
-    if (!browsingId || browseStack.length === 0) return
+    if (browseStack.length === 0) return
     const prev = browseStack[browseStack.length - 1]
     setBrowseStack(s => s.slice(0, -1))
-    doBrowse(browsingId, prev)
+    setBrowsePrefix(prev)
   }
 
-  const handleBrowseRefresh = () => {
-    if (!browsingId) return
-    doBrowse(browsingId, browsePrefix)
-  }
+  const handleBrowseRefresh = () => invalidateBrowse()
 
-  const handleUploadClick = () => {
-    uploadInputRef.current?.click()
-  }
+  const handleUploadClick = () => uploadInputRef.current?.click()
 
-  const handleFilePicked = async (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFilePicked = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ""
-    if (!file || !browsingId) return
-
-    setIsUploading(true)
-    try {
-      await uploadToDataSource(browsingId, { file, prefix: browsePrefix })
-      toast.success(t("uploadSuccess", { name: file.name }))
-      doBrowse(browsingId, browsePrefix)
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("uploadFailed"))
-    } finally {
-      setIsUploading(false)
-    }
+    if (!file || browsingId === null) return
+    uploadMutation.mutate({ id: browsingId, file, prefix: browsePrefix })
   }
 
   const handleDeleteBrowseFile = async (item: S3FileItem) => {
-    if (!browsingId) return
-    if (!window.confirm(t("deleteFileConfirm", { name: item.name }))) return
-
-    setDeletingKey(item.path)
-    try {
-      await deleteDataSourceFile(browsingId, { key: item.path })
-      toast.success(t("deleteFileSuccess"))
-      setBrowseFiles(prev => prev.filter(f => f.path !== item.path))
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("deleteFileFailed"))
-    } finally {
-      setDeletingKey(null)
-    }
+    if (browsingId === null) return
+    if (!await confirm({ description: t("deleteFileConfirm", { name: item.name }), variant: "destructive" })) return
+    deleteFileMutation.mutate({ id: browsingId, key: item.path })
   }
 
   const renderBrowser = () => (

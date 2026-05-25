@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { CollectionTree } from './CollectionTree'
-export { CreateCollectionDialog } from './CreateCollectionDialog'
-export { DocumentDirectory } from './DocumentDirectory'
-export { DocumentImportDialog } from './DocumentImportDialog'
-export { VectorRetrieveModal } from './VectorRetrieveModal'
+export { CollectionTree } from "./CollectionTree"
+export { CreateCollectionDialog } from "./CreateCollectionDialog"
+export { DocumentDirectory } from "./DocumentDirectory"
+export { DocumentImportDialog } from "./DocumentImportDialog"
+export { VectorRetrieveModal } from "./VectorRetrieveModal"

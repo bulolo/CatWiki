@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { useGetAdminHealth } from '@/lib/sdk/admin-health'
-import { useGetAdminCurrentTenant } from '@/lib/sdk/admin-tenants'
+import { useGetAdminHealth } from "@/lib/sdk/admin-health"
+import { useGetAdminCurrentTenant } from "@/lib/sdk/admin-tenants"
+import { STALE_TIME } from "@/lib/react-query"
 
 export function useHealth() {
   return useGetAdminHealth()
@@ -23,7 +24,7 @@ export function useCurrentTenant() {
   return useGetAdminCurrentTenant({
     query: {
       // 调试期间设为 30 秒，方便观察变更
-      staleTime: 30 * 1000,
+      staleTime: STALE_TIME.SHORT,
     },
   })
 }

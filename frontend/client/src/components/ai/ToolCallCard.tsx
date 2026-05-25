@@ -41,12 +41,13 @@ export function ToolCallCard({ toolCalls, className, onToolCallClick }: ToolCall
       {toolCalls.map((tc) => {
         const func = tc.function
         const name = func?.name || tc.name || "unknown"
-        const displayName = t(name as any) || name
+        // name 来自后端动态值，需要强转绕过 next-intl 的严格键类型检查
+        const displayName = (t as (key: string) => string)(name) || name
 
         let query = ""
         try {
           const argsRaw = func?.arguments || tc.args || "{}"
-          const args = typeof argsRaw === 'string' ? JSON.parse(argsRaw) : argsRaw
+          const args = typeof argsRaw === "string" ? JSON.parse(argsRaw) : argsRaw
           query = args?.query || ""
         } catch { /* ignore */ }
 

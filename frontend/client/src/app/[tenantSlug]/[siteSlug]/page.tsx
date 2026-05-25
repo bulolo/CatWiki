@@ -11,10 +11,11 @@ import { Menu } from "lucide-react"
 import { useSiteBySlug, useMenuTree, useDocument } from "@/hooks"
 import { PageLoading, NotFoundState, Button } from "@/components/ui"
 import type { MenuItem } from "@/types"
-import { ThemeProvider, type ThemeColor } from "@/contexts"
+import { ThemeProvider, THEME_COLORS, type ThemeColor, SiteProvider } from "@/contexts"
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher"
 import { SitePasswordGate } from "@/components/auth/SitePasswordGate"
-import { HttpError } from '@/lib/custom-fetch'
+import { HttpError } from "@/lib/custom-fetch"
+import { clearSiteAccessToken, getSiteAccessToken } from "@/lib/site-access-token"
 
 function SlugPageContent() {
   const t = useTranslations("SlugPage")
@@ -26,19 +27,19 @@ function SlugPageContent() {
   const documentIdFromUrl = searchParams.get("documentId")
 
   // 使用 React Query 获取站点信息（自动缓存）
-  const { data: site, isLoading: siteLoading } = useSiteBySlug(siteSlug)
+  const { data: site, isLoading: siteLoading } = useSiteBySlug(siteSlug, tenantSlug)
 
   // 站点访问验证状态
   const [siteAccessVerified, setSiteAccessVerified] = useState(() => {
     if (typeof window === "undefined") return false
-    return !!sessionStorage.getItem(`site_access_token:${siteSlug}`)
+    return !!getSiteAccessToken(tenantSlug, siteSlug)
   })
 
   // 403 回调：token 失效时清除并重新要求验证
   const resetSiteAccess = useCallback(() => {
-    sessionStorage.removeItem(`site_access_token:${siteSlug}`)
+    clearSiteAccessToken(tenantSlug, siteSlug)
     setSiteAccessVerified(false)
-  }, [siteSlug])
+  }, [tenantSlug, siteSlug])
 
   // 是否被密码门拦截（需要密码且尚未验证）
   const isPasswordGated = !!site?.requires_password && !siteAccessVerified
@@ -47,15 +48,20 @@ function SlugPageContent() {
 
   // 从站点信息中提取配置
   const siteName = site?.name || t("defaultSiteName")
-  const themeColor = (site?.theme_color || "blue") as ThemeColor
+  const rawThemeColor = site?.theme_color || "blue"
+  const themeColor = (rawThemeColor in THEME_COLORS ? rawThemeColor : "blue") as ThemeColor
   const layoutMode = (site?.layout_mode || "sidebar") as "sidebar" | "top"
 
   // 使用 React Query 获取菜单树（仅在验证通过后请求）
-  const { data: menuItems = [], error: menuError } = useMenuTree(contentReady ? site!.id : null)
+  const { data: menuItems = [], error: menuError } = useMenuTree(
+    contentReady ? site!.id : null,
+    site?.tenant_id,
+  )
 
   // 使用 React Query 获取文档详情（自动缓存）
   const { data: selectedDocument, isLoading: documentLoading } = useDocument(
-    contentReady ? documentIdFromUrl : null
+    contentReady ? documentIdFromUrl : null,
+    { siteId: site?.id, tenantId: site?.tenant_id }
   )
 
   // 检测 403：token 失效（管理员改了密码），重新要求验证
@@ -69,10 +75,10 @@ function SlugPageContent() {
   const currentView = useMemo(() => {
     // 如果有 documentId，即使文档还在加载，也应该显示文档视图
     if (documentIdFromUrl) {
-      return { id: selectedDocument?.id || documentIdFromUrl, type: 'article' as const }
+      return { id: selectedDocument?.id || documentIdFromUrl, type: "article" as const }
     }
-    return { id: 'ai-home', type: 'ai-home' as const }
-  }, [documentIdFromUrl, selectedDocument])
+    return { id: "ai-home", type: "ai-home" as const }
+  }, [documentIdFromUrl, selectedDocument?.id])
 
   // 设置浏览器标题（优化：只在实际变化时更新）
   useEffect(() => {
@@ -89,8 +95,8 @@ function SlugPageContent() {
   const [initialAIQuery, setInitialAIQuery] = useState("")
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
-  const handleSelectItem = (item: MenuItem | { id: string, type: 'special' }) => {
-    if ('type' in item && item.type === 'special' && item.id === 'ai-home') {
+  const handleSelectItem = (item: MenuItem | { id: string, type: "special" }) => {
+    if ("type" in item && item.type === "special" && item.id === "ai-home") {
       router.push(`/${tenantSlug}/${siteSlug}`, { scroll: false })
     } else {
       const menuItem = item as MenuItem
@@ -126,6 +132,7 @@ function SlugPageContent() {
   if (isPasswordGated) {
     return (
       <SitePasswordGate
+        tenantSlug={tenantSlug}
         siteSlug={siteSlug}
         siteName={site.name}
         hasPassword={site.has_password ?? false}
@@ -136,6 +143,13 @@ function SlugPageContent() {
 
   return (
     <ThemeProvider initialThemeColor={themeColor} initialLayoutMode={layoutMode}>
+      <SiteProvider
+        siteId={site.id}
+        tenantId={site.tenant_id ?? null}
+        siteSlug={siteSlug}
+        tenantSlug={tenantSlug}
+        allSites={[site]}
+      >
       <div className="h-screen flex bg-white overflow-hidden">
         {/* 移动端遮罩层 */}
         {isMobileSidebarOpen && (
@@ -190,13 +204,14 @@ function SlugPageContent() {
 
           {/* 视图切换 */}
           <div className="flex-1 overflow-hidden relative">
-            {currentView.type === 'ai-home' ? (
+            {currentView.type === "ai-home" ? (
               <AIChatLanding
                 siteName={siteName}
                 siteId={site?.id}
                 tenantId={site?.tenant_id}
+                tenantSlug={tenantSlug}
+                siteSlug={siteSlug}
                 quickQuestions={site?.quick_questions ?? undefined}
-                allSites={site ? [site] : undefined}
               />
             ) : (
               <DocumentDetail
@@ -214,9 +229,11 @@ function SlugPageContent() {
           initialQuery={initialAIQuery}
           siteId={site?.id}
           tenantId={site?.tenant_id}
-          allSites={site ? [site] : undefined}
+          tenantSlug={tenantSlug}
+          siteSlug={siteSlug}
         />
       </div>
+      </SiteProvider>
     </ThemeProvider>
   )
 }
@@ -229,4 +246,3 @@ export default function SlugPage() {
     </Suspense>
   )
 }
-

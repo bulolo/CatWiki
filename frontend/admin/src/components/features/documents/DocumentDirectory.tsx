@@ -17,9 +17,8 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { useTranslations } from "next-intl"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Button, ScrollArea } from "@/components/ui"
 import { ChevronRight, Hash, Folder, FolderPlus, GripVertical } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import type { DirectoryItem } from "@/types"
 import {
   DndContext,
@@ -31,15 +30,15 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
-} from '@dnd-kit/core'
+} from "@dnd-kit/core"
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 interface DocumentDirectoryProps {
   items: DirectoryItem[]

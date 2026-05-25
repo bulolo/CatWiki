@@ -21,6 +21,8 @@ import { useEffect } from "react"
  */
 export function StatePersistence() {
   useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return
+
     const logo = `
    ______      __ _       ___ __   _ 
   / ____/___ _/ /| |     / (_) /__(_)

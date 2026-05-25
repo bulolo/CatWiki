@@ -30,8 +30,8 @@ export function getRoutePath(
   slug: string
 ): string {
   // 移除路径开头的斜杠（如果有）
-  const cleanPath = path.startsWith('/') ? path.slice(1) : path
-  return `/${slug}${cleanPath ? `/${cleanPath}` : ''}`
+  const cleanPath = path.startsWith("/") ? path.slice(1) : path
+  return `/${slug}${cleanPath ? `/${cleanPath}` : ""}`
 }
 
 /**
@@ -45,7 +45,7 @@ export function useRouteContext() {
   const slug = params.slug as string | undefined
 
   return {
-    slug: slug || '',
+    slug: slug || "",
     pathname,
   }
 }

@@ -16,8 +16,9 @@
  * React Query hooks for Stats (统计数据)
  */
 
-import { useGetAdminSiteStats } from '@/lib/sdk/admin-stats'
-import { isAuthenticated } from '@/lib/auth'
+import { useGetAdminSiteStats } from "@/lib/sdk/admin-stats"
+import { isAuthenticated } from "@/lib/auth"
+import { STALE_TIME } from "@/lib/react-query"
 
 /**
  * 获取站点统计数据
@@ -28,7 +29,7 @@ export function useSiteStats(siteId: number | undefined) {
     {
       query: {
         enabled: !!siteId && isAuthenticated(),
-        staleTime: 5 * 60 * 1000,
+        staleTime: STALE_TIME.MEDIUM,
       },
     },
   )

@@ -14,10 +14,10 @@
 
 "use client"
 
-import Image from 'next/image'
-import { useState } from 'react'
-import { FileText } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import Image from "next/image"
+import { useState } from "react"
+import { FileText } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface OptimizedImageProps {
   src: string | null | undefined
@@ -62,7 +62,7 @@ export function OptimizedImage({
   }
 
   // 检查是否是外部 URL
-  const isExternal = src.startsWith('http://') || src.startsWith('https://')
+  const isExternal = src.startsWith("http://") || src.startsWith("https://")
 
   // 对于外部图片（如从 MinIO/RustFS 加载的），暂时使用原生 img 标签
   // 因为 Next.js Image 需要额外配置且可能需要重启服务器
@@ -75,10 +75,10 @@ export function OptimizedImage({
           alt={alt}
           width={width}
           height={height}
-          loading={priority ? 'eager' : 'lazy'}
+          loading={priority ? "eager" : "lazy"}
           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
           onError={() => setError(true)}
-          style={{ objectFit: 'cover' }}
+          style={{ objectFit: "cover" }}
         />
       </div>
     )
@@ -97,7 +97,7 @@ export function OptimizedImage({
         priority={priority}
         quality={80}
         sizes="(max-width: 768px) 40px, 40px"
-        style={{ objectFit: 'cover' }}
+        style={{ objectFit: "cover" }}
       />
     </div>
   )

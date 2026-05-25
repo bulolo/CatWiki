@@ -13,4 +13,5 @@
 // limitations under the License.
 
 export { ThemeProvider, useTheme, THEME_COLORS, type ThemeColor } from "./ThemeContext"
+export { SiteProvider, useSiteContext } from "./SiteContext"
 

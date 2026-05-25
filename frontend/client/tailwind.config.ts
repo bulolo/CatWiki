@@ -17,12 +17,12 @@ import type { Config } from "tailwindcss"
 const config = {
   darkMode: ["class"],
   content: [
-    './src/pages/**/*.{ts,tsx}',
-    './src/components/**/*.{ts,tsx}',
-    './src/layout/**/*.{ts,tsx}',
-    './src/app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
-    './node_modules/streamdown/dist/*.js',
+    "./src/pages/**/*.{ts,tsx}",
+    "./src/components/**/*.{ts,tsx}",
+    "./src/layout/**/*.{ts,tsx}",
+    "./src/app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+    "./node_modules/streamdown/dist/*.js",
 	],
   prefix: "",
   theme: {
@@ -113,31 +113,31 @@ const config = {
           typography: {
             DEFAULT: {
               css: {
-                'code::before': {
+                "code::before": {
                   content: '""'
                 },
-                'code::after': {
+                "code::after": {
                   content: '""'
                 },
                 code: {
-                  backgroundColor: 'rgb(241 245 249)', // slate-100
-                  padding: '0.25rem 0.375rem',
-                  borderRadius: '0.25rem',
-                  fontWeight: '400',
-                  color: 'rgb(30 41 59)', // slate-800
+                  backgroundColor: "rgb(241 245 249)", // slate-100
+                  padding: "0.25rem 0.375rem",
+                  borderRadius: "0.25rem",
+                  fontWeight: "400",
+                  color: "rgb(30 41 59)", // slate-800
                 },
-                'pre code': {
-                  backgroundColor: 'transparent',
-                  padding: '0',
-                  color: 'rgb(15 23 42)', // slate-900
+                "pre code": {
+                  backgroundColor: "transparent",
+                  padding: "0",
+                  color: "rgb(15 23 42)", // slate-900
                 },
                 pre: {
-                  backgroundColor: 'rgb(255 255 255)', // white
-                  color: 'rgb(15 23 42)', // slate-900
-                  padding: '1rem',
-                  borderRadius: '0.5rem',
-                  overflowX: 'auto',
-                  border: '1px solid rgb(226 232 240)', // slate-200 border
+                  backgroundColor: "rgb(255 255 255)", // white
+                  color: "rgb(15 23 42)", // slate-900
+                  padding: "1rem",
+                  borderRadius: "0.5rem",
+                  overflowX: "auto",
+                  border: "1px solid rgb(226 232 240)", // slate-200 border
                 },
               }
             }

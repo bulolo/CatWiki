@@ -20,6 +20,7 @@ from app.core.ai.providers.chat import chat_provider
 from app.core.infra.rustfs import init_rustfs
 from app.core.integration.robot.services.dingtalk_app import DingTalkRobotService
 from app.core.integration.robot.services.feishu_app import FeishuRobotService
+from app.core.integration.robot.services.telegram_app import TelegramRobotService
 from app.core.integration.robot.services.wecom_smart import WeComSmartService
 from app.core.integration.robot.wecom_internals import (
     register_resolvers as register_wecom_resolvers,
@@ -81,6 +82,11 @@ class LifecycleManager:
         except Exception as e:
             logger.warning(f"⚠️ [Lifecycle] WeCom Smart LongConn startup failed: {e}")
 
+        try:
+            await TelegramRobotService.get_instance().startup(asyncio.get_running_loop())
+        except Exception as e:
+            logger.warning(f"⚠️ [Lifecycle] Telegram LongPoll startup failed: {e}")
+
         logger.info("✨ [Lifecycle] All core components started.")
 
     @classmethod
@@ -125,6 +131,11 @@ class LifecycleManager:
             await WeComSmartService.get_instance().shutdown()
         except Exception as e:
             logger.warning(f"⚠️ [Lifecycle] WeCom Smart LongConn shutdown failed: {e}")
+
+        try:
+            await TelegramRobotService.get_instance().shutdown()
+        except Exception as e:
+            logger.warning(f"⚠️ [Lifecycle] Telegram LongPoll shutdown failed: {e}")
 
         # 4.5 所有 robot service 关闭完毕后，统一释放 adapter / client 资源
         try:

@@ -19,8 +19,8 @@
  * 7. code !== 0 时抛 Error（消息优先用后端 msg）
  */
 
-import { env } from './env'
-import { getToken, clearAllAuth } from './auth'
+import { env } from "./env"
+import { getToken, clearAllAuth } from "./auth"
 
 const BASE_URL = env.NEXT_PUBLIC_API_URL
 
@@ -31,15 +31,15 @@ const BASE_URL = env.NEXT_PUBLIC_API_URL
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string) {
     super(message)
-    this.name = 'ApiError'
+    this.name = "ApiError"
   }
 }
 
 function handleUnauthorized(): void {
   clearAllAuth()
-  if (typeof window === 'undefined') return
+  if (typeof window === "undefined") return
   const currentPath = window.location.pathname
-  if (currentPath !== '/login') {
+  if (currentPath !== "/login") {
     window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
   }
 }
@@ -49,25 +49,25 @@ function buildHeaders(init?: HeadersInit, token?: string): Headers {
 
   // App 状态指纹（用于后端 / 监控识别 admin 端是否真渲染）
   let isInitialized = false
-  if (typeof document !== 'undefined') {
+  if (typeof document !== "undefined") {
     try {
-      const node = document.getElementById('cw-sys-mount')
+      const node = document.getElementById("cw-sys-mount")
       if (node) {
         const style = window.getComputedStyle(node)
         isInitialized =
-          style.display !== 'none' &&
-          style.visibility !== 'hidden' &&
+          style.display !== "none" &&
+          style.visibility !== "hidden" &&
           parseFloat(style.opacity) > 0.1
       }
     } catch {
       /* ignore */
     }
   }
-  headers.set('X-App-State', isInitialized ? '0x4f4b' : '0x4b4f')
-  headers.set('X-Admin-Origin', typeof window !== 'undefined' ? window.location.origin : '')
+  headers.set("X-App-State", isInitialized ? "0x4f4b" : "0x4b4f")
+  headers.set("X-Admin-Origin", typeof window !== "undefined" ? window.location.origin : "")
 
   if (token) {
-    headers.set('Authorization', `Bearer ${token}`)
+    headers.set("Authorization", `Bearer ${token}`)
   }
 
   // EE: 注入租户选择 header。
@@ -75,7 +75,7 @@ function buildHeaders(init?: HeadersInit, token?: string): Headers {
   // (frontend/admin/src/ee/_ce_stubs/api.ts),require 不会抛,injectEEHeaders 调用
   // 是空操作。try/catch 仅作为 EE 模块被进一步剥离时的额外保险。
   try {
-    const { injectEEHeaders } = require('@/ee/api')
+    const { injectEEHeaders } = require("@/ee/api")
     const tmp: Record<string, string> = {}
     injectEEHeaders(tmp)
     for (const [k, v] of Object.entries(tmp)) headers.set(k, v)
@@ -94,7 +94,7 @@ function buildHeaders(init?: HeadersInit, token?: string): Headers {
  * @returns      已经解包过的业务数据（直接是后端 ``data`` 字段）
  */
 export async function customFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const token = getToken() ?? ''
+  const token = getToken() ?? ""
   const headers = buildHeaders(init?.headers, token)
 
   const res = await fetch(`${BASE_URL}${url}`, { ...init, headers })
@@ -116,26 +116,26 @@ export async function customFetch<T>(url: string, init?: RequestInit): Promise<T
   if (!res.ok) {
     if (res.status === 401) handleUnauthorized()
     const msg =
-      (body && typeof body === 'object' && 'msg' in body && typeof body.msg === 'string'
+      (body && typeof body === "object" && "msg" in body && typeof body.msg === "string"
         ? body.msg
-        : typeof body === 'string'
+        : typeof body === "string"
           ? body
-          : null) || res.statusText || 'Request failed'
+          : null) || res.statusText || "Request failed"
     throw new ApiError(res.status, msg)
   }
 
   // CatWiki ApiResponse 解包：{ code, msg, data }
   if (
     body &&
-    typeof body === 'object' &&
-    'code' in body &&
-    typeof (body as { code: unknown }).code === 'number'
+    typeof body === "object" &&
+    "code" in body &&
+    typeof (body as { code: unknown }).code === "number"
   ) {
     const envelope = body as { code: number; msg?: string; data?: unknown }
     if (envelope.code === 0) {
       return envelope.data as T
     }
-    throw new ApiError(res.status, envelope.msg || 'Operation failed')
+    throw new ApiError(res.status, envelope.msg || "Operation failed")
   }
 
   // 非 ApiResponse 形态（如健康检查直接返字符串）：原样返回

@@ -45,5 +45,6 @@ export function mergeSiteBotConfig(raw: unknown): BotConfig {
     dingtalk_app: mergeSection<"dingtalk_app">(base.dingtalk_app, raw.dingtalk_app),
     wecom_kefu: mergeSection<"wecom_kefu">(base.wecom_kefu, raw.wecom_kefu),
     wecom_app: mergeSection<"wecom_app">(base.wecom_app, raw.wecom_app),
+    telegram_app: mergeSection<"telegram_app">(base.telegram_app, raw.telegram_app),
   }
 }

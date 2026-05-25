@@ -14,15 +14,17 @@
 
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import { Bot, X, Send, User, Sparkles } from "lucide-react"
+import { useState } from "react"
+import { Bot, X, Send, User } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useAIChat } from "@/hooks"
+import { useAIChat, useChatAutoScroll } from "@/hooks"
 import { useTranslations } from "next-intl"
 import { Streamdown } from "streamdown"
 import { MessageSources } from "./MessageSources"
 import { ScrollArea } from "@/components/ui"
-import type { ClientSite } from '@/lib/sdk/sdk.schemas'
+import type { ClientSite } from "@/lib/sdk/sdk.schemas"
+
+const FALLBACK_PRIMARY_COLOR = "#3b82f6"
 
 interface ChatWidgetProps {
   title: string
@@ -57,15 +59,7 @@ export function ChatWidget({
     selectedSiteId: siteId,
   })
   const [input, setInput] = useState("")
-  const scrollAreaRef = useRef<HTMLDivElement>(null)
-
-  // Auto scroll
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') || scrollAreaRef.current;
-      viewport.scrollTop = viewport.scrollHeight;
-    }
-  }, [messages])
+  const scrollAreaRef = useChatAutoScroll(messages)
 
   const handleSend = () => {
     if (!input.trim() || isLoading) return
@@ -73,7 +67,7 @@ export function ChatWidget({
     setInput("")
   }
 
-  const bgColor = primaryColor || "#3b82f6"
+  const bgColor = primaryColor || FALLBACK_PRIMARY_COLOR
 
   return (
     <div className={cn(
@@ -121,8 +115,8 @@ export function ChatWidget({
                 <span className="px-3 py-1 bg-slate-100/80 rounded-full text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t("today")}</span>
               </div>
 
-              {messages.map((msg, i) => (
-                <div key={i} className={cn(
+              {messages.map((msg) => (
+                <div key={msg.id} className={cn(
                   "flex gap-3 max-w-[90%] group",
                   msg.role === "user" ? "ml-auto flex-row-reverse" : "animate-in slide-in-from-left-2 duration-300"
                 )}>

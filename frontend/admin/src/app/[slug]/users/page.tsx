@@ -14,23 +14,11 @@
 
 "use client"
 
-import { LoadingState } from "@/components/ui/loading-state"
-import { EmptyState } from "@/components/ui/empty-state"
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, EmptyState, Input, LoadingState, useConfirm } from "@/components/ui"
 
 import { useTranslations, useLocale } from "next-intl"
 import { useState } from "react"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui"
 import { cn } from "@/lib/utils"
 import {
   Users,
@@ -44,35 +32,7 @@ import {
   KeyRound
 } from "lucide-react"
 import { toast } from "sonner"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
-} from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { UserRole, UserStatus, type UserListItem, type Site } from '@/lib/sdk/sdk.schemas'
+import { UserRole, UserStatus, type UserListItem, type Site } from "@/lib/sdk/sdk.schemas"
 
 
 import {
@@ -119,7 +79,8 @@ function parsePasswordResponse(data: unknown): { password: string } | null {
 }
 
 export default function UsersPage() {
-  const t = useTranslations('SiteUsers')
+  const t = useTranslations("SiteUsers")
+  const confirm = useConfirm()
   const locale = useLocale()
   const [page, setPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
@@ -136,7 +97,7 @@ export default function UsersPage() {
 
   // 邀请表单状态
   const [inviteEmail, setInviteEmail] = useState("")
-  const [inviteRole, setInviteRole] = useState<UserRole>('site_admin' as const)
+  const [inviteRole, setInviteRole] = useState<UserRole>("site_admin" as const)
   const [selectedSites, setSelectedSites] = useState<number[]>([])
 
   // React Query hooks
@@ -157,8 +118,8 @@ export default function UsersPage() {
   const total = usersData?.total || 0
 
   const currentUser = getUserInfo()
-  const isSystemAdmin = currentUser?.role === 'admin' as const
-  const isSiteAdmin = currentUser?.role === 'site_admin' as const
+  const isSystemAdmin = currentUser?.role === "admin" as const
+  const isSiteAdmin = currentUser?.role === "site_admin" as const
 
   // 过滤展示的用户列表
   // 1. 站点管理员不能看到系统管理员
@@ -170,7 +131,7 @@ export default function UsersPage() {
     // 如果是站点管理员
     if (isSiteAdmin) {
       // 不能看到系统管理员
-      if (user.role === 'admin' as const) return false
+      if (user.role === "admin" as const) return false
 
       // 只能看到自己管理的站点的用户
       const mySites = currentUser?.managed_site_ids || []
@@ -222,9 +183,7 @@ export default function UsersPage() {
 
 
   const handleDeleteUser = async (userId: number, userName: string) => {
-    if (!confirm(t("deleteConfirm", { name: userName }))) {
-      return
-    }
+    if (!await confirm({ description: t("deleteConfirm", { name: userName }), variant: "destructive" })) return
 
     deleteUserMutation.mutate(userId, {
       onSuccess: () => {
@@ -234,9 +193,7 @@ export default function UsersPage() {
   }
 
   const handleResetPassword = async (userId: number, userName: string, userEmail: string) => {
-    if (!confirm(t("resetConfirm", { name: userName }))) {
-      return
-    }
+    if (!await confirm({ description: t("resetConfirm", { name: userName }) })) return
 
     resetPasswordMutation.mutate(userId, {
       onSuccess: (data) => {
@@ -305,7 +262,7 @@ export default function UsersPage() {
 
           // 重置表单
           setInviteEmail("")
-          setInviteRole('site_admin' as const)
+          setInviteRole("site_admin" as const)
           setSelectedSites([])
         }
       }
@@ -352,19 +309,19 @@ export default function UsersPage() {
                   <SelectContent>
                     {isSystemAdmin && (
                       <>
-                        <SelectItem value={'admin' as const}>{t("roleSysAdmin")}</SelectItem>
-                        <SelectItem value={'site_admin' as const}>{t("roleSiteAdmin")}</SelectItem>
+                        <SelectItem value={"admin" as const}>{t("roleSysAdmin")}</SelectItem>
+                        <SelectItem value={"site_admin" as const}>{t("roleSiteAdmin")}</SelectItem>
                       </>
                     )}
                   </SelectContent>
                 </Select>
                 <p className="text-[10px] text-muted-foreground">
-                  {inviteRole === 'admin' as const && t("roleSysAdminDesc")}
-                  {inviteRole === 'site_admin' as const && t("roleSiteAdminDesc")}
+                  {inviteRole === "admin" as const && t("roleSysAdminDesc")}
+                  {inviteRole === "site_admin" as const && t("roleSiteAdminDesc")}
                 </p>
               </div>
 
-              {inviteRole !== 'admin' && (
+              {inviteRole !== "admin" && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground/80">{t("assignSites")}</label>
                   <div className="grid grid-cols-2 gap-2">
@@ -460,21 +417,21 @@ export default function UsersPage() {
                     <TableCell>
                       <Badge
                         variant={
-                          user.role === 'admin' as const ? "default" :
-                            user.role === 'tenant_admin' as const ? "default" :
-                              user.role === 'site_admin' as const ? "secondary" : "outline"
+                          user.role === "admin" as const ? "default" :
+                            user.role === "tenant_admin" as const ? "default" :
+                              user.role === "site_admin" as const ? "secondary" : "outline"
                         }
                         className={cn(
                           "font-bold text-[10px] tracking-tight px-2 border-none",
-                          user.role === 'admin' as const ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" :
-                            user.role === 'tenant_admin' as const ? "bg-violet-500/10 text-violet-600 shadow-sm shadow-violet-500/10" :
-                              user.role === 'site_admin' as const ? "bg-amber-500/10 text-amber-600 shadow-sm shadow-amber-500/10" :
+                          user.role === "admin" as const ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" :
+                            user.role === "tenant_admin" as const ? "bg-violet-500/10 text-violet-600 shadow-sm shadow-violet-500/10" :
+                              user.role === "site_admin" as const ? "bg-amber-500/10 text-amber-600 shadow-sm shadow-amber-500/10" :
                                 "bg-muted text-muted-foreground"
                         )}
                       >
-                        {user.role === 'admin' as const ? t("roles.sysAdmin") :
-                          user.role === 'tenant_admin' as const ? t("roles.orgAdmin") :
-                            user.role === 'site_admin' as const ? t("roles.siteAdmin") : user.role}
+                        {user.role === "admin" as const ? t("roles.sysAdmin") :
+                          user.role === "tenant_admin" as const ? t("roles.orgAdmin") :
+                            user.role === "site_admin" as const ? t("roles.siteAdmin") : user.role}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -527,18 +484,18 @@ export default function UsersPage() {
                                 {isSystemAdmin && (
                                   <>
                                     <DropdownMenuItem
-                                      onSelect={() => updateRole(user.id, 'admin' as const)}
+                                      onSelect={() => updateRole(user.id, "admin" as const)}
                                       className="flex items-center justify-between"
                                     >
                                       <span>{t("roleSysAdmin")}</span>
-                                      {user.role === 'admin' as const && <Check className="h-4 w-4 text-primary" />}
+                                      {user.role === "admin" as const && <Check className="h-4 w-4 text-primary" />}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                      onSelect={() => updateRole(user.id, 'site_admin' as const)}
+                                      onSelect={() => updateRole(user.id, "site_admin" as const)}
                                       className="flex items-center justify-between"
                                     >
                                       <span>{t("roleSiteAdmin")}</span>
-                                      {user.role === 'site_admin' as const && <Check className="h-4 w-4 text-primary" />}
+                                      {user.role === "site_admin" as const && <Check className="h-4 w-4 text-primary" />}
                                     </DropdownMenuItem>
                                   </>
                                 )}
@@ -578,14 +535,13 @@ export default function UsersPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-orange-600"
-                            onSelect={() => {
-                              const newStatus = user.status === 'active' as const ? 'inactive' as const : 'active' as const
-                              if (confirm(newStatus === 'inactive' as const ? t("disableConfirm") : t("enableConfirm"))) {
-                                updateStatus(user.id, newStatus)
-                              }
+                            onSelect={async () => {
+                              const newStatus = user.status === "active" as const ? "inactive" as const : "active" as const
+                              const ok = await confirm({ description: newStatus === "inactive" as const ? t("disableConfirm") : t("enableConfirm") })
+                              if (ok) updateStatus(user.id, newStatus)
                             }}
                           >
-                            {user.status === 'active' as const ? t("disableAccount") : t("enableAccount")}
+                            {user.status === "active" as const ? t("disableAccount") : t("enableAccount")}
                           </DropdownMenuItem>
 
                           <DropdownMenuItem

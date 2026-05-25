@@ -9,6 +9,7 @@ from app.core.common.pagination import Paginator
 from app.core.infra.cache import cached, get_cache
 from app.core.integration.robot.services.dingtalk_app import DingTalkRobotService
 from app.core.integration.robot.services.feishu_app import FeishuRobotService
+from app.core.integration.robot.services.telegram_app import TelegramRobotService
 from app.core.integration.robot.services.wecom_smart import WeComSmartService
 from app.core.web.exceptions import BadRequestException, ConflictException, NotFoundException
 from app.crud import crud_site, crud_user
@@ -50,6 +51,10 @@ class SiteService:
             await WeComSmartService.get_instance().refresh()
         except Exception as e:
             logger.warning("刷新企微智能机器人长连接失败: %s", e)
+        try:
+            await TelegramRobotService.get_instance().refresh()
+        except Exception as e:
+            logger.warning("刷新 Telegram 长轮询失败: %s", e)
 
     def ensure_bot_config_valid(self, bot_config: dict | None) -> None:
         """校验站点机器人配置，避免启用后静默失效。"""
@@ -95,6 +100,11 @@ class SiteService:
                 or not wecom_app.get("encoding_aes_key")
             ):
                 raise BadRequestException(detail=_("bot.wecom_app_missing_config"))
+
+        telegram = bot_config.get("telegram_app") or {}
+        if telegram.get("enabled"):
+            if not (telegram.get("bot_token") or "").strip():
+                raise BadRequestException(detail=_("bot.telegram_missing_config"))
 
     @transactional()
     async def list_sites(
@@ -296,10 +306,15 @@ class SiteService:
     @cached(ttl=60, key_prefix="service:sites:client_detail")
     @transactional()
     async def get_client_site(
-        self, site_id: int | None = None, slug: str | None = None
+        self,
+        site_id: int | None = None,
+        slug: str | None = None,
+        tenant_slug: str | None = None,
     ) -> SiteModel:
         """获取激活的站点详情（客户端）"""
-        site = await crud_site.get_active(self.db, site_id=site_id, slug=slug)
+        site = await crud_site.get_active(
+            self.db, site_id=site_id, slug=slug, tenant_slug=tenant_slug
+        )
         if not site:
             raise NotFoundException(detail=_("site.not_found", id=site_id or slug))
 

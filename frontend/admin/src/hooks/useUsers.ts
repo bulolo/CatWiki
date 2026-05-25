@@ -16,10 +16,11 @@
  * React Query hooks for User management
  */
 
-import { createAdminUser, deleteAdminUser, getListAdminUsersQueryKey, inviteAdminUser, loginAdmin, resetAdminUserPassword, updateAdminUser, useGetAdminUser, useListAdminUsers } from '@/lib/sdk/admin-users'
-import type { ListAdminUsersParams, UserCreate, UserInvite, UserRole, UserStatus, UserUpdate } from '@/lib/sdk/sdk.schemas'
-import { isAuthenticated } from '@/lib/auth'
-import { useAdminMutation } from './useAdminMutation'
+import { createAdminUser, deleteAdminUser, getListAdminUsersQueryKey, inviteAdminUser, loginAdmin, resetAdminUserPassword, updateAdminUser, useGetAdminUser, useListAdminUsers } from "@/lib/sdk/admin-users"
+import type { ListAdminUsersParams, UserCreate, UserInvite, UserRole, UserStatus, UserUpdate } from "@/lib/sdk/sdk.schemas"
+import { isAuthenticated } from "@/lib/auth"
+import { useAdminMutation } from "./useAdminMutation"
+import { STALE_TIME } from "@/lib/react-query"
 
 interface UseUsersParams {
   page?: number
@@ -29,7 +30,7 @@ interface UseUsersParams {
   search?: string
   siteId?: number
   orderBy?: string
-  orderDir?: 'asc' | 'desc'
+  orderDir?: "asc" | "desc"
 }
 
 /**
@@ -50,7 +51,7 @@ export function useUsers(params: UseUsersParams = {}) {
   return useListAdminUsers(apiParams, {
     query: {
       enabled: isAuthenticated(),
-      staleTime: 3 * 60 * 1000,
+      staleTime: STALE_TIME.MEDIUM,
       select: (data) => ({
         users: data?.list ?? [],
         total: data?.pagination?.total ?? 0,
@@ -66,7 +67,7 @@ export function useUser(userId: number | undefined) {
   return useGetAdminUser(userId ?? 0, {
     query: {
       enabled: !!userId && isAuthenticated(),
-      staleTime: 5 * 60 * 1000,
+      staleTime: STALE_TIME.MEDIUM,
     },
   })
 }
@@ -100,7 +101,7 @@ export function useUpdateUser() {
   return useAdminMutation({
     mutationFn: ({ userId, data }: { userId: number; data: UserUpdate }) =>
       updateAdminUser(userId, data),
-    invalidateKeys: [['/admin/v1/users']],
+    invalidateKeys: [["/admin/v1/users"]],
   })
 }
 
@@ -111,7 +112,7 @@ export function useUpdateUserRole() {
   return useAdminMutation({
     mutationFn: ({ userId, role }: { userId: number; role: UserRole }) =>
       updateAdminUser(userId, { role }),
-    invalidateKeys: [['/admin/v1/users']],
+    invalidateKeys: [["/admin/v1/users"]],
   })
 }
 
@@ -127,7 +128,7 @@ export function useUpdateUserSites() {
       userId: number
       managed_site_ids: number[]
     }) => updateAdminUser(userId, { managed_site_ids }),
-    invalidateKeys: [['/admin/v1/users']],
+    invalidateKeys: [["/admin/v1/users"]],
   })
 }
 
@@ -138,7 +139,7 @@ export function useUpdateUserStatus() {
   return useAdminMutation({
     mutationFn: ({ userId, status }: { userId: number; status: UserStatus }) =>
       updateAdminUser(userId, { status }),
-    invalidateKeys: [['/admin/v1/users']],
+    invalidateKeys: [["/admin/v1/users"]],
   })
 }
 

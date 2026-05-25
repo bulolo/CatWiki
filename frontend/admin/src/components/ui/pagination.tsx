@@ -68,7 +68,7 @@ export function Pagination({
       pages.push(1)
 
       if (currentPage > 3) {
-        pages.push('...')
+        pages.push("...")
       }
 
       // 显示当前页前后的页码
@@ -80,7 +80,7 @@ export function Pagination({
       }
 
       if (currentPage < totalPages - 2) {
-        pages.push('...')
+        pages.push("...")
       }
 
       // 总是显示最后一页
@@ -141,7 +141,7 @@ export function Pagination({
         </Button>
 
         {pageNumbers.map((page, index) => {
-          if (page === '...') {
+          if (page === "...") {
             return (
               <span key={`ellipsis-${index}`} className="px-2 text-slate-400">
                 ...

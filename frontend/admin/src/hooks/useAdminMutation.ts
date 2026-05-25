@@ -17,9 +17,9 @@
  * 集成了常用的 toast 提示和 Query Invalidation 逻辑
  */
 
-import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import { ApiError } from '@/lib/custom-fetch'
+import { useMutation, useQueryClient, UseMutationOptions } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { ApiError } from "@/lib/custom-fetch"
 
 interface UseAdminMutationOptions<TData, TError, TVariables, TContext>
   extends UseMutationOptions<TData, TError, TVariables, TContext> {
@@ -43,7 +43,7 @@ export function useAdminMutation<TData = unknown, TError = Error, TVariables = u
 
   return useMutation({
     ...mutationOptions,
-    onSuccess: async (data, variables, context) => {
+    onSuccess: async (data, variables, onMutateResult, context) => {
       // 执行失效逻辑
       if (invalidateKeys && invalidateKeys.length > 0) {
         await Promise.all(
@@ -53,26 +53,24 @@ export function useAdminMutation<TData = unknown, TError = Error, TVariables = u
 
       // 执行自定义回调
       if (onSuccess) {
-        // @ts-ignore - 兼容不同版本的 tanstack query 签名
-        await onSuccess(data, variables, context)
+        await onSuccess(data, variables, onMutateResult, context)
       }
 
       // 显示成功提示
       if (successMsg) {
-        const msg = typeof successMsg === 'function' ? successMsg(data, variables) : successMsg
+        const msg = typeof successMsg === "function" ? successMsg(data, variables) : successMsg
         if (msg) toast.success(msg)
       }
     },
-    onError: async (error, variables, context) => {
+    onError: async (error, variables, onMutateResult, context) => {
       // 执行自定义回调
       if (onError) {
-        // @ts-ignore - 兼容不同版本的 tanstack query 签名
-        await onError(error, variables, context)
+        await onError(error, variables, onMutateResult, context)
       }
 
       // ApiError 已由 customFetch mutator 内提取了后端 msg 到 .message
-      const message = (error instanceof ApiError ? error.message : (error as Error)?.message) || '操作失败'
-      const msg = typeof errorMsg === 'function' ? errorMsg(error, variables) : (errorMsg || message)
+      const message = (error instanceof ApiError ? error.message : (error as Error)?.message) || "操作失败"
+      const msg = typeof errorMsg === "function" ? errorMsg(error, variables) : (errorMsg || message)
       if (msg) toast.error(msg)
     },
 

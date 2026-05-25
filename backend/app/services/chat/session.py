@@ -332,6 +332,7 @@ class ChatSessionService:
 
         return False
 
+    @transactional()
     async def delete_all_sessions_by_member(
         self,
         member_id: str,

@@ -34,7 +34,7 @@ import {
 import { toast } from "sonner"
 import { useSiteById, useUpdateSite, useHealth } from "@/hooks"
 import { QuickQuestionsConfig } from "@/components/features"
-import type { QuickQuestion } from '@/lib/sdk/sdk.schemas'
+import type { QuickQuestion } from "@/lib/sdk/sdk.schemas"
 import { SiteBotSettings, SiteUsers } from "@/components/sites"
 import { initialConfigs, type BotConfig } from "@/types/settings"
 import { env } from "@/lib/env"
@@ -43,11 +43,11 @@ import { useAIConfig } from "@/hooks"
 
 // 主题色配置
 const THEME_COLORS_BASE = [
-  { value: 'blue', colorName: 'blue', className: 'bg-blue-500' },
-  { value: 'emerald', colorName: 'emerald', className: 'bg-emerald-500' },
-  { value: 'purple', colorName: 'purple', className: 'bg-purple-500' },
-  { value: 'orange', colorName: 'orange', className: 'bg-orange-500' },
-  { value: 'slate', colorName: 'slate', className: 'bg-slate-800' },
+  { value: "blue", colorName: "blue", className: "bg-blue-500" },
+  { value: "emerald", colorName: "emerald", className: "bg-emerald-500" },
+  { value: "purple", colorName: "purple", className: "bg-purple-500" },
+  { value: "orange", colorName: "orange", className: "bg-orange-500" },
+  { value: "slate", colorName: "slate", className: "bg-slate-800" },
 ] as const
 
 interface SiteSettingsProps {
@@ -83,7 +83,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
 
   // EE: 站点访问控制状态
   const { data: healthData } = useHealth()
-  const isEnterprise = healthData?.edition === 'enterprise'
+  const isEnterprise = healthData?.edition === "enterprise"
   const [eeIsPublic, setEeIsPublic] = useState(true)
   const [eeHasPassword, setEeHasPassword] = useState(false)
   const [eeNewPassword, setEeNewPassword] = useState("")
@@ -99,13 +99,13 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
   // 使用 React Query hooks
   const { data: siteData, isLoading: loading } = useSiteById(siteId)
   const updateSiteMutation = useUpdateSite()
-  const { data: aiConfigData } = useAIConfig('tenant')
+  const { data: aiConfigData } = useAIConfig("tenant")
 
   // 模型显示逻辑：优先使用租户自定义模型，如果是平台模式则取平台默认模型
   const chatConfig = aiConfigData?.configs?.chat as { mode?: string; model?: string } | undefined
   const platformChat = aiConfigData?.platform_defaults?.chat as { model?: string } | undefined
-  const chatModel = (chatConfig?.mode === 'platform' ? platformChat?.model : chatConfig?.model) || ''
-  const tenantSlug = siteData?.tenant_slug || '...'
+  const chatModel = (chatConfig?.mode === "platform" ? platformChat?.model : chatConfig?.model) || ""
+  const tenantSlug = siteData?.tenant_slug || "..."
   const siteUrlPrefix = `${env.NEXT_PUBLIC_CLIENT_URL}/${tenantSlug}/`
 
   // 加载站点数据
@@ -259,29 +259,30 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
     }) : Promise.resolve()
 
     Promise.all([saveMain, saveEE]).then(([updatedSite]) => {
-      const bConfig = mergeSiteBotConfig((updatedSite as any).bot_config)
+      if (!updatedSite) return
+      const bConfig = mergeSiteBotConfig(updatedSite.bot_config)
       bConfig.api_bot = api_bot
 
       setBotConfig(bConfig)
-      setName((updatedSite as any).name)
-      setSlug((updatedSite as any).slug || "")
-      setDescription((updatedSite as any).description || "")
-      setIcon((updatedSite as any).icon || null)
-      setIsActive((updatedSite as any).status === "active")
-      setThemeColor((updatedSite as any).theme_color || "blue")
-      setLayoutMode((updatedSite as any).layout_mode || "sidebar")
-      setQuickQuestions((updatedSite as any).quick_questions || [])
+      setName(updatedSite.name)
+      setSlug(updatedSite.slug || "")
+      setDescription(updatedSite.description || "")
+      setIcon(updatedSite.icon || null)
+      setIsActive(updatedSite.status === "active")
+      setThemeColor(updatedSite.theme_color || "blue")
+      setLayoutMode(updatedSite.layout_mode || "sidebar")
+      setQuickQuestions(updatedSite.quick_questions || [])
 
       initialDataRef.current = {
-        name: (updatedSite as any).name,
-        slug: (updatedSite as any).slug || "",
-        description: (updatedSite as any).description || "",
-        icon: (updatedSite as any).icon || null,
-        isActive: (updatedSite as any).status === "active",
-        themeColor: (updatedSite as any).theme_color || "blue",
-        layoutMode: (updatedSite as any).layout_mode || "sidebar",
-        quickQuestions: (updatedSite as any).quick_questions || [],
-        botConfig: bConfig
+        name: updatedSite.name,
+        slug: updatedSite.slug || "",
+        description: updatedSite.description || "",
+        icon: updatedSite.icon || null,
+        isActive: updatedSite.status === "active",
+        themeColor: updatedSite.theme_color || "blue",
+        layoutMode: updatedSite.layout_mode || "sidebar",
+        quickQuestions: updatedSite.quick_questions || [],
+        botConfig: bConfig,
       }
       toast.success(t("saveSuccess"))
     }).catch(() => {
@@ -467,10 +468,10 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
                         {THEME_COLORS_BASE.map((color) => (
                           <div
                             key={color.value}
-                            className={`w-8 h-8 rounded-full ${color.className} cursor-pointer ring-offset-2 transition-all ${themeColor === color.value ? 'ring-2 ring-primary ring-offset-2' : 'hover:ring-2 ring-slate-300'
+                            className={`w-8 h-8 rounded-full ${color.className} cursor-pointer ring-offset-2 transition-all ${themeColor === color.value ? "ring-2 ring-primary ring-offset-2" : "hover:ring-2 ring-slate-300"
                               }`}
                             onClick={() => setThemeColor(color.value)}
-                            title={createT(`colors.${color.colorName}` as any)}
+                            title={createT(`colors.${color.colorName}` as Parameters<typeof createT>[0])}
                           />
                         ))}
                       </div>
@@ -479,11 +480,11 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
                       <label className="text-sm font-semibold text-slate-700">{createT("layoutMode")}</label>
                       <div className="grid grid-cols-2 gap-2">
                         <div
-                          className={`border rounded-xl p-3 text-center text-xs font-bold cursor-pointer transition-all ${layoutMode === 'sidebar'
-                            ? 'border-primary bg-primary/5 text-primary shadow-sm'
-                            : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-white'
+                          className={`border rounded-xl p-3 text-center text-xs font-bold cursor-pointer transition-all ${layoutMode === "sidebar"
+                            ? "border-primary bg-primary/5 text-primary shadow-sm"
+                            : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-white"
                             }`}
-                          onClick={() => setLayoutMode('sidebar')}
+                          onClick={() => setLayoutMode("sidebar")}
                         >
                           {createT("sidebarLayout")}
                         </div>
@@ -517,15 +518,15 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
                         <p className="text-xs text-slate-500">{createT("enableTip")}</p>
                       </div>
                       <div
-                        className={`w-11 h-6 ${isActive ? 'bg-primary' : 'bg-slate-200'} rounded-full relative cursor-pointer transition-colors`}
+                        className={`w-11 h-6 ${isActive ? "bg-primary" : "bg-slate-200"} rounded-full relative cursor-pointer transition-colors`}
                         onClick={handleToggleActive}
                       >
-                        <div className={`absolute ${isActive ? 'right-1' : 'left-1'} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
+                        <div className={`absolute ${isActive ? "right-1" : "left-1"} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
                       </div>
                     </div>
 
                     {/* EE: 是否公开 + 访问密码 */}
-                    <div className={!isEnterprise ? 'pointer-events-none select-none' : undefined}>
+                    <div className={!isEnterprise ? "pointer-events-none select-none" : undefined}>
                       <div className="flex items-center justify-between p-3 bg-slate-50/50 border border-slate-100 rounded-xl">
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
@@ -540,7 +541,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
                           <p className="text-xs text-slate-500">{t("access.isPublicTip")}</p>
                         </div>
                         <div
-                          className={`w-11 h-6 ${eeIsPublic ? 'bg-primary' : 'bg-slate-200'} rounded-full relative cursor-pointer transition-colors`}
+                          className={`w-11 h-6 ${eeIsPublic ? "bg-primary" : "bg-slate-200"} rounded-full relative cursor-pointer transition-colors`}
                           onClick={() => {
                             if (!isEnterprise) return
                             const next = !eeIsPublic
@@ -548,7 +549,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
                             handleSaveAccessConfig({ is_public: next })
                           }}
                         >
-                          <div className={`absolute ${eeIsPublic ? 'right-1' : 'left-1'} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
+                          <div className={`absolute ${eeIsPublic ? "right-1" : "left-1"} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
                         </div>
                       </div>
 
@@ -565,7 +566,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
                             <div className="flex items-center gap-2">
                               <Lock className="h-3.5 w-3.5 text-slate-500" />
                               <label className="text-sm font-semibold text-slate-900">{t("access.accessPassword")}</label>
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${eeHasPassword ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${eeHasPassword ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                                 {eeHasPassword ? t("access.passwordSet") : t("access.passwordNotSet")}
                               </span>
                             </div>

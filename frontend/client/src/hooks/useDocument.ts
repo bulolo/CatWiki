@@ -17,19 +17,27 @@
  * 通过 ``select`` 把后端 Document 形态转换成前端业务用的 DocumentDetail。
  */
 
-'use client'
+"use client"
 
-import { useGetClientDocument } from '@/lib/sdk/client-documents'
-import type { DocumentDetail } from '@/types'
+import { useGetClientDocument } from "@/lib/sdk/client-documents"
+import type { DocumentDetail } from "@/types"
 
 /**
  * 获取文档详情
  */
-export function useDocument(documentId: string | null) {
-  const id = documentId ? parseInt(documentId) : 0
-  return useGetClientDocument(id, {
+export function useDocument(
+  documentId: string | null,
+  options: { siteId?: number | null; tenantId?: number | null } = {},
+) {
+  const id = documentId && /^\d+$/.test(documentId) ? Number(documentId) : 0
+  const params = {
+    site_id: options.siteId ?? undefined,
+    tenant_id: options.tenantId ?? undefined,
+  }
+
+  return useGetClientDocument(id, params, {
     query: {
-      enabled: !!documentId,
+      enabled: !!documentId && Number.isFinite(id) && id > 0 && !!options.siteId,
       staleTime: 10 * 60 * 1000, // 10 分钟
       gcTime: 30 * 60 * 1000, // 30 分钟
       select: (doc): DocumentDetail | undefined => {

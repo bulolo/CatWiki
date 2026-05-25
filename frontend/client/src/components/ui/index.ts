@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { Button, buttonVariants } from './button'
-export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from './dialog'
-export { Input } from './input'
-export { PageLoading, LoadingSpinner, InlineLoading } from './loading'
-export { NotFoundState } from './not-found'
-export { ScrollArea } from './scroll-area'
-export * from './dropdown-menu'
+export { Button, buttonVariants } from "./button"
+export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "./dialog"
+export { Input } from "./input"
+export { PageLoading, LoadingSpinner, InlineLoading } from "./loading"
+export { NotFoundState } from "./not-found"
+export { ScrollArea } from "./scroll-area"
+export * from "./dropdown-menu"

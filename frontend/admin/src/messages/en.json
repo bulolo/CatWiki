@@ -481,6 +481,7 @@
   "DocProcessor": {
     "title": "Doc Processor",
     "description": "Configure document parsing APIs.",
+    "deleteConfirm": "Delete this processor? This action cannot be undone.",
     "addProcessor": "Add Processor",
     "editProcessor": "Edit Processor",
     "addFirst": "Add first processor",
@@ -569,6 +570,11 @@
     "systemSettings": "System Settings",
     "demoMode": "Demo Mode",
     "demoModeMessage": "System is in <bold>Demo Mode</bold>: Sensitve info is masked, and some actions are restricted."
+  },
+  "ConfirmDialog": {
+    "defaultTitle": "Please confirm",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
   },
   "Common": {
     "save": "Save",
@@ -938,6 +944,7 @@
         "wecom_smart": "WeCom Smart Bot",
         "dingtalk_app": "DingTalk",
         "feishu_app": "Feishu",
+        "telegram_app": "Telegram",
         "unknown": "Unknown"
       },
       "toolCall": "Knowledge Base Search",
@@ -1139,11 +1146,23 @@
     },
     "telegram": {
       "title": "Telegram Bot",
-      "description": "Chat with your knowledge base in Telegram",
+      "description": "Chat with your knowledge base in Telegram via a Telegram Bot",
       "type": "App",
-      "comingSoon": "Telegram Bot function is under development, stay tuned...",
-      "docLink": "Telegram Bot Docs",
-      "badge": "Coming Soon"
+      "botToken": "Bot Token",
+      "botTokenPlaceholder": "Paste the Bot Token from BotFather",
+      "apiBaseUrl": "API Proxy URL (optional)",
+      "apiBaseUrlPlaceholder": "https://api.telegram.org",
+      "apiBaseUrlHint": "If your server cannot reach api.telegram.org directly (e.g. inside mainland China), provide a reverse proxy URL here",
+      "allowedUserIds": "Allowed User IDs (optional)",
+      "allowedUserIdsPlaceholder": "123456789,987654321",
+      "allowedUserIdsHint": "Comma-separated Telegram numeric user IDs. Leave empty to allow everyone",
+      "instruction": "Setup Instructions",
+      "step1": "Open Telegram, DM <b>@BotFather</b>, send <b>/newbot</b> to create a bot and obtain its <b>Bot Token</b>",
+      "step2": "Paste the token above and toggle this integration on",
+      "step3": "To enable @-mention Q&A in group chats, send <b>/setprivacy</b> to BotFather, pick the bot, and turn <b>Group Privacy</b> off — then re-add the bot to the group",
+      "step4": "If the server cannot reach <b>api.telegram.org</b> directly, configure the API proxy URL above",
+      "step5": "Send any message to the bot to start chatting; send <b>/clear</b> to reset the conversation",
+      "docLink": "Telegram Bot Docs"
     }
   },
   "DraftRestore": {
@@ -1546,6 +1565,7 @@
     "updateSuccess": "Data source updated",
     "deleteSuccess": "Data source deleted",
     "deleteFailed": "Delete failed",
+    "deleteConfirm": "Delete data source \"{name}\"? This action cannot be undone.",
     "browseFiles": "Browse Files",
     "browseFailed": "Failed to browse files",
     "back": "Back",

@@ -72,7 +72,7 @@ function AdminSidebarComponent() {
   const t = useTranslations("Sidebar")
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const isSitesPage = pathname.startsWith('/sites/edit') || pathname.startsWith('/sites/new')
+  const isSitesPage = pathname.startsWith("/sites/edit") || pathname.startsWith("/sites/new")
 
   // 总是调用 hooks（React 规则要求）
   const routeContext = useRouteContext()
@@ -81,7 +81,7 @@ function AdminSidebarComponent() {
   // 一次性获取用户角色（不需要 useState + useEffect）
   const [userRole] = useState(() => {
     const user = getUserInfo()
-    return user?.role || 'site_admin'
+    return user?.role || "site_admin"
   })
 
   // 获取动态版本号
@@ -97,10 +97,10 @@ function AdminSidebarComponent() {
   }, [userRole])
 
   // 如果是全平台系统管理页面 (用户管理、系统设置)
-  const isGlobalManagement = pathname.startsWith('/users') || pathname.startsWith('/settings')
+  const isGlobalManagement = pathname.startsWith("/users") || pathname.startsWith("/settings")
 
   // 直接从站点数据获取 tenantSlug，站点 API 已经返回了 tenant_slug
-  const tenantSlug = siteData.tenant_slug || 'default'
+  const tenantSlug = siteData.tenant_slug || "default"
 
   const [imgError, setImgError] = useState(false)
 
@@ -111,16 +111,16 @@ function AdminSidebarComponent() {
   }, [currentSiteId])
 
   const isValidIcon = siteData.icon && siteData.icon.trim() !== "" && (
-    siteData.icon.startsWith('/') ||
-    siteData.icon.startsWith('http://') ||
-    siteData.icon.startsWith('https://') ||
-    siteData.icon.startsWith('data:')
+    siteData.icon.startsWith("/") ||
+    siteData.icon.startsWith("http://") ||
+    siteData.icon.startsWith("https://") ||
+    siteData.icon.startsWith("data:")
   )
 
   const hasCustomIcon = !!(isValidIcon && !imgError)
   const logoSrc = hasCustomIcon ? siteData.icon! : "/logo.png"
 
-  if (isGlobalManagement && (userRole === 'admin' || userRole === 'tenant_admin')) {
+  if (isGlobalManagement && (userRole === "admin" || userRole === "tenant_admin")) {
     return (
       <div className="w-64 bg-muted/50 border-r border-border h-screen flex flex-col sticky top-0">
         <div className="p-6">
@@ -136,9 +136,9 @@ function AdminSidebarComponent() {
               />
             </div>
             <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/70 truncate">
-              {healthData?.edition === 'community'
+              {healthData?.edition === "community"
                 ? t("systemSettings")
-                : (userRole === 'admin' ? t("systemManagement") : t("orgSettings"))}
+                : (userRole === "admin" ? t("systemManagement") : t("orgSettings"))}
             </span>
           </div>
 
@@ -150,14 +150,14 @@ function AdminSidebarComponent() {
               href="/settings?tab=models"
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
-                pathname.startsWith('/settings') && (searchParams.get('tab') === 'models' || !searchParams.get('tab'))
+                pathname.startsWith("/settings") && (searchParams.get("tab") === "models" || !searchParams.get("tab"))
                   ? "bg-card text-primary shadow-md shadow-black/5 border border-border"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <div className={cn(
                 "p-2 rounded-lg transition-colors",
-                pathname.startsWith('/settings') && (searchParams.get('tab') === 'models' || !searchParams.get('tab'))
+                pathname.startsWith("/settings") && (searchParams.get("tab") === "models" || !searchParams.get("tab"))
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted group-hover:bg-card text-muted-foreground"
               )} suppressHydrationWarning>
@@ -170,14 +170,14 @@ function AdminSidebarComponent() {
               href="/settings?tab=sites"
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
-                pathname.startsWith('/settings') && searchParams.get('tab') === 'sites'
+                pathname.startsWith("/settings") && searchParams.get("tab") === "sites"
                   ? "bg-card text-primary shadow-md shadow-black/5 border border-border"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <div className={cn(
                 "p-2 rounded-lg transition-colors",
-                pathname.startsWith('/settings') && searchParams.get('tab') === 'sites'
+                pathname.startsWith("/settings") && searchParams.get("tab") === "sites"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted group-hover:bg-card text-muted-foreground"
               )} suppressHydrationWarning>
@@ -190,14 +190,14 @@ function AdminSidebarComponent() {
               href="/settings?tab=users"
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
-                pathname.startsWith('/settings') && searchParams.get('tab') === 'users'
+                pathname.startsWith("/settings") && searchParams.get("tab") === "users"
                   ? "bg-card text-primary shadow-md shadow-black/5 border border-border"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <div className={cn(
                 "p-2 rounded-lg transition-colors",
-                pathname.startsWith('/settings') && searchParams.get('tab') === 'users'
+                pathname.startsWith("/settings") && searchParams.get("tab") === "users"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted group-hover:bg-card text-muted-foreground"
               )} suppressHydrationWarning>
@@ -210,14 +210,14 @@ function AdminSidebarComponent() {
               href="/settings?tab=doc-processor"
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
-                pathname.startsWith('/settings') && searchParams.get('tab') === 'doc-processor'
+                pathname.startsWith("/settings") && searchParams.get("tab") === "doc-processor"
                   ? "bg-card text-primary shadow-md shadow-black/5 border border-border"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <div className={cn(
                 "p-2 rounded-lg transition-colors",
-                pathname.startsWith('/settings') && searchParams.get('tab') === 'doc-processor'
+                pathname.startsWith("/settings") && searchParams.get("tab") === "doc-processor"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted group-hover:bg-card text-muted-foreground"
               )} suppressHydrationWarning>
@@ -245,11 +245,11 @@ function AdminSidebarComponent() {
               <div className="flex items-center gap-2">
                 <span className={cn(
                   "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide border shadow-sm",
-                  healthData?.edition === 'enterprise'
+                  healthData?.edition === "enterprise"
                     ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
                     : "bg-muted text-muted-foreground border-border"
                 )}>
-                  {healthData?.edition === 'enterprise' ? 'EE' : 'CE'}
+                  {healthData?.edition === "enterprise" ? "EE" : "CE"}
                 </span>
                 <span className="px-2 py-0.5 bg-primary/5 text-primary/80 rounded-full text-[10px] font-bold border border-primary/10 shadow-sm">
                   v{version}
@@ -331,11 +331,11 @@ function AdminSidebarComponent() {
               <div className="flex items-center gap-2">
                 <span className={cn(
                   "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide border shadow-sm",
-                  healthData?.edition === 'enterprise'
+                  healthData?.edition === "enterprise"
                     ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
                     : "bg-muted text-muted-foreground border-border"
                 )}>
-                  {healthData?.edition === 'enterprise' ? 'EE' : 'CE'}
+                  {healthData?.edition === "enterprise" ? "EE" : "CE"}
                 </span>
                 <span className="px-2 py-0.5 bg-primary/5 text-primary/80 rounded-full text-[10px] font-bold border border-primary/10 shadow-sm">
                   v{version}
@@ -364,8 +364,8 @@ function AdminSidebarComponent() {
               unoptimized={true} // 强制禁用优化，避免 /_next/image 400 错误
               onError={() => {
                 if (logoSrc !== "/logo.png") {
-                  logger.warn(`Failed to load site icon: ${logoSrc}, falling back to default.`);
-                  setImgError(true);
+                  logger.warn(`Failed to load site icon: ${logoSrc}, falling back to default.`)
+                  setImgError(true)
                 }
               }}
             />
@@ -381,8 +381,8 @@ function AdminSidebarComponent() {
               // 检查活动状态（所有路由都在站点标识下）
               // 对于根路径 "/"，需要同时匹配 /${slug} 和 /${slug}/
               const basePath = `/${routeContext.slug}${item.href}`
-              const normalizedBasePath = basePath.replace(/\/$/, '') // 移除末尾斜杠
-              const normalizedPathname = pathname.replace(/\/$/, '') // 移除末尾斜杠
+              const normalizedBasePath = basePath.replace(/\/$/, "") // 移除末尾斜杠
+              const normalizedPathname = pathname.replace(/\/$/, "") // 移除末尾斜杠
 
               const isActive = normalizedPathname === normalizedBasePath ||
                 (item.children && pathname.startsWith(basePath))
@@ -408,7 +408,7 @@ function AdminSidebarComponent() {
                     )} suppressHydrationWarning>
                       <Icon className="h-4 w-4" />
                     </div>
-                    <span className="text-sm font-semibold">{t(item.title as any)}</span>
+                    <span className="text-sm font-semibold">{t(item.title as Parameters<typeof t>[0])}</span>
                     {item.children && (
                       <ChevronRight className={cn("ml-auto h-3 w-3 transition-transform duration-200", isActive && "rotate-90")} />
                     )}
@@ -430,7 +430,7 @@ function AdminSidebarComponent() {
                                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
                             )}
                           >
-                            {t(child.title as any)}
+                            {t(child.title as Parameters<typeof t>[0])}
                           </Link>
                         )
                       })}
@@ -491,11 +491,11 @@ function AdminSidebarComponent() {
             <div className="flex items-center gap-2">
               <span className={cn(
                 "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide border shadow-sm",
-                healthData?.edition === 'enterprise'
+                healthData?.edition === "enterprise"
                   ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
                   : "bg-muted text-muted-foreground border-border"
               )}>
-                {healthData?.edition === 'enterprise' ? 'EE' : 'CE'}
+                {healthData?.edition === "enterprise" ? "EE" : "CE"}
               </span>
               <span className="px-2 py-0.5 bg-primary/5 text-primary/80 rounded-full text-[10px] font-bold border border-primary/10 shadow-sm">
                 v{version}

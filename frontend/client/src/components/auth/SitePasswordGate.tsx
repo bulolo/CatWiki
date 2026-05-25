@@ -3,16 +3,18 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { Lock, Eye, EyeOff, Loader2 } from "lucide-react"
-import { verifySitePassword } from '@/lib/sdk/ee-client-sites'
+import { verifySitePassword } from "@/lib/sdk/ee-client-sites"
+import { setSiteAccessToken } from "@/lib/site-access-token"
 
 interface SitePasswordGateProps {
+  tenantSlug: string
   siteSlug: string
   siteName?: string
   hasPassword: boolean
   onVerified: () => void
 }
 
-export function SitePasswordGate({ siteSlug, siteName, hasPassword, onVerified }: SitePasswordGateProps) {
+export function SitePasswordGate({ tenantSlug, siteSlug, siteName, hasPassword, onVerified }: SitePasswordGateProps) {
   const t = useTranslations("SlugPage")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -27,9 +29,9 @@ export function SitePasswordGate({ siteSlug, siteName, hasPassword, onVerified }
     setError("")
 
     try {
-      const result = await verifySitePassword(siteSlug, { password })
+      const result = await verifySitePassword(siteSlug, { password }, { tenant_slug: tenantSlug })
       if (result?.access_token) {
-        sessionStorage.setItem(`site_access_token:${siteSlug}`, result.access_token)
+        setSiteAccessToken(tenantSlug, siteSlug, result.access_token)
         onVerified()
       } else {
         setError(t("passwordError"))

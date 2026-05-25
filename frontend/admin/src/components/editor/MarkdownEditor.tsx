@@ -14,16 +14,16 @@
 
 "use client"
 
-import { useTranslations, useLocale } from 'next-intl'
-import { logger } from '@/lib/logger'
-import { MdEditor } from 'md-editor-rt'
-import 'md-editor-rt/lib/style.css'
-import styles from './MarkdownEditor.module.css'
-import { toast } from 'sonner'
-import { uploadAdminFile } from '@/lib/sdk/admin-files'
-import { toUploadedFileInfo } from '@/lib/normalizers'
+import { useTranslations, useLocale } from "next-intl"
+import { logger } from "@/lib/logger"
+import { MdEditor } from "md-editor-rt"
+import "md-editor-rt/lib/style.css"
+import styles from "./MarkdownEditor.module.css"
+import { toast } from "sonner"
+import { uploadAdminFile } from "@/lib/sdk/admin-files"
+import { toUploadedFileInfo } from "@/lib/normalizers"
 
-import imageCompression from 'browser-image-compression'
+import imageCompression from "browser-image-compression"
 
 interface MarkdownEditorProps {
   value: string
@@ -38,7 +38,7 @@ interface MarkdownEditorProps {
  * 通过 next/dynamic 懒加载此组件，可以将编辑器代码从主 bundle 中分离
  */
 export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorProps) {
-  const t = useTranslations('Editor')
+  const t = useTranslations("Editor")
   const locale = useLocale()
 
   /**
@@ -52,7 +52,7 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
 
       for (const file of files) {
         // 验证文件类型
-        if (!file.type.startsWith('image/')) {
+        if (!file.type.startsWith("image/")) {
           toast.error(t("notImageFile", { name: file.name }))
           continue
         }
@@ -88,7 +88,7 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
 
           const imageUrl = uploadRes.url
           uploadedUrls.push(imageUrl)
-          logger.debug('图片上传成功:', {
+          logger.debug("图片上传成功:", {
             originalName: file.name,
             url: imageUrl,
             size: uploadRes.size
@@ -114,13 +114,13 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
         modelValue={value}
 
         onChange={onChange}
-        language={locale === 'zh' ? 'zh-CN' : 'en'}
+        language={locale === "zh" ? "zh-CN" : "en"}
         placeholder={placeholder || t("placeholder")}
-        toolbarsExclude={['github']}
+        toolbarsExclude={["github"]}
         showCodeRowNumber
         previewTheme="github"
         onUploadImg={handleUploadImage}
-        style={{ height: 'calc(100vh - 350px)', border: 'none' }}
+        style={{ height: "calc(100vh - 350px)", border: "none" }}
       />
     </div>
   )

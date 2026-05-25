@@ -18,9 +18,8 @@ import { useSearchParams } from "next/navigation"
 import { useState, useEffect, Suspense } from "react"
 import { ChatWidget } from "@/components/ai"
 
-import { getClientSite } from '@/lib/sdk/client-sites'
+import { useGetClientSite } from "@/lib/sdk/client-sites"
 import { useTranslations } from "next-intl"
-import type { ClientSite } from '@/lib/sdk/sdk.schemas'
 
 interface WebWidgetConfig {
   title?: string
@@ -34,41 +33,25 @@ function WidgetContent() {
   const searchParams = useSearchParams()
   const t = useTranslations("ChatWidget")
   const [isOpen, setIsOpen] = useState(false)
-  const [siteConfig, setSiteConfig] = useState<WebWidgetConfig | null>(null)
-  const [isReady, setIsReady] = useState(false)
-  const [site, setSite] = useState<ClientSite | null>(null)
 
   const siteId = searchParams.get("siteId")
+  const siteIdNum = siteId ? parseInt(siteId, 10) : NaN
+  const parsedSiteId = isNaN(siteIdNum) ? null : siteIdNum
   const queryTitle = searchParams.get("title")
   const queryPosition = searchParams.get("position")
   const queryColor = searchParams.get("color")
   const queryWelcomeMessage = searchParams.get("welcomeMessage")
 
-  useEffect(() => {
-    if (siteId) {
-      const sid = parseInt(siteId);
-      if (!isNaN(sid)) {
-        getClientSite(sid).then((res) => {
-          setSite(res)
-          if (res?.web_widget) {
-            setSiteConfig(res.web_widget as WebWidgetConfig)
-          }
-        }).catch((err: unknown) => {
-          console.error("Failed to fetch site config:", err);
-        }).finally(() => {
-          setIsReady(true)
-        })
-      } else {
-        setIsReady(true)
-      }
-    } else {
-      setIsReady(true)
-    }
-  }, [siteId])
+  const { data: site, isLoading } = useGetClientSite(parsedSiteId ?? 0, {
+    query: { enabled: parsedSiteId !== null },
+  })
+  // 没传 siteId 时不需要拉取，立即 ready；传了就等请求结束（成功或失败）
+  const isReady = parsedSiteId === null || !isLoading
 
+  const siteConfig = (site?.web_widget ?? null) as WebWidgetConfig | null
 
   // 合并配置：Query 参数优先级高于数据库配置
-  // 注意：如果 query 参数存在但为空字符串，应该被视为没有提供，从而使用数据库配置
+  // 注意：query 参数空字符串视为未提供，回退到数据库配置
   const title = queryTitle || siteConfig?.title || t("defaultWidgetTitle")
   const position = ((queryPosition || siteConfig?.position) as "left" | "right") || "right"
   const color = queryColor || siteConfig?.primary_color || "#3b82f6"
@@ -93,8 +76,8 @@ function WidgetContent() {
     const originalBodyBg = document.body.style.background
     const originalHtmlBg = document.documentElement.style.background
 
-    document.body.style.setProperty('background', 'transparent', 'important')
-    document.documentElement.style.setProperty('background', 'transparent', 'important')
+    document.body.style.setProperty("background", "transparent", "important")
+    document.documentElement.style.setProperty("background", "transparent", "important")
 
     return () => {
       document.body.style.background = originalBodyBg
@@ -103,7 +86,7 @@ function WidgetContent() {
   }, [])
 
   return (
-    <div className={`transition-opacity duration-500 ${isReady ? 'opacity-100' : 'opacity-0'}`}>
+    <div className={`transition-opacity duration-500 ${isReady ? "opacity-100" : "opacity-0"}`}>
       <style jsx global>{`
         html, body {
           background: transparent !important;
@@ -125,7 +108,7 @@ function WidgetContent() {
         welcomeMessage={welcomeMessage}
         isOpen={isOpen}
         onToggle={handleToggle}
-        siteId={siteId ? parseInt(siteId) : null}
+        siteId={parsedSiteId}
         allSites={site ? [site] : undefined}
       />
     </div>

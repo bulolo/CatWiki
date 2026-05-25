@@ -71,6 +71,8 @@ async def get_document(
     document_id: int,
     request: Request,
     background_tasks: BackgroundTasks,
+    site_id: int | None = Query(None, description="站点ID"),
+    tenant_id: int | None = Query(None, description="租户ID"),
     service: DocumentService = Depends(get_document_service),
 ) -> ApiResponse[Document]:
     """获取文档详情（客户端，自动增加浏览量并记录浏览事件）"""
@@ -80,6 +82,12 @@ async def get_document(
     referer = request.headers.get("referer")
 
     document_dict = await service.get_client_document(
-        document_id, ip_address, user_agent, referer, background_tasks
+        document_id,
+        ip_address,
+        user_agent,
+        referer,
+        background_tasks,
+        site_id=site_id,
+        tenant_id=tenant_id,
     )
     return ApiResponse.ok(data=document_dict, msg=_("api.success.get"))

@@ -15,9 +15,8 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { BookOpen, Clock, MoreHorizontal, Eye } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { ScrollArea, Button } from "@/components/ui"
+import { BookOpen, MoreHorizontal, Eye } from "lucide-react"
 import { Streamdown } from "streamdown"
 import type { DocumentDetail as DocumentDetailType } from "@/types"
 import { useTranslations } from "next-intl"
@@ -99,9 +98,9 @@ export function DocumentDetail({ document, isLoading }: DocumentDetailProps) {
     if (currentDocId !== prevDocId && currentDocId !== null) {
       // 滚动到顶部
       if (scrollRef.current) {
-        const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]')
+        const scrollContainer = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]")
         if (scrollContainer) {
-          scrollContainer.scrollTo({ top: 0, behavior: 'instant' })
+          scrollContainer.scrollTo({ top: 0, behavior: "instant" })
         }
       }
       prevDocIdRef.current = currentDocId
@@ -136,7 +135,7 @@ export function DocumentDetail({ document, isLoading }: DocumentDetailProps) {
       {/* 次级导航/面包屑 */}
       <div className="px-4 md:px-8 py-2.5 md:py-3 flex items-center justify-between shrink-0 bg-white md:bg-slate-50/50 border-b border-slate-100">
         <div className="flex items-center gap-2 md:gap-3 text-[11px] md:text-[12px] font-medium text-slate-400 min-w-0 flex-1">
-          <span className="hover:text-primary cursor-pointer transition-colors hidden md:inline">{t("docList")}</span>
+          <span className="hidden md:inline">{t("docList")}</span>
           <span className="text-slate-300 hidden md:inline">/</span>
           <span className="text-slate-600 font-semibold truncate text-[12px] md:text-[12px]">{document.title}</span>
         </div>
@@ -151,10 +150,6 @@ export function DocumentDetail({ document, isLoading }: DocumentDetailProps) {
         <div className="max-w-3xl mx-auto px-5 md:px-6 lg:px-8 py-6 md:py-10 lg:py-16 min-h-screen">
           {/* 元信息 */}
           <div className="flex flex-wrap items-center gap-1.5 md:gap-3 text-slate-400 text-[10px] md:text-[12px] mb-5 md:mb-6">
-            <div className="flex items-center gap-1 md:gap-1.5 px-2 py-1 md:px-2 md:py-0.5 bg-slate-100 rounded text-slate-500">
-              <Clock className="h-3 w-3 md:h-3.5 md:w-3.5" />
-              <span>{t("updatedAt", { date: "12/2023" })}</span>
-            </div>
             {document.views !== undefined && (
               <>
                 <span className="hidden sm:inline">•</span>
@@ -182,9 +177,9 @@ export function DocumentDetail({ document, isLoading }: DocumentDetailProps) {
           {/* 标签 */}
           {document.tags && document.tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-8 md:mb-10">
-              {document.tags.map((tag, index) => (
+              {document.tags.map((tag) => (
                 <span
-                  key={index}
+                  key={tag}
                   className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
                 >
                   {tag}

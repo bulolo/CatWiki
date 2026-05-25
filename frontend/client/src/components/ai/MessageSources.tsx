@@ -1,11 +1,11 @@
 // Copyright 2026 CatWiki Authors
-// 
+//
 // Licensed under the CatWiki Open Source License (Modified Apache 2.0);
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://github.com/CatWiki/CatWiki/blob/main/LICENSE
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,20 +14,25 @@
 
 import { Link, FileText, ExternalLink } from "lucide-react"
 import { useParams } from "next/navigation"
-import { Source } from "@/types"
-import type { ClientSite } from '@/lib/sdk/sdk.schemas'
+import type { Source } from "@/types"
+import type { ClientSite } from "@/lib/sdk/sdk.schemas"
 import { cn } from "@/lib/utils"
 import { useTranslations } from "next-intl"
+import { useSiteContext } from "@/contexts"
 
 interface MessageSourcesProps {
   sources?: Source[]
+  /** 显式传入站点列表（无 SiteContext 时使用，如 ChatWidget） */
   allSites?: ClientSite[]
 }
 
-export function MessageSources({ sources, allSites }: MessageSourcesProps) {
+export function MessageSources({ sources, allSites: allSitesProp }: MessageSourcesProps) {
   const t = useTranslations("MessageSources")
+  // SiteContext 优先；在 widget / 无上下文场景下回落到 useParams
+  const ctx = useSiteContext()
   const params = useParams()
-  const tenantSlug = params.tenantSlug as string
+  const tenantSlug = ctx?.tenantSlug ?? (params.tenantSlug as string | undefined)
+  const allSites = allSitesProp ?? ctx?.allSites
 
   if (!sources || sources.length === 0) return null
 
@@ -49,8 +54,7 @@ export function MessageSources({ sources, allSites }: MessageSourcesProps) {
           const siteSlug = source.siteSlug || matchedSite?.slug
           const documentId = source.documentId || source.id
 
-          // 生成多租户链接
-          const currentTenant = tenantSlug || matchedSite?.tenant_slug || 'default'
+          const currentTenant = tenantSlug || matchedSite?.tenant_slug || "default"
           const href = siteSlug && documentId
             ? `/${currentTenant}/${siteSlug}?documentId=${documentId}`
             : "#"
@@ -84,13 +88,9 @@ export function MessageSources({ sources, allSites }: MessageSourcesProps) {
                 <div className="flex items-center gap-2 mt-1">
                   <div className="flex items-center gap-1 text-[10px] text-slate-500">
                     <FileText className="w-3 h-3 text-slate-400" />
-                    <span className="truncate max-w-[80px]">
-                      {siteName}
-                    </span>
+                    <span className="truncate max-w-[80px]">{siteName}</span>
                   </div>
-                  {siteSlug && (
-                    <span className="text-[10px] text-slate-300">•</span>
-                  )}
+                  {siteSlug && <span className="text-[10px] text-slate-300">•</span>}
                   {siteSlug && (
                     <span className="text-[10px] text-slate-400 truncate font-mono">
                       /{siteSlug}

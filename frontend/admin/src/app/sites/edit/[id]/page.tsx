@@ -15,7 +15,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useTranslations } from 'next-intl'
+import { useTranslations } from "next-intl"
 import { useRouter, useParams } from "next/navigation"
 import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription, Input, Tabs, TabsContent, TabsList, TabsTrigger, ImageUpload } from "@/components/ui"
 import {
@@ -32,7 +32,7 @@ import {
 import { toast } from "sonner"
 import { useSiteById, useUpdateSite } from "@/hooks"
 import { QuickQuestionsConfig } from "@/components/features"
-import type { QuickQuestion } from '@/lib/sdk/sdk.schemas'
+import type { QuickQuestion } from "@/lib/sdk/sdk.schemas"
 import { SiteBotSettings, SiteUsers } from "@/components/sites"
 import { initialConfigs, type BotConfig } from "@/types/settings"
 import { env } from "@/lib/env"
@@ -40,16 +40,16 @@ import { mergeSiteBotConfig } from "@/lib/site-bot-config"
 
 export default function EditSitePage() {
   const router = useRouter()
-  const t = useTranslations('SiteEdit')
-  const tf = useTranslations('SiteForm')
+  const t = useTranslations("SiteEdit")
+  const tf = useTranslations("SiteForm")
   const params = useParams()
 
   const THEME_COLORS = [
-    { value: 'blue', label: tf('colors.blue'), className: 'bg-blue-500' },
-    { value: 'emerald', label: tf('colors.green'), className: 'bg-emerald-500' },
-    { value: 'purple', label: tf('colors.purple'), className: 'bg-purple-500' },
-    { value: 'orange', label: tf('colors.orange'), className: 'bg-orange-500' },
-    { value: 'slate', label: tf('colors.gray'), className: 'bg-slate-800' },
+    { value: "blue", label: tf("colors.blue"), className: "bg-blue-500" },
+    { value: "emerald", label: tf("colors.green"), className: "bg-emerald-500" },
+    { value: "purple", label: tf("colors.purple"), className: "bg-purple-500" },
+    { value: "orange", label: tf("colors.orange"), className: "bg-orange-500" },
+    { value: "slate", label: tf("colors.gray"), className: "bg-slate-800" },
   ]
   const siteId = parseInt(params.id as string)
 
@@ -90,7 +90,7 @@ export default function EditSitePage() {
   const updateSiteMutation = useUpdateSite()
   
   // 从站点数据中获取租户标识
-  const tenantSlug = siteData?.tenant_slug || '...'
+  const tenantSlug = siteData?.tenant_slug || "..."
 
   // 加载站点数据
   useEffect(() => {
@@ -431,7 +431,7 @@ export default function EditSitePage() {
                         {THEME_COLORS.map((color) => (
                           <div
                             key={color.value}
-                            className={`w-8 h-8 rounded-full ${color.className} cursor-pointer ring-offset-2 transition-all ${themeColor === color.value ? 'ring-2 ring-primary ring-offset-2' : 'hover:ring-2 ring-slate-300'
+                            className={`w-8 h-8 rounded-full ${color.className} cursor-pointer ring-offset-2 transition-all ${themeColor === color.value ? "ring-2 ring-primary ring-offset-2" : "hover:ring-2 ring-slate-300"
                               }`}
                             onClick={() => setThemeColor(color.value)}
                             title={color.label}
@@ -443,11 +443,11 @@ export default function EditSitePage() {
                       <label className="text-sm font-semibold text-slate-700">{tf("layoutMode")}</label>
                       <div className="grid grid-cols-2 gap-2">
                         <div
-                          className={`border rounded-xl p-3 text-center text-xs font-bold cursor-pointer transition-all ${layoutMode === 'sidebar'
-                            ? 'border-primary bg-primary/5 text-primary shadow-sm'
-                            : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-white'
+                          className={`border rounded-xl p-3 text-center text-xs font-bold cursor-pointer transition-all ${layoutMode === "sidebar"
+                            ? "border-primary bg-primary/5 text-primary shadow-sm"
+                            : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-white"
                             }`}
-                          onClick={() => setLayoutMode('sidebar')}
+                          onClick={() => setLayoutMode("sidebar")}
                         >
                           {tf("layoutSidebar")}
                         </div>
@@ -481,10 +481,10 @@ export default function EditSitePage() {
                         <p className="text-xs text-slate-500">{tf("enableSiteHint")}</p>
                       </div>
                       <div
-                        className={`w-11 h-6 ${isActive ? 'bg-primary' : 'bg-slate-200'} rounded-full relative cursor-pointer transition-colors`}
+                        className={`w-11 h-6 ${isActive ? "bg-primary" : "bg-slate-200"} rounded-full relative cursor-pointer transition-colors`}
                         onClick={() => setIsActive(!isActive)}
                       >
-                        <div className={`absolute ${isActive ? 'right-1' : 'left-1'} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
+                        <div className={`absolute ${isActive ? "right-1" : "left-1"} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
                       </div>
                     </div>
 
@@ -494,10 +494,10 @@ export default function EditSitePage() {
                         <p className="text-xs text-slate-500">{tf("publicSiteHint") || "关闭后需输入密码才能访问站点"}</p>
                       </div>
                       <div
-                        className={`w-11 h-6 ${isPublic ? 'bg-primary' : 'bg-slate-200'} rounded-full relative cursor-pointer transition-colors`}
+                        className={`w-11 h-6 ${isPublic ? "bg-primary" : "bg-slate-200"} rounded-full relative cursor-pointer transition-colors`}
                         onClick={() => setIsPublic(!isPublic)}
                       >
-                        <div className={`absolute ${isPublic ? 'right-1' : 'left-1'} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
+                        <div className={`absolute ${isPublic ? "right-1" : "left-1"} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
                       </div>
                     </div>
 

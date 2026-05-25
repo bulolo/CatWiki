@@ -16,14 +16,15 @@
 
 import { useState, useRef, useEffect } from "react"
 import { logger } from "@/lib/logger"
-import { useTranslations } from 'next-intl'
+import { isDevelopment } from "@/lib/env"
+import { useTranslations } from "next-intl"
 import { ImageIcon, Loader2, Camera, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
-import { uploadAdminFile } from '@/lib/sdk/admin-files'
+import { uploadAdminFile } from "@/lib/sdk/admin-files"
 import { toUploadedFileInfo } from "@/lib/normalizers"
-import imageCompression from 'browser-image-compression'
+import imageCompression from "browser-image-compression"
 
 interface ImageUploadProps {
   value?: string | null
@@ -44,11 +45,11 @@ export function ImageUpload({
   text,
   compact = false
 }: ImageUploadProps) {
-  const t = useTranslations('ImageUpload')
+  const t = useTranslations("ImageUpload")
   const [isUploading, setIsUploading] = useState(false)
   const [isCompressing, setIsCompressing] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(value || null)
-  const [compressionInfo, setCompressionInfo] = useState<string>('')
+  const [compressionInfo, setCompressionInfo] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 当外部 value 变化时，更新 previewUrl（用于回显已有图片）
@@ -85,8 +86,8 @@ export function ImageUpload({
       const info = t("compressInfo", { ratio: compressionRatio, saved: savedSize })
       setCompressionInfo(info)
 
-      if (process.env.NODE_ENV === 'development') {
-        logger.debug('图片压缩完成:', {
+      if (isDevelopment) {
+        logger.debug("图片压缩完成:", {
           原始大小: `${(originalSize / 1024 / 1024).toFixed(2)} MB`,
           压缩后: `${(compressedSize / 1024 / 1024).toFixed(2)} MB`,
           压缩率: `${compressionRatio}%`
@@ -104,7 +105,7 @@ export function ImageUpload({
     if (!file) return
 
     // 验证文件类型
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       toast.error(t("invalidType"))
       return
     }
@@ -136,7 +137,7 @@ export function ImageUpload({
       // 上传文件
       const rawResp = await uploadAdminFile(
         { file: fileToUpload },
-        { folder: 'covers' }, // 封面图专用文件夹
+        { folder: "covers" }, // 封面图专用文件夹
       )
       const uploadedData = toUploadedFileInfo(rawResp)
       const uploadedUrl = uploadedData.url || uploadedData.object_name
@@ -153,9 +154,9 @@ export function ImageUpload({
       setPreviewUrl(uploadedUrl)
 
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment) {
         const errorMessage = error instanceof Error ? error.message : String(error)
-        logger.warn('图片上传失败:', errorMessage)
+        logger.warn("图片上传失败:", errorMessage)
       }
       toast.error(error instanceof Error ? error.message : t("uploadFailed"))
       setPreviewUrl(value || null)
@@ -166,9 +167,9 @@ export function ImageUpload({
       }
     } finally {
       setIsUploading(false)
-      setCompressionInfo('')
+      setCompressionInfo("")
       if (fileInputRef.current) {
-        fileInputRef.current.value = ''
+        fileInputRef.current.value = ""
       }
     }
   }
@@ -177,7 +178,7 @@ export function ImageUpload({
     setPreviewUrl(null)
     onChange(null)
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+      fileInputRef.current.value = ""
     }
     toast.success(t("removed"))
   }

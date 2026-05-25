@@ -1,24 +1,19 @@
-'use client';
+"use client"
 
-import { useLocale } from 'next-intl';
-import { Languages } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from '@/lib/utils';
-import { locales, localeLabels, type Locale } from '@/i18n/config';
+import { useLocale } from "next-intl"
+import { Languages } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui"
+import { cn } from "@/lib/utils"
+import { locales, localeLabels, type Locale } from "@/i18n/config"
 
 export function LanguageSwitcher() {
-  const locale = useLocale();
+  const locale = useLocale()
 
   const switchLanguage = (newLocale: Locale) => {
-    if (newLocale === locale) return;
-    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000`;
-    window.location.reload();
-  };
+    if (newLocale === locale) return
+    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000`
+    window.location.reload()
+  }
 
   return (
     <DropdownMenu>
@@ -43,5 +38,5 @@ export function LanguageSwitcher() {
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  )
 }

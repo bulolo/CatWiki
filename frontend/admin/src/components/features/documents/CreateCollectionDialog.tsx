@@ -17,25 +17,10 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { Loader2 } from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui"
+import { Button, Input } from "@/components/ui"
 import { useCreateCollection } from "@/hooks"
-import type { CollectionTree, CollectionCreate } from '@/lib/sdk/sdk.schemas'
+import type { CollectionTree, CollectionCreate } from "@/lib/sdk/sdk.schemas"
 
 interface CreateCollectionDialogProps {
   siteId: number
