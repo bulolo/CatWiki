@@ -76,8 +76,8 @@ export function useDocuments(params: UseDocumentsParams) {
         total: data?.pagination?.total ?? 0,
       }),
       refetchInterval: (query) => {
-        const data = query.state.data as { documents: Document[]; total: number } | undefined
-        const hasProcessing = data?.documents?.some(
+        const raw = query.state.data as { list?: Document[] } | undefined
+        const hasProcessing = raw?.list?.some(
           (doc) => doc.vector_status === "pending" || doc.vector_status === "processing",
         )
         return hasProcessing ? 2000 : false

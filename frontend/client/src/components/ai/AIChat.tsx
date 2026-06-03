@@ -45,7 +45,7 @@ interface AIChatProps {
 
 export function AIChat({ open, onOpenChange, initialQuery, siteId, tenantId, tenantSlug, siteSlug, allSites }: AIChatProps) {
   const t = useTranslations("AIChat")
-  const { messages, isLoading, sendMessage, threadId, setMessages } = useAIChat({
+  const { messages, isLoading, sendMessage, threadId, setMessages, submitFeedback } = useAIChat({
     initialMessages: [{
       id: "welcome",
       role: "assistant" as const,
@@ -108,6 +108,7 @@ export function AIChat({ open, onOpenChange, initialQuery, siteId, tenantId, ten
                 isLoading={isLoading}
                 allSites={allSites}
                 onToolCallClick={setSelectedToolCall}
+                onFeedback={submitFeedback}
                 variant="compact"
               />
             </div>

@@ -28,6 +28,11 @@ English | [简体中文](./README.md)
 
 ## 🚀 Recent Updates
 
+### 2026-06-03 👍 User Feedback + Conversation Performance Insights (v1.1.6)
+- 👍 **User Feedback System**: Visitors can thumbs-up/down any AI answer (down can include a reason and is persisted); the admin "Detailed Analytics → User Feedback" tab adds a donut chart of negative-feedback reasons plus a list of downvoted messages (markdown rendering + detail dialog).
+- 📊 **Conversation Performance Insights**: A site-level toggle (off by default, forced off for bot channels) surfaces TTFB / first-token latency / per-retrieval timing / total time / token usage in the chat UI, persisted alongside history.
+- ⚡ **Cancel Backend Work on Disconnect**: When the client closes the page or drops the connection, backend graph execution is cancelled immediately — no more burning upstream LLM compute and tokens for nobody.
+
 ### 2026-05-17 🗂️ S3 Data Sources & Import Flow Upgrade (v1.1.3)
 - 🗂️ **S3 Data Source Management**: New "S3 Data Sources" module in System Settings (built-in RustFS or external S3); browse directories, upload and delete files directly inside admin, no need to open the object storage console.
 - 📥 **Document Import Enhancements**: The import dialog adds a "From S3 Data Source" tab; new **Auto-Vectorize** toggle chains a vectorization task right after parsing so you skip the manual "start learning" step; `.md` / `.txt` and similar plain-text files are ingested as-is, bypassing external parsers.

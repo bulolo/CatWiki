@@ -163,6 +163,23 @@
   "ToolCall": {
     "search_knowledge_base": "搜索知识库"
   },
+  "Timing": {
+    "ttfb": "TTFB",
+    "firstToken": "首字",
+    "total": "总耗时",
+    "tokens": "总 Tokens"
+  },
+  "Feedback": {
+    "helpful": "回答有帮助",
+    "notHelpful": "回答没帮助",
+    "reasonGroup": "选择不满意的原因",
+    "reasons": {
+      "incorrect": "回答错误",
+      "irrelevant": "答非所问",
+      "incomplete": "信息不全",
+      "slow": "回答太慢"
+    }
+  },
   "ToolResult": {
     "title": "检索结果",
     "loading": "加载中...",

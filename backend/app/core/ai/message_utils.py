@@ -118,41 +118,31 @@ def convert_messages_to_openai(
         elif isinstance(msg, AIMessage):
             message_dict = {"role": "assistant"}
 
-            # 处理 content（可能为空字符串或 None）
-            if msg.content:
-                message_dict["content"] = msg.content
-            else:
-                message_dict["content"] = None
+            message_dict["content"] = msg.content or None
 
-            # 处理 tool_calls（如果存在）
-            if hasattr(msg, "tool_calls") and msg.tool_calls:
+            if msg.tool_calls:
                 tool_calls_list = []
                 for tc in msg.tool_calls:
-                    tool_call_dict = {
-                        "id": tc.get("id", ""),
-                        "type": "function",
-                        "function": {
-                            "name": tc.get("name", ""),
-                            "arguments": json.dumps(tc.get("args", {}), ensure_ascii=False)
-                            if not isinstance(tc.get("args"), str)
-                            else tc.get("args"),
-                        },
-                    }
-                    tool_calls_list.append(tool_call_dict)
+                    args = tc.get("args", {})
+                    tool_calls_list.append(
+                        {
+                            "id": tc.get("id", ""),
+                            "type": "function",
+                            "function": {
+                                "name": tc.get("name", ""),
+                                "arguments": args
+                                if isinstance(args, str)
+                                else json.dumps(args, ensure_ascii=False),
+                            },
+                        }
+                    )
                 message_dict["tool_calls"] = tool_calls_list
 
-            # 附加元数据
-            if hasattr(msg, "additional_kwargs") and msg.additional_kwargs:
-                # 排除已经被显式提取的字段
-                message_dict["additional_kwargs"] = {
-                    k: v for k, v in msg.additional_kwargs.items() if k not in ["tool_calls"]
-                }
-
-            # 记录 Token 使用 (LangChain 0.2+)
-            if hasattr(msg, "usage_metadata") and msg.usage_metadata:
-                if "additional_kwargs" not in message_dict:
-                    message_dict["additional_kwargs"] = {}
-                message_dict["additional_kwargs"]["usage_metadata"] = msg.usage_metadata
+            ak = {k: v for k, v in (msg.additional_kwargs or {}).items() if k != "tool_calls"}
+            if msg.usage_metadata:
+                ak["usage_metadata"] = msg.usage_metadata
+            if ak:
+                message_dict["additional_kwargs"] = ak
 
             result.append(message_dict)
 

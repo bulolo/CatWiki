@@ -53,7 +53,7 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, tenantSl
     () => queryClient.invalidateQueries({ queryKey: [CHAT_SESSIONS_KEY] }),
     [queryClient],
   )
-  const { messages, isLoading, sendMessage, threadId, resetMessages, loadSessionMessages, setMessages } = useAIChat({
+  const { messages, isLoading, sendMessage, threadId, resetMessages, loadSessionMessages, setMessages, submitFeedback } = useAIChat({
     selectedSiteId: siteId,
     selectedTenantId: tenantId,
     tenantSlug,
@@ -165,6 +165,7 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, tenantSl
                 isLoading={isLoading}
                 allSites={allSites}
                 onToolCallClick={setSelectedToolCall}
+                onFeedback={submitFeedback}
                 variant="full"
               />
             </div>

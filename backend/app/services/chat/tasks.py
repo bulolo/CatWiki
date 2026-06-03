@@ -25,6 +25,9 @@ async def persist_chat_turn(
     thread_id: str,
     messages: list[BaseMessage],
     assistant_content: str | None,
+    *,
+    trace: dict | None = None,
+    tool_elapsed: dict[str, int] | None = None,
 ) -> None:
     """把本轮的所有 graph 消息 + 助手最终回复落到数据库。
 
@@ -34,6 +37,12 @@ async def persist_chat_turn(
         assistant_content: 助手最终回复正文。``None`` 或空时只写 history 不更新
                            ChatSession.last_message —— 适用于"只跑了工具但没出
                            最终答复"的边缘场景。
+        trace:            站点 ``show_pipeline_trace=True`` 时由 stream 末尾 snapshot
+                           的 chat_timing 字典（已 slim 到 ttfb/first_token/total）。
+                           落到最后一条 assistant ChatMessage 的 ``additional_kwargs.trace``。
+        tool_elapsed:     与 ``trace`` 同源，``{tool_call_id: elapsed_ms}`` 映射。
+                           按 id 精确匹配写入对应 tool_call JSON 的 ``elapsed_ms`` 字段，
+                           并行工具场景也不会错位。
     """
     try:
         async with AsyncSessionLocal() as db:
@@ -46,8 +55,11 @@ async def persist_chat_turn(
                 )
 
             if messages:
-                saved = await history_service.save_history_from_messages(
-                    thread_id=thread_id, messages=messages
+                saved = await history_service.save_turn_messages(
+                    thread_id=thread_id,
+                    messages=messages,
+                    trace=trace,
+                    tool_elapsed=tool_elapsed,
                 )
                 logger.debug(f"💾 [BackgroundTask] Saved {saved} messages for thread={thread_id}")
             else:

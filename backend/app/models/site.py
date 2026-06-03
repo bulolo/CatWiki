@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlalchemy import JSON, Column, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, Integer, String, Text, text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -40,6 +40,13 @@ class Site(BaseModel):
     )
     quick_questions = Column(JSON, nullable=True, comment="快速问题配置，JSON数组格式")
     bot_config = Column(JSON, nullable=True, comment="机器人配置，包含网页挂件、API等")
+    show_pipeline_trace = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+        comment="是否在对话页展示 AI 性能统计（TTFB / 首字 / 总耗时 / 工具耗时 / Tokens）",
+    )
 
     # 关系
     tenant = relationship(

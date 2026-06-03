@@ -18,8 +18,9 @@ import { useState, useCallback, useRef, useEffect, type Dispatch, type SetStateA
 import { env } from "@/lib/env"
 import { getChatSessionMessages } from "@/lib/sdk/client-chat-sessions"
 import { useTranslations } from "next-intl"
-import type { Message } from "@/types"
+import type { Message, ToolCall } from "@/types"
 import { formatHistoryMessages } from "@/lib/chat-history"
+import { toTimings } from "@/components/ai/format"
 import { getVisitorId } from "@/lib/visitor"
 import { getSiteAccessToken } from "@/lib/site-access-token"
 import { logError } from "@/lib/error-handler"
@@ -56,6 +57,12 @@ interface UseAIChatReturn {
   setThreadId: (id: string) => void
   /** 加载特定会话的消息历史 */
   loadSessionMessages: (threadId: string) => Promise<void>
+  /** 提交一条消息的 👍/👎 反馈；rating=null 撤销 */
+  submitFeedback: (
+    message: Message,
+    rating: "up" | "down" | null,
+    reason?: "incorrect" | "irrelevant" | "incomplete" | "slow" | null,
+  ) => Promise<void>
 }
 
 interface ToolCallAccumulator {
@@ -69,6 +76,23 @@ function generateThreadId(): string {
     return `thread-${crypto.randomUUID()}`
   }
   return `thread-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+}
+
+/** 把一个累加好的 tool call 转成 ToolCall，保留 prev 上已经写入的扩展字段
+ * （elapsedMs / chunkCount）—— 任何 rebuild 路径都用它，避免重复维护多份。 */
+function buildCompletedTool(
+  raw: ToolCallAccumulator,
+  prevTools: ToolCall[] | undefined,
+): ToolCall {
+  const prev = prevTools?.find(t => t.id === raw.id)
+  return {
+    id: raw.id,
+    type: "function",
+    function: { name: raw.name, arguments: raw.arguments },
+    status: "completed",
+    ...(prev?.elapsedMs != null ? { elapsedMs: prev.elapsedMs } : {}),
+    ...(prev?.chunkCount != null ? { chunkCount: prev.chunkCount } : {}),
+  }
 }
 
 export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
@@ -108,13 +132,24 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
     // 2. 预先添加一个空的 AI 消息占位符
     const assistantMsgId = (Date.now() + 1).toString()
-    const assistantMsg: Message = {
-      id: assistantMsgId,
-      role: "assistant",
-      content: "",
-    }
+    // messageSeq = 本 thread 内已有的 assistant 消息条数（0-based），后端按这个
+    // 序号定位 chat_messages.id；用 setMessages 函数式更新读最新 prev，避免
+    // useCallback 闭包持有旧 messages
+    setMessages(prev => {
+      const assistantSeq = prev.filter(m => m.role === "assistant").length
+      const assistantMsg: Message = {
+        id: assistantMsgId,
+        role: "assistant",
+        content: "",
+        messageSeq: assistantSeq,
+      }
+      return [...prev, userMsg, assistantMsg]
+    })
 
-    setMessages(prev => [...prev, userMsg, assistantMsg])
+    // 把"按 id 找到占位 assistant 消息并 patch"这个 setMessages 模式收成一个调用，
+    // 所有事件处理段共用，避免 7-8 次重复 prev.map + 三元判断
+    const updateAssistant = (updater: (msg: Message) => Message) =>
+      setMessages(prev => prev.map(m => (m.id === assistantMsgId ? updater(m) : m)))
 
     // 3. 准备请求（持久化模式）
     abortControllerRef.current = new AbortController()
@@ -164,9 +199,18 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let accumulatedContent = ""
+      let hasPipelineTrace = false
       let currentToolCall: ToolCallAccumulator | null = null
       // 保存所有历史 tool calls（已完成的）
-      const allCompletedToolCalls: Array<{ id: string; name: string; arguments: string }> = []
+      const allCompletedToolCalls: ToolCallAccumulator[] = []
+
+      // 把当前累加完的 tool call 推入 completed 列表并清空累加器
+      const flushCurrentTool = () => {
+        if (currentToolCall?.id) {
+          allCompletedToolCalls.push({ ...currentToolCall })
+        }
+        currentToolCall = null
+      }
 
       let lineBuffer = ""
       while (true) {
@@ -197,42 +241,23 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
             // 1. 知识库来源
             if (eventType === "response.knowledge_sources") {
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === assistantMsgId
-                    ? { ...msg, sources: data.sources }
-                    : msg
-                )
-              )
+              updateAssistant(msg => ({ ...msg, sources: data.sources }))
               continue
             }
 
-            // 2. 工具调用开始
+            // 2. 工具调用开始 —— 累加器里若已有完整 tool（id 齐），先 flush 入栈
             if (eventType === "response.tool_call.started") {
-              if (currentToolCall?.id) {
-                const tc = currentToolCall as { id: string; name: string; arguments: string }
-                allCompletedToolCalls.push({ id: tc.id, name: tc.name, arguments: tc.arguments })
-              }
-              currentToolCall = null
-
-              const displayToolCalls = allCompletedToolCalls.map(tc => ({
-                id: tc.id,
-                type: "function" as const,
-                function: { name: tc.name, arguments: tc.arguments },
-                status: "completed" as const
-              }))
-
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === assistantMsgId
-                    ? {
-                      ...msg,
-                      status: "tool_calling",
-                      toolCalls: displayToolCalls.length > 0 ? displayToolCalls : undefined
-                    }
-                    : msg
+              flushCurrentTool()
+              updateAssistant(msg => {
+                const display = allCompletedToolCalls.map(tc =>
+                  buildCompletedTool(tc, msg.toolCalls),
                 )
-              )
+                return {
+                  ...msg,
+                  status: "tool_calling",
+                  toolCalls: display.length > 0 ? display : undefined,
+                }
+              })
               continue
             }
 
@@ -244,29 +269,75 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
               if (tc.function?.name) currentToolCall.name = tc.function.name
               if (tc.function?.arguments) currentToolCall.arguments += tc.function.arguments
 
-              const running = currentToolCall as { id: string; name: string; arguments: string }
-              const displayToolCalls = [
-                ...allCompletedToolCalls.map(t => ({
-                  id: t.id, type: "function" as const,
-                  function: { name: t.name, arguments: t.arguments },
-                  status: "completed" as const
-                })),
-                { id: running.id, type: "function" as const,
-                  function: { name: running.name, arguments: running.arguments },
-                  status: "running" as const }
-              ]
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === assistantMsgId
-                    ? { ...msg, toolCalls: displayToolCalls, status: "tool_calling" }
-                    : msg
-                )
-              )
+              const running = currentToolCall
+              updateAssistant(msg => ({
+                ...msg,
+                status: "tool_calling",
+                toolCalls: [
+                  ...allCompletedToolCalls.map(t => buildCompletedTool(t, msg.toolCalls)),
+                  {
+                    id: running.id,
+                    type: "function" as const,
+                    function: { name: running.name, arguments: running.arguments },
+                    status: "running" as const,
+                  },
+                ],
+              }))
               continue
             }
 
-            // 4. 工具调用结束（无 UI 变更，仅作为流程标记）
+            // 4. 工具调用结束 —— 后端可能带 elapsed_ms（trace 开启时）/ chunk_count /
+            // tool_call_id。优先按 id 精确对位，缺失时退化为 allCompletedToolCalls 末尾
+            // 匹配（兼容并行场景）；任意一个数据字段存在即更新
             if (eventType === "response.tool_call.completed") {
+              const elapsedMs: number | undefined =
+                typeof data.elapsed_ms === "number" ? data.elapsed_ms : undefined
+              const chunkCount: number | undefined =
+                typeof data.chunk_count === "number" ? data.chunk_count : undefined
+              if (elapsedMs == null && chunkCount == null) continue
+
+              const tcidFromEvent: string | undefined =
+                typeof data.tool_call_id === "string" ? data.tool_call_id : undefined
+              const idToUpdate =
+                tcidFromEvent && allCompletedToolCalls.some(t => t.id === tcidFromEvent)
+                  ? tcidFromEvent
+                  : allCompletedToolCalls[allCompletedToolCalls.length - 1]?.id
+              if (!idToUpdate) continue
+
+              updateAssistant(msg => ({
+                ...msg,
+                toolCalls: msg.toolCalls?.map(t =>
+                  t.id === idToUpdate
+                    ? {
+                        ...t,
+                        ...(elapsedMs != null ? { elapsedMs } : {}),
+                        ...(chunkCount != null ? { chunkCount } : {}),
+                        status: "completed" as const,
+                      }
+                    : t,
+                ),
+              }))
+              continue
+            }
+
+            // 4.5 站点开启 trace 时收到的管线 timing 卡片
+            if (eventType === "response.pipeline_trace") {
+              hasPipelineTrace = true
+              const timings = toTimings(data.trace)
+              if (timings) updateAssistant(msg => ({ ...msg, timings }))
+              continue
+            }
+
+            // 4.6 流末尾的 response.completed —— 携带 usage（input/output/total tokens）
+            // 仅在收到过 pipeline_trace 事件时渲染（即站点 show_pipeline_trace=true）
+            if (eventType === "response.completed") {
+              const usage = data.response?.usage
+              if (hasPipelineTrace && usage && typeof usage.total_tokens === "number") {
+                updateAssistant(msg => ({
+                  ...msg,
+                  usage: { totalTokens: usage.total_tokens },
+                }))
+              }
               continue
             }
 
@@ -276,46 +347,26 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
               if (!delta) continue
 
               accumulatedContent += delta
+              flushCurrentTool()
 
-              if (currentToolCall?.id) {
-                const tc = currentToolCall as { id: string; name: string; arguments: string }
-                allCompletedToolCalls.push({ id: tc.id, name: tc.name, arguments: tc.arguments })
-                currentToolCall = null
-              }
-
-              const finalToolCalls = allCompletedToolCalls.length > 0
-                ? allCompletedToolCalls.map(tc => ({
-                  id: tc.id,
-                  type: "function" as const,
-                  function: { name: tc.name, arguments: tc.arguments },
-                  status: "completed" as const
-                }))
-                : undefined
-
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === assistantMsgId
-                    ? {
-                      ...msg,
-                      content: accumulatedContent,
-                      status: "streaming",
-                      toolCalls: finalToolCalls,
-                    }
-                    : msg
-                )
-              )
+              updateAssistant(msg => ({
+                ...msg,
+                content: accumulatedContent,
+                status: "streaming",
+                toolCalls:
+                  allCompletedToolCalls.length > 0
+                    ? allCompletedToolCalls.map(tc => buildCompletedTool(tc, msg.toolCalls))
+                    : undefined,
+              }))
               continue
             }
 
             // 6. 错误事件
             if (eventType === "response.error") {
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === assistantMsgId
-                    ? { ...msg, content: msg.content || `⚠️ ${data.error}` }
-                    : msg
-                )
-              )
+              updateAssistant(msg => ({
+                ...msg,
+                content: msg.content || `⚠️ ${data.error}`,
+              }))
             }
           } catch (e) {
             logError("useAIChat:parseStreamChunk", e)
@@ -323,27 +374,20 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
         }
       }
 
-      // 流结束后，清除状态
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === assistantMsgId
-            ? { ...msg, status: undefined }
-            : msg
-        )
-      )
+      // 流结束后只清除 streaming 状态；timings / usage / 工具 elapsedMs 已由
+      // response.pipeline_trace / response.completed / response.tool_call.completed
+      // 各自的事件处理段写入；站点未开启 trace 时它们会保持 undefined（前端自然不渲染）
+      updateAssistant(msg => ({ ...msg, status: undefined }))
 
     } catch (error: unknown) {
       const isAbort = error instanceof DOMException && error.name === "AbortError"
       if (isAbort) return // 用户主动取消，沿用已有占位消息，不写错误提示
       logError("useAIChat:sendMessage", error)
       const errorMessage = error instanceof Error ? error.message : t("unknownError")
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === assistantMsgId
-            ? { ...msg, content: msg.content || `⚠️ ${errorMessage}` }
-            : msg
-        )
-      )
+      updateAssistant(msg => ({
+        ...msg,
+        content: msg.content || `⚠️ ${errorMessage}`,
+      }))
     } finally {
       isLoadingRef.current = false
       setIsLoading(false)
@@ -361,6 +405,32 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     setThreadId(generateThreadId())
     setIsLoading(false)
   }, [])
+
+  const submitFeedback = useCallback(async (
+    message: Message,
+    rating: "up" | "down" | null,
+    reason?: "incorrect" | "irrelevant" | "incomplete" | "slow" | null,
+  ) => {
+    if (message.messageSeq == null) return
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      const token = getSiteAccessToken(tenantSlug, siteSlug)
+      if (token) headers["X-Site-Access-Token"] = token
+      await fetch(`${env.NEXT_PUBLIC_API_URL}/v1/chat/feedback`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          thread_id: threadId,
+          message_seq: message.messageSeq,
+          member_id: getVisitorId(),
+          rating,
+          reason: rating === "down" ? (reason ?? null) : null,
+        }),
+      })
+    } catch (e) {
+      logError("useAIChat:submitFeedback", e)
+    }
+  }, [threadId, tenantSlug, siteSlug])
 
   const loadSessionMessages = useCallback(async (targetThreadId: string) => {
     if (abortControllerRef.current) {
@@ -394,5 +464,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     setMessages,
     setThreadId,
     loadSessionMessages,
+    submitFeedback,
   }
 }

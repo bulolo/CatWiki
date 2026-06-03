@@ -17,6 +17,7 @@
 import { Search, CheckCircle2, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ToolCall } from "@/types"
+import { formatDuration } from "./format"
 
 import { useTranslations } from "next-intl"
 
@@ -55,13 +56,18 @@ export function ToolCallCard({ toolCalls, className, onToolCallClick }: ToolCall
         const isCompleted = tc.status === "completed"
         const isClickable = isCompleted && !!onToolCallClick
 
+        // 实时流由后端直传 chunkCount；历史回看走 tc.result JSON 解析兜底
         let chunkCount = 0
-        if (isCompleted && tc.result) {
+        if (typeof tc.chunkCount === "number") {
+          chunkCount = tc.chunkCount
+        } else if (isCompleted && tc.result) {
           try {
             const parsed = JSON.parse(tc.result)
             if (Array.isArray(parsed)) chunkCount = parsed.length
           } catch { /* ignore */ }
         }
+
+        const elapsedLabel = isCompleted ? formatDuration(tc.elapsedMs) : null
 
         return (
           <div
@@ -89,6 +95,9 @@ export function ToolCallCard({ toolCalls, className, onToolCallClick }: ToolCall
               )}
               {chunkCount > 0 && (
                 <span className="opacity-50 ml-1">· {chunkCount} {tResult("chunks")}</span>
+              )}
+              {elapsedLabel && (
+                <span className="opacity-50 ml-1 tabular-nums">· {elapsedLabel}</span>
               )}
             </span>
           </div>

@@ -162,6 +162,7 @@ class TenantSeeder(BaseSeeder):
                 theme_color=s_data["theme_color"],
                 layout_mode=s_data["layout_mode"],
                 quick_questions=s_data.get("quick_questions", []),
+                show_pipeline_trace=s_data.get("show_pipeline_trace", True),
             )
             site = await crud_site.create(self.db, obj_in=site_create)
             await self.db.commit()

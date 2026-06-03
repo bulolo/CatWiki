@@ -163,6 +163,23 @@
   "ToolCall": {
     "search_knowledge_base": "Search Knowledge Base"
   },
+  "Timing": {
+    "ttfb": "TTFB",
+    "firstToken": "First token",
+    "total": "Total",
+    "tokens": "Total tokens"
+  },
+  "Feedback": {
+    "helpful": "Helpful",
+    "notHelpful": "Not helpful",
+    "reasonGroup": "Select a reason",
+    "reasons": {
+      "incorrect": "Incorrect",
+      "irrelevant": "Off topic",
+      "incomplete": "Incomplete",
+      "slow": "Too slow"
+    }
+  },
   "ToolResult": {
     "title": "Search Results",
     "loading": "Loading...",

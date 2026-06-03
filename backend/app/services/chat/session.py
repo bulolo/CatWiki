@@ -64,11 +64,14 @@ class ChatSessionService:
             session = result.scalar_one_or_none()
 
             if session:
+                # member_id 比对需直接做，而非通过 ensure_session_access：
+                # 匿名调用者（member_id=None）也应被拦截，但 ensure_session_access
+                # 在 member_id=None 时会跳过该检查
                 if session.member_id != member_id:
                     raise ForbiddenException(detail=_("session.access_denied"))
+                # site_id / tenant_id 归属校验（member_id 已在上方验证，不重复传）
                 self.ensure_session_access(
                     session,
-                    member_id=member_id,
                     site_id=site_id,
                     tenant_id=tenant_id,
                 )
@@ -79,7 +82,6 @@ class ChatSessionService:
                 logger.info(
                     f"📝 [ChatSession] Updated: thread_id={thread_id}, count={session.message_count}"
                 )
-                # 自动处理提交
             else:
                 # 创建新会话
                 session = ChatSession(
@@ -95,12 +97,12 @@ class ChatSessionService:
                 )
                 self.db.add(session)
                 try:
-                    await self.db.flush()
+                    await self.db.flush()  # @transactional() 负责最终 commit
                     logger.info(
                         f"✨ [ChatSession] Created: thread_id={thread_id}, site_id={site_id}"
                     )
                 except IntegrityError as ie:
-                    # 并发冲突：可能在查询后被其他请求创建了
+                    # 并发竞争：SELECT 后被其他请求抢先 INSERT，回滚重试一次
                     await self.db.rollback()
                     if _retry_count >= 1:
                         logger.error(
@@ -252,7 +254,7 @@ class ChatSessionService:
         site_id: int | None = None,
         tenant_id: int | None = None,
     ) -> None:
-        """Validate client/admin ownership constraints for an existing session."""
+        """校验调用方对会话的所有权（member_id / site_id / tenant_id 任意不匹配即拒绝）。"""
         if member_id is not None and session.member_id != member_id:
             raise ForbiddenException(detail=_("session.access_denied"))
         if site_id is not None and session.site_id != site_id:
@@ -308,7 +310,6 @@ class ChatSessionService:
                 tenant_id=tenant_id,
             )
             await self.db.delete(session)
-            # 自动处理提交
             logger.info(f"🗑️ [ChatSession] Deleted: thread_id={thread_id}")
 
             # 同步清理 Checkpointer 中的消息历史，防止数据孤岛

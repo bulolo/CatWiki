@@ -37,6 +37,10 @@ class SiteBase(BaseModel):
     layout_mode: str | None = Field(None, max_length=20, description="布局模式: sidebar, top")
     quick_questions: list[QuickQuestion] | None = Field(None, description="快速问题配置")
     bot_config: dict | None = Field(None, description="机器人配置")
+    show_pipeline_trace: bool = Field(
+        default=False,
+        description="是否在对话页展示 AI 性能统计 trace",
+    )
 
 
 class SiteCreate(SiteBase):
@@ -59,6 +63,10 @@ class SiteUpdate(BaseModel):
     layout_mode: str | None = Field(None, max_length=20)
     quick_questions: list[QuickQuestion] | None = Field(None, description="快速问题配置")
     bot_config: dict | None = Field(None, description="机器人配置")
+    show_pipeline_trace: bool | None = Field(
+        default=None,
+        description="是否在对话页展示 AI 性能统计 trace",
+    )
 
     @field_validator("bot_config")
     @classmethod

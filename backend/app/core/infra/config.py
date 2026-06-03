@@ -21,7 +21,7 @@ from urllib.parse import quote_plus
 from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_VERSION = "1.1.5"
+DEFAULT_VERSION = "1.1.6"
 
 
 def get_project_version() -> str:
@@ -51,7 +51,9 @@ class Settings(BaseSettings):
     # 环境配置
     ENVIRONMENT: str = Field(default="local", pattern="^(local|dev|prod)$")
     DEBUG: bool = Field(default=False)
-    CATWIKI_EDITION: str = Field(default="community", validation_alias="CATWIKI_EDITION_DISABLE_ENV_OVERRIDE")  # CE: hardcoded
+    CATWIKI_EDITION: str = Field(
+        default="community", validation_alias="CATWIKI_EDITION_DISABLE_ENV_OVERRIDE"
+    )  # CE: hardcoded
     CATWIKI_LICENSE_KEY: str | None = Field(default=None)
 
     # 数据库配置
@@ -213,6 +215,18 @@ class Settings(BaseSettings):
         ge=4,
         le=50,
         description="触发对话摘要的消息数量阈值",
+    )
+    AGENT_SUMMARY_KEEP_LAST_N: int = Field(
+        default=6,
+        ge=2,
+        le=20,
+        description="摘要后保留的最近消息条数（配合 AGENT_SUMMARY_TRIGGER_MSG_COUNT 使用）",
+    )
+    CHAT_STREAM_TIMEOUT_SECONDS: float = Field(
+        default=120.0,
+        ge=10.0,
+        le=600.0,
+        description="单次流式对话的超时秒数，超时后向客户端发送超时提示并结束流",
     )
     # RAG 检索配置
     RAG_RECALL_K: int = Field(

@@ -242,15 +242,12 @@ class RobotOrchestrator:
         background_tasks: BackgroundTasks | None = None,
     ) -> AsyncGenerator[str, None]:
         """流式获取消息内容（直接获取纯文本碎片，不再通过 SSE 解析）。"""
-        from app.core.ai.graph import create_agent_graph
-        from app.core.ai.graph.checkpointer import get_checkpointer
         from app.schemas.chat import ChatCompletionChunk
 
         background_tasks = background_tasks or BackgroundTasks()
 
         try:
-            # 1. 使用 ChatService 统一初始化上下文 (llm, 初始状态, 数据库持久化等)
-            llm, initial_state, config, _ = await self.chat_service.initialize_chat_context(
+            ctx = await self.chat_service.initialize_chat_context(
                 thread_id=thread_id,
                 site_id=site_id,
                 user_id=user,
@@ -258,18 +255,12 @@ class RobotOrchestrator:
                 source=provider,
             )
 
-            # 2. 启动流式推理并直接 yield 文本
-
-            async with get_checkpointer() as cp:
-                graph = create_agent_graph(checkpointer=cp, model=llm)
-                async for chunk in self.chat_service.generate_chat_chunks(
-                    graph, initial_state, config, llm.model_name, thread_id, background_tasks
-                ):
-                    if isinstance(chunk, ChatCompletionChunk):
-                        content_piece = chunk.choices[0].delta.content
-                        if content_piece:
-                            logger.debug("AI 产出 Token 片段: len=%d", len(content_piece))
-                            yield content_piece
+            async for chunk in self.chat_service._generate_graph_chunks(ctx, background_tasks):
+                if isinstance(chunk, ChatCompletionChunk):
+                    content_piece = chunk.choices[0].delta.content
+                    if content_piece:
+                        logger.debug("AI 产出 Token 片段: len=%d", len(content_piece))
+                        yield content_piece
         except Exception as e:
             logger.error("%s AI 流式推理失败: %s", provider, e, exc_info=True)
             yield self.DEFAULT_ERROR_REPLY

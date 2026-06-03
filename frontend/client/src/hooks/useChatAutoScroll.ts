@@ -14,16 +14,36 @@
 
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import type { Message } from "@/types"
 
 /**
- * 每当消息列表更新时，自动将滚动区域滚到底部。
+ * 每当消息列表「语义上」更新时，自动将滚动区域滚到底部。
  * 同时兼容 Radix ScrollArea（通过 data-radix-scroll-area-viewport 选取内部视口）
  * 和普通 div（直接操作 scrollTop）。
+ *
+ * ⚠️ 不直接监听 messages 数组引用 —— 否则点击工具 pill 打开检索弹窗、
+ *   或后端给老消息补 elapsed/result 等"非新增"更新都会强制下滑。
+ *   仅当下列任一变更时才滚动：
+ *     - 消息条数变化
+ *     - 最后一条消息切换（id 变）
+ *     - 最后一条消息的正文长度变化（流式追加 token）
+ *     - 最后一条消息的工具数量变化（新一轮工具调用）
+ *     - 最后一条消息的状态切换（streaming / tool_calling / done）
  */
 export function useChatAutoScroll(messages: Message[]) {
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  const signature = useMemo(() => {
+    const last = messages[messages.length - 1]
+    return [
+      messages.length,
+      last?.id ?? "",
+      last?.content?.length ?? 0,
+      last?.toolCalls?.length ?? 0,
+      last?.status ?? "",
+    ].join("|")
+  }, [messages])
 
   useEffect(() => {
     if (!scrollRef.current) return
@@ -31,7 +51,7 @@ export function useChatAutoScroll(messages: Message[]) {
       scrollRef.current.querySelector("[data-radix-scroll-area-viewport]") ??
       scrollRef.current
     viewport.scrollTop = viewport.scrollHeight
-  }, [messages])
+  }, [signature])
 
   return scrollRef
 }

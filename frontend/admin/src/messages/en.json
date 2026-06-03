@@ -813,6 +813,12 @@
       "passwordNotSet": "No password set",
       "eeBadge": "Enterprise",
       "enterpriseOnly": "Public listing and access password are Enterprise Edition features."
+    },
+    "stats": {
+      "title": "Conversation Performance Stats",
+      "description": "Show per-turn latency and token usage to chat visitors.",
+      "show": "Show stats",
+      "showHint": "When enabled, every visitor sees latency and token usage below the reply bubble."
     }
   },
   "Dashboard": {
@@ -871,7 +877,42 @@
     "days": "d",
     "tabs": {
       "traffic": "Traffic Overview",
-      "chat": "Chat Audit"
+      "chat": "Chat Audit",
+      "feedback": "User Feedback"
+    },
+    "feedback": {
+      "kpi": {
+        "up": "Positive",
+        "down": "Negative",
+        "upRate": "Positive rate",
+        "total": "Total feedback"
+      },
+      "reasons": {
+        "title": "Negative reasons",
+        "incorrect": "Incorrect",
+        "irrelevant": "Off topic",
+        "incomplete": "Incomplete",
+        "slow": "Too slow"
+      },
+      "list": {
+        "title": "Negative feedback",
+        "summary": "{total} total",
+        "empty": "No feedback yet",
+        "emptyAllUp": "All positive",
+        "emptySubtitle": "Visitors are happy with the answers 👍",
+        "emptyContent": "(no content)",
+        "uncategorized": "Uncategorized",
+        "group": {
+          "today": "Today",
+          "yesterday": "Yesterday",
+          "earlier": "Earlier"
+        },
+        "prev": "Previous",
+        "next": "Next"
+      },
+      "detail": {
+        "title": "Negative feedback details"
+      }
     },
     "empty": "No data available",
     "stats": {

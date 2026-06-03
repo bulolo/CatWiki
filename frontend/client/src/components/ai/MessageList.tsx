@@ -16,7 +16,7 @@
 
 import type { Message, ToolCall } from "@/types"
 import type { ClientSite } from "@/lib/sdk/sdk.schemas"
-import { MessageBubble, ChatLoadingIndicator } from "./MessageBubble"
+import { MessageBubble, ChatLoadingIndicator, type FeedbackHandler } from "./MessageBubble"
 
 interface MessageListProps {
   messages: Message[]
@@ -28,6 +28,8 @@ interface MessageListProps {
    * full    — AIChatLanding 全页面（大头像，内联思考态，来源在气泡外）
    */
   variant?: "compact" | "full"
+  /** 反馈提交回调；缺省则 👍/👎 仅本地 state */
+  onFeedback?: FeedbackHandler
 }
 
 export function MessageList({
@@ -36,6 +38,7 @@ export function MessageList({
   allSites,
   onToolCallClick,
   variant = "full",
+  onFeedback,
 }: MessageListProps) {
   const compact = variant === "compact"
 
@@ -48,6 +51,7 @@ export function MessageList({
           isLoading={isLoading}
           allSites={allSites}
           onToolCallClick={onToolCallClick}
+          onFeedback={onFeedback}
           variant={variant}
         />
       ))}

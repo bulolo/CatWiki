@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import json
 import logging
 
@@ -38,15 +39,22 @@ class ChatHistoryService:
         self.db = db
 
     @transactional()
-    async def save_history_from_messages(
+    async def save_turn_messages(
         self,
         thread_id: str,
         messages: list[BaseMessage],
+        trace: dict | None = None,
+        tool_elapsed: dict[str, int] | None = None,
     ) -> int:
-        """从 LangChain 消息列表同步新消息到 SQL (包括 tool_calls 和 tool 结果)。
+        """从 LangChain 消息列表同步本轮新消息到 SQL（含 tool_calls 和 tool 结果）。
 
         批量写入：构造好 N 个 ChatMessage 实例后一次性 ``add_all`` + 单次 flush，
         避免按条调用 ``save_message`` 引入 N 个嵌套 SAVEPOINT。
+
+        ``trace`` 与 ``tool_elapsed`` 仅在站点开启 ``show_pipeline_trace`` 时传入：
+        前者落到本轮最后一条 assistant 消息的 ``additional_kwargs.trace``，后者按
+        ``{tool_call_id: elapsed_ms}`` 精确匹配写入对应 tool_call 的 ``elapsed_ms``。
+        历史回看时前端直接读这两份数据还原 ⏱ 行 + pill 耗时，不再依赖实时事件。
         """
         # 1. 找到最后一条 HumanMessage 的索引，这通常是当前轮次的起点
         # 注意：HumanMessage 本身已经由 API 层手动保存了，我们只需要保存它之后的所有消息
@@ -57,8 +65,7 @@ class ChatHistoryService:
                 break
 
         if last_human_idx == -1:
-            # No HumanMessage found — all messages are new (from graph execution).
-            # Save everything.
+            # 找不到 HumanMessage：全部消息均为新内容，全量保存
             new_langchain_messages = messages
         else:
             new_langchain_messages = messages[last_human_idx + 1 :]
@@ -69,6 +76,34 @@ class ChatHistoryService:
 
         if not new_openai_messages:
             return 0
+
+        # 注入 tool elapsed_ms：按 tool_call_id 精确匹配，并行工具也不会错位
+        if tool_elapsed:
+            for msg_dict in new_openai_messages:
+                if msg_dict.get("role") != "assistant":
+                    continue
+                for tc in msg_dict.get("tool_calls") or []:
+                    elapsed = tool_elapsed.get(tc.get("id"))
+                    if elapsed is not None:
+                        tc["elapsed_ms"] = elapsed
+
+        if trace:
+            # 注入 trace：落到本轮最后一条 assistant 消息的 additional_kwargs
+            for msg_dict in reversed(new_openai_messages):
+                if msg_dict.get("role") != "assistant":
+                    continue
+                ak = dict(msg_dict.get("additional_kwargs") or {})
+                ak["trace"] = trace
+                msg_dict["additional_kwargs"] = ak
+                break
+        else:
+            # 站点未开启 trace：LangChain 原生写入的 usage_metadata 也得剥离，
+            # 否则历史回看时 Tokens 仍会显示，与开关语义不符
+            for msg_dict in new_openai_messages:
+                ak = msg_dict.get("additional_kwargs")
+                if isinstance(ak, dict) and "usage_metadata" in ak:
+                    stripped = {k: v for k, v in ak.items() if k != "usage_metadata"}
+                    msg_dict["additional_kwargs"] = stripped if stripped else None
 
         rows = [
             ChatMessage(
@@ -113,7 +148,7 @@ class ChatHistoryService:
             logger.error(f"❌ [ChatMessage] Error in save_message: {e}")
             raise
 
-    async def get_session_messages(
+    async def get_chat_history(
         self,
         thread_id: str,
     ) -> dict:
@@ -203,7 +238,7 @@ class ChatHistoryService:
                     key=lambda x: x.get("sourceIndex") if x.get("sourceIndex") is not None else 999,
                 )
 
-        # 4. 渲染消息，附加预计算的 sources
+        # 4. 组装 HTTP 响应消息列表，附加预计算的 sources
         messages = []
         for i, msg in enumerate(db_messages):
             msg_dict = {
@@ -226,6 +261,44 @@ class ChatHistoryService:
             messages.append(msg_dict)
 
         return {"thread_id": thread_id, "messages": messages}
+
+    async def resolve_assistant_message_id(
+        self,
+        thread_id: str,
+        message_seq: int,
+        *,
+        retries: tuple[float, ...] = (0.0, 0.2, 0.4, 0.8),
+    ) -> int | None:
+        """把 ``(thread_id, message_seq)`` 解析为 ``chat_messages.id``。
+
+        feedback 写入路径专用：用户点 👍/👎 时 ``persist_chat_turn`` 的 background
+        task 可能还没把消息行落库。``retries`` 控制等待时序，最大累计 ~1.4s 内拿到
+        结果；超时返回 None 让调用方报错给客户端 retry。
+
+        **过滤掉只带 tool_calls 的中间行**：ReAct 模式下一个 turn 会产生多条
+        ``role='assistant'`` 行（先 tool_calls 行 content 为空、再 tool 行、最后
+        final answer 行有 content）；前端 ``Message[]`` 把它们合并成一条用户可见
+        消息，所以 ``message_seq`` 应当对齐"有 content 的最终答案行"。
+        """
+        for delay in retries:
+            if delay:
+                await asyncio.sleep(delay)
+            stmt = (
+                select(ChatMessage.id)
+                .where(
+                    ChatMessage.thread_id == thread_id,
+                    ChatMessage.role == "assistant",
+                    ChatMessage.content.isnot(None),
+                    ChatMessage.content != "",
+                )
+                .order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
+                .offset(message_seq)
+                .limit(1)
+            )
+            msg_id = (await self.db.execute(stmt)).scalar_one_or_none()
+            if msg_id is not None:
+                return msg_id
+        return None
 
     async def get_tool_result(self, thread_id: str, tool_call_id: str) -> str | None:
         """根据 tool_call_id 获取单条工具调用的返回内容"""

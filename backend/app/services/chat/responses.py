@@ -5,13 +5,17 @@
 
 """OpenAI Responses API SSE 序列化。
 
-把 ``generate_chat_chunks`` 产出的事件流（``ChatCompletionChunk`` + status
+把 ``_generate_graph_chunks`` 产出的事件流（``ChatCompletionChunk`` + status
 dict）翻译成 OpenAI Responses API 的事件流：
 
-- ``response.created`` / ``response.completed``：流的打开 / 关闭
+- ``response.created``：流打开
+- ``response.completed``：流关闭，始终携带 usage（input/output/total tokens）
 - ``response.output_text.delta``：每段正文增量
 - ``response.tool_call.delta``：工具调用增量
 - ``response.tool_call.started`` / ``response.tool_call.completed``：工具执行边界
+  （``completed`` 可携带 ``elapsed_ms``，前端 pill 实时显示耗时）
+- ``response.pipeline_trace``：管线 timing 卡片（TTFB / 首字 / 总耗时），仅在
+  站点 ``show_pipeline_trace=True`` 时由上游 yield，前端在气泡下方一行渲染
 - ``response.knowledge_sources``：检索引用
 - ``response.error``：异常事件
 - ``[DONE]``：SSE 结束哨兵
@@ -70,8 +74,8 @@ def make_usage_chunk(usage: ResponsesAPIUsage) -> dict[str, Any]:
 def _sse(event_type: str, **fields: Any) -> str:
     """构造一行 SSE：``data: {"type": event_type, **fields}\\n\\n``。
 
-    使用紧凑 ``separators=(",", ":")`` —— SSE/JSON spec 不在意空格，但与改前手写
-    f-string 的紧凑 wire format 保持字节级兼容，避免任何严格客户端 diff 出来。
+    使用紧凑 ``separators=(",", ":")`` —— SSE/JSON spec 不在意空格，
+    但严格客户端可能对 payload 格式敏感，保持紧凑输出以降低兼容风险。
     """
     payload: dict[str, Any] = {"type": event_type, **fields}
     return f"data: {json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}\n\n"
@@ -105,11 +109,23 @@ def chunk_to_responses_events(chunk: ChatCompletionChunk | dict) -> list[str]:
             return []
         if "sources" in chunk:
             return [_sse("response.knowledge_sources", sources=chunk["sources"])]
+        if "pipeline_trace" in chunk:
+            return [_sse("response.pipeline_trace", trace=chunk["pipeline_trace"])]
         status = chunk.get("status")
         if status == "tool_calling":
             return [_sse("response.tool_call.started", tool=chunk.get("tool"))]
         if status == "tool_completed":
-            return [_sse("response.tool_call.completed", tool=chunk.get("tool"))]
+            fields: dict[str, Any] = {"tool": chunk.get("tool")}
+            tcid = chunk.get("tool_call_id")
+            if tcid:
+                fields["tool_call_id"] = tcid
+            chunk_count = chunk.get("chunk_count")
+            if chunk_count is not None:
+                fields["chunk_count"] = chunk_count
+            elapsed = chunk.get("elapsed_ms")
+            if elapsed is not None:
+                fields["elapsed_ms"] = elapsed
+            return [_sse("response.tool_call.completed", **fields)]
         return []
 
     return []
@@ -121,7 +137,7 @@ async def stream_responses_api(
 ) -> AsyncIterator[str]:
     """顶层包装：开 → 流式翻译 → 关 + DONE。
 
-    ``chunk_source`` 通常是 ``ChatService.generate_chat_chunks(...)`` 的产物，
+    ``chunk_source`` 通常是 ``ChatService._generate_graph_chunks(...)`` 的产物，
     或任何能产出 ChatCompletionChunk / status dict 的 async iterable。
     若 chunk_source 在末尾 yield 一个 ``make_usage_chunk(...)`` 标记 dict，
     其 usage 会被注入到最终 ``response.completed`` event 的 envelope。

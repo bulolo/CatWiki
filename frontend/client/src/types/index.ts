@@ -60,6 +60,10 @@ export interface ToolCall {
   // 前端扩展字段
   status?: "pending" | "running" | "completed" | "error"
   result?: string
+  /** 本次工具调用耗时（毫秒），由 SSE response.tool_call.completed 透传 */
+  elapsedMs?: number
+  /** 本次工具返回的结果条数（如知识库检索的 chunks 数），实时由后端预算好直传 */
+  chunkCount?: number
   // 后端兼容字段（部分场景 name/args 直接在顶层）
   name?: string
   args?: string
@@ -67,6 +71,17 @@ export interface ToolCall {
 
 // 消息状态类型
 export type MessageStatus = "idle" | "thinking" | "tool_calling" | "streaming"
+
+// Pipeline trace：站点开启 show_pipeline_trace 时由后端透传
+export interface MessageTimings {
+  ttfbMs?: number
+  firstTokenMs?: number
+  totalMs?: number
+}
+
+export interface MessageUsage {
+  totalTokens?: number
+}
 
 // 消息类型（AI 对话）
 export interface Message {
@@ -76,4 +91,8 @@ export interface Message {
   sources?: Source[]
   toolCalls?: ToolCall[]
   status?: MessageStatus
+  timings?: MessageTimings
+  usage?: MessageUsage
+  /** 同 thread 内 assistant 消息的 0-based 序号，feedback 用它定位到具体消息行 */
+  messageSeq?: number
 }

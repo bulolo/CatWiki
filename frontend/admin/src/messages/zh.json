@@ -813,6 +813,12 @@
       "passwordNotSet": "未设置密码",
       "eeBadge": "企业版",
       "enterpriseOnly": "公开展示与访问密码为企业版专属功能。"
+    },
+    "stats": {
+      "title": "对话性能统计",
+      "description": "在对话页面向访客展示每次问答的耗时与 Token 用量。",
+      "show": "展示统计",
+      "showHint": "开启后，所有访客在对话气泡下方都会看到耗时与 Token 用量。"
     }
   },
   "Dashboard": {
@@ -871,7 +877,42 @@
     "days": "天",
     "tabs": {
       "traffic": "流量概览",
-      "chat": "对话审计"
+      "chat": "对话审计",
+      "feedback": "用户反馈"
+    },
+    "feedback": {
+      "kpi": {
+        "up": "好评",
+        "down": "差评",
+        "upRate": "好评率",
+        "total": "反馈总数"
+      },
+      "reasons": {
+        "title": "差评原因分布",
+        "incorrect": "回答错误",
+        "irrelevant": "答非所问",
+        "incomplete": "信息不全",
+        "slow": "回答太慢"
+      },
+      "list": {
+        "title": "差评消息",
+        "summary": "共 {total} 条",
+        "empty": "暂无反馈",
+        "emptyAllUp": "全是好评",
+        "emptySubtitle": "继续保持，访客都对回答满意 👍",
+        "emptyContent": "(消息无内容)",
+        "uncategorized": "未分类",
+        "group": {
+          "today": "今天",
+          "yesterday": "昨天",
+          "earlier": "更早"
+        },
+        "prev": "上一页",
+        "next": "下一页"
+      },
+      "detail": {
+        "title": "差评消息详情"
+      }
     },
     "empty": "暂无数据",
     "stats": {

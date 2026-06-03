@@ -26,12 +26,42 @@ def start_chat_timing() -> None:
         _chat_timing_var.set({"_start": time.monotonic()})
 
 
-def mark_chat_timing(phase: str) -> None:
-    """记录从 timing 开始到当前的耗时（ms）。"""
+def mark_chat_timing(phase: str, *, overwrite: bool = True) -> None:
+    """记录从 timing 开始到当前的耗时（ms）。
+
+    ``overwrite=False`` 时若该 phase 已存在则跳过——避免在 ``finally`` 块再次打点
+    时覆盖在 try 末尾 snapshot 时刻的值。
+    """
     timing = _chat_timing_var.get()
     if timing is None:
         return
+    if not overwrite and phase in timing:
+        return
     timing[phase] = (time.monotonic() - timing["_start"]) * 1000
+
+
+def get_chat_timing() -> dict | None:
+    """返回当前 timing 字典副本（去掉 ``_start`` 内部字段）。
+
+    在 chat 流末尾用来打包 ``response.pipeline_trace`` 事件——只在需要透传给客户端
+    时调用，普通日志路径仍走 ``emit_chat_timing_card``。
+    """
+    timing = _chat_timing_var.get()
+    if timing is None:
+        return None
+    return {k: v for k, v in timing.items() if not k.startswith("_")}
+
+
+def get_chat_timing_phase(phase: str) -> float | None:
+    """轻量查询单个 phase 的耗时（ms）——直接读 ContextVar 不做 dict 拷贝。
+
+    适合 hot path（如每个 ``on_tool_end`` 取 elapsed）；需要整份 snapshot 走
+    ``get_chat_timing()``。
+    """
+    timing = _chat_timing_var.get()
+    if timing is None:
+        return None
+    return timing.get(phase)
 
 
 def emit_chat_timing_card(thread_id: str | None = None) -> None:

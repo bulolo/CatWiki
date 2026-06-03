@@ -128,7 +128,7 @@ async def get_session_messages(
     if not session:
         raise HTTPException(status_code=404, detail=_("session.not_found"))
 
-    result = await history_service.get_session_messages(thread_id=thread_id)
+    result = await history_service.get_chat_history(thread_id=thread_id)
 
     return ApiResponse.ok(
         data=ChatSessionMessagesResponse(

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * CatWiki Admin API
  * 管理后台 API - 提供完整的增删改查功能
- * OpenAPI spec version: 1.1.5
+ * OpenAPI spec version: 1.1.6
  */
 /**
  * 各模型项配置 (chat/embedding/...)
@@ -710,6 +710,66 @@ export interface DocumentUpdate {
   tags?: string[] | null;
 }
 
+export interface FeedbackListItem {
+  id: number;
+  chat_message_id: number;
+  thread_id: string;
+  rating: string;
+  reason: string | null;
+  member_id: string;
+  created_at: string;
+  message_content: string | null;
+}
+
+export interface FeedbackListPage {
+  list: FeedbackListItem[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+/**
+ * POST 响应；撤销时 ``rating`` 为 null，前端按需更新本地 state。
+ */
+export interface FeedbackOut {
+  chat_message_id: number;
+  member_id: string;
+  rating: 'up' | 'down' | null;
+  reason: 'incorrect' | 'irrelevant' | 'incomplete' | 'slow' | null;
+}
+
+export type FeedbackStatsReasons = {[key: string]: number};
+
+export interface FeedbackStats {
+  total: number;
+  up: number;
+  down: number;
+  up_rate: number;
+  reasons: FeedbackStatsReasons;
+}
+
+/**
+ * POST /v1/chat/feedback 请求体。``rating=None`` 表示撤销反馈。
+ */
+export interface FeedbackSubmit {
+  /** 会话 ID */
+  thread_id: string;
+  /**
+     * 本 thread 内 assistant 消息的 0-based 序号
+     * @minimum 0
+     */
+  message_seq: number;
+  /**
+     * 访客/会员 ID
+     * @maxLength 64
+     */
+  member_id: string;
+  /** up / down / null（撤销） */
+  rating?: 'up' | 'down' | null;
+  /** 差评原因；仅 down 有意义 */
+  reason?: 'incorrect' | 'irrelevant' | 'incomplete' | 'slow' | null;
+}
+
 export type ValidationErrorCtx = { [key: string]: unknown };
 
 export interface ValidationError {
@@ -893,6 +953,8 @@ export interface Site {
   quick_questions?: QuickQuestion[] | null;
   /** 机器人配置 */
   bot_config?: SiteBotConfig;
+  /** 是否在对话页展示 AI 性能统计 trace */
+  show_pipeline_trace?: boolean;
   /** 文章数量 */
   article_count?: number;
   /** 所属租户标识 */
@@ -1194,6 +1256,8 @@ export interface SiteCreate {
   quick_questions?: QuickQuestion[] | null;
   /** 机器人配置 */
   bot_config?: SiteCreateBotConfig;
+  /** 是否在对话页展示 AI 性能统计 trace */
+  show_pipeline_trace?: boolean;
   /** 管理员邮箱 */
   admin_email?: string | null;
   /** 管理员姓名 */
@@ -1288,6 +1352,8 @@ export interface SiteUpdate {
   quick_questions?: QuickQuestion[] | null;
   /** 机器人配置 */
   bot_config?: SiteUpdateBotConfig;
+  /** 是否在对话页展示 AI 性能统计 trace */
+  show_pipeline_trace?: boolean | null;
 }
 
 export type TenantCreateRequestAdvancedConfig = { [key: string]: unknown };
@@ -2030,4 +2096,31 @@ export const EeAdminListChatSessionsSearchField = {
  * 响应数据
  */
 export type EeAdminDeleteChatSession200 = { [key: string]: unknown } | null;
+
+export type GetAdminFeedbackStatsParams = {
+/**
+ * 站点 ID
+ */
+site_id: number;
+};
+
+export type GetAdminFeedbackListParams = {
+/**
+ * 站点 ID
+ */
+site_id: number;
+/**
+ * 只看 up 或 down，默认全部
+ */
+rating?: 'up' | 'down' | null;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+size?: number;
+};
 

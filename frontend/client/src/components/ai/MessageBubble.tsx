@@ -19,8 +19,16 @@ import { cn } from "@/lib/utils"
 import { Streamdown } from "streamdown"
 import type { Message, ToolCall } from "@/types"
 import type { ClientSite } from "@/lib/sdk/sdk.schemas"
+import { MessageActions, type NegativeReason } from "./MessageActions"
 import { MessageSources } from "./MessageSources"
+import { TimingFooter } from "./TimingFooter"
 import { ToolCallCard } from "./ToolCallCard"
+
+export type FeedbackHandler = (
+  message: Message,
+  rating: "up" | "down" | null,
+  reason: NegativeReason | null,
+) => void
 
 interface MessageBubbleProps {
   message: Message
@@ -28,41 +36,93 @@ interface MessageBubbleProps {
   allSites?: ClientSite[]
   onToolCallClick: (tc: ToolCall) => void
   variant: "compact" | "full"
+  /** 当前消息的反馈提交回调；缺省则 👍/👎 仅本地 state，不持久化 */
+  onFeedback?: FeedbackHandler
 }
 
-function CompactBubble({ message, isLoading, allSites, onToolCallClick }: Omit<MessageBubbleProps, "variant">) {
+/** 助手消息正下方的 meta 行：👍👎 + 性能数据。仅对话已完成且有内容时显示。 */
+function MessageMetaRow({
+  message,
+  compact = false,
+  onFeedback,
+}: {
+  message: Message
+  compact?: boolean
+  onFeedback?: FeedbackHandler
+}) {
+  if (message.role !== "assistant") return null
+  // 正在工具调用 / 流式输出时不显示，避免视觉抖动
+  if (message.status === "streaming" || message.status === "tool_calling") return null
+  if (!message.content) return null
+
+  const hasStats = !!(
+    message.timings?.ttfbMs ||
+    message.timings?.firstTokenMs ||
+    message.timings?.totalMs ||
+    message.usage?.totalTokens
+  )
+
   return (
-    <div
-      className={cn(
-        "max-w-[85%] rounded-xl md:rounded-2xl px-3 md:px-5 py-2 md:py-3 shadow-sm",
-        message.role === "user" ? "bg-primary text-white" : "bg-white border border-slate-100",
+    <div className="flex items-center flex-wrap gap-x-3 gap-y-1 pl-1 mt-1 animate-in fade-in duration-300">
+      <MessageActions
+        onFeedback={
+          onFeedback ? (rating, reason) => onFeedback(message, rating, reason) : undefined
+        }
+      />
+      {hasStats && <div className="h-3 w-px bg-slate-200" />}
+      {hasStats && (
+        <TimingFooter
+          timings={message.timings}
+          usage={message.usage}
+          compact={compact}
+          className="!mt-0"
+        />
       )}
-    >
-      <div
-        className={cn(
-          "text-sm md:text-[15px] leading-relaxed",
-          message.role === "assistant"
-            ? "prose prose-slate prose-sm max-w-none prose-p:leading-relaxed"
-            : "",
-        )}
-      >
-        {message.role === "assistant" && message.toolCalls && message.toolCalls.length > 0 && (
-          <ToolCallCard toolCalls={message.toolCalls} onToolCallClick={onToolCallClick} />
-        )}
-        {message.content && (
-          <Streamdown
-            isAnimating={isLoading && message.role === "assistant" && message.status === "streaming"}
-          >
-            {message.content}
-          </Streamdown>
-        )}
-        <MessageSources sources={message.sources} allSites={allSites} />
-      </div>
     </div>
   )
 }
 
-function FullBubble({ message, isLoading, allSites, onToolCallClick }: Omit<MessageBubbleProps, "variant">) {
+function CompactBubble({ message, isLoading, allSites, onToolCallClick, onFeedback }: Omit<MessageBubbleProps, "variant">) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-1 max-w-[85%]",
+        message.role === "user" ? "items-end" : "items-start",
+      )}
+    >
+      <div
+        className={cn(
+          "rounded-xl md:rounded-2xl px-3 md:px-5 py-2 md:py-3 shadow-sm",
+          message.role === "user" ? "bg-primary text-white" : "bg-white border border-slate-100",
+        )}
+      >
+        <div
+          className={cn(
+            "text-sm md:text-[15px] leading-relaxed",
+            message.role === "assistant"
+              ? "prose prose-slate prose-sm max-w-none prose-p:leading-relaxed"
+              : "",
+          )}
+        >
+          {message.role === "assistant" && message.toolCalls && message.toolCalls.length > 0 && (
+            <ToolCallCard toolCalls={message.toolCalls} onToolCallClick={onToolCallClick} />
+          )}
+          {message.content && (
+            <Streamdown
+              isAnimating={isLoading && message.role === "assistant" && message.status === "streaming"}
+            >
+              {message.content}
+            </Streamdown>
+          )}
+          <MessageSources sources={message.sources} allSites={allSites} />
+        </div>
+      </div>
+      <MessageMetaRow message={message} compact onFeedback={onFeedback} />
+    </div>
+  )
+}
+
+function FullBubble({ message, isLoading, allSites, onToolCallClick, onFeedback }: Omit<MessageBubbleProps, "variant">) {
   return (
     <div className="flex flex-col gap-2 max-w-[85%]">
       <div
@@ -97,12 +157,13 @@ function FullBubble({ message, isLoading, allSites, onToolCallClick }: Omit<Mess
           ) : null}
         </div>
       </div>
+      <MessageMetaRow message={message} onFeedback={onFeedback} />
       <MessageSources sources={message.sources} allSites={allSites} />
     </div>
   )
 }
 
-export function MessageBubble({ message, isLoading, allSites, onToolCallClick, variant }: MessageBubbleProps) {
+export function MessageBubble({ message, isLoading, allSites, onToolCallClick, onFeedback, variant }: MessageBubbleProps) {
   const compact = variant === "compact"
 
   return (
@@ -141,6 +202,7 @@ export function MessageBubble({ message, isLoading, allSites, onToolCallClick, v
           isLoading={isLoading}
           allSites={allSites}
           onToolCallClick={onToolCallClick}
+          onFeedback={onFeedback}
         />
       ) : (
         <FullBubble
@@ -148,6 +210,7 @@ export function MessageBubble({ message, isLoading, allSites, onToolCallClick, v
           isLoading={isLoading}
           allSites={allSites}
           onToolCallClick={onToolCallClick}
+          onFeedback={onFeedback}
         />
       )}
     </div>

@@ -191,7 +191,11 @@ class Reranker(BaseAIProvider[dict[str, Any]]):
             reranked_docs: list[dict] = []
             for item in results:
                 idx = item["index"]
-                score = item.get("relevance_score") or item.get("score", 0.0)
+                # 用 `in` 判断而非 `or`——relevance_score=0.0 是合法低分，
+                # `or` 会错误地回落到备用字段
+                score = (
+                    item["relevance_score"] if "relevance_score" in item else item.get("score", 0.0)
+                )
 
                 if idx < len(documents):
                     doc = documents[idx].copy()

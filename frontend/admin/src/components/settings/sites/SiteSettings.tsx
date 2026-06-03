@@ -65,6 +65,7 @@ interface SiteSettingsSnapshot {
   layoutMode: string
   quickQuestions: QuickQuestion[]
   botConfig: BotConfig
+  showStats: boolean
 }
 
 export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
@@ -79,6 +80,8 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
   const [layoutMode, setLayoutMode] = useState<string>("sidebar")
   const [quickQuestions, setQuickQuestions] = useState<QuickQuestion[]>([])
   const [botConfig, setBotConfig] = useState(initialConfigs.bot_config)
+  // CE: 是否在对话页面展示性能统计（TTFB / 首字 / 总耗时 / 工具耗时 / Tokens）
+  const [showStats, setShowStats] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   // EE: 站点访问控制状态
@@ -140,6 +143,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
         })
       }
 
+      const initialShowStats = !!siteData.show_pipeline_trace
       setName(siteData.name)
       setSlug(siteData.slug || "")
       setDescription(siteData.description || "")
@@ -149,6 +153,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
       setLayoutMode(siteData.layout_mode || "sidebar")
       setQuickQuestions(siteData.quick_questions || [])
       setBotConfig(bConfig)
+      setShowStats(initialShowStats)
 
       initialDataRef.current = {
         name: siteData.name,
@@ -159,7 +164,8 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
         themeColor: siteData.theme_color || "blue",
         layoutMode: siteData.layout_mode || "sidebar",
         quickQuestions: siteData.quick_questions || [],
-        botConfig: bConfig
+        botConfig: bConfig,
+        showStats: initialShowStats,
       }
     }
   }, [siteData, siteId])
@@ -214,7 +220,8 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
     themeColor,
     layoutMode,
     quickQuestions: quickQuestions.filter(q => q.text.trim()),
-    botConfig
+    botConfig,
+    showStats
   }) !== JSON.stringify(initialDataRef.current)
 
   const handleSave = () => {
@@ -241,7 +248,8 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
         theme_color: themeColor,
         layout_mode: layoutMode,
         quick_questions: cleanedQuestions.length > 0 ? cleanedQuestions : null,
-        bot_config: botConfigWithoutApiBot
+        bot_config: botConfigWithoutApiBot,
+        show_pipeline_trace: showStats,
       }
     })
 
@@ -262,6 +270,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
       if (!updatedSite) return
       const bConfig = mergeSiteBotConfig(updatedSite.bot_config)
       bConfig.api_bot = api_bot
+      const nextShowStats = !!updatedSite.show_pipeline_trace
 
       setBotConfig(bConfig)
       setName(updatedSite.name)
@@ -272,6 +281,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
       setThemeColor(updatedSite.theme_color || "blue")
       setLayoutMode(updatedSite.layout_mode || "sidebar")
       setQuickQuestions(updatedSite.quick_questions || [])
+      setShowStats(nextShowStats)
 
       initialDataRef.current = {
         name: updatedSite.name,
@@ -283,6 +293,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
         layoutMode: updatedSite.layout_mode || "sidebar",
         quickQuestions: updatedSite.quick_questions || [],
         botConfig: bConfig,
+        showStats: nextShowStats,
       }
       toast.success(t("saveSuccess"))
     }).catch(() => {
@@ -601,6 +612,20 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
                           </div>
                         </div>
                       )}
+                    </div>
+
+                    {/* CE: 对话性能统计开关（mock，尚未接通后端） */}
+                    <div className="flex items-center justify-between gap-4 p-3 bg-slate-50/50 border border-slate-100 rounded-xl">
+                      <div className="space-y-0.5 min-w-0 flex-1">
+                        <label className="text-sm font-semibold text-slate-900">{t("stats.show")}</label>
+                        <p className="text-xs text-slate-500">{t("stats.showHint")}</p>
+                      </div>
+                      <div
+                        className={`shrink-0 w-11 h-6 ${showStats ? "bg-primary" : "bg-slate-200"} rounded-full relative cursor-pointer transition-colors`}
+                        onClick={() => setShowStats(!showStats)}
+                      >
+                        <div className={`absolute ${showStats ? "right-1" : "left-1"} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * CatWiki Client API
  * 客户端 API - 仅提供已发布内容的只读访问
- * OpenAPI spec version: 1.1.5
+ * OpenAPI spec version: 1.1.6
  */
 import {
   useMutation
@@ -16,6 +16,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  FeedbackOut,
+  FeedbackSubmit,
   HTTPValidationError,
   ResponsesAPIRequest,
   ResponsesAPIResponse
@@ -98,4 +100,76 @@ export const useCreateResponse = <TError = HTTPValidationError,
         TContext
       > => {
       return useMutation(getCreateResponseMutationOptions(options), queryClient);
+    }
+    export const getSubmitChatFeedbackUrl = () => {
+
+
+
+
+  return `/v1/chat/feedback`
+}
+
+/**
+ * 对某条 assistant 消息提交 👍 / 👎 反馈；rating=null 撤销。
+
+幂等：同 visitor 对同一消息再次提交即 upsert；撤销即 DELETE。
+ * @summary Submit Chat Feedback
+ */
+export const submitChatFeedback = async (feedbackSubmit: FeedbackSubmit, options?: RequestInit): Promise<FeedbackOut> => {
+
+  return customFetch<FeedbackOut>(getSubmitChatFeedbackUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(feedbackSubmit)
+  }
+);}
+
+
+
+
+export const getSubmitChatFeedbackMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitChatFeedback>>, TError,{data: FeedbackSubmit}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitChatFeedback>>, TError,{data: FeedbackSubmit}, TContext> => {
+
+const mutationKey = ['submitChatFeedback'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitChatFeedback>>, {data: FeedbackSubmit}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitChatFeedback(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitChatFeedbackMutationResult = NonNullable<Awaited<ReturnType<typeof submitChatFeedback>>>
+    export type SubmitChatFeedbackMutationBody = FeedbackSubmit
+    export type SubmitChatFeedbackMutationError = HTTPValidationError
+
+    /**
+ * @summary Submit Chat Feedback
+ */
+export const useSubmitChatFeedback = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitChatFeedback>>, TError,{data: FeedbackSubmit}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof submitChatFeedback>>,
+        TError,
+        {data: FeedbackSubmit},
+        TContext
+      > => {
+      return useMutation(getSubmitChatFeedbackMutationOptions(options), queryClient);
     }

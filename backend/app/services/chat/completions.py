@@ -77,10 +77,7 @@ def split_text_for_stream(
     pieces: list[str] = []
     buf = ""
     for seg in segments:
-        # 检查 seg 是否以边界字符结尾
         ends_on_boundary = bool(seg) and seg[-1] in _BOUNDARY_CHARS
-
-        # 先尝试累加
         candidate = buf + seg
         if ends_on_boundary and len(candidate) >= target_len:
             pieces.append(candidate)
