@@ -14,7 +14,7 @@
 
 "use client"
 
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, EmptyState, Input, LoadingState, useConfirm } from "@/components/ui"
+import { Badge, Button, Card, CardContent, CardHeader, EmptyState, Input, LoadingState, useConfirm } from "@/components/ui"
 
 import { useTranslations, useLocale } from "next-intl"
 import { useState } from "react"
@@ -28,7 +28,6 @@ import {
   Check,
   Globe,
   PlusCircle,
-  Loader2,
   KeyRound
 } from "lucide-react"
 import { toast } from "sonner"
@@ -46,43 +45,14 @@ import {
   useDebounce
 } from "@/hooks"
 import { useSite } from "@/contexts/SiteContext"
-import { getUserInfo } from "@/lib/auth"
-import { useEffect } from "react"
-
-type InviteResponseWithPassword = {
-  user: { email: string }
-  password: string
-}
-
-function parseInviteResponse(data: unknown): InviteResponseWithPassword | null {
-  if (!data || typeof data !== "object") {
-    return null
-  }
-  const user = (data as { user?: unknown }).user
-  const password = (data as { password?: unknown }).password
-  if (!user || typeof user !== "object" || typeof password !== "string") {
-    return null
-  }
-  const email = (user as { email?: unknown }).email
-  if (typeof email !== "string") {
-    return null
-  }
-  return { user: { email }, password }
-}
-
-function parsePasswordResponse(data: unknown): { password: string } | null {
-  if (!data || typeof data !== "object") {
-    return null
-  }
-  const password = (data as { password?: unknown }).password
-  return typeof password === "string" ? { password } : null
-}
+import { useCurrentUser } from "@/lib/auth-store"
+import { parseInviteResponse, parsePasswordResponse } from "@/lib/user-response-parsers"
 
 export default function UsersPage() {
   const t = useTranslations("SiteUsers")
   const confirm = useConfirm()
   const locale = useLocale()
-  const [page, setPage] = useState(1)
+  const [page] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
   const debouncedSearchTerm = useDebounce(searchTerm, 500)
   const [isInviteOpen, setIsInviteOpen] = useState(false)
@@ -115,9 +85,8 @@ export default function UsersPage() {
   const deleteUserMutation = useDeleteUser()
 
   const users = usersData?.users || []
-  const total = usersData?.total || 0
 
-  const currentUser = getUserInfo()
+  const currentUser = useCurrentUser()
   const isSystemAdmin = currentUser?.role === "admin" as const
   const isSiteAdmin = currentUser?.role === "site_admin" as const
 

@@ -17,18 +17,19 @@
  */
 
 import { useGetAdminSiteStats } from "@/lib/sdk/admin-stats"
-import { isAuthenticated } from "@/lib/auth"
+import { useIsAuthenticated } from "@/lib/auth-store"
 import { STALE_TIME } from "@/lib/react-query"
 
 /**
  * 获取站点统计数据
  */
 export function useSiteStats(siteId: number | undefined) {
+  const isAuthed = useIsAuthenticated()
   return useGetAdminSiteStats(
     { site_id: siteId ?? 0 },
     {
       query: {
-        enabled: !!siteId && isAuthenticated(),
+        enabled: !!siteId && isAuthed,
         staleTime: STALE_TIME.MEDIUM,
       },
     },

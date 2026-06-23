@@ -18,6 +18,7 @@
  */
 
 import { useMutation, useQueryClient, UseMutationOptions } from "@tanstack/react-query"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/custom-fetch"
 
@@ -32,6 +33,7 @@ export function useAdminMutation<TData = unknown, TError = Error, TVariables = u
   options: UseAdminMutationOptions<TData, TError, TVariables, TContext>
 ) {
   const queryClient = useQueryClient()
+  const t = useTranslations("Common")
   const {
     successMsg,
     errorMsg,
@@ -69,7 +71,7 @@ export function useAdminMutation<TData = unknown, TError = Error, TVariables = u
       }
 
       // ApiError 已由 customFetch mutator 内提取了后端 msg 到 .message
-      const message = (error instanceof ApiError ? error.message : (error as Error)?.message) || "操作失败"
+      const message = (error instanceof ApiError ? error.message : (error as Error)?.message) || t("operationFailed")
       const msg = typeof errorMsg === "function" ? errorMsg(error, variables) : (errorMsg || message)
       if (msg) toast.error(msg)
     },

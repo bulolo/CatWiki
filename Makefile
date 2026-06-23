@@ -76,7 +76,7 @@ help:
 	@echo ""
 	@echo " 📦  [发布同步] (Release & Sync)"
 	@echo "  make publish-ce-images  - 构建 CE 镜像并推送到 Docker Hub (公开仓库)"
-	@echo "  make set-version v=1.1.6 - 统一修改项目版本号 (代码, 配置, 镜像标签)"
+	@echo "  make set-version v=1.1.7 - 统一修改项目版本号 (代码, 配置, 镜像标签)"
 	@echo ""
 	@echo " ⚠️  Windows 用户注意: 请使用 WSL2 或 Git Bash 运行 make 命令"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -202,17 +202,20 @@ prod-init:
 # 启动生产环境
 # 可选参数: ES=1 同时启动 Elasticsearch (示例: make prod-up ES=1)
 prod-up: check-prod-env
+	@docker network inspect catwiki-network >/dev/null 2>&1 || docker network create catwiki-network
 	docker compose -f $(PROD_DIR)/docker-compose.yml pull
 	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) up -d
 
 # 本地构建并启动生产环境
 prod-up-build: check-prod-env
+	@docker network inspect catwiki-network >/dev/null 2>&1 || docker network create catwiki-network
 	docker compose -f $(PROD_DIR)/docker-compose.yml build backend admin-frontend client-frontend
 	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) up -d
 
 # 无缓存重新构建并启动
 prod-rebuild: check-prod-env
 	@echo "🔧 [CatWiki] 无缓存重新构建生产环境..."
+	@docker network inspect catwiki-network >/dev/null 2>&1 || docker network create catwiki-network
 	docker compose -f $(PROD_DIR)/docker-compose.yml build --no-cache backend admin-frontend client-frontend
 	docker compose -f $(PROD_DIR)/docker-compose.yml $(_PROD_ES_PROFILE) up -d
 

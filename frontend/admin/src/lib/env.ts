@@ -123,7 +123,7 @@ function validateEnv(): Env {
   } catch (error) {
     if (error instanceof z.ZodError) {
       // 格式化错误信息
-      const errorMessage = error.errors
+      const errorMessage = error.issues
         .map(err => `  ❌ ${err.path.join(".")}: ${err.message}`)
         .join("\n")
 

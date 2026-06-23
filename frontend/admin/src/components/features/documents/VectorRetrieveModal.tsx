@@ -53,7 +53,7 @@ export function VectorRetrieveModal({ open, onOpenChange, siteId }: VectorRetrie
   const [threshold, setThreshold] = useState(0.3)
   const [filterId, setFilterId] = useState("")
   const [enableRerank, setEnableRerank] = useState(true)
-  const [rerankK, setRerankK] = useState(5)
+  const [rerankK] = useState(5)
 
   const handleRetrieve = async (e?: React.FormEvent) => {
     e?.preventDefault()

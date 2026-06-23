@@ -18,11 +18,11 @@ import { useState, useCallback, useRef, useEffect, type Dispatch, type SetStateA
 import { env } from "@/lib/env"
 import { getChatSessionMessages } from "@/lib/sdk/client-chat-sessions"
 import { useTranslations } from "next-intl"
-import type { Message, ToolCall } from "@/types"
+import type { Message } from "@/types"
 import { formatHistoryMessages } from "@/lib/chat-history"
-import { toTimings } from "@/components/ai/format"
+import { createStreamReducer, parseSSEStream } from "@/lib/ai-stream"
 import { getVisitorId } from "@/lib/visitor"
-import { getSiteAccessToken } from "@/lib/site-access-token"
+import { getAuthHeaders } from "@/lib/auth-headers"
 import { logError } from "@/lib/error-handler"
 
 interface UseAIChatOptions {
@@ -65,34 +65,19 @@ interface UseAIChatReturn {
   ) => Promise<void>
 }
 
-interface ToolCallAccumulator {
-  id: string
-  name: string
-  arguments: string
-}
+// 本地占位 thread_id 前缀：服务端真实 response_id 不带此前缀。
+const LOCAL_THREAD_PREFIX = "thread-"
 
 function generateThreadId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return `thread-${crypto.randomUUID()}`
+    return `${LOCAL_THREAD_PREFIX}${crypto.randomUUID()}`
   }
-  return `thread-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+  return `${LOCAL_THREAD_PREFIX}${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
 }
 
-/** 把一个累加好的 tool call 转成 ToolCall，保留 prev 上已经写入的扩展字段
- * （elapsedMs / chunkCount）—— 任何 rebuild 路径都用它，避免重复维护多份。 */
-function buildCompletedTool(
-  raw: ToolCallAccumulator,
-  prevTools: ToolCall[] | undefined,
-): ToolCall {
-  const prev = prevTools?.find(t => t.id === raw.id)
-  return {
-    id: raw.id,
-    type: "function",
-    function: { name: raw.name, arguments: raw.arguments },
-    status: "completed",
-    ...(prev?.elapsedMs != null ? { elapsedMs: prev.elapsedMs } : {}),
-    ...(prev?.chunkCount != null ? { chunkCount: prev.chunkCount } : {}),
-  }
+/** 是否为本地生成的占位 thread_id（尚未拿到服务端 response_id）。 */
+function isLocalThreadId(id: string): boolean {
+  return id.startsWith(LOCAL_THREAD_PREFIX)
 }
 
 export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
@@ -160,7 +145,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       stream: true,
       user: getVisitorId(),
       // 只有服务端返回的真实 response ID 才作为 previous_response_id，本地占位 ID 不传
-      ...(!threadId.startsWith("thread-") ? { previous_response_id: threadId } : {}),
+      ...(!isLocalThreadId(threadId) ? { previous_response_id: threadId } : {}),
     }
 
     // 添加过滤器 (携带 site_id 和 tenant_id 实现双重校验隔离)
@@ -172,11 +157,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     }
 
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      }
-      const token = getSiteAccessToken(tenantSlug, siteSlug)
-      if (token) headers["X-Site-Access-Token"] = token
+      const headers = getAuthHeaders(tenantSlug, siteSlug)
 
       const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/v1/chat/responses`, {
         method: "POST",
@@ -195,182 +176,19 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
         throw new Error("No response body")
       }
 
-      // 4. 处理流式响应
+      // 4. 处理流式响应：parseSSEStream 负责传输/解析，reducer 负责把事件归约为消息更新
       const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulatedContent = ""
-      let hasPipelineTrace = false
-      let currentToolCall: ToolCallAccumulator | null = null
-      // 保存所有历史 tool calls（已完成的）
-      const allCompletedToolCalls: ToolCallAccumulator[] = []
+      const reduce = createStreamReducer()
 
-      // 把当前累加完的 tool call 推入 completed 列表并清空累加器
-      const flushCurrentTool = () => {
-        if (currentToolCall?.id) {
-          allCompletedToolCalls.push({ ...currentToolCall })
-        }
-        currentToolCall = null
-      }
-
-      let lineBuffer = ""
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        lineBuffer += decoder.decode(value, { stream: true })
-        const lines = lineBuffer.split("\n")
-        lineBuffer = lines.pop() || ""
-
-        for (const line of lines) {
-
-          const trimmedLine = line.trim()
-          if (!trimmedLine.startsWith("data: ")) continue
-
-          const dataStr = trimmedLine.slice(6)
-          if (dataStr === "[DONE]") break
-
-          try {
-            const data = JSON.parse(dataStr)
-            const eventType: string = data.type
-
-            // 0. response.created — 拿到服务端生成的 response_id 作为新 thread_id
-            if (eventType === "response.created") {
-              if (data.response?.id) setThreadId(data.response.id)
-              continue
-            }
-
-            // 1. 知识库来源
-            if (eventType === "response.knowledge_sources") {
-              updateAssistant(msg => ({ ...msg, sources: data.sources }))
-              continue
-            }
-
-            // 2. 工具调用开始 —— 累加器里若已有完整 tool（id 齐），先 flush 入栈
-            if (eventType === "response.tool_call.started") {
-              flushCurrentTool()
-              updateAssistant(msg => {
-                const display = allCompletedToolCalls.map(tc =>
-                  buildCompletedTool(tc, msg.toolCalls),
-                )
-                return {
-                  ...msg,
-                  status: "tool_calling",
-                  toolCalls: display.length > 0 ? display : undefined,
-                }
-              })
-              continue
-            }
-
-            // 3. 工具调用 delta（累积 id/name/arguments）
-            if (eventType === "response.tool_call.delta") {
-              const tc = data.tool_call || {}
-              if (!currentToolCall) currentToolCall = { id: "", name: "", arguments: "" }
-              if (tc.id) currentToolCall.id = tc.id
-              if (tc.function?.name) currentToolCall.name = tc.function.name
-              if (tc.function?.arguments) currentToolCall.arguments += tc.function.arguments
-
-              const running = currentToolCall
-              updateAssistant(msg => ({
-                ...msg,
-                status: "tool_calling",
-                toolCalls: [
-                  ...allCompletedToolCalls.map(t => buildCompletedTool(t, msg.toolCalls)),
-                  {
-                    id: running.id,
-                    type: "function" as const,
-                    function: { name: running.name, arguments: running.arguments },
-                    status: "running" as const,
-                  },
-                ],
-              }))
-              continue
-            }
-
-            // 4. 工具调用结束 —— 后端可能带 elapsed_ms（trace 开启时）/ chunk_count /
-            // tool_call_id。优先按 id 精确对位，缺失时退化为 allCompletedToolCalls 末尾
-            // 匹配（兼容并行场景）；任意一个数据字段存在即更新
-            if (eventType === "response.tool_call.completed") {
-              const elapsedMs: number | undefined =
-                typeof data.elapsed_ms === "number" ? data.elapsed_ms : undefined
-              const chunkCount: number | undefined =
-                typeof data.chunk_count === "number" ? data.chunk_count : undefined
-              if (elapsedMs == null && chunkCount == null) continue
-
-              const tcidFromEvent: string | undefined =
-                typeof data.tool_call_id === "string" ? data.tool_call_id : undefined
-              const idToUpdate =
-                tcidFromEvent && allCompletedToolCalls.some(t => t.id === tcidFromEvent)
-                  ? tcidFromEvent
-                  : allCompletedToolCalls[allCompletedToolCalls.length - 1]?.id
-              if (!idToUpdate) continue
-
-              updateAssistant(msg => ({
-                ...msg,
-                toolCalls: msg.toolCalls?.map(t =>
-                  t.id === idToUpdate
-                    ? {
-                        ...t,
-                        ...(elapsedMs != null ? { elapsedMs } : {}),
-                        ...(chunkCount != null ? { chunkCount } : {}),
-                        status: "completed" as const,
-                      }
-                    : t,
-                ),
-              }))
-              continue
-            }
-
-            // 4.5 站点开启 trace 时收到的管线 timing 卡片
-            if (eventType === "response.pipeline_trace") {
-              hasPipelineTrace = true
-              const timings = toTimings(data.trace)
-              if (timings) updateAssistant(msg => ({ ...msg, timings }))
-              continue
-            }
-
-            // 4.6 流末尾的 response.completed —— 携带 usage（input/output/total tokens）
-            // 仅在收到过 pipeline_trace 事件时渲染（即站点 show_pipeline_trace=true）
-            if (eventType === "response.completed") {
-              const usage = data.response?.usage
-              if (hasPipelineTrace && usage && typeof usage.total_tokens === "number") {
-                updateAssistant(msg => ({
-                  ...msg,
-                  usage: { totalTokens: usage.total_tokens },
-                }))
-              }
-              continue
-            }
-
-            // 5. 文本增量
-            if (eventType === "response.output_text.delta") {
-              const delta: string = data.delta || ""
-              if (!delta) continue
-
-              accumulatedContent += delta
-              flushCurrentTool()
-
-              updateAssistant(msg => ({
-                ...msg,
-                content: accumulatedContent,
-                status: "streaming",
-                toolCalls:
-                  allCompletedToolCalls.length > 0
-                    ? allCompletedToolCalls.map(tc => buildCompletedTool(tc, msg.toolCalls))
-                    : undefined,
-              }))
-              continue
-            }
-
-            // 6. 错误事件
-            if (eventType === "response.error") {
-              updateAssistant(msg => ({
-                ...msg,
-                content: msg.content || `⚠️ ${data.error}`,
-              }))
-            }
-          } catch (e) {
-            logError("useAIChat:parseStreamChunk", e)
-          }
+      for await (const event of parseSSEStream(reader, e => logError("useAIChat:parseStreamChunk", e))) {
+        // 单事件归约/更新失败时记录并继续，不中断整条流（与重构前的 per-line try/catch 一致）
+        try {
+          const { threadId: newThreadId, update } = reduce(event)
+          // response.created：用服务端生成的 response_id 替换本地占位 thread_id
+          if (newThreadId) setThreadId(newThreadId)
+          if (update) updateAssistant(update)
+        } catch (e) {
+          logError("useAIChat:parseStreamChunk", e)
         }
       }
 
@@ -413,9 +231,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
   ) => {
     if (message.messageSeq == null) return
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" }
-      const token = getSiteAccessToken(tenantSlug, siteSlug)
-      if (token) headers["X-Site-Access-Token"] = token
+      const headers = getAuthHeaders(tenantSlug, siteSlug)
       await fetch(`${env.NEXT_PUBLIC_API_URL}/v1/chat/feedback`, {
         method: "POST",
         headers,

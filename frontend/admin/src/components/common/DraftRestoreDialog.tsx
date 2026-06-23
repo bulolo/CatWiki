@@ -21,8 +21,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+  Button,
+} from "@/components/ui"
 import { FileText, Trash2, Clock } from "lucide-react"
 import { useTranslations } from "next-intl"
 

@@ -31,11 +31,3 @@ export interface CollectionItem {
   views?: number
   tags?: string[]
 }
-
-// 目录项类型（用于拖拽排序 UI）
-export interface DirectoryItem {
-  id: string
-  name: string
-  type?: "collection" | "document"
-  children?: DirectoryItem[]
-}

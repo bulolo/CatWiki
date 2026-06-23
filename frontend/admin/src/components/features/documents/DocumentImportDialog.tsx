@@ -18,90 +18,26 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useMutation, useQuery } from "@tanstack/react-query"
-import Image from "next/image"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui"
-import { Button, Label, Switch, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui"
-import {
-  type LucideIcon,
-  Loader2, Upload, FileText, X, Bird, Zap, Scan, BookOpen, Pickaxe, Globe,
-  Database, Folder, ChevronRight, ArrowLeft, CheckSquare, Square, Plus,
-} from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui"
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui"
+import { Loader2, Upload, Database } from "lucide-react"
 import { toast } from "sonner"
 import { browseDataSource, importFromDataSource, listDataSources } from "@/lib/sdk/admin-data-sources"
 import { importDocument } from "@/lib/sdk/admin-documents"
 import { getAdminDocProcessorConfig } from "@/lib/sdk/admin-system-configs"
 import type { S3FileItem, Task } from "@/lib/sdk/sdk.schemas"
 import { toImportDocumentBody } from "@/lib/normalizers"
-import { DOC_PROCESSOR_TYPES, type DocProcessorConfig, DocProcessorType } from "@/types/settings"
+import { DOC_PROCESSOR_TYPES } from "@/types/settings"
 import type { CollectionItem } from "@/types"
 import { useTasks } from "@/contexts/TaskContext"
 import { isRecord } from "@/lib/utils"
-
-interface ProcessorExtraConfig {
-  is_ocr?: boolean
-  extract_images?: boolean
-  extract_tables?: boolean
-}
-
-type DocProcessor = Omit<DocProcessorConfig, "config"> & { config?: ProcessorExtraConfig }
-
-function parseProcessorConfig(config: unknown): ProcessorExtraConfig {
-  if (!isRecord(config)) return {}
-  return {
-    is_ocr: typeof config.is_ocr === "boolean" ? config.is_ocr : undefined,
-    extract_images: typeof config.extract_images === "boolean" ? config.extract_images : undefined,
-    extract_tables: typeof config.extract_tables === "boolean" ? config.extract_tables : undefined,
-  }
-}
-
-function parseDocProcessorType(value: unknown): DocProcessorType {
-  if (value === "Docling" as const || value === "MinerU" as const || value === "PaddleOCR" as const) return value
-  return "MinerU" as const
-}
-
-function parseProcessorOrigin(value: unknown): "platform" | "tenant" | undefined {
-  if (value === "platform" || value === "tenant") return value
-  return undefined
-}
-
-const FORMAT_TO_EXT: Record<string, string> = {
-  PDF: ".pdf",
-  Word: ".docx,.doc",
-  PPT: ".pptx,.ppt",
-  Excel: ".xlsx,.xls",
-  HTML: ".html,.htm",
-  Image: ".jpg,.jpeg,.png,.webp,.tiff",
-  Markdown: ".md",
-}
-const FORMAT_TO_MIME: Record<string, string[]> = {
-  PDF: ["application/pdf"],
-  Word: ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"],
-  PPT: ["application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/vnd.ms-powerpoint"],
-  Excel: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel"],
-  HTML: ["text/html"],
-  Image: ["image/jpeg", "image/png", "image/webp", "image/tiff"],
-  Markdown: ["text/markdown", "text/plain"],
-}
-
-function flattenCollections(items: CollectionItem[], level = 0): { id: string; name: string; level: number }[] {
-  const result: { id: string; name: string; level: number }[] = []
-  items.forEach(item => {
-    if (item.type === "collection") {
-      result.push({ id: item.id, name: item.name, level })
-      if (item.children?.length) result.push(...flattenCollections(item.children, level + 1))
-    }
-  })
-  return result
-}
-
-function formatSize(bytes: number | null | undefined): string {
-  if (bytes == null) return ""
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
-
-type SourceTab = "upload" | "datasource"
+import {
+  type DocProcessor, type SourceTab, FORMAT_TO_EXT, FORMAT_TO_MIME,
+  flattenCollections, parseProcessorConfig, parseDocProcessorType, parseProcessorOrigin,
+} from "./import/helpers"
+import { UploadTab } from "./import/UploadTab"
+import { DataSourceTab } from "./import/DataSourceTab"
+import { ConfigPanel } from "./import/ConfigPanel"
 
 interface Props {
   open: boolean
@@ -285,7 +221,7 @@ export function DocumentImportDialog({
   // ---------- 解析器派生 ----------
   const selectedProcessor = processors.find(p => p.id === processorId)
   const selectedTypeInfo = selectedProcessor
-    ? DOC_PROCESSOR_TYPES.find(t => t.value === selectedProcessor.type)
+    ? DOC_PROCESSOR_TYPES.find(ti => ti.value === selectedProcessor.type)
     : null
   const acceptTypes = selectedTypeInfo?.formats
     ? selectedTypeInfo.formats.map(f => FORMAT_TO_EXT[f] || "").filter(Boolean).join(",")
@@ -481,331 +417,67 @@ export function DocumentImportDialog({
               </TabsTrigger>
             </TabsList>
 
-            {/* ---------- 上传 Tab ---------- */}
             <TabsContent value="upload" className="mt-4 space-y-3">
-              <div
-                className={`border-2 border-dashed rounded-xl p-8 transition-colors flex flex-col items-center justify-center text-center cursor-pointer ${
-                  files.length > 0
-                    ? "border-primary/50 bg-primary/5"
-                    : "border-slate-200 hover:border-primary/50 hover:bg-slate-50"
-                }`}
-                onDragOver={e => e.preventDefault()}
-                onDrop={e => { e.preventDefault(); acceptFiles(e.dataTransfer.files) }}
-                onClick={() => document.getElementById("doc-import-file-input")?.click()}
-              >
-                <input
-                  id="doc-import-file-input"
-                  type="file" className="hidden" accept={acceptTypes} multiple
-                  onChange={e => acceptFiles(e.target.files)}
-                />
-                <div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-400">
-                  <Upload className="h-6 w-6" />
-                </div>
-                <p className="font-medium text-slate-600">{t("dropzone")}</p>
-                <p className="text-sm text-slate-400 mt-1">
-                  {selectedTypeInfo?.formats?.join(", ") || "PDF"}
-                </p>
-              </div>
-
-              {files.length > 0 && (
-                <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
-                  {files.map((file, index) => (
-                    <div key={index} className="flex items-start justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                      <div className="flex items-start gap-3 min-w-0 flex-1">
-                        <div className="h-7 w-7 bg-white rounded flex items-center justify-center shrink-0 border border-slate-100">
-                          <FileText className="h-3.5 w-3.5 text-primary" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm text-slate-900 break-all">{file.name}</p>
-                          <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost" size="icon"
-                        className="h-6 w-6 text-slate-400 hover:text-red-500 shrink-0"
-                        onClick={e => { e.stopPropagation(); removeFile(index) }}
-                        disabled={isSubmitting}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <UploadTab
+                files={files}
+                acceptTypes={acceptTypes}
+                formatHint={selectedTypeInfo?.formats?.join(", ") || "PDF"}
+                isSubmitting={isSubmitting}
+                onAcceptFiles={acceptFiles}
+                onRemoveFile={removeFile}
+              />
             </TabsContent>
 
-            {/* ---------- 数据源 Tab ---------- */}
             <TabsContent value="datasource" className="mt-4 space-y-3">
-              {isLoadingDataSources ? (
-                <div className="flex items-center justify-center py-16 text-slate-400">
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  {t("loading")}
-                </div>
-              ) : dataSources.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 px-6 bg-slate-50/60 border border-dashed border-slate-200 rounded-xl text-center gap-3">
-                  <div className="h-12 w-12 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-300">
-                    <Database className="h-6 w-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-slate-700">{t("noSourcesTitle")}</p>
-                    <p className="text-xs text-slate-500 max-w-sm">{t("noSourcesDesc")}</p>
-                  </div>
-                  <Button size="sm" onClick={goAddDataSource} className="gap-1.5 mt-1">
-                    <Plus className="h-3.5 w-3.5" />
-                    {t("goConfigureSource")}
-                  </Button>
-                </div>
-              ) : (
-                <>
-              <div className="space-y-1.5">
-                <Label>{t("selectSource")}</Label>
-                <Select
-                  value={selectedDsId?.toString() ?? ""}
-                  onValueChange={v => setSelectedDsId(Number(v))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("selectSourcePlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dataSources.map(ds => (
-                      <SelectItem key={ds.id} value={ds.id.toString()}>
-                        <span className="flex items-center gap-2">
-                          <Database className="h-3.5 w-3.5 text-slate-400" />
-                          {ds.name}
-                          <span className="text-xs text-slate-400">
-                            ({ds.type === "internal" ? t("typeInternal") : t("typeS3")})
-                          </span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label>{t("browseFiles")}</Label>
-                  {browseStack.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={handleBrowseBack} className="h-7 px-2 text-xs gap-1">
-                      <ArrowLeft className="h-3.5 w-3.5" />
-                      {t("back")}
-                    </Button>
-                  )}
-                </div>
-
-                <div className="border rounded-lg overflow-hidden">
-                  {browsePrefix && (
-                    <div className="px-3 py-2 bg-slate-50 border-b text-xs text-slate-500 truncate font-mono">
-                      {browsePrefix}
-                    </div>
-                  )}
-                  <div className="min-h-[160px] max-h-[240px] overflow-y-auto">
-                    {isBrowsing ? (
-                      <div className="flex items-center justify-center py-12 text-slate-400">
-                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                        {t("loading")}
-                      </div>
-                    ) : browseFiles.length === 0 ? (
-                      <div className="flex items-center justify-center py-12 text-slate-400 text-sm">
-                        {t("emptyDir")}
-                      </div>
-                    ) : (
-                      <>
-                        {fileCount > 0 && (
-                          <div
-                            className="flex items-center gap-3 px-3 py-2 bg-slate-50 border-b cursor-pointer hover:bg-slate-100 text-xs text-slate-500"
-                            onClick={toggleSelectAll}
-                          >
-                            {allSelected
-                              ? <CheckSquare className="h-4 w-4 text-primary shrink-0" />
-                              : <Square className="h-4 w-4 text-slate-300 shrink-0" />}
-                            {t("selectAll")} ({selectedKeys.size}/{fileCount})
-                          </div>
-                        )}
-                        {browseFiles.map(item => (
-                          <div
-                            key={item.path}
-                            className={`flex items-center gap-3 px-3 py-2.5 border-b last:border-0 cursor-pointer transition-colors ${
-                              item.type === "dir"
-                                ? "hover:bg-slate-50"
-                                : selectedKeys.has(item.path)
-                                  ? "bg-primary/5 hover:bg-primary/10"
-                                  : "hover:bg-slate-50"
-                            }`}
-                            onClick={() => item.type === "dir" ? handleEnterDir(item) : toggleFileKey(item.path)}
-                          >
-                            {item.type === "dir" ? (
-                              <>
-                                <Folder className="h-4 w-4 text-amber-400 shrink-0" />
-                                <span className="text-sm flex-1 truncate">{item.name}</span>
-                                <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
-                              </>
-                            ) : (
-                              <>
-                                {selectedKeys.has(item.path)
-                                  ? <CheckSquare className="h-4 w-4 text-primary shrink-0" />
-                                  : <Square className="h-4 w-4 text-slate-300 shrink-0" />}
-                                <FileText className="h-4 w-4 text-slate-400 shrink-0" />
-                                <span className="text-sm flex-1 truncate">{item.name}</span>
-                                {item.size != null && (
-                                  <span className="text-xs text-slate-400 shrink-0">{formatSize(item.size)}</span>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                </div>
-                {selectedKeys.size > 0 && (
-                  <p className="text-xs text-primary">{t("selected", { count: selectedKeys.size })}</p>
-                )}
-              </div>
-                </>
-              )}
+              <DataSourceTab
+                isLoading={isLoadingDataSources}
+                dataSources={dataSources}
+                selectedDsId={selectedDsId}
+                onSelectDs={setSelectedDsId}
+                browsePrefix={browsePrefix}
+                showBack={browseStack.length > 0}
+                onBrowseBack={handleBrowseBack}
+                isBrowsing={isBrowsing}
+                browseFiles={browseFiles}
+                fileCount={fileCount}
+                allSelected={allSelected}
+                selectedKeys={selectedKeys}
+                onToggleSelectAll={toggleSelectAll}
+                onToggleFileKey={toggleFileKey}
+                onEnterDir={handleEnterDir}
+                onGoAddDataSource={goAddDataSource}
+              />
             </TabsContent>
           </Tabs>
 
-          {/* ---------- 共享配置 ---------- */}
-          <div className="space-y-4 pt-2 border-t border-slate-100">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t("parser")}</Label>
-                <Select value={processorId} onValueChange={handleProcessorChange} disabled={processors.length === 0 || isLoadingProcessors}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={isLoadingProcessors ? t("loading") : (processors.length === 0 ? t("noParser") : t("selectParser"))} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {processors.map(p => {
-                      const typeInfo = DOC_PROCESSOR_TYPES.find(ti => ti.value === p.type)
-                      const icons: Record<string, LucideIcon> = { Bird, Zap, Scan, BookOpen, Pickaxe, FileText }
-                      const Icon = typeInfo ? icons[typeInfo.icon] || FileText : FileText
-                      return (
-                        <SelectItem key={p.id} value={p.id} disabled={typeInfo?.disabled}>
-                          <div className="flex items-center gap-2 w-full min-w-0">
-                            {typeInfo?.icon.startsWith("/") ? (
-                              <Image src={typeInfo.icon} alt="" width={16} height={16} className="object-contain shrink-0" />
-                            ) : (
-                              <Icon className={`h-4 w-4 shrink-0 ${typeInfo?.color.split(" ")[0] || "text-slate-500"}`} />
-                            )}
-                            <span className="truncate font-medium flex-1">{p.name}</span>
-                            <span className="text-xs text-slate-400 shrink-0 opacity-70">({p.type})</span>
-                            {p.origin === "platform" && (
-                              <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100 ml-1">
-                                <Globe className="h-2.5 w-2.5 mr-0.5" />
-                                {t("platform")}
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      )
-                    })}
-                  </SelectContent>
-                </Select>
-                {processors.length === 0 && !isLoadingProcessors && (
-                  <p className="text-xs text-red-500">{t("parserHint")}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>{t("collection")} <span className="text-red-500">*</span></Label>
-                <Select value={collectionId} onValueChange={setCollectionId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("collectionPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {flattenedCollections.map(col => (
-                      <SelectItem key={col.id} value={col.id}>
-                        <span style={{ paddingLeft: `${col.level * 10}px` }}>{col.name}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {hasProcessorOptions && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400 whitespace-nowrap">{t("parseOptions")}</span>
-                  <div className="flex-1 h-px bg-slate-200" />
-                </div>
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div className="space-y-1">
-                    <Label className="text-sm font-medium">{t("ocr")}</Label>
-                    <p className="text-xs text-slate-500">
-                      {selectedProcessor?.type === "Docling" ? t("ocrDescDocling") : t("ocrDescDefault")}
-                    </p>
-                  </div>
-                  <Switch checked={ocrEnabled} onCheckedChange={setOcrEnabled} />
-                </div>
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div className="space-y-1">
-                    <Label className="text-sm font-medium">{t("extractImages")}</Label>
-                    <p className="text-xs text-slate-500">{t("extractImagesDesc")}</p>
-                  </div>
-                  <Switch checked={extractImages} onCheckedChange={setExtractImages} />
-                </div>
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div className="space-y-1">
-                    <Label className="text-sm font-medium">{t("extractTables")}</Label>
-                    <p className="text-xs text-slate-500">{t("extractTablesDesc")}</p>
-                  </div>
-                  <Switch checked={extractTables} onCheckedChange={setExtractTables} />
-                </div>
-              </div>
-            )}
-
-            {collectionId && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400 whitespace-nowrap">{t("importOptions")}</span>
-                  <div className="flex-1 h-px bg-slate-200" />
-                </div>
-                <div className="flex items-center justify-between px-3 py-2.5 bg-slate-50 rounded-lg">
-                  <div>
-                    <Label className="text-sm font-medium">{t("skipDuplicates")}</Label>
-                    <p className="text-xs text-slate-500 mt-0.5">{t("skipDuplicatesDesc")}</p>
-                  </div>
-                  <Switch checked={skipDuplicates} onCheckedChange={setSkipDuplicates} />
-                </div>
-                <div className="flex items-center justify-between px-3 py-2.5 bg-slate-50 rounded-lg">
-                  <div>
-                    <Label className="text-sm font-medium">{t("autoVectorize")}</Label>
-                    <p className="text-xs text-slate-500 mt-0.5">{t("autoVectorizeDesc")}</p>
-                  </div>
-                  <Switch checked={autoVectorize} onCheckedChange={setAutoVectorize} />
-                </div>
-                <div className="flex items-center justify-between px-3 py-2.5 bg-slate-50 rounded-lg">
-                  <div>
-                    <Label className="text-sm font-medium">{t("generateSummary")}</Label>
-                    <p className="text-xs text-slate-500 mt-0.5">{t("generateSummaryDesc")}</p>
-                  </div>
-                  <Switch checked={generateSummary} onCheckedChange={setGenerateSummary} />
-                </div>
-                <div className="flex items-center justify-between px-3 py-2.5 bg-slate-50 rounded-lg">
-                  <div>
-                    <Label className="text-sm font-medium">{t("generateTags")}</Label>
-                    <p className="text-xs text-slate-500 mt-0.5">{t("generateTagsDesc")}</p>
-                  </div>
-                  <Switch checked={generateTags} onCheckedChange={setGenerateTags} />
-                </div>
-              </div>
-            )}
-
-            {isSubmitting && activeTab === "upload" && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs text-slate-500">
-                  <span>{currentUploadingFile}</span>
-                  <span>{uploadProgress}%</span>
-                </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-primary transition-all duration-300 ease-out" style={{ width: `${uploadProgress}%` }} />
-                </div>
-              </div>
-            )}
-          </div>
+          <ConfigPanel
+            processors={processors}
+            isLoadingProcessors={isLoadingProcessors}
+            processorId={processorId}
+            onProcessorChange={handleProcessorChange}
+            selectedProcessorType={selectedProcessor?.type}
+            hasProcessorOptions={hasProcessorOptions}
+            flattenedCollections={flattenedCollections}
+            collectionId={collectionId}
+            onCollectionChange={setCollectionId}
+            ocrEnabled={ocrEnabled}
+            setOcrEnabled={setOcrEnabled}
+            extractImages={extractImages}
+            setExtractImages={setExtractImages}
+            extractTables={extractTables}
+            setExtractTables={setExtractTables}
+            skipDuplicates={skipDuplicates}
+            setSkipDuplicates={setSkipDuplicates}
+            autoVectorize={autoVectorize}
+            setAutoVectorize={setAutoVectorize}
+            generateSummary={generateSummary}
+            setGenerateSummary={setGenerateSummary}
+            generateTags={generateTags}
+            setGenerateTags={setGenerateTags}
+            showProgress={isSubmitting && activeTab === "upload"}
+            uploadProgress={uploadProgress}
+            currentUploadingFile={currentUploadingFile}
+          />
         </div>
 
         <DialogFooter className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 shrink-0">

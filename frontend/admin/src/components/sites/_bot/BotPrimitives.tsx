@@ -12,7 +12,14 @@ import { useTranslations } from "next-intl"
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@/components/ui"
 import { ChevronDown, ChevronUp, Copy, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn, copyToClipboard } from "@/lib/utils"
+import type { BotConfig } from "@/types/settings"
+
+export type BotChange = <S extends keyof BotConfig>(
+  section: S,
+  field: keyof BotConfig[S],
+  value: BotConfig[S][keyof BotConfig[S]]
+) => void
 
 interface BotCardProps {
   title: string
@@ -171,10 +178,10 @@ export function CopyableInput({
   generateAction,
 }: CopyableInputProps) {
   const t = useTranslations("SiteBot")
-  const handleCopy = () => {
-    navigator.clipboard.writeText(value)
+  const handleCopy = async () => {
+    const ok = await copyToClipboard(value)
     if (onCopy) onCopy()
-    else toast.success(t("copied"))
+    else if (ok) toast.success(t("copied"))
   }
 
   return (

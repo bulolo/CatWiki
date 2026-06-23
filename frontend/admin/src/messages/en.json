@@ -44,6 +44,8 @@
     "createFirstSite": "Create First Site"
   },
   "Documents": {
+    "parseMeta": "Parse metadata",
+    "collapse": "Collapse",
     "title": "Documents",
     "description": "Manage your knowledge base documents and let AI learn them to improve response quality.",
     "collections": {
@@ -479,6 +481,8 @@
     "extraBodyJsonError": "Invalid JSON, please check"
   },
   "DocProcessor": {
+    "recommendedSuffix": " (Recommended)",
+    "vlmGpuSuffix": " (Requires GPU)",
     "title": "Doc Processor",
     "description": "Configure document parsing APIs.",
     "deleteConfirm": "Delete this processor? This action cannot be undone.",
@@ -563,6 +567,7 @@
     "startUsing": "Start Using"
   },
   "Layout": {
+    "taskQueue": "Task Queue",
     "welcomeBack": "Welcome back, {name}",
     "sidebarLoadError": "Failed to load sidebar",
     "platformMgmt": "Platform Org Mgmt",
@@ -588,6 +593,7 @@
     "logoutConfirm": "Are you sure you want to logout?",
     "logoutSuccess": "Logged out",
     "saveSuccess": "Saved successfully",
+    "operationFailed": "Operation failed",
     "pagination": {
       "showing": "Showing {start} - {end} of {total}",
       "perPage": "Per page",
@@ -775,6 +781,7 @@
     "adminTip": "If the email already exists, it will be linked without password; if new, this will be the initial password."
   },
   "SiteSettings": {
+    "accessPasswordGenerated": "Access password has been set to: {password}. Please keep it safe.",
     "title": "Settings",
     "description": "Manage base info, style, and AI bot configurations.",
     "save": "Save Changes",
@@ -1558,6 +1565,7 @@
     "messageInteractions": "Message Interactions"
   },
   "DataSources": {
+    "endpointPlaceholder": "s3.amazonaws.com or minio.example.com:9000",
     "title": "S3 Data Sources",
     "subtitle": "Manage S3-compatible storage connections for bulk document import — built-in RustFS or external S3",
     "addSource": "Add Source",

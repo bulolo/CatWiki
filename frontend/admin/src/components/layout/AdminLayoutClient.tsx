@@ -29,15 +29,11 @@ import { useHealth, useDemoMode } from "@/hooks/useHealth"
 import { useTasks } from "@/contexts/TaskContext"
 import Link from "next/link"
 import {
-  Search,
   Settings,
   ShieldCheck,
-  ListTodo,
-  User
+  ListTodo
 } from "lucide-react"
-import { getUserInfo } from "@/lib/auth"
-import { env } from "@/lib/env"
-import { useState, useEffect } from "react"
+import { useCurrentUser } from "@/lib/auth-store"
 const AdminSidebar = dynamic(() => import("@/components/layout").then(mod => ({ default: mod.AdminSidebar })), {
   ssr: false,
   loading: () => <div className="w-64 bg-slate-50 border-r border-slate-200" />
@@ -82,19 +78,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const isLoginPage = pathname === "/login"
   const isSettingsPage = pathname === "/settings"
 
-  const [mounted, setMounted] = useState(false)
-
   const { data: healthData } = useHealth()
   const isDemoMode = useDemoMode()
   const { tasks, togglePanel } = useTasks()
   const activeTasks = tasks.filter(t => t.status === "processing" || t.status === "pending" || t.status === "running").length
 
-  /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  const userInfo = mounted ? getUserInfo() : null
+  // 响应式认证快照：SSR 返回 null，hydration 后自动更新，无需 mounted 守卫。
+  const userInfo = useCurrentUser()
   const welcomeName = userInfo?.name || tu("admin")
 
   // 登录页面布局
@@ -176,7 +166,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               <button
                 onClick={togglePanel}
                 className="relative p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-primary transition-colors"
-                title="任务队列"
+                title={t("taskQueue")}
               >
                 <ListTodo className="h-5 w-5" />
                 {activeTasks > 0 && (

@@ -84,7 +84,10 @@
     "closeMenu": "Close Menu",
     "aiChat": "AI Chat",
     "collectionCatalog": "Collections",
-    "aiPrompt": "Try asking a question directly in the search bar for AI retrieval."
+    "aiPrompt": "Try asking a question directly in the search bar for AI retrieval.",
+    "aiPoweredBadge": "AI Powered",
+    "official": "CatWiki Official",
+    "copyright": "© 2026 CatWiki Team"
   },
   "SearchBar": {
     "placeholderAI": "Ask AI...",
@@ -102,7 +105,10 @@
     "noDocFound": "No documents found",
     "select": "Select",
     "confirm": "Confirm",
-    "aiPowered": "AI Powered"
+    "aiPowered": "AI Powered",
+    "modeChat": "AI Chat Mode",
+    "modeRag": "RAG Search Mode",
+    "modeAiSearch": "AI Powered Search"
   },
   "AIChat": {
     "welcome": "Hello! I am CatWiki's AI assistant, how can I help you?",

@@ -19,7 +19,7 @@
 import { useMutation } from "@tanstack/react-query"
 import { getGetAdminAiConfigQueryKey, getGetAdminDocProcessorConfigQueryKey, testDocProcessorConnection, testModelConnection, updateAdminAiConfig, updateAdminDocProcessorConfig, useGetAdminAiConfig, useGetAdminDocProcessorConfig } from "@/lib/sdk/admin-system-configs"
 import type { AIConfigUpdate, DocProcessorConfig, DocProcessorsUpdate, ModelConfig, TestConnectionRequestModelType } from "@/lib/sdk/sdk.schemas"
-import { isAuthenticated } from "@/lib/auth"
+import { useIsAuthenticated } from "@/lib/auth-store"
 import { useAdminMutation } from "./useAdminMutation"
 import { STALE_TIME } from "@/lib/react-query"
 
@@ -29,11 +29,12 @@ type Scope = "platform" | "tenant"
  * 获取 AI 模型配置
  */
 export function useAIConfig(scope: Scope = "tenant") {
+  const isAuthed = useIsAuthenticated()
   return useGetAdminAiConfig(
     { scope },
     {
       query: {
-        enabled: isAuthenticated(),
+        enabled: isAuthed,
         staleTime: STALE_TIME.MEDIUM,
       },
     },
@@ -67,11 +68,12 @@ export function useTestConnection(scope: Scope = "tenant") {
  * 获取文档处理服务配置
  */
 export function useDocProcessorConfig(scope: Scope = "tenant") {
+  const isAuthed = useIsAuthenticated()
   return useGetAdminDocProcessorConfig(
     { scope },
     {
       query: {
-        enabled: isAuthenticated(),
+        enabled: isAuthed,
       },
     },
   )

@@ -84,7 +84,10 @@
     "closeMenu": "关闭菜单",
     "aiChat": "AI 对话",
     "collectionCatalog": "合集目录",
-    "aiPrompt": "尝试直接在搜索框提问，体验 AI 语义检索。"
+    "aiPrompt": "尝试直接在搜索框提问，体验 AI 语义检索。",
+    "aiPoweredBadge": "AI 驱动",
+    "official": "CatWiki 官方",
+    "copyright": "© 2026 CatWiki Team"
   },
   "SearchBar": {
     "placeholderAI": "向 AI 提问...",
@@ -102,7 +105,10 @@
     "noDocFound": "未找到相关文档",
     "select": "选择",
     "confirm": "确认",
-    "aiPowered": "AI 驱动"
+    "aiPowered": "AI 驱动",
+    "modeChat": "AI 对话模式",
+    "modeRag": "RAG 检索模式",
+    "modeAiSearch": "AI 智能搜索"
   },
   "AIChat": {
     "welcome": "你好！我是 catWiki 的 AI 助手，有什么可以帮助你的吗？",

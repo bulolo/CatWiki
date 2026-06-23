@@ -29,15 +29,13 @@ import {
   Globe,
   Users,
   Save,
-  Loader2,
   X,
   ChevronLeft,
   FileText,
   Database
 } from "lucide-react"
 import { getUserInfo } from "@/lib/auth"
-import { UserRole } from "@/lib/sdk/sdk.schemas"
-import { Button, Card, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui"
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui"
 import { cn } from "@/lib/utils"
 
 function SettingsContent() {

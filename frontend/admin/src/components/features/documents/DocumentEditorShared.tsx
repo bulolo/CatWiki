@@ -7,7 +7,8 @@
 
 import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { Button, Card, CardContent, CardHeader, CardTitle, ImageUpload, Input, Popover, PopoverContent, PopoverTrigger, TagsInput, Textarea } from "@/components/ui"
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Popover, PopoverContent, PopoverTrigger, Textarea } from "@/components/ui"
+import { ImageUpload, TagsInput } from "@/components/common"
 import {
   Image as ImageIcon, Settings as SettingsIcon,
   Tags, Hash, Info, Plus, Loader2, Sparkles

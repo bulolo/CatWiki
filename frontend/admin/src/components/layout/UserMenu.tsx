@@ -15,25 +15,20 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import {
-  User,
-  Settings,
   LogOut,
-  Shield,
   ChevronDown,
   Lock
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, useConfirm } from "@/components/ui"
-import { getUserInfo, logout } from "@/lib/auth"
-import { UserRole } from "@/lib/sdk/sdk.schemas"
+import { logout } from "@/lib/auth"
+import { useCurrentUser } from "@/lib/auth-store"
 import { toast } from "sonner"
 import { ChangePasswordModal } from "@/components/settings/users/ChangePasswordModal"
 
 export function UserMenu() {
   const t = useTranslations("UserMenu")
-  const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
 
@@ -41,7 +36,7 @@ export function UserMenu() {
     setMounted(true)
   }, [])
 
-  const user = mounted ? getUserInfo() : null
+  const user = useCurrentUser()
   const confirm = useConfirm()
 
   const handleLogout = async () => {

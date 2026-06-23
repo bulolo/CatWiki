@@ -18,7 +18,7 @@
 
 import { createAdminUser, deleteAdminUser, getListAdminUsersQueryKey, inviteAdminUser, loginAdmin, resetAdminUserPassword, updateAdminUser, useGetAdminUser, useListAdminUsers } from "@/lib/sdk/admin-users"
 import type { ListAdminUsersParams, UserCreate, UserInvite, UserRole, UserStatus, UserUpdate } from "@/lib/sdk/sdk.schemas"
-import { isAuthenticated } from "@/lib/auth"
+import { useIsAuthenticated } from "@/lib/auth-store"
 import { useAdminMutation } from "./useAdminMutation"
 import { STALE_TIME } from "@/lib/react-query"
 
@@ -48,9 +48,10 @@ export function useUsers(params: UseUsersParams = {}) {
     order_dir: params.orderDir,
   }
 
+  const isAuthed = useIsAuthenticated()
   return useListAdminUsers(apiParams, {
     query: {
-      enabled: isAuthenticated(),
+      enabled: isAuthed,
       staleTime: STALE_TIME.MEDIUM,
       select: (data) => ({
         users: data?.list ?? [],
@@ -64,9 +65,10 @@ export function useUsers(params: UseUsersParams = {}) {
  * 获取单个用户详情
  */
 export function useUser(userId: number | undefined) {
+  const isAuthed = useIsAuthenticated()
   return useGetAdminUser(userId ?? 0, {
     query: {
-      enabled: !!userId && isAuthenticated(),
+      enabled: !!userId && isAuthed,
       staleTime: STALE_TIME.MEDIUM,
     },
   })

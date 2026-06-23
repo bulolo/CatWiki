@@ -7,14 +7,15 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Badge, Button, DraftRestoreDialog } from "@/components/ui"
+import { Badge, Button } from "@/components/ui"
+import { DraftRestoreDialog } from "@/components/common"
 import { FileText, Save, Send, Clock, User, Info, Loader2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import type { DocumentStatus } from "@/lib/sdk/sdk.schemas"
 import { toast } from "sonner"
 import { getRoutePath, useRouteContext } from "@/lib/routing"
 import { useSiteData, useCollectionTree, useCreateDocument, useAutosave, useDraftRestore } from "@/hooks"
-import { getUserInfo } from "@/lib/auth"
+import { useCurrentUser } from "@/lib/auth-store"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   DocumentEditorContent, DocumentEditorSidebar, MetaRow,
@@ -41,6 +42,8 @@ export default function NewDocumentPage() {
   const createDocumentMutation = useCreateDocument(siteId)
   const collections = collectionsTree ? flattenCollections(collectionsTree) : []
 
+  const currentUser = useCurrentUser()
+
   // 草稿
   const draftKey = `draft-new-${siteId}`
   const { hasDraft, restoreDraft, discardDraft, savedTimeAgo } = useDraftRestore(draftKey)
@@ -65,7 +68,7 @@ export default function NewDocumentPage() {
     if (!form.title.trim()) { toast.error(t("newDoc.errorTitle")); return }
     if (!form.collectionId) { toast.error(t("newDoc.errorCollection")); return }
 
-    const userInfo = getUserInfo()
+    const userInfo = currentUser
     createDocumentMutation.mutate({
       site_id: siteId,
       title: form.title.trim(),
@@ -143,7 +146,7 @@ export default function NewDocumentPage() {
                 <Badge variant="outline" className="text-[10px] bg-white border-slate-200 text-slate-500 font-bold">{t("config.draft")}</Badge>
               </MetaRow>
               <MetaRow icon={User} label={t("editDoc.author")}>
-                <span className="text-xs font-bold text-slate-700">{getUserInfo()?.name || getUserInfo()?.email || "Admin"}</span>
+                <span className="text-xs font-bold text-slate-700">{currentUser?.name || currentUser?.email || "Admin"}</span>
               </MetaRow>
             </DocumentEditorSidebar>
           </div>

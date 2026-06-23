@@ -14,9 +14,10 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, ImageUpload, Input, Textarea } from "@/components/ui"
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Textarea } from "@/components/ui"
+import { ImageUpload } from "@/components/common"
 import {
   ChevronLeft,
   Save,

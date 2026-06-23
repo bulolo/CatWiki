@@ -12,18 +12,68 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { z } from "zod"
 import type { ChatMessageOutput } from "@/lib/sdk/sdk.schemas"
 import type { Message } from "@/types"
 import { toTimings, type RawTrace } from "@/components/ai/format"
 
+// ==================== 后端历史消息的「松散字段」校验 ====================
+// 这些字段在 SDK 里是宽松/未类型化的 JSON 边界。用 zod 安全解析替代散落的 `as` 强转：
+// 解析失败时回退到安全默认（不抛错、不污染前端类型），坏数据被丢弃而非以错误类型流入。
+
+const traceSchema = z.object({
+  ttfb: z.number().optional(),
+  first_token: z.number().optional(),
+  total: z.number().optional(),
+})
+
+const additionalKwargsSchema = z.object({
+  usage_metadata: z.object({ total_tokens: z.number().optional() }).optional(),
+  trace: traceSchema.optional(),
+})
+
+const toolCallSchema = z.object({
+  id: z.string(),
+  function: z.object({ name: z.string().optional(), arguments: z.unknown().optional() }).optional(),
+  name: z.string().optional(),
+  elapsed_ms: z.number().optional(),
+})
+
+const sourceSchema = z.object({
+  id: z.union([z.string(), z.number()]).optional(),
+  title: z.string().optional(),
+  siteId: z.number().optional(),
+  documentId: z.number().optional(),
+})
+
+type ParsedToolCall = z.infer<typeof toolCallSchema>
+
+/** 解析 assistant.additional_kwargs（usage / trace）；非法输入回退为空对象。 */
+function parseAdditionalKwargs(value: unknown): z.infer<typeof additionalKwargsSchema> {
+  return additionalKwargsSchema.safeParse(value).data ?? {}
+}
+
+/** 逐元素解析 tool_calls，丢弃不合法项；非数组回退为空。 */
+function parseToolCalls(value: unknown): ParsedToolCall[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap(item => {
+    const parsed = toolCallSchema.safeParse(item)
+    return parsed.success ? [parsed.data] : []
+  })
+}
+
+/** 逐元素解析 sources，丢弃不合法项；非数组回退为空。 */
+function parseSources(value: unknown): z.infer<typeof sourceSchema>[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap(item => {
+    const parsed = sourceSchema.safeParse(item)
+    return parsed.success ? [parsed.data] : []
+  })
+}
+
 // 每个 ReAct turn 里跨多条 assistant 行累积的中间状态
 interface TurnState {
-  toolCalls: Array<{
-    id: string
-    function?: { name?: string; arguments?: unknown }
-    name?: string
-    elapsed_ms?: number
-  }>
+  toolCalls: ParsedToolCall[]
   content: string[]
   totalTokens: number
   hasUsage: boolean
@@ -85,20 +135,14 @@ export function formatHistoryMessages(
       }
 
       if (m.role === "assistant") {
-        const ak = (m.additional_kwargs ?? {}) as Record<string, unknown>
-        const usageMeta = ak.usage_metadata as { total_tokens?: number } | undefined
-        const addedTokens = typeof usageMeta?.total_tokens === "number" ? usageMeta.total_tokens : 0
-        const trace = (ak.trace as RawTrace | undefined) ?? acc.turn.trace
+        const ak = parseAdditionalKwargs(m.additional_kwargs)
+        const addedTokens = ak.usage_metadata?.total_tokens ?? 0
+        const trace = ak.trace ?? acc.turn.trace
 
-        const toolCallsArr = m.tool_calls as Array<{
-          id: string
-          function?: { name?: string; arguments?: unknown }
-          name?: string
-          elapsed_ms?: number
-        }> | undefined
+        const toolCallsArr = parseToolCalls(m.tool_calls)
 
         // 中间 assistant 行（只有 tool_calls，无 final content）：合并后继续
-        if (toolCallsArr?.length) {
+        if (toolCallsArr.length) {
           return {
             ...acc,
             turn: {
@@ -112,17 +156,11 @@ export function formatHistoryMessages(
         }
 
         // Final assistant 行：发射合并后的消息，重置 turn 状态
-        const backendSources = (m.sources ?? []) as Array<{
-          id?: unknown
-          title?: unknown
-          siteId?: unknown
-          documentId?: unknown
-        }>
-        const mappedSources = backendSources.map(c => ({
-          id: String(c.id ?? ""),
-          title: c.title as string,
-          siteId: c.siteId as number | undefined,
-          documentId: c.documentId as number | undefined,
+        const mappedSources = parseSources(m.sources).map(s => ({
+          id: String(s.id ?? ""),
+          title: s.title ?? "",
+          siteId: s.siteId,
+          documentId: s.documentId,
         }))
 
         const finalContent = [...acc.turn.content, m.content || ""].filter(Boolean).join("\n\n")

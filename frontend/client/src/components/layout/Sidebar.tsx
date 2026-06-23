@@ -217,7 +217,7 @@ export function Sidebar({ items, selectedId, onSelect, isOpen, onClose, siteName
           <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:scale-110 transition-transform">
             <Sparkles className="h-12 w-12" />
           </div>
-          <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">AI Powered</p>
+          <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">{t("aiPoweredBadge")}</p>
           <p className="text-[13px] font-medium leading-snug relative z-10">
             {t("aiPrompt")}
           </p>
@@ -232,11 +232,11 @@ export function Sidebar({ items, selectedId, onSelect, isOpen, onClose, siteName
               className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
             >
               <ShieldCheck className="h-3 w-3" />
-              CatWiki Official
+              {t("official")}
             </Link>
             <span className="px-1.5 py-0.5 bg-[#3b82f6]/10 text-[#3b82f6] rounded text-[9px] border border-[#3b82f6]/20 font-medium">V{version}</span>
           </div>
-          <div className="text-[9px] text-slate-400/50 text-center mt-1">© 2026 CatWiki Team</div>
+          <div className="text-[9px] text-slate-400/50 text-center mt-1">{t("copyright")}</div>
         </div>
       </div>
     </div>

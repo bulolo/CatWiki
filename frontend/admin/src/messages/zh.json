@@ -44,6 +44,8 @@
     "createFirstSite": "创建第一个站点"
   },
   "Documents": {
+    "parseMeta": "解析元数据",
+    "collapse": "收起",
     "title": "文档管理",
     "description": "管理您的知识库文档，并让 AI 学习它们提高回答质量。",
     "collections": {
@@ -479,6 +481,8 @@
     "extraBodyJsonError": "JSON 格式错误，请检查"
   },
   "DocProcessor": {
+    "recommendedSuffix": "（推荐）",
+    "vlmGpuSuffix": "（需要 GPU）",
     "title": "文档解析",
     "description": "配置可用的文档解析 API，实际使用时可选择。",
     "deleteConfirm": "确定删除这个解析器吗？此操作不可撤销。",
@@ -563,6 +567,7 @@
     "startUsing": "开始使用知识库"
   },
   "Layout": {
+    "taskQueue": "任务队列",
     "welcomeBack": "欢迎回来, {name}",
     "sidebarLoadError": "侧边栏加载失败",
     "platformMgmt": "平台组织管理",
@@ -588,6 +593,7 @@
     "logoutConfirm": "确定要退出登录吗？",
     "logoutSuccess": "已退出登录",
     "saveSuccess": "保存成功",
+    "operationFailed": "操作失败",
     "pagination": {
       "showing": "显示 {start} - {end} 条，共 {total} 条",
       "perPage": "每页",
@@ -775,6 +781,7 @@
     "adminTip": "若该邮箱已存在，系统将自动关联无需密码；若为新用户，此密码将作为初始密码。"
   },
   "SiteSettings": {
+    "accessPasswordGenerated": "访问密码已自动设置为：{password}，请妥善保存",
     "title": "设置",
     "description": "管理该站点的基础信息、界面风格及 AI 机器人配置。",
     "save": "保存修改",
@@ -1560,6 +1567,7 @@
     "messageInteractions": "消息互动"
   },
   "DataSources": {
+    "endpointPlaceholder": "s3.amazonaws.com 或 minio.example.com:9000",
     "title": "S3 数据源",
     "subtitle": "管理 S3 兼容的存储连接，用于批量导入文档，支持系统内置 RustFS 和外部 S3",
     "addSource": "添加数据源",

@@ -14,23 +14,10 @@
 
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
-import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription, Tabs, TabsContent, TabsList, TabsTrigger, ImageUpload } from "@/components/ui"
-import {
-  Settings,
-  Palette,
-  ShieldCheck,
-  MessageSquare,
-  Bot,
-  Users,
-  Save,
-  Loader2,
-  Eye,
-  EyeOff,
-  Lock,
-  Crown,
-} from "lucide-react"
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui"
+import { Settings, MessageSquare, Bot, Users, Save, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useSiteById, useUpdateSite, useHealth } from "@/hooks"
 import { QuickQuestionsConfig } from "@/components/features"
@@ -40,15 +27,10 @@ import { initialConfigs, type BotConfig } from "@/types/settings"
 import { env } from "@/lib/env"
 import { mergeSiteBotConfig } from "@/lib/site-bot-config"
 import { useAIConfig } from "@/hooks"
-
-// 主题色配置
-const THEME_COLORS_BASE = [
-  { value: "blue", colorName: "blue", className: "bg-blue-500" },
-  { value: "emerald", colorName: "emerald", className: "bg-emerald-500" },
-  { value: "purple", colorName: "purple", className: "bg-purple-500" },
-  { value: "orange", colorName: "orange", className: "bg-orange-500" },
-  { value: "slate", colorName: "slate", className: "bg-slate-800" },
-] as const
+import { getEeApi } from "@/ee/api"
+import { SiteBasicInfoCard } from "./SiteBasicInfoCard"
+import { SiteStyleCard } from "./SiteStyleCard"
+import { SiteAccessCard } from "./SiteAccessCard"
 
 interface SiteSettingsProps {
   siteId: number
@@ -68,7 +50,7 @@ interface SiteSettingsSnapshot {
   showStats: boolean
 }
 
-export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
+export function SiteSettings({ siteId, onBack: _onBack }: SiteSettingsProps) {
   const t = useTranslations("SiteSettings")
   const createT = useTranslations("CreateSite")
   const [name, setName] = useState("")
@@ -92,7 +74,8 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
   const [eeNewPassword, setEeNewPassword] = useState("")
   const [eeShowPassword, setEeShowPassword] = useState(false)
 
-  const initialDataRef = useRef<SiteSettingsSnapshot | null>(null)
+  // 初始快照（用于脏检查）。用 state 而非 ref，以便在 render 期合法读取（满足 react-hooks/refs）。
+  const [initialData, setInitialData] = useState<SiteSettingsSnapshot | null>(null)
 
   // 确保水合一致性
   useEffect(() => {
@@ -113,15 +96,14 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
 
   // 加载站点数据
   useEffect(() => {
-    if (siteData && !initialDataRef.current) {
+    if (siteData && !initialData) {
       const bConfig = mergeSiteBotConfig(siteData.bot_config)
 
       // 从 EE API 加载全量 EE 配置（访问控制 + 机器人）
-      let eeApi: any = null
-      try { eeApi = require("@/ee/api").eeApi } catch (e) { }
-
-      if (eeApi) {
-        eeApi.sites.getConfig(siteId).then((eeConfig: any) => {
+      const ee = getEeApi()
+      if (ee) {
+        ee.sites.getConfig(siteId).then((eeConfig) => {
+          if (!eeConfig) return
           // 1. 同步机器人配置
           bConfig.api_bot = {
             enabled: eeConfig.api_bot.enabled,
@@ -129,15 +111,12 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
             timeout: eeConfig.api_bot.timeout,
           }
           setBotConfig({ ...bConfig })
-          
+
           // 2. 同步访问控制状态
-          setEeIsPublic(eeConfig.access.is_public)
-          setEeHasPassword(eeConfig.access.has_password)
-          
-          initialDataRef.current = { 
-            ...initialDataRef.current!, 
-            botConfig: { ...bConfig } 
-          }
+          setEeIsPublic(eeConfig.access.is_public ?? false)
+          setEeHasPassword(eeConfig.access.has_password ?? false)
+
+          setInitialData(prev => (prev ? { ...prev, botConfig: { ...bConfig } } : prev))
         }).catch(() => {
           // EE 未启用或加载失败
         })
@@ -155,7 +134,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
       setBotConfig(bConfig)
       setShowStats(initialShowStats)
 
-      initialDataRef.current = {
+      setInitialData({
         name: siteData.name,
         slug: siteData.slug || "",
         description: siteData.description || "",
@@ -166,9 +145,9 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
         quickQuestions: siteData.quick_questions || [],
         botConfig: bConfig,
         showStats: initialShowStats,
-      }
+      })
     }
-  }, [siteData, siteId])
+  }, [siteData, siteId, initialData])
 
   // (加载逻辑已合并到上方数据加载 useEffect 中)
 
@@ -188,30 +167,41 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
   // EE: 保存访问控制配置
   const handleSaveAccessConfig = async (updates: { is_public?: boolean; password?: string | null }) => {
     try {
-      let eeApi: any = null
-      try { eeApi = require("@/ee/api").eeApi } catch (e) { }
-      if (!eeApi) return
+      const ee = getEeApi()
+      if (!ee) return
 
-      const config = await eeApi.sites.updateConfig(siteId, {
+      const config = await ee.sites.updateConfig(siteId, {
         access: {
           is_public: updates.is_public,
           password: updates.password || undefined
         }
       })
-      setEeIsPublic(config.access.is_public)
-      setEeHasPassword(config.access.has_password)
+      if (!config) return
+      setEeIsPublic(config.access.is_public ?? false)
+      setEeHasPassword(config.access.has_password ?? false)
       setEeNewPassword("")
       if (config.access.generated_password) {
-        toast.success(`访问密码已自动设置为：${config.access.generated_password}，请妥善保存`, { duration: 10000 })
+        toast.success(t("accessPasswordGenerated", { password: config.access.generated_password }), { duration: 10000 })
       } else {
         toast.success(t("saveSuccess"))
       }
     } catch (e: unknown) {
-      toast.error((e instanceof Error && e.message) || "保存失败")
+      toast.error((e instanceof Error && e.message) || t("saveError"))
     }
   }
 
-  const isDirty = initialDataRef.current && JSON.stringify({
+  // EE: 公开开关切换（仅企业版可点；切换后立即保存）
+  const handleTogglePublic = () => {
+    if (!isEnterprise) return
+    const next = !eeIsPublic
+    setEeIsPublic(next)
+    handleSaveAccessConfig({ is_public: next })
+  }
+
+  // EE: 保存新访问密码
+  const handleSavePassword = () => handleSaveAccessConfig({ password: eeNewPassword })
+
+  const isDirty = initialData && JSON.stringify({
     name,
     slug,
     description,
@@ -222,7 +212,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
     quickQuestions: quickQuestions.filter(q => q.text.trim()),
     botConfig,
     showStats
-  }) !== JSON.stringify(initialDataRef.current)
+  }) !== JSON.stringify(initialData)
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -253,10 +243,8 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
       }
     })
 
-    let eeApi: any = null
-    try { eeApi = require("@/ee/api").eeApi } catch (e) { }
-
-    const saveEE = eeApi ? eeApi.sites.updateConfig(siteId, {
+    const ee = getEeApi()
+    const saveEE = ee ? ee.sites.updateConfig(siteId, {
       api_bot: {
         enabled: api_bot.enabled,
         api_key: api_bot.api_key,
@@ -283,7 +271,7 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
       setQuickQuestions(updatedSite.quick_questions || [])
       setShowStats(nextShowStats)
 
-      initialDataRef.current = {
+      setInitialData({
         name: updatedSite.name,
         slug: updatedSite.slug || "",
         description: updatedSite.description || "",
@@ -294,10 +282,10 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
         quickQuestions: updatedSite.quick_questions || [],
         botConfig: bConfig,
         showStats: nextShowStats,
-      }
+      })
       toast.success(t("saveSuccess"))
     }).catch(() => {
-      toast.error("保存失败")
+      toast.error(t("saveError"))
     })
   }
 
@@ -387,248 +375,41 @@ export function SiteSettings({ siteId, onBack }: SiteSettingsProps) {
           {/* 右侧内容 - Scrollable Area */}
           <div className="flex-1 overflow-y-auto pr-2 pb-10">
             <TabsContent value="basic" className="space-y-6 mt-0 animate-in fade-in-50 duration-300 data-[state=inactive]:hidden">
-              <Card className="border-slate-200/60 shadow-none rounded-xl overflow-hidden">
-                <CardHeader className="border-b border-border/40 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-50 rounded-lg text-blue-600 border border-blue-100">
-                      <Settings className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base font-bold">{t("basic.title")}</CardTitle>
-                      <CardDescription className="text-xs">
-                        {t("basic.description")}
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-6">
-                  <div className="flex flex-col md:flex-row gap-8">
-                    {/* 站点图标上传 */}
-                    <div className="w-full md:w-32 space-y-2">
-                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">{t("basic.icon")}</label>
-                      <ImageUpload
-                        value={icon}
-                        onChange={setIcon}
-                        text={t("basic.change")}
-                        aspect="aspect-square"
-                        className="w-full"
-                      />
-                    </div>
-
-                    {/* 站点基本信息字段 */}
-                    <div className="flex-1 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-slate-700">{t("basic.name")}</label>
-                          <input
-                            className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                            placeholder={createT("namePlaceholder")}
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-slate-700">{t("basic.slug")}</label>
-                          <div className="flex items-center">
-                            <span
-                              className="inline-flex items-center px-3 h-9 rounded-l-lg border border-r-0 border-slate-200 bg-slate-50 text-slate-500 text-[10px] font-mono flex-1 min-w-0 overflow-hidden"
-                              title={siteUrlPrefix}
-                            >
-                              <span className="truncate">{siteUrlPrefix}</span>
-                            </span>
-                            <input
-                              className="flex h-9 w-[35%] min-w-[80px] rounded-r-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                              placeholder={createT("slugPlaceholder")}
-                              value={slug}
-                              onChange={(e) => setSlug(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">{t("basic.desc")}</label>
-                        <textarea
-                          className="flex min-h-[80px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 resize-none"
-                          placeholder={createT("descPlaceholder")}
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <SiteBasicInfoCard
+                icon={icon}
+                setIcon={setIcon}
+                name={name}
+                setName={setName}
+                slug={slug}
+                setSlug={setSlug}
+                description={description}
+                setDescription={setDescription}
+                siteUrlPrefix={siteUrlPrefix}
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border-slate-200/60 shadow-none rounded-xl overflow-hidden">
-                  <CardHeader className="border-b border-border/40 pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-purple-50 rounded-lg text-purple-600 border border-purple-100">
-                        <Palette className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base font-bold">{t("style.title")}</CardTitle>
-                        <CardDescription className="text-xs">{t("style.description")}</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">{createT("themeColor")}</label>
-                      <div className="flex gap-2">
-                        {THEME_COLORS_BASE.map((color) => (
-                          <div
-                            key={color.value}
-                            className={`w-8 h-8 rounded-full ${color.className} cursor-pointer ring-offset-2 transition-all ${themeColor === color.value ? "ring-2 ring-primary ring-offset-2" : "hover:ring-2 ring-slate-300"
-                              }`}
-                            onClick={() => setThemeColor(color.value)}
-                            title={createT(`colors.${color.colorName}` as Parameters<typeof createT>[0])}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">{createT("layoutMode")}</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div
-                          className={`border rounded-xl p-3 text-center text-xs font-bold cursor-pointer transition-all ${layoutMode === "sidebar"
-                            ? "border-primary bg-primary/5 text-primary shadow-sm"
-                            : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-white"
-                            }`}
-                          onClick={() => setLayoutMode("sidebar")}
-                        >
-                          {createT("sidebarLayout")}
-                        </div>
-                        <div
-                          className="border border-slate-200 rounded-xl p-3 text-center text-xs font-bold text-slate-400 bg-slate-50/50 cursor-not-allowed opacity-50"
-                          title={createT("notSupported")}
-                        >
-                          {createT("topNav")}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <SiteStyleCard
+                  themeColor={themeColor}
+                  setThemeColor={setThemeColor}
+                  layoutMode={layoutMode}
+                  setLayoutMode={setLayoutMode}
+                />
 
-                <Card className="border-slate-200/60 shadow-none rounded-xl overflow-hidden">
-                  <CardHeader className="border-b border-border/40 pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 border border-emerald-100">
-                        <ShieldCheck className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base font-bold">{t("access.title")}</CardTitle>
-                        <CardDescription className="text-xs">{t("access.description")}</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-6">
-                    <div className="flex items-center justify-between p-3 bg-slate-50/50 border border-slate-100 rounded-xl">
-                      <div className="space-y-0.5">
-                        <label className="text-sm font-semibold text-slate-900">{createT("enableSite")}</label>
-                        <p className="text-xs text-slate-500">{createT("enableTip")}</p>
-                      </div>
-                      <div
-                        className={`w-11 h-6 ${isActive ? "bg-primary" : "bg-slate-200"} rounded-full relative cursor-pointer transition-colors`}
-                        onClick={handleToggleActive}
-                      >
-                        <div className={`absolute ${isActive ? "right-1" : "left-1"} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
-                      </div>
-                    </div>
-
-                    {/* EE: 是否公开 + 访问密码 */}
-                    <div className={!isEnterprise ? "pointer-events-none select-none" : undefined}>
-                      <div className="flex items-center justify-between p-3 bg-slate-50/50 border border-slate-100 rounded-xl">
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <label className="text-sm font-semibold text-slate-900">{t("access.isPublic")}</label>
-                            {!isEnterprise && (
-                              <span className="inline-flex items-center gap-1 bg-gradient-to-r from-violet-500 to-purple-600 text-white text-[10px] font-bold px-1.5 py-0 rounded-full shadow-sm h-4">
-                                <Crown className="h-2.5 w-2.5" />
-                                {t("access.eeBadge")}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-slate-500">{t("access.isPublicTip")}</p>
-                        </div>
-                        <div
-                          className={`w-11 h-6 ${eeIsPublic ? "bg-primary" : "bg-slate-200"} rounded-full relative cursor-pointer transition-colors`}
-                          onClick={() => {
-                            if (!isEnterprise) return
-                            const next = !eeIsPublic
-                            setEeIsPublic(next)
-                            handleSaveAccessConfig({ is_public: next })
-                          }}
-                        >
-                          <div className={`absolute ${eeIsPublic ? "right-1" : "left-1"} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
-                        </div>
-                      </div>
-
-                      {!isEnterprise && (
-                        <div className="flex items-center gap-3 px-3 py-2 mt-3 bg-violet-50 text-violet-700 rounded-lg border border-violet-200 shadow-sm">
-                          <Crown className="h-4 w-4 shrink-0" />
-                          <p className="text-[13px] font-medium">{t("access.enterpriseOnly")}</p>
-                        </div>
-                      )}
-
-                      {!eeIsPublic && (
-                        <div className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl space-y-3 mt-3">
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <Lock className="h-3.5 w-3.5 text-slate-500" />
-                              <label className="text-sm font-semibold text-slate-900">{t("access.accessPassword")}</label>
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${eeHasPassword ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
-                                {eeHasPassword ? t("access.passwordSet") : t("access.passwordNotSet")}
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-500">{t("access.accessPasswordTip")}</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <div className="relative flex-1">
-                              <input
-                                type={eeShowPassword ? "text" : "password"}
-                                className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-9 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                placeholder={t("access.passwordPlaceholder")}
-                                value={eeNewPassword}
-                                onChange={(e) => setEeNewPassword(e.target.value)}
-                              />
-                              <button
-                                type="button"
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                onClick={() => setEeShowPassword(!eeShowPassword)}
-                              >
-                                {eeShowPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
-                            <Button
-                              size="sm"
-                              className="h-9 px-4"
-                              disabled={!eeNewPassword.trim()}
-                              onClick={() => handleSaveAccessConfig({ password: eeNewPassword })}
-                            >
-                              <Save className="h-3.5 w-3.5 mr-1" />
-                              {t("save")}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* CE: 对话性能统计开关（mock，尚未接通后端） */}
-                    <div className="flex items-center justify-between gap-4 p-3 bg-slate-50/50 border border-slate-100 rounded-xl">
-                      <div className="space-y-0.5 min-w-0 flex-1">
-                        <label className="text-sm font-semibold text-slate-900">{t("stats.show")}</label>
-                        <p className="text-xs text-slate-500">{t("stats.showHint")}</p>
-                      </div>
-                      <div
-                        className={`shrink-0 w-11 h-6 ${showStats ? "bg-primary" : "bg-slate-200"} rounded-full relative cursor-pointer transition-colors`}
-                        onClick={() => setShowStats(!showStats)}
-                      >
-                        <div className={`absolute ${showStats ? "right-1" : "left-1"} top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all`} />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <SiteAccessCard
+                  isActive={isActive}
+                  onToggleActive={handleToggleActive}
+                  isEnterprise={isEnterprise}
+                  eeIsPublic={eeIsPublic}
+                  onTogglePublic={handleTogglePublic}
+                  eeHasPassword={eeHasPassword}
+                  eeNewPassword={eeNewPassword}
+                  setEeNewPassword={setEeNewPassword}
+                  eeShowPassword={eeShowPassword}
+                  setEeShowPassword={setEeShowPassword}
+                  onSavePassword={handleSavePassword}
+                  showStats={showStats}
+                  setShowStats={setShowStats}
+                />
               </div>
             </TabsContent>
 

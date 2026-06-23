@@ -23,9 +23,7 @@ import { Card, CardContent } from "@/components/ui"
 import { useTranslations } from "next-intl"
 import { CircuitBoard } from "lucide-react"
 import { ManualModeConfig } from "./ManualModeConfig"
-import { ShieldCheck } from "lucide-react"
 import { type SettingsTabId } from "@/types/settings"
-import { useState, useEffect } from "react"
 
 interface ModelSettingsCardProps {
   onSelectModel: (model: SettingsTabId) => void

@@ -31,8 +31,8 @@
 import { createContext, useContext, ReactNode, useMemo } from "react"
 import { useParams, usePathname } from "next/navigation"
 import { useSitesList, useSiteBySlug } from "@/hooks/useSites"
-import { getUserInfo } from "@/lib/auth"
-import { type Site, UserRole } from "@/lib/sdk/sdk.schemas"
+import { useCurrentUser } from "@/lib/auth-store"
+import { type Site } from "@/lib/sdk/sdk.schemas"
 
 interface SiteContextType {
   // 当前路由的 slug
@@ -77,7 +77,8 @@ export function SiteProvider({ children }: { children: ReactNode }) {
   })
 
   // Filter sites based on user role
-  const currentUser = typeof window !== "undefined" ? getUserInfo() : null
+  // 使用响应式快照：currentUser 引用稳定，下方 useMemo 才能真正命中缓存。
+  const currentUser = useCurrentUser()
 
   const sites = useMemo(() => {
     if (!currentUser) return []

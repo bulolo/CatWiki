@@ -193,10 +193,10 @@ export default function EditDocumentPage() {
                 <summary className="flex items-center justify-between cursor-pointer list-none bg-slate-50/50 p-3 rounded-xl hover:bg-slate-100/60 transition-colors">
                   <div className="flex items-center gap-2 text-slate-500">
                     <Database className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium">解析元数据</span>
+                    <span className="text-xs font-medium">{t("parseMeta")}</span>
                   </div>
                   <span className="text-[10px] text-slate-400 group-open:hidden">{String(document.parse_meta.processor_type ?? "")}</span>
-                  <span className="text-[10px] text-slate-400 hidden group-open:inline">收起</span>
+                  <span className="text-[10px] text-slate-400 hidden group-open:inline">{t("collapse")}</span>
                 </summary>
                 <div className="mt-1 rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden text-[11px]">
                   {Object.entries(document.parse_meta).map(([k, v]) => (

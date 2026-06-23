@@ -29,40 +29,17 @@ import {
   Card,
   CardContent,
   CardHeader,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   useConfirm
 } from "@/components/ui"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import {
-  Users,
-  Search,
-  Shield,
-  MoreHorizontal,
-  Check,
-  KeyRound,
-  Trash2,
-  Loader2,
-  Plus,
-  ChevronLeft,
-  Slash
-} from "lucide-react"
+import { Users, Search, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { CreateUserForm } from "./CreateUserForm"
+import { UserSitesCell } from "./UserSitesCell"
+import { UserRowActions } from "./UserRowActions"
 import { UserRole, UserStatus, type UserListItem, type Site } from "@/lib/sdk/sdk.schemas"
 import { useTranslations } from "next-intl"
 
@@ -77,20 +54,9 @@ import {
   useSitesList,
   useUpdateUserSites
 } from "@/hooks"
-import { getUserInfo } from "@/lib/auth"
+import { useCurrentUser } from "@/lib/auth-store"
 import { useHealth } from "@/hooks/useHealth"
-
-type PasswordResponse = {
-  password: string
-}
-
-function parsePasswordResponse(data: unknown): PasswordResponse | null {
-  if (!data || typeof data !== "object") {
-    return null
-  }
-  const password = (data as { password?: unknown }).password
-  return typeof password === "string" ? { password } : null
-}
+import { parsePasswordResponse } from "@/lib/user-response-parsers"
 
 export function GlobalUsers() {
   const t = useTranslations("Users")
@@ -102,14 +68,17 @@ export function GlobalUsers() {
   const { data: healthData } = useHealth()
   const isCommunity = healthData?.edition === "community"
 
-  const [page, setPage] = useState(1)
+  const [page] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
   const debouncedSearchTerm = useDebounce(searchTerm, 500)
   const isCreating = searchParams.get("action") === "create"
 
   // 获取所有站点列表（用于显示站点名称）
   const { data: sitesList } = useSitesList({ page: 1, size: 100 })
-  const sitesMap = new Map<number, Site>(sitesList?.map((site: Site) => [site.id, site] as [number, Site]) || [])
+  const sitesMap = useMemo(
+    () => new Map<number, Site>(sitesList?.map((site: Site) => [site.id, site] as [number, Site]) || []),
+    [sitesList],
+  )
 
   // React Query hooks - 全局用户列表，不需要 siteId
   const { data: usersData, isLoading: loading, refetch: refetchUsers } = useUsers({
@@ -127,7 +96,7 @@ export function GlobalUsers() {
 
   const users = usersData?.users || []
 
-  const currentUser = getUserInfo()
+  const currentUser = useCurrentUser()
   const isSystemAdmin = currentUser?.role === "admin" as const
 
   const handleStartCreate = () => {
@@ -181,7 +150,7 @@ export function GlobalUsers() {
     })
   }
 
-  const updateStatus = async (userId: number, status: UserStatus, userName: string) => {
+  const updateStatus = async (userId: number, status: UserStatus, _userName: string) => {
     const action = status === "active" as const ? t("statusEnable") : t("statusDisable")
     if (!await confirm({ description: t("statusConfirm", { action }) })) return
 
@@ -228,129 +197,6 @@ export function GlobalUsers() {
   }
 
   // 子组件：行内站点管理单元格
-  const UserSitesCell = ({ user }: { user: UserListItem }) => {
-    const scT = useTranslations("Users.sitesCell")
-    const rolesT = useTranslations("Users.roles")
-
-    const [selectedIds, setSelectedIds] = useState<number[]>(user.managed_site_ids || [])
-    const [isOpen, setIsOpen] = useState(false)
-
-    const handleSave = (e: React.MouseEvent) => {
-      e.stopPropagation()
-      updateUserSitesMutation.mutate({
-        userId: user.id,
-        managed_site_ids: selectedIds
-      }, {
-        onSuccess: () => {
-          setIsOpen(false)
-          toast.success(scT("sync"))
-          refetchUsers()
-        }
-      })
-    }
-
-    const toggleId = (id: number) => {
-      setSelectedIds(prev =>
-        prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-      )
-    }
-
-    return (
-      <TableCell
-        className={cn(
-          "relative group/cell p-0",
-          user.role !== "admin" as const && "cursor-pointer hover:bg-muted/50 transition-colors"
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {user.role === "admin" as const || user.role === "tenant_admin" as const ? (
-          <div className="w-full h-full px-4 py-3 min-h-[50px] flex flex-wrap gap-1 items-center relative pr-8">
-            <span className="text-xs text-muted-foreground">
-              {user.role === "admin" as const ? rolesT("allPlatform") : (isCommunity ? rolesT("allSites") : rolesT("allOrg"))}
-            </span>
-          </div>
-        ) : (
-          <Popover open={isOpen} onOpenChange={setIsOpen}>
-            <PopoverTrigger asChild>
-              <div className="w-full h-full px-4 py-3 min-h-[50px] flex flex-wrap gap-1 items-center relative pr-8">
-                {user.managed_site_ids && user.managed_site_ids.length > 0 ? (
-                  user.managed_site_ids.map((siteId: number) => {
-                    const site = sitesMap.get(siteId)
-                    if (!site) return null
-                    return (
-                      <Badge key={siteId} variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background">
-                        {site.name}
-                      </Badge>
-                    )
-                  })
-                ) : (
-                  <span className="text-xs text-muted-foreground group-hover/cell:text-primary transition-colors">{scT("clickToAssign")}</span>
-                )}
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/cell:opacity-100 transition-opacity">
-                  <ChevronLeft className="h-4 w-4 text-muted-foreground rotate-180" />
-                </span>
-              </div>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-0 overflow-hidden" align="start">
-              <div className="p-3 border-b border-slate-100 bg-slate-50/50">
-                <h4 className="font-semibold text-xs text-slate-900">{scT("assignSites")}</h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">{scT("assignDesc")}</p>
-              </div>
-              <div className="max-h-[240px] overflow-y-auto p-1.5 custom-scrollbar">
-                {sitesList?.length === 0 ? (
-                  <div className="text-center text-[11px] text-muted-foreground py-6">{scT("noSites")}</div>
-                ) : (
-                  sitesList?.map((site: Site) => (
-                    <div
-                      key={site.id}
-                      className={cn(
-                        "flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all",
-                        selectedIds.includes(site.id) ? "bg-primary/5 text-primary" : "hover:bg-slate-50"
-                      )}
-                      onClick={() => toggleId(site.id)}
-                    >
-                      <div className={cn(
-                        "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
-                        selectedIds.includes(site.id) ? "bg-primary border-primary text-primary-foreground" : "border-slate-300 bg-white"
-                      )}>
-                        {selectedIds.includes(site.id) && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[11px] font-bold truncate">{site.name}</div>
-                        <div className="text-[9px] opacity-60 truncate">{site.slug || (isCommunity ? "" : scT("noSlug"))}</div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-              <div className="p-2 border-t border-slate-100 flex items-center justify-end gap-2 bg-slate-50/30">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-[10px] text-slate-500 hover:text-slate-900"
-                  onClick={() => {
-                    setSelectedIds(user.managed_site_ids || [])
-                    setIsOpen(false)
-                  }}
-                >
-                  {commonT("cancel")}
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-7 px-3 text-[10px]"
-                  onClick={handleSave}
-                  disabled={updateUserSitesMutation.isPending}
-                >
-                  {updateUserSitesMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : scT("sync")}
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
-      </TableCell>
-    )
-  }
-
   return (
     <div key="list" className="animate-in fade-in slide-in-from-left-4 duration-300">
       <div className="space-y-6">
@@ -448,7 +294,14 @@ export function GlobalUsers() {
                               user.role === "site_admin" as const ? t("roles.siteAdmin") : t("roles.unknown")}
                         </Badge>
                       </TableCell>
-                      <UserSitesCell user={user} />
+                      <UserSitesCell
+                        user={user}
+                        sitesMap={sitesMap}
+                        sitesList={sitesList}
+                        isCommunity={isCommunity}
+                        updateUserSitesMutation={updateUserSitesMutation}
+                        refetchUsers={refetchUsers}
+                      />
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           <span className={cn(
@@ -469,89 +322,15 @@ export function GlobalUsers() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right pr-6">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon-sm" className="hover:bg-slate-100">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56 p-1.5">
-                            <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-widest">{t("actions.label")}</DropdownMenuLabel>
-                            
-                            {isSystemAdmin && (
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger className="flex items-center gap-2 rounded-xl px-2 py-2">
-                                  <Shield className="h-4 w-4 opacity-70" />
-                                  <span className="text-sm font-medium">{t("actions.changeRole")}</span>
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuPortal>
-                                  <DropdownMenuSubContent className="w-48 p-1">
-                                    {(healthData?.edition !== "community") && (
-                                       <DropdownMenuItem 
-                                        className="flex items-center justify-between rounded-xl px-3 py-2"
-                                        onClick={() => updateRole(user.id, "admin" as const)}
-                                       >
-                                         <span className="text-sm font-medium">{t("roles.sysAdmin")}</span>
-                                         {user.role === "admin" as const && <Check className="h-4 w-4 text-primary" />}
-                                       </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuItem 
-                                      className="flex items-center justify-between rounded-xl px-3 py-2"
-                                      onClick={() => updateRole(user.id, "tenant_admin" as const)}
-                                    >
-                                      <span className="text-sm font-medium">{t("roles.orgAdmin")}</span>
-                                      {user.role === "tenant_admin" as const && <Check className="h-4 w-4 text-primary" />}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      className="flex items-center justify-between rounded-xl px-3 py-2"
-                                      onClick={() => updateRole(user.id, "site_admin" as const)}
-                                    >
-                                      <span className="text-sm font-medium">{t("roles.siteAdmin")}</span>
-                                      {user.role === "site_admin" as const && <Check className="h-4 w-4 text-primary" />}
-                                    </DropdownMenuItem>
-                                  </DropdownMenuSubContent>
-                                </DropdownMenuPortal>
-                              </DropdownMenuSub>
-                            )}
-
-                            <DropdownMenuItem 
-                              className="flex items-center gap-2 rounded-xl px-2 py-2 cursor-pointer"
-                              onClick={() => handleResetPassword(user.id, user.name, user.email)}
-                            >
-                              <KeyRound className="h-4 w-4 opacity-70 text-amber-500" />
-                              <span className="text-sm font-medium">{t("actions.resetPassword")}</span>
-                            </DropdownMenuItem>
-
-                            <DropdownMenuSeparator className="my-1.5 opacity-40" />
-
-                            {user.status === "active" as const ? (
-                              <DropdownMenuItem 
-                                className="flex items-center gap-2 rounded-xl px-2 py-2 text-slate-500 hover:text-slate-700 cursor-pointer"
-                                onClick={() => updateStatus(user.id, "inactive" as const, user.name)}
-                              >
-                                <Slash className="h-4 w-4 opacity-70" />
-                                <span className="text-sm font-medium">{t("actions.disableAccount")}</span>
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem 
-                                className="flex items-center gap-2 rounded-xl px-2 py-2 text-emerald-600 hover:text-emerald-700 cursor-pointer"
-                                onClick={() => updateStatus(user.id, "active" as const, user.name)}
-                              >
-                                <Check className="h-4 w-4 opacity-70" />
-                                <span className="text-sm font-medium">{t("actions.enableAccount")}</span>
-                              </DropdownMenuItem>
-                            )}
-                            
-                            <DropdownMenuSeparator className="my-1.5 opacity-40" />
-                            <DropdownMenuItem 
-                              className="flex items-center gap-2 rounded-xl px-2 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
-                              onClick={() => handleDeleteUser(user.id, user.name)}
-                            >
-                              <Trash2 className="h-4 w-4 opacity-70" />
-                              <span className="text-sm font-medium">{t("actions.deleteUser")}</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <UserRowActions
+                          user={user}
+                          isSystemAdmin={isSystemAdmin}
+                          canAssignSysAdmin={healthData?.edition !== "community"}
+                          onUpdateRole={updateRole}
+                          onResetPassword={handleResetPassword}
+                          onUpdateStatus={updateStatus}
+                          onDeleteUser={handleDeleteUser}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

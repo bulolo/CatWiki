@@ -15,10 +15,10 @@
 import { useTranslations } from "next-intl"
 import { PlugZap } from "lucide-react"
 import { useSettings } from "@/contexts/SettingsContext"
-import { SettingsTabId } from "@/types/settings"
+import { ModelType } from "@/types/settings"
 
 interface PlatformModeViewProps {
-  type: SettingsTabId
+  type: ModelType
 }
 
 export function PlatformModeView({ type }: PlatformModeViewProps) {
@@ -37,10 +37,8 @@ export function PlatformModeView({ type }: PlatformModeViewProps) {
         </p>
       </div>
 
-      {/* @ts-ignore */}
       {platformDefaults?.[type]?.model && (
         <div className="inline-block bg-white/60 px-3 py-1 rounded text-xs text-blue-800 border border-blue-100">
-          {/* @ts-ignore */}
           {t("currentModel")} <span className="font-mono font-semibold">{platformDefaults[type].model}</span>
         </div>
       )}

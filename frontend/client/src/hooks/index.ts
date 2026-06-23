@@ -24,4 +24,7 @@ export { useHealth } from "./useHealth"
 export { useChatSessions } from "./useChatSessions"
 export { useChatAutoScroll } from "./useChatAutoScroll"
 export { useToolCallState } from "./useToolCallState"
+export { useDebouncedValue } from "./useDebouncedValue"
+export { useChatInput } from "./useChatInput"
+export { useClickOutside } from "./useClickOutside"
 

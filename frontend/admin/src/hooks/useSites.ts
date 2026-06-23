@@ -23,7 +23,7 @@
 import { useQueryClient } from "@tanstack/react-query"
 import { createAdminSite, deleteAdminSite, getAdminSiteBySlug, getGetAdminSiteBySlugQueryKey, getListAdminSitesQueryKey, updateAdminSite, useGetAdminSite, useGetAdminSiteBySlug, useListAdminSites } from "@/lib/sdk/admin-sites"
 import type { SiteCreate, SiteUpdate } from "@/lib/sdk/sdk.schemas"
-import { isAuthenticated } from "@/lib/auth"
+import { useIsAuthenticated } from "@/lib/auth-store"
 import { useAdminMutation } from "./useAdminMutation"
 import { STALE_TIME } from "@/lib/react-query"
 
@@ -32,11 +32,12 @@ import { STALE_TIME } from "@/lib/react-query"
  */
 export function useSitesList(params: { page?: number; size?: number; status?: string } = {}) {
   const { page = 1, size = 100, status } = params
+  const isAuthed = useIsAuthenticated()
   return useListAdminSites(
     { page, size, status },
     {
       query: {
-        enabled: isAuthenticated(),
+        enabled: isAuthed,
         staleTime: STALE_TIME.LONG,
         gcTime: 30 * 60 * 1000,
         select: (data) => data?.list ?? [],
@@ -49,9 +50,10 @@ export function useSitesList(params: { page?: number; size?: number; status?: st
  * 通过 slug 获取站点详情
  */
 export function useSiteBySlug(slug: string | undefined) {
+  const isAuthed = useIsAuthenticated()
   return useGetAdminSiteBySlug(slug ?? "", {
     query: {
-      enabled: !!slug && isAuthenticated(),
+      enabled: !!slug && isAuthed,
       staleTime: STALE_TIME.MEDIUM,
       retry: 2,
     },
@@ -62,9 +64,10 @@ export function useSiteBySlug(slug: string | undefined) {
  * 通过 ID 获取站点详情
  */
 export function useSiteById(id: number | undefined) {
+  const isAuthed = useIsAuthenticated()
   return useGetAdminSite(id ?? 0, {
     query: {
-      enabled: !!id && isAuthenticated(),
+      enabled: !!id && isAuthed,
       staleTime: STALE_TIME.MEDIUM,
     },
   })

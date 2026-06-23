@@ -56,6 +56,28 @@ const TOKEN_EXPIRES_MS = TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000
 // Cookie 配置
 const COOKIE_EXPIRES_DAYS = 7
 
+// ==================== 变更通知 (pub/sub) ====================
+// 认证状态存于 localStorage，本身不具响应式。这里提供一个轻量订阅机制，
+// 让 React 层（auth-store.ts 的 useSyncExternalStore）能在登录/登出/切换租户
+// 时及时重渲染，而不必在每次 render 里同步读取 localStorage。
+// 保持本文件 React-free —— 仅暴露 subscribe/emit，由 auth-store 适配为 hook。
+
+type AuthListener = () => void
+const authListeners = new Set<AuthListener>()
+
+/** 订阅认证状态变更，返回取消订阅函数。 */
+export function subscribeAuthChange(listener: AuthListener): () => void {
+  authListeners.add(listener)
+  return () => {
+    authListeners.delete(listener)
+  }
+}
+
+/** 广播认证状态变更（token / 用户信息 / 租户选择 发生写入时调用）。 */
+function emitAuthChange() {
+  for (const listener of authListeners) listener()
+}
+
 // ==================== Token 管理 ====================
 
 /**
@@ -102,6 +124,7 @@ function setToken(token: string, expiresInMs: number = TOKEN_EXPIRES_MS) {
 
     // 同步设置认证状态 Cookie
     setAuthCookie(true)
+    emitAuthChange()
   } catch (error) {
     logger.error("Failed to set token:", error)
   }
@@ -113,6 +136,7 @@ function setToken(token: string, expiresInMs: number = TOKEN_EXPIRES_MS) {
 function clearToken() {
   if (typeof window === "undefined") return
   localStorage.removeItem(TOKEN_KEY)
+  emitAuthChange()
 }
 
 // ==================== Cookie 管理 ====================
@@ -185,6 +209,7 @@ function setUserInfo(user: UserResponse) {
 
   try {
     localStorage.setItem(USER_INFO_KEY, JSON.stringify(user))
+    emitAuthChange()
   } catch (error) {
     logger.error("Failed to set user info:", error)
   }
@@ -196,6 +221,7 @@ function setUserInfo(user: UserResponse) {
 function clearUserInfo() {
   if (typeof window === "undefined") return
   localStorage.removeItem(USER_INFO_KEY)
+  emitAuthChange()
 }
 
 // ==================== 站点标识管理 ====================
@@ -237,6 +263,7 @@ export function setSelectedTenantId(id: number | null) {
   } else {
     localStorage.setItem(SELECTED_TENANT_ID_KEY, id.toString())
   }
+  emitAuthChange()
 }
 
 // ==================== 认证状态管理 ====================

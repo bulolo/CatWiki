@@ -17,14 +17,13 @@
 import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, ImageUpload, Input, Textarea } from "@/components/ui"
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@/components/ui"
+import { ImageUpload } from "@/components/common"
 import { STALE_TIME } from "@/lib/react-query"
 import {
   ChevronLeft,
   Save,
-  Globe,
   Settings,
-  Layout,
   Palette,
   ShieldCheck,
   Users,

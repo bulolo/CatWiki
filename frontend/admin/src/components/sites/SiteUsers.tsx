@@ -16,7 +16,7 @@
 
 import { useTranslations, useLocale } from "next-intl"
 import { useState } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui"
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, useConfirm } from "@/components/ui"
 import { cn } from "@/lib/utils"
 import {
@@ -25,7 +25,6 @@ import {
   Shield,
   MoreHorizontal,
   Check,
-  PlusCircle,
   Loader2,
   KeyRound,
   Trash2,
@@ -38,35 +37,25 @@ import { UserRole, UserStatus, type UserListItem } from "@/lib/sdk/sdk.schemas"
 
 import {
   useUsers,
-  useInviteUser,
   useUpdateUserRole,
   useUpdateUserSites,
   useUpdateUserStatus,
   useResetUserPassword,
-  useDeleteUser,
   useDebounce
 } from "@/hooks"
-import { useSite } from "@/contexts/SiteContext"
-import { getUserInfo } from "@/lib/auth"
+import { useCurrentUser } from "@/lib/auth-store"
+import { parsePasswordResponse } from "@/lib/user-response-parsers"
 
 interface SiteUsersProps {
   siteId: number
   siteName: string
 }
 
-function parsePasswordResponse(data: unknown): { password: string } | null {
-  if (!data || typeof data !== "object") {
-    return null
-  }
-  const password = (data as { password?: unknown }).password
-  return typeof password === "string" ? { password } : null
-}
-
 export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
   const t = useTranslations("SiteUsersPanel")
   const confirm = useConfirm()
   const locale = useLocale()
-  const [page, setPage] = useState(1)
+  const [page] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
   const debouncedSearchTerm = useDebounce(searchTerm, 500)
   const [isCreating, setIsCreating] = useState(false)
@@ -80,17 +69,14 @@ export function SiteUsers({ siteId, siteName }: SiteUsersProps) {
   })
 
   // 所有用户 hook
-  const inviteUserMutation = useInviteUser()
   const updateUserRoleMutation = useUpdateUserRole()
   const updateUserSitesMutation = useUpdateUserSites()
   const updateUserStatusMutation = useUpdateUserStatus()
   const resetPasswordMutation = useResetUserPassword()
-  const deleteUserMutation = useDeleteUser()
 
   const users = usersData?.users || []
-  const total = usersData?.total || 0
 
-  const currentUser = getUserInfo()
+  const currentUser = useCurrentUser()
   const isSystemAdmin = currentUser?.role === "admin" as const
 
   // 处理移除站点权限（如果移除当前站点，用户就不再出现在这个列表里了，类似于删除）

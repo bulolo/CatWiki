@@ -19,11 +19,11 @@
 
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react"
 import { toast } from "sonner"
 import { useTranslations } from "next-intl"
 import { useAIConfig, useUpdateAIConfig } from "@/hooks"
-import type { AIConfigResponse, AIConfigUpdate, ModelConfig } from "@/lib/sdk/sdk.schemas"
+import type { AIConfigResponse, AIConfigUpdate } from "@/lib/sdk/sdk.schemas"
 import { type AIConfigs, initialConfigs, MODEL_TYPES } from "@/types/settings"
 
 type RuntimeModelType = typeof MODEL_TYPES[number]
@@ -124,7 +124,8 @@ export function SettingsProvider({ children, scope = "tenant" }: { children: Rea
   const updateAIConfigMutation = useUpdateAIConfig(scope)
 
   // 统一的状态更新逻辑：确保初始加载和保存后两条路径一致。
-  const updateStateFromResponse = (data: AIConfigResponse | null | undefined) => {
+  // 仅依赖 setState（稳定引用）与模块级常量，故 useCallback 空依赖即可保持稳定。
+  const updateStateFromResponse = useCallback((data: AIConfigResponse | null | undefined) => {
     if (!data) return
 
     // 1. 更新模型配置 (configs 只包含 chat/embedding 等项目)
@@ -156,16 +157,16 @@ export function SettingsProvider({ children, scope = "tenant" }: { children: Rea
     } else {
       setPlatformDefaults(null)
     }
-  }
+  }, [])
 
   // 当配置数据加载完成时，同步到本地状态
   useEffect(() => {
     if (aiConfigData) {
       updateStateFromResponse(aiConfigData)
     }
-  }, [aiConfigData])
+  }, [aiConfigData, updateStateFromResponse])
 
-  const handleUpdate = (type: RuntimeModelType, field: string, value: PrimitiveConfigValue) => {
+  const handleUpdate = useCallback((type: RuntimeModelType, field: string, value: PrimitiveConfigValue) => {
     setConfigs(prev => {
       const newConfigs = { ...prev }
       const modelConfig = prev[type]
@@ -173,9 +174,9 @@ export function SettingsProvider({ children, scope = "tenant" }: { children: Rea
       newConfigs[type] = updatedConfig
       return newConfigs
     })
-  }
+  }, [])
 
-  const handleSave = async (modelType?: RuntimeModelType, overrides?: Partial<Record<string, PrimitiveConfigValue>>) => {
+  const handleSave = useCallback(async (modelType?: RuntimeModelType, overrides?: Partial<Record<string, PrimitiveConfigValue>>) => {
     // 构造更新 Payload
     let aiConfig: AIConfigUpdate = {}
 
@@ -202,16 +203,16 @@ export function SettingsProvider({ children, scope = "tenant" }: { children: Rea
       // 错误由 useAdminMutation 统一处理
       throw error
     }
-  }
+  }, [configs, updateAIConfigMutation, updateStateFromResponse, t])
 
-  const revertToSavedConfig = (modelType: RuntimeModelType) => {
+  const revertToSavedConfig = useCallback((modelType: RuntimeModelType) => {
     setConfigs(prev => ({
       ...prev,
       [modelType]: deepMerge(initialConfigs[modelType], savedConfigs[modelType]),
     }))
-  }
+  }, [savedConfigs])
 
-  const isAiDirty = (() => {
+  const isAiDirty = useMemo(() => {
     const normalize = (obj: unknown): string => {
       if (obj === null || obj === undefined) return ""
       if (typeof obj !== "object") return String(obj)
@@ -226,9 +227,9 @@ export function SettingsProvider({ children, scope = "tenant" }: { children: Rea
     const currentStr = normalize({ chat: configs.chat, embedding: configs.embedding, rerank: configs.rerank, bot_config: configs.bot_config })
     const savedStr = normalize({ chat: savedConfigs.chat, embedding: savedConfigs.embedding, rerank: savedConfigs.rerank, bot_config: savedConfigs.bot_config })
     return currentStr !== savedStr
-  })()
+  }, [configs, savedConfigs])
 
-  const isModelConfigured = (modelType: RuntimeModelType) => {
+  const isModelConfigured = useCallback((modelType: RuntimeModelType) => {
     const config = configs[modelType]
 
     // 如果使用了平台资源或正在使用平台回退，则视为已配置
@@ -238,9 +239,9 @@ export function SettingsProvider({ children, scope = "tenant" }: { children: Rea
 
     // 自定义模式下必须填写所有必填项
     return !!(config.provider && config.model && config.api_key && config.base_url)
-  }
+  }, [configs, platformFallback])
 
-  const value: SettingsContextType = {
+  const value: SettingsContextType = useMemo(() => ({
     configs,
     savedConfigs,
     isLoading,
@@ -252,7 +253,7 @@ export function SettingsProvider({ children, scope = "tenant" }: { children: Rea
     isModelConfigured,
     platformFallback,
     platformDefaults
-  }
+  }), [configs, savedConfigs, isLoading, isAiDirty, scope, handleUpdate, handleSave, revertToSavedConfig, isModelConfigured, platformFallback, platformDefaults])
 
   return (
     <SettingsContext.Provider value={value}>

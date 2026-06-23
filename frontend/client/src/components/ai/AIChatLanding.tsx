@@ -18,7 +18,7 @@ import { useState, useCallback } from "react"
 import { Sparkles, Bot, ArrowRight, BookOpen, Plus, History as HistoryIcon } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui"
-import { useAIChat, useChatAutoScroll, useToolCallState } from "@/hooks"
+import { useAIChat, useChatAutoScroll, useToolCallState, useChatInput } from "@/hooks"
 import { CHAT_SESSIONS_KEY } from "@/hooks/useChatSessions"
 import { MessageList } from "./MessageList"
 import { ToolResultDialog } from "./ToolResultDialog"
@@ -46,7 +46,6 @@ const QUICK_QUESTION_ICONS = [
 export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, tenantSlug, siteSlug, quickQuestions: propQuickQuestions, allSites }: AIChatLandingProps) {
   const t = useTranslations("AIChatLanding")
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
-  const [input, setInput] = useState("")
   const queryClient = useQueryClient()
 
   const onMessageSent = useCallback(
@@ -62,17 +61,12 @@ export function AIChatLanding({ siteName = "CatWiki", siteId, tenantId, tenantSl
   })
   const chatContainerRef = useChatAutoScroll(messages)
   const { selectedToolCall, setSelectedToolCall, handleResultFetched } = useToolCallState(setMessages)
+  const { input, setInput, send: handleSend } = useChatInput(sendMessage, isLoading)
 
   const quickQuestions = propQuickQuestions?.slice(0, 3).map((q, idx) => ({
     text: q.text,
     icon: QUICK_QUESTION_ICONS[idx],
   })) ?? []
-
-  const handleSend = (text: string) => {
-    if (!text.trim() || isLoading) return
-    sendMessage(text)
-    setInput("")
-  }
 
   return (
     <>

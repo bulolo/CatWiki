@@ -22,7 +22,7 @@
 import { useQueryClient } from "@tanstack/react-query"
 import { aiGenerateDocumentFields, batchVectorizeAdminDocuments, createAdminDocument, deleteAdminDocument, getListAdminDocumentsQueryKey, removeAdminDocumentVector, updateAdminDocument, useGetAdminDocument, useListAdminDocuments, vectorizeAdminDocument } from "@/lib/sdk/admin-documents"
 import { VectorStatus, type Document, type DocumentCreate, type DocumentUpdate, type ListAdminDocumentsParams } from "@/lib/sdk/sdk.schemas"
-import { isAuthenticated } from "@/lib/auth"
+import { useIsAuthenticated } from "@/lib/auth-store"
 import { useAdminMutation } from "./useAdminMutation"
 import { STALE_TIME } from "@/lib/react-query"
 
@@ -44,6 +44,7 @@ interface UseDocumentsParams {
  */
 export function useDocuments(params: UseDocumentsParams) {
   const { siteId, page = 1, size = 20, ...filters } = params
+  const isAuthed = useIsAuthenticated()
 
   const apiParams: ListAdminDocumentsParams = {
     site_id: siteId,
@@ -68,7 +69,7 @@ export function useDocuments(params: UseDocumentsParams) {
 
   return useListAdminDocuments(apiParams, {
     query: {
-      enabled: !!siteId && isAuthenticated(),
+      enabled: !!siteId && isAuthed,
       staleTime: STALE_TIME.NONE,
       gcTime: 5 * 60 * 1000,
       select: (data) => ({
@@ -90,9 +91,10 @@ export function useDocuments(params: UseDocumentsParams) {
  * 获取单个文档详情
  */
 export function useDocument(id: number | undefined) {
+  const isAuthed = useIsAuthenticated()
   return useGetAdminDocument(id ?? 0, {
     query: {
-      enabled: !!id && isAuthenticated(),
+      enabled: !!id && isAuthed,
       staleTime: STALE_TIME.MEDIUM,
     },
   })

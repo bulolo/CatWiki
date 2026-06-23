@@ -17,7 +17,6 @@ import { useState, useMemo } from "react"
 import { useTranslations } from "next-intl"
 import {
   ChevronDown,
-  Check,
   PlusCircle,
   LayoutGrid,
   Globe,
@@ -26,23 +25,21 @@ import {
 import { cn } from "@/lib/utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui"
 import { Button } from "@/components/ui"
-import Link from "next/link"
 import Image from "next/image"
-import { useRouter, usePathname, useParams, useSearchParams } from "next/navigation"
+import { useRouter, usePathname, useParams } from "next/navigation"
 import type { Site } from "@/lib/sdk/sdk.schemas"
-import { UserRole } from "@/lib/sdk/sdk.schemas"
-import { setLastSiteSlug, getUserInfo } from "@/lib/auth"
+import { setLastSiteSlug } from "@/lib/auth"
+import { useCurrentUser } from "@/lib/auth-store"
 import { useSite } from "@/contexts/SiteContext"
 
 function SiteSwitcherComponent() {
   const t = useTranslations("SiteSwitcher")
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const params = useParams()
   const [open, setOpen] = useState(false)
   // 检查权限
-  const currentUser = typeof window !== "undefined" ? getUserInfo() : null
+  const currentUser = useCurrentUser()
   const canManageSites = currentUser?.role === "admin" as const || currentUser?.role === "tenant_admin" as const || currentUser?.role === "site_admin" as const
 
   // 使用 SiteContext 获取站点列表

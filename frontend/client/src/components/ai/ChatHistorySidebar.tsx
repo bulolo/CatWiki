@@ -27,6 +27,7 @@ import {
 } from "@/components/ui"
 import { cn } from "@/lib/utils"
 import { useChatSessions } from "@/hooks/useChatSessions"
+import { useDebouncedValue } from "@/hooks"
 import { useTranslations, useLocale } from "next-intl"
 
 type PendingConfirm =
@@ -56,14 +57,12 @@ export function ChatHistorySidebar({
   const { sessions, isLoading, deleteSession, clearAllSessions, searchSessions } = useChatSessions({ siteId })
 
   const [searchQuery, setSearchQuery] = useState("")
+  const debouncedQuery = useDebouncedValue(searchQuery, 300)
 
-  // 防抖搜索：keyword 变化驱动 useChatSessions 内的 useQuery 自动重取
+  // 防抖搜索：debouncedQuery 变化驱动 useChatSessions 内的 useQuery 自动重取
   useEffect(() => {
-    const timer = setTimeout(() => {
-      searchSessions(searchQuery)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [searchQuery, searchSessions])
+    searchSessions(debouncedQuery)
+  }, [debouncedQuery, searchSessions])
 
   const handleSelect = (threadId: string) => {
     onSelectSession(threadId)

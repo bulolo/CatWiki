@@ -14,7 +14,7 @@
 
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -27,7 +27,7 @@ import {
 } from "@/components/ui"
 import { Send, Bot } from "lucide-react"
 import type { ClientSite } from "@/lib/sdk/sdk.schemas"
-import { useAIChat, useChatAutoScroll, useToolCallState } from "@/hooks"
+import { useAIChat, useChatAutoScroll, useToolCallState, useChatInput } from "@/hooks"
 import { MessageList } from "./MessageList"
 import { ToolResultDialog } from "./ToolResultDialog"
 import { useTranslations } from "next-intl"
@@ -57,7 +57,7 @@ export function AIChat({ open, onOpenChange, initialQuery, siteId, tenantId, ten
     siteSlug,
   })
 
-  const [input, setInput] = useState("")
+  const { input, setInput, handleSubmit } = useChatInput(sendMessage, isLoading)
   const scrollAreaRef = useChatAutoScroll(messages)
   const processedQueryRef = useRef<string | null>(null)
   const { selectedToolCall, setSelectedToolCall, handleResultFetched } = useToolCallState(setMessages)
@@ -72,13 +72,6 @@ export function AIChat({ open, onOpenChange, initialQuery, siteId, tenantId, ten
       processedQueryRef.current = null
     }
   }, [open, initialQuery, sendMessage])
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || isLoading) return
-    sendMessage(input)
-    setInput("")
-  }
 
   return (
     <>

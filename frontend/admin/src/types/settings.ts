@@ -19,7 +19,7 @@
  *    均从 SDK 导入，禁止重复定义
  */
 
-import { type ModelConfig, type DocProcessorConfig as SdkDocProcessorConfig, DocProcessorType, ModelConfig as ModelConfigEnum } from "@/lib/sdk/sdk.schemas"
+import { type ModelConfig, type DocProcessorConfig as SdkDocProcessorConfig, DocProcessorType } from "@/lib/sdk/sdk.schemas"
 
 // ==================== 从 SDK 重新导出 ====================
 export type { ModelConfig }
@@ -97,6 +97,9 @@ export type AIConfigs = {
 export type SettingsTabId = "models" | "chat" | "embedding" | "rerank" | "security" | "users" | "sites"
 
 export const MODEL_TYPES = ["chat", "embedding", "rerank"] as const
+
+/** AIConfigs 中的模型类型键（chat / embedding / rerank），用于按类型索引模型配置。 */
+export type ModelType = (typeof MODEL_TYPES)[number]
 
 export const initialConfigs: AIConfigs = {
   chat: {

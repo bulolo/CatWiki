@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui"
 import { useTranslations } from "next-intl"
 import { Settings, Globe } from "lucide-react"
 import { useSettings } from "@/contexts/SettingsContext"
-import { type SettingsTabId } from "@/types/settings"
+import { type ModelType, type SettingsTabId } from "@/types/settings"
 import { MODEL_TYPES_LIST } from "./constants"
 
 interface ManualModeConfigProps {
@@ -47,8 +47,7 @@ export function ManualModeConfig({ onSelectModel, activeTab }: ManualModeConfigP
         </p>
         <div className="grid grid-cols-2 gap-4">
           {MODEL_TYPES_LIST.map((item) => {
-            const type = item.id as "chat" | "embedding" | "rerank"
-            // @ts-ignore
+            const type = item.id as ModelType
             const conf = savedConfigs[type]
             const isPlatform = platformFallback[type] || conf?.mode === "platform"
 

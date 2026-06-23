@@ -14,13 +14,12 @@
 
 "use client"
 
-import { useState } from "react"
-import { Bot, X, Send, User } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useAIChat, useChatAutoScroll } from "@/hooks"
+import { Bot, X, Send } from "lucide-react"
+import { cn, hexToHslString } from "@/lib/utils"
+import { useAIChat, useChatAutoScroll, useToolCallState, useChatInput } from "@/hooks"
 import { useTranslations } from "next-intl"
-import { Streamdown } from "streamdown"
-import { MessageSources } from "./MessageSources"
+import { MessageList } from "./MessageList"
+import { ToolResultDialog } from "./ToolResultDialog"
 import { ScrollArea } from "@/components/ui"
 import type { ClientSite } from "@/lib/sdk/sdk.schemas"
 
@@ -48,7 +47,7 @@ export function ChatWidget({
   allSites,
 }: ChatWidgetProps) {
   const t = useTranslations("ChatWidget")
-  const { messages, isLoading, sendMessage } = useAIChat({
+  const { messages, isLoading, sendMessage, threadId, setMessages, submitFeedback } = useAIChat({
     initialMessages: [
       {
         id: "welcome",
@@ -58,18 +57,17 @@ export function ChatWidget({
     ],
     selectedSiteId: siteId,
   })
-  const [input, setInput] = useState("")
+  const { input, setInput, send } = useChatInput(sendMessage, isLoading)
   const scrollAreaRef = useChatAutoScroll(messages)
-
-  const handleSend = () => {
-    if (!input.trim() || isLoading) return
-    sendMessage(input)
-    setInput("")
-  }
+  const { selectedToolCall, setSelectedToolCall, handleResultFetched } = useToolCallState(setMessages)
 
   const bgColor = primaryColor || FALLBACK_PRIMARY_COLOR
+  // 把站点品牌色注入 --primary，让复用的 MessageBubble（bg-primary）跟随品牌色
+  const brandHsl = hexToHslString(bgColor)
+  const brandStyle = brandHsl ? ({ "--primary": brandHsl } as React.CSSProperties) : undefined
 
   return (
+    <>
     <div className={cn(
       "fixed inset-0 flex flex-col justify-end p-4 pointer-events-none",
       position === "left" ? "items-start" : "items-end"
@@ -110,48 +108,19 @@ export function ChatWidget({
 
           {/* Messages Area */}
           <ScrollArea ref={scrollAreaRef} className="flex-1 bg-gradient-to-b from-slate-50/50 to-white">
-            <div className="p-5 space-y-6">
+            <div className="p-5 space-y-6" style={brandStyle}>
               <div className="text-center pb-2">
                 <span className="px-3 py-1 bg-slate-100/80 rounded-full text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t("today")}</span>
               </div>
 
-              {messages.map((msg) => (
-                <div key={msg.id} className={cn(
-                  "flex gap-3 max-w-[90%] group",
-                  msg.role === "user" ? "ml-auto flex-row-reverse" : "animate-in slide-in-from-left-2 duration-300"
-                )}>
-                  <div className={cn(
-                    "w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-white shadow-sm transition-transform group-hover:scale-110",
-                    msg.role === "assistant" ? "bg-slate-800" : ""
-                  )} style={msg.role === "assistant" ? { backgroundColor: bgColor } : { backgroundColor: "#1e293b" }}>
-                    {msg.role === "assistant" ? <Bot size={16} /> : <User size={16} />}
-                  </div>
-                  <div className={cn(
-                    "p-4 rounded-[20px] text-[13px] leading-relaxed relative",
-                    msg.role === "assistant"
-                      ? "bg-white text-slate-700 rounded-tl-none border border-slate-100 shadow-[0_2px_10_rgba(0,0,0,0.02)]"
-                      : "bg-slate-800 text-white rounded-tr-none shadow-md"
-                  )} style={msg.role === "user" ? { backgroundColor: bgColor } : {}}>
-                    <Streamdown isAnimating={isLoading && msg.role === "assistant"}>
-                      {msg.content}
-                    </Streamdown>
-                    <MessageSources sources={msg.sources} allSites={allSites} />
-                  </div>
-                </div>
-              ))}
-
-              {isLoading && messages[messages.length - 1]?.role === "user" && (
-                <div className="flex gap-3 animate-pulse">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-slate-200">
-                    <Bot size={16} className="text-slate-400" />
-                  </div>
-                  <div className="bg-white border border-slate-100 rounded-[20px] px-4 py-3 w-20 flex gap-1 items-center">
-                    <div className="w-1 h-1 bg-slate-300 rounded-full animate-bounce" />
-                    <div className="w-1 h-1 bg-slate-300 rounded-full animate-bounce delay-75" />
-                    <div className="w-1 h-1 bg-slate-300 rounded-full animate-bounce delay-150" />
-                  </div>
-                </div>
-              )}
+              <MessageList
+                messages={messages}
+                isLoading={isLoading}
+                allSites={allSites}
+                onToolCallClick={setSelectedToolCall}
+                onFeedback={submitFeedback}
+                variant="compact"
+              />
             </div>
           </ScrollArea>
 
@@ -161,12 +130,12 @@ export function ChatWidget({
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                onKeyDown={(e) => e.key === "Enter" && send()}
                 placeholder={t("inputPlaceholder")}
                 className="flex-1 bg-transparent border-none py-2 text-[13px] text-slate-800 placeholder:text-slate-400 focus:outline-none"
               />
               <button
-                onClick={handleSend}
+                onClick={() => send()}
                 disabled={!input.trim() || isLoading}
                 className={cn(
                   "w-10 h-10 text-white rounded-xl shadow-lg flex items-center justify-center transition-all",
@@ -209,5 +178,15 @@ export function ChatWidget({
         </button>
       </div>
     </div>
+
+    <ToolResultDialog
+      toolCall={selectedToolCall}
+      threadId={threadId}
+      siteId={siteId}
+      open={!!selectedToolCall}
+      onOpenChange={(open) => { if (!open) setSelectedToolCall(null) }}
+      onResultFetched={handleResultFetched}
+    />
+    </>
   )
 }

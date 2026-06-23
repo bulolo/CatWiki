@@ -1,6 +1,5 @@
 "use client"
 
-import React from "react"
 import { useTranslations } from "next-intl"
 import { useTasks } from "@/contexts/TaskContext"
 import Image from "next/image"

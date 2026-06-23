@@ -3,7 +3,7 @@
  * Do not edit manually.
  * CatWiki Client API
  * 客户端 API - 仅提供已发布内容的只读访问
- * OpenAPI spec version: 1.1.6
+ * OpenAPI spec version: 1.1.7
  */
 import {
   useQuery

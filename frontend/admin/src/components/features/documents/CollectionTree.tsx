@@ -14,7 +14,7 @@
 
 "use client"
 
-import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from "react"
+import React, { useState, useEffect, useRef, createContext, useContext } from "react"
 import { cn } from "@/lib/utils"
 import { useTranslations } from "next-intl"
 import { Button, Input, ScrollArea } from "@/components/ui"
@@ -41,6 +41,14 @@ interface DragContextType {
   setDraggedId: (id: string | null) => void
   setDragOver: (nodeId: string | null, position: "top" | "middle" | "bottom" | null) => void
   clearDragState: () => void
+  // 树级共享配置：原先逐层 prop-drilling 穿过递归 CollectionNode，现收进 context。
+  allItems: CollectionItem[]
+  selectedId?: string
+  onSelect?: (id: string | undefined) => void
+  onCreateCollection?: (parentId?: string) => void
+  onDeleteCollection?: (id: string, name: string) => void
+  onRenameCollection?: (id: string, newName: string) => void
+  onMoveCollection?: (collectionId: string, targetParentId: string | null, insertBeforeId?: string | null) => void
 }
 
 const DragContext = createContext<DragContextType | null>(null)
@@ -96,25 +104,11 @@ function CollectionNode({
   level = 0,
   parentId = null,
   siblings = [],
-  allItems,
-  selectedId,
-  onSelect,
-  onCreateCollection,
-  onDeleteCollection,
-  onRenameCollection,
-  onMoveCollection,
 }: {
   item: CollectionItem
   level?: number
   parentId?: string | null
   siblings?: CollectionItem[]
-  allItems: CollectionItem[]
-  selectedId?: string
-  onSelect?: (id: string) => void
-  onCreateCollection?: (parentId?: string) => void
-  onDeleteCollection?: (id: string, name: string) => void
-  onRenameCollection?: (id: string, newName: string) => void
-  onMoveCollection?: (collectionId: string, targetParentId: string | null, insertBeforeId?: string | null) => void
 }) {
   const dragContext = useContext(DragContext)
   const t = useTranslations("Documents")
@@ -122,7 +116,10 @@ function CollectionNode({
     throw new Error("CollectionNode must be used within DragContext")
   }
 
-  const { draggedId, dragOverNodeId, dragOverPosition, setDraggedId, setDragOver, clearDragState } = dragContext
+  const {
+    draggedId, dragOverNodeId, dragOverPosition, setDraggedId, setDragOver, clearDragState,
+    allItems, selectedId, onSelect, onCreateCollection, onDeleteCollection, onRenameCollection, onMoveCollection,
+  } = dragContext
 
   const [isExpanded, setIsExpanded] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
@@ -522,13 +519,6 @@ function CollectionNode({
               level={level + 1}
               parentId={item.id}
               siblings={item.children!}
-              allItems={allItems}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              onCreateCollection={onCreateCollection}
-              onDeleteCollection={onDeleteCollection}
-              onRenameCollection={onRenameCollection}
-              onMoveCollection={onMoveCollection}
             />
           ))}
         </div>
@@ -602,6 +592,13 @@ export function CollectionTree({
     setDraggedId,
     setDragOver,
     clearDragState,
+    allItems: items,
+    selectedId,
+    onSelect,
+    onCreateCollection,
+    onDeleteCollection,
+    onRenameCollection,
+    onMoveCollection,
   }
 
   return (
@@ -671,13 +668,6 @@ export function CollectionTree({
                   item={item}
                   parentId={null}
                   siblings={items}
-                  allItems={items}
-                  selectedId={selectedId}
-                  onSelect={onSelect}
-                  onCreateCollection={onCreateCollection}
-                  onDeleteCollection={onDeleteCollection}
-                  onRenameCollection={onRenameCollection}
-                  onMoveCollection={onMoveCollection}
                 />
               ))}
             </div>

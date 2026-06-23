@@ -15,10 +15,13 @@
 "use client"
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
-import { Search, X, Bot, FileText, Sparkles, Command, ArrowRight } from "lucide-react"
+import { Search, X, Command } from "lucide-react"
 import { type MenuItem } from "@/types"
-import { cn } from "@/lib/utils"
 import { useTranslations } from "next-intl"
+import type { SearchMode } from "./types"
+import { SearchModeTabs } from "./SearchModeTabs"
+import { SearchResultsPanel } from "./SearchResultsPanel"
+import { SearchFooter } from "./SearchFooter"
 
 interface SearchBarProps {
   items: MenuItem[]
@@ -46,7 +49,7 @@ export function SearchBar({ items, onSelect, onAskAI }: SearchBarProps) {
   const [results, setResults] = useState<MenuItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [searchMode, setSearchMode] = useState<"all" | "chat" | "articles">("all")
+  const [searchMode, setSearchMode] = useState<SearchMode>("all")
   const containerRef = useRef<HTMLDivElement>(null)
 
   // 使用 useMemo 缓存扁平化后的文章列表
@@ -116,6 +119,12 @@ export function SearchBar({ items, onSelect, onAskAI }: SearchBarProps) {
     }
   }
 
+  // 切换模式时重置高亮项：文章模式无 AI 选项，从第 1 项起，其余从第 0 项（AI 选项）起
+  const handleModeChange = (mode: SearchMode) => {
+    setSearchMode(mode)
+    setSelectedIndex(mode === "articles" ? 1 : 0)
+  }
+
   return (
     <div className="relative w-full max-w-2xl mx-auto" ref={containerRef}>
       <div className="group relative">
@@ -151,125 +160,17 @@ export function SearchBar({ items, onSelect, onAskAI }: SearchBarProps) {
 
       {isOpen && (
         <div className="absolute top-full mt-2 md:mt-3 left-0 right-0 glass-card rounded-xl md:rounded-2xl shadow-2xl z-50 overflow-hidden border border-slate-200 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[80vh] md:max-h-auto overflow-y-auto">
-          {/* 模式切换 Tabs */}
-          <div className="flex items-center gap-1 p-1 bg-slate-100/50 border-b border-slate-100 sticky top-0 z-10">
-            <button
-              onClick={() => { setSearchMode("all"); setSelectedIndex(0) }}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1 md:gap-2 py-1.5 md:py-2 text-[11px] md:text-[12px] font-medium rounded-lg md:rounded-xl transition-all",
-                searchMode === "all" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:bg-white/50"
-              )}
-            >
-              {t("tabAll")}
-            </button>
-            <button
-              onClick={() => { setSearchMode("chat"); setSelectedIndex(0) }}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1 md:gap-2 py-1.5 md:py-2 text-[11px] md:text-[12px] font-medium rounded-lg md:rounded-xl transition-all",
-                searchMode === "chat" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:bg-white/50"
-              )}
-            >
-              <Sparkles className="h-3 w-3 md:h-3.5 md:w-3.5" />
-              <span className="hidden sm:inline">{t("tabAI")}</span>
-              <span className="sm:hidden">AI</span>
-            </button>
-            <button
-              onClick={() => { setSearchMode("articles"); setSelectedIndex(1) }}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1 md:gap-2 py-1.5 md:py-2 text-[11px] md:text-[12px] font-medium rounded-lg md:rounded-xl transition-all",
-                searchMode === "articles" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:bg-white/50"
-              )}
-            >
-              <FileText className="h-3 w-3 md:h-3.5 md:w-3.5" />
-              {t("tabDoc")}
-            </button>
-          </div>
-
-          <div className="p-1.5 md:p-2">
-            {/* AI 对话选项 */}
-            {(searchMode === "all" || searchMode === "chat") && (
-              <div
-                className={cn(
-                  "flex items-center gap-2 md:gap-3 px-3 md:px-4 py-3 md:py-4 cursor-pointer rounded-lg md:rounded-xl transition-all",
-                  selectedIndex === 0 ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.01]" : "hover:bg-slate-50"
-                )}
-                onClick={handleAskAI}
-                onMouseEnter={() => setSelectedIndex(0)}
-              >
-                <div className={cn("p-1.5 md:p-2 rounded-lg shrink-0", selectedIndex === 0 ? "bg-white/20" : "bg-primary/10")}>
-                  <Sparkles className={cn("h-4 w-4 md:h-5 md:w-5", selectedIndex === 0 ? "text-white" : "text-primary")} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 md:gap-2">
-                    <span className="font-semibold text-xs md:text-sm">{t("aiSmartChat")}</span>
-                    <span className={cn("text-[9px] md:text-[10px] px-1 md:px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold",
-                      selectedIndex === 0 ? "bg-white/20 text-white" : "bg-primary/10 text-primary")}>
-                      Beta
-                    </span>
-                  </div>
-                  <p className={cn("text-[11px] md:text-xs mt-0.5 opacity-80 truncate", selectedIndex === 0 ? "text-white" : "text-slate-500")}>
-                    {t("askAI", { query })}
-                  </p>
-                </div>
-                <ArrowRight className={cn("h-4 w-4 opacity-50 shrink-0", selectedIndex === 0 ? "block" : "hidden")} />
-              </div>
-            )}
-
-            {/* 分隔线 */}
-            {searchMode === "all" && results.length > 0 && <div className="h-px bg-slate-100 my-1.5 md:my-2 mx-2" />}
-
-            {/* 文章检索结果 */}
-            {(searchMode === "all" || searchMode === "articles") && results.length > 0 && (
-              <div className="py-1">
-                <div className="px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                  {searchMode === "articles" ? t("searchResultDoc") : t("aiSearchResultDoc")}
-                </div>
-                {results.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 cursor-pointer rounded-lg md:rounded-xl transition-all mx-1",
-                      selectedIndex === index + 1 ? "bg-slate-100 text-slate-900" : "hover:bg-slate-50 text-slate-600"
-                    )}
-                    onClick={() => handleSelect(item)}
-                    onMouseEnter={() => setSelectedIndex(index + 1)}
-                  >
-                    <div className="p-1 md:p-1.5 bg-slate-200/50 rounded-lg shrink-0">
-                      <FileText className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                    </div>
-                    <span className="text-xs md:text-sm font-medium truncate">{item.title}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {query && results.length === 0 && searchMode === "articles" && (
-              <div className="p-6 md:p-8 text-center">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-100 rounded-xl md:rounded-2xl flex items-center justify-center mx-auto mb-2 md:mb-3">
-                  <Search className="h-5 w-5 md:h-6 md:w-6 text-slate-300" />
-                </div>
-                <p className="text-xs md:text-sm text-slate-500">{t("noDocFound")}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-slate-50/50 px-3 md:px-4 py-2 md:py-3 border-t border-slate-100 flex items-center justify-between">
-            <div className="hidden md:flex items-center gap-4">
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded shadow-sm text-slate-500">↑↓</kbd>
-                <span>{t("select")}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded shadow-sm text-slate-500">Enter</kbd>
-                <span>{t("confirm")}</span>
-              </div>
-            </div>
-            <div className="text-[10px] md:text-[11px] text-primary/60 font-medium flex items-center gap-1 mx-auto md:mx-0">
-              <Bot className="h-3 w-3" />
-              <span className="hidden md:inline">{searchMode === "chat" ? "AI Chat Mode" : searchMode === "articles" ? "RAG Search Mode" : "AI Powered Search"}</span>
-              <span className="md:hidden">{t("aiPowered")}</span>
-            </div>
-          </div>
+          <SearchModeTabs searchMode={searchMode} onModeChange={handleModeChange} />
+          <SearchResultsPanel
+            searchMode={searchMode}
+            query={query}
+            results={results}
+            selectedIndex={selectedIndex}
+            onAskAI={handleAskAI}
+            onSelect={handleSelect}
+            onHover={setSelectedIndex}
+          />
+          <SearchFooter searchMode={searchMode} />
         </div>
       )}
     </div>

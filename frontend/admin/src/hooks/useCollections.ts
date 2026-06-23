@@ -19,7 +19,7 @@
 import { useQueryClient } from "@tanstack/react-query"
 import { createAdminCollection, deleteAdminCollection, getGetAdminCollectionTreeQueryKey, getListAdminCollectionsQueryKey, updateAdminCollection, useGetAdminCollection, useGetAdminCollectionTree, useListAdminCollections } from "@/lib/sdk/admin-collections"
 import type { CollectionCreate, CollectionTree, CollectionUpdate } from "@/lib/sdk/sdk.schemas"
-import { isAuthenticated } from "@/lib/auth"
+import { useIsAuthenticated } from "@/lib/auth-store"
 import { useAdminMutation } from "./useAdminMutation"
 import { STALE_TIME } from "@/lib/react-query"
 
@@ -27,11 +27,12 @@ import { STALE_TIME } from "@/lib/react-query"
  * 获取目录树
  */
 export function useCollectionTree(siteId: number, showDocuments: boolean = false) {
+  const isAuthed = useIsAuthenticated()
   return useGetAdminCollectionTree(
     { site_id: siteId, type: showDocuments ? undefined : "collection" },
     {
       query: {
-        enabled: !!siteId && isAuthenticated(),
+        enabled: !!siteId && isAuthed,
         staleTime: STALE_TIME.MEDIUM,
         select: (data) => data ?? [],
       },
@@ -43,11 +44,12 @@ export function useCollectionTree(siteId: number, showDocuments: boolean = false
  * 获取目录列表
  */
 export function useCollections(siteId: number, parentId?: number) {
+  const isAuthed = useIsAuthenticated()
   return useListAdminCollections(
     { site_id: siteId, parent_id: parentId, is_pager: 0 },
     {
       query: {
-        enabled: !!siteId && isAuthenticated(),
+        enabled: !!siteId && isAuthed,
         staleTime: STALE_TIME.MEDIUM,
         select: (data) => data?.list ?? [],
       },
@@ -59,9 +61,10 @@ export function useCollections(siteId: number, parentId?: number) {
  * 获取单个目录详情
  */
 export function useCollection(id: number | undefined) {
+  const isAuthed = useIsAuthenticated()
   return useGetAdminCollection(id ?? 0, {
     query: {
-      enabled: !!id && isAuthenticated(),
+      enabled: !!id && isAuthed,
       staleTime: STALE_TIME.MEDIUM,
     },
   })

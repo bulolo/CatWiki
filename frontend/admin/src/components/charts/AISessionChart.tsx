@@ -41,6 +41,37 @@ interface AISessionChartProps {
   className?: string;
 }
 
+/** Fluid Monotone Spline：把折线点序列生成平滑的 SVG path（纯函数，便于单测）。 */
+function generateSmoothPath(pts: ChartPoint[]): string {
+  if (pts.length < 2) return ""
+  let path = `M ${pts[0].x} ${pts[0].y}`
+
+  const slopes = pts.map((p, i) => {
+    if (i === 0) return (pts[1].y - p.y) / (pts[1].x - pts[0].x)
+    if (i === pts.length - 1) return (p.y - pts[i - 1].y) / (pts[i].x - pts[i - 1].x)
+
+    const dx1 = pts[i].x - pts[i - 1].x
+    const dy1 = p.y - pts[i - 1].y
+    const dx2 = pts[i + 1].x - pts[i].x
+    const dy2 = pts[i + 1].y - p.y
+
+    const s1 = dy1 / dx1
+    const s2 = dy2 / dx2
+    if (s1 * s2 <= 0) return 0
+    const w1 = 2 * dx2 + dx1
+    const w2 = dx2 + 2 * dx1
+    return (w1 + w2) / (w1 / s1 + w2 / s2)
+  })
+
+  for (let i = 0; i < pts.length - 1; i++) {
+    const curr = pts[i]
+    const next = pts[i + 1]
+    const dx = (next.x - curr.x) / 2.75
+    path += ` C ${curr.x + dx} ${curr.y + slopes[i] * dx}, ${next.x - dx} ${next.y - slopes[i + 1] * dx}, ${next.x} ${next.y}`
+  }
+  return path
+}
+
 export default function AISessionChart({ data, color = "#3b82f6", className }: AISessionChartProps) {
   const t = useTranslations("AIChart")
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
@@ -99,37 +130,6 @@ export default function AISessionChart({ data, color = "#3b82f6", className }: A
         ...d
       }
     })
-
-    // Fluid Monotone Spline algorithm
-    const generateSmoothPath = (pts: ChartPoint[]) => {
-      if (pts.length < 2) return ""
-      let path = `M ${pts[0].x} ${pts[0].y}`
-
-      const slopes = pts.map((p, i) => {
-        if (i === 0) return (pts[1].y - p.y) / (pts[1].x - pts[0].x)
-        if (i === pts.length - 1) return (p.y - pts[i - 1].y) / (pts[i].x - pts[i - 1].x)
-
-        const dx1 = pts[i].x - pts[i - 1].x
-        const dy1 = p.y - pts[i - 1].y
-        const dx2 = pts[i + 1].x - pts[i].x
-        const dy2 = pts[i + 1].y - p.y
-
-        const s1 = dy1 / dx1
-        const s2 = dy2 / dx2
-        if (s1 * s2 <= 0) return 0
-        const w1 = 2 * dx2 + dx1
-        const w2 = dx2 + 2 * dx1
-        return (w1 + w2) / (w1 / s1 + w2 / s2)
-      })
-
-      for (let i = 0; i < pts.length - 1; i++) {
-        const curr = pts[i]
-        const next = pts[i + 1]
-        const dx = (next.x - curr.x) / 2.75
-        path += ` C ${curr.x + dx} ${curr.y + slopes[i] * dx}, ${next.x - dx} ${next.y - slopes[i + 1] * dx}, ${next.x} ${next.y}`
-      }
-      return path
-    }
 
     const lp = generateSmoothPath(coords)
     const ap = `${lp} L ${VIEW_WIDTH} ${VIEW_HEIGHT} L 0 ${VIEW_HEIGHT} Z`

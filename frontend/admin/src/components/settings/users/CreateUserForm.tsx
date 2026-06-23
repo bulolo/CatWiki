@@ -26,9 +26,10 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { useInviteUser, useSitesList } from "@/hooks"
-import { getUserInfo } from "@/lib/auth"
+import { useCurrentUser } from "@/lib/auth-store"
 import { useHealth } from "@/hooks/useHealth"
 import { UserRole, type Site } from "@/lib/sdk/sdk.schemas"
+import { parseInviteResponse } from "@/lib/user-response-parsers"
 import { useTranslations } from "next-intl"
 
 interface CreateUserFormProps {
@@ -38,36 +39,14 @@ interface CreateUserFormProps {
   fixedSiteName?: string
 }
 
-type InviteResponseWithPassword = {
-  user: { email: string }
-  password: string
-}
-
-function parseInviteResponse(data: unknown): InviteResponseWithPassword | null {
-  if (!data || typeof data !== "object") {
-    return null
-  }
-  const user = (data as { user?: unknown }).user
-  const password = (data as { password?: unknown }).password
-  if (!user || typeof user !== "object" || typeof password !== "string") {
-    return null
-  }
-  const email = (user as { email?: unknown }).email
-  if (typeof email !== "string") {
-    return null
-  }
-  return { user: { email }, password }
-}
-
 export function CreateUserForm({ onCancel, onSuccess, fixedSiteId, fixedSiteName }: CreateUserFormProps) {
   const t = useTranslations("CreateUser")
   const [email, setEmail] = useState("")
   const [role, setRole] = useState<UserRole>("site_admin" as const)
   const [selectedSites, setSelectedSites] = useState<number[]>(fixedSiteId ? [fixedSiteId] : [])
 
-  const userInfo = typeof window !== "undefined" ? getUserInfo() : null
+  const userInfo = useCurrentUser()
   const isPlatformAdmin = userInfo?.role === "admin" as const
-  const isTenantAdmin = userInfo?.role === "tenant_admin" as const
   const { data: healthData } = useHealth()
   const edition = healthData?.edition || "community"
 

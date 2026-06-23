@@ -39,7 +39,8 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY pyproject.toml uv.lock ./
 
 # 安装 Python 依赖（生产环境，不包含开发依赖）
-RUN uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 # 复制应用代码
 COPY . .

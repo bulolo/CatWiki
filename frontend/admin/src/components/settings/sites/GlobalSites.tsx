@@ -27,9 +27,7 @@ import {
   Globe,
   ArrowUpRight,
   BookOpen,
-  Settings,
-  LayoutGrid,
-  Loader2
+  LayoutGrid
 } from "lucide-react"
 import { env } from "@/lib/env"
 import { useSite } from "@/contexts/SiteContext"

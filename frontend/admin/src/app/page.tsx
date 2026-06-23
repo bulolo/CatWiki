@@ -17,7 +17,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { getLastSiteSlug, setLastSiteSlug, getUserInfo } from "@/lib/auth"
+import { getLastSiteSlug, setLastSiteSlug } from "@/lib/auth"
 import { useSite } from "@/contexts/SiteContext"
 import { Button, Card, CardContent } from "@/components/ui"
 import { Globe, Plus, Loader2 } from "lucide-react"
@@ -29,7 +29,6 @@ export default function AdminHome() {
 
   // From SiteContext
   const { sites, isLoadingSites } = useSite()
-  const userInfo = getUserInfo()
 
   // Dynamic redirect logic
   useEffect(() => {

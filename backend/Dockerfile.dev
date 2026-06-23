@@ -39,7 +39,8 @@ ENV UV_LINK_MODE=copy
 COPY pyproject.toml uv.lock ./
 
 # 安装 Python 依赖（开发依赖也安装）
-RUN uv sync --frozen --all-extras
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --all-extras
 
 # 暴露端口
 EXPOSE 3000
