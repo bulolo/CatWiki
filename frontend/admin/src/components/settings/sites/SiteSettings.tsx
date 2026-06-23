@@ -21,7 +21,7 @@ import { Settings, MessageSquare, Bot, Users, Save, Loader2 } from "lucide-react
 import { toast } from "sonner"
 import { useSiteById, useUpdateSite, useHealth } from "@/hooks"
 import { QuickQuestionsConfig } from "@/components/features"
-import type { QuickQuestion } from "@/lib/sdk/sdk.schemas"
+import type { QuickQuestion, SiteEEConfigFullResponse } from "@/lib/sdk/sdk.schemas"
 import { SiteBotSettings, SiteUsers } from "@/components/sites"
 import { initialConfigs, type BotConfig } from "@/types/settings"
 import { env } from "@/lib/env"
@@ -102,7 +102,7 @@ export function SiteSettings({ siteId, onBack: _onBack }: SiteSettingsProps) {
       // 从 EE API 加载全量 EE 配置（访问控制 + 机器人）
       const ee = getEeApi()
       if (ee) {
-        ee.sites.getConfig(siteId).then((eeConfig) => {
+        ee.sites.getConfig(siteId).then((eeConfig: SiteEEConfigFullResponse | null) => {
           if (!eeConfig) return
           // 1. 同步机器人配置
           bConfig.api_bot = {
