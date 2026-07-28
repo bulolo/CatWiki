@@ -48,6 +48,7 @@ from app.core.infra.config import settings
 from app.schemas.document import VectorRetrieveFilter
 from app.schemas.graph_state import ChatGraphState
 from app.services.rag import RAGRetrievalError, RAGService
+from app.core.ai.graph.tools import search_web
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +156,7 @@ async def search_knowledge_base(
         return "[系统提示] 检索发生未知异常。请基于已有上下文如实回答用户；不要重复调用本工具。"
 
 
-tools = [search_knowledge_base]
+tools = [search_knowledge_base, search_web]
 
 
 # =============================================================================

@@ -105,6 +105,14 @@ class LifecycleManager:
         except Exception as e:
             logger.warning(f"⚠️ [Lifecycle] Reranker aclose failed: {e}")
 
+        # 1.6 关闭 You.com Search 常驻 HTTP 客户端
+        try:
+            from app.core.ai.providers.youcom import youcom_search_client
+
+            await youcom_search_client.aclose()
+        except Exception as e:
+            logger.warning(f"⚠️ [Lifecycle] You.com client aclose failed: {e}")
+
         # 2. 关闭向量存储管理器
         await close_vector_store()
 
