@@ -228,6 +228,11 @@ class Settings(BaseSettings):
         le=600.0,
         description="单次流式对话的超时秒数，超时后向客户端发送超时提示并结束流",
     )
+    # You.com 搜索配置
+    YOUCOM_API_KEY: str | None = Field(default=None, description="You.com API 密钥")
+    YOUCOM_SEARCH_ENABLED: bool = Field(default=False, description="是否启用 You.com 网络搜索")
+    YOUCOM_SEARCH_TOP_K: int = Field(default=10, ge=1, le=20, description="You.com 每次搜索返回的结果数")
+
     # RAG 检索配置
     RAG_RECALL_K: int = Field(
         default=50,
